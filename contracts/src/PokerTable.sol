@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import "./interfaces/IVRFAdapter.sol";
+
 /**
  * @title PokerTable
  * @notice Heads-up Hold'em table with on-chain betting and VRF-driven community cards.
@@ -88,7 +90,14 @@ contract PokerTable {
 
     event VRFRequested(
         uint256 indexed handId,
-        GameState street
+        GameState street,
+        uint256 requestId
+    );
+
+    event CommunityCardsDealt(
+        uint256 indexed handId,
+        GameState street,
+        uint8[] cards
     );
 
     event HandSettled(
@@ -119,6 +128,11 @@ contract PokerTable {
     uint256 public lastActionBlock;   // For one-action-per-block enforcement
 
     address public vrfAdapter;        // Address of VRF adapter contract
+    uint256 public pendingVRFRequestId;  // Current pending VRF request ID
+
+    // Community cards (0-51 card encoding, 255 = not dealt)
+    // Index: 0-2 = flop, 3 = turn, 4 = river
+    uint8[5] public communityCards;
 
     // ============ Modifiers ============
     modifier onlyOperator(uint8 seatIndex) {
@@ -235,6 +249,12 @@ contract PokerTable {
             seats[i].isActive = true;
             seats[i].currentBet = 0;
         }
+
+        // Reset community cards (255 = not dealt)
+        for (uint8 i = 0; i < 5; i++) {
+            communityCards[i] = 255;
+        }
+        pendingVRFRequestId = 0;
 
         // Post blinds
         seats[sbSeat].stack -= smallBlind;
@@ -512,17 +532,28 @@ contract PokerTable {
             // In full version, this triggers showdown reveal process
         } else {
             gameState = nextState;
-            emit VRFRequested(currentHandId, nextState);
-            // In production, would call VRF adapter here
-            // For MVP tests, we'll use a mock fulfill
+
+            // Request VRF for next street's community cards
+            uint256 requestId = 0;
+            if (vrfAdapter != address(0)) {
+                requestId = IVRFAdapter(vrfAdapter).requestRandomness(
+                    tableId,
+                    currentHandId,
+                    uint8(nextState)
+                );
+                pendingVRFRequestId = requestId;
+            }
+
+            emit VRFRequested(currentHandId, nextState, requestId);
         }
     }
 
     /**
-     * @notice Called by VRF adapter to advance to next betting round (mock for testing)
-     * @param nextBettingState The betting state to transition to
+     * @notice Called by VRF adapter to provide randomness and advance to next betting round.
+     * @param requestId The VRF request ID being fulfilled
+     * @param randomness The random value from VRF
      */
-    function fulfillVRF(GameState nextBettingState) external {
+    function fulfillVRF(uint256 requestId, uint256 randomness) external {
         // In production: require(msg.sender == vrfAdapter, "Only VRF adapter");
         require(
             gameState == GameState.WAITING_VRF_FLOP ||
@@ -530,6 +561,14 @@ contract PokerTable {
             gameState == GameState.WAITING_VRF_RIVER,
             "Not waiting for VRF"
         );
+
+        // Verify request ID if adapter is set
+        if (vrfAdapter != address(0)) {
+            require(requestId == pendingVRFRequestId, "Invalid request ID");
+        }
+
+        // Derive community cards from randomness
+        _dealCommunityCards(randomness);
 
         // Reset betting round state
         for (uint8 i = 0; i < MAX_SEATS; i++) {
@@ -542,8 +581,50 @@ contract PokerTable {
         // Post-flop: non-button (BB) acts first
         currentHand.actorSeat = 1 - buttonSeat;
 
+        // Determine next betting state based on current VRF state
+        GameState nextBettingState;
+        if (gameState == GameState.WAITING_VRF_FLOP) {
+            nextBettingState = GameState.BETTING_FLOP;
+        } else if (gameState == GameState.WAITING_VRF_TURN) {
+            nextBettingState = GameState.BETTING_TURN;
+        } else {
+            nextBettingState = GameState.BETTING_RIVER;
+        }
+
         gameState = nextBettingState;
         actionDeadline = block.timestamp + ACTION_TIMEOUT;
+        pendingVRFRequestId = 0;
+    }
+
+    /**
+     * @notice Derive and store community cards from VRF randomness.
+     * @dev Cards are 0-51. We use simple mod-based derivation for MVP.
+     *      In production, would need more sophisticated shuffle to avoid duplicates
+     *      with hole cards and previously dealt community cards.
+     */
+    function _dealCommunityCards(uint256 randomness) internal {
+        uint8[] memory newCards;
+
+        if (gameState == GameState.WAITING_VRF_FLOP) {
+            // Deal 3 flop cards
+            newCards = new uint8[](3);
+            for (uint8 i = 0; i < 3; i++) {
+                communityCards[i] = uint8(uint256(keccak256(abi.encodePacked(randomness, i))) % 52);
+                newCards[i] = communityCards[i];
+            }
+        } else if (gameState == GameState.WAITING_VRF_TURN) {
+            // Deal turn card
+            newCards = new uint8[](1);
+            communityCards[3] = uint8(uint256(keccak256(abi.encodePacked(randomness, uint8(3)))) % 52);
+            newCards[0] = communityCards[3];
+        } else if (gameState == GameState.WAITING_VRF_RIVER) {
+            // Deal river card
+            newCards = new uint8[](1);
+            communityCards[4] = uint8(uint256(keccak256(abi.encodePacked(randomness, uint8(4)))) % 52);
+            newCards[0] = communityCards[4];
+        }
+
+        emit CommunityCardsDealt(currentHandId, gameState, newCards);
     }
 
     function _settleHand(uint8 winnerSeat) internal {
@@ -613,5 +694,9 @@ contract PokerTable {
         if (seatIndex >= MAX_SEATS) return 0;
         if (seats[seatIndex].currentBet >= currentHand.currentBet) return 0;
         return currentHand.currentBet - seats[seatIndex].currentBet;
+    }
+
+    function getCommunityCards() external view returns (uint8[5] memory) {
+        return communityCards;
     }
 }

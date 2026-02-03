@@ -3,30 +3,34 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 import "../src/PokerTable.sol";
+import "../src/mocks/MockVRFAdapter.sol";
 
 contract PokerTableTest is Test {
     PokerTable public pokerTable;
+    MockVRFAdapter public mockVRF;
 
     address public owner1 = address(0x1);
     address public owner2 = address(0x2);
     address public operator1 = address(0x11);
     address public operator2 = address(0x22);
-    address public vrfAdapter = address(0xABCD);
 
     uint256 constant SMALL_BLIND = 10;
     uint256 constant BIG_BLIND = 20;
     uint256 constant BUY_IN = 1000;
+    uint256 constant TEST_RANDOMNESS = 12345678901234567890;
 
     event SeatUpdated(uint8 indexed seatIndex, address owner, address operator, uint256 stack);
     event HandStarted(uint256 indexed handId, uint256 smallBlind, uint256 bigBlind, uint8 buttonSeat);
     event ActionTaken(uint256 indexed handId, uint8 indexed seatIndex, PokerTable.ActionType action, uint256 amount, uint256 potAfter);
     event PotUpdated(uint256 indexed handId, uint256 pot);
     event BettingRoundComplete(uint256 indexed handId, PokerTable.GameState fromState, PokerTable.GameState toState);
-    event VRFRequested(uint256 indexed handId, PokerTable.GameState street);
+    event VRFRequested(uint256 indexed handId, PokerTable.GameState street, uint256 requestId);
+    event CommunityCardsDealt(uint256 indexed handId, PokerTable.GameState street, uint8[] cards);
     event HandSettled(uint256 indexed handId, uint8 winnerSeat, uint256 potAmount);
 
     function setUp() public {
-        pokerTable = new PokerTable(1, SMALL_BLIND, BIG_BLIND, vrfAdapter);
+        mockVRF = new MockVRFAdapter();
+        pokerTable = new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(mockVRF));
     }
 
     // ============ Seat Registration Tests ============
@@ -290,12 +294,18 @@ contract PokerTableTest is Test {
         vm.expectEmit(true, false, false, true);
         emit BettingRoundComplete(1, PokerTable.GameState.BETTING_PRE, PokerTable.GameState.WAITING_VRF_FLOP);
 
+        // VRF request includes requestId (will be 1 from MockVRFAdapter)
         vm.expectEmit(true, false, false, true);
-        emit VRFRequested(1, PokerTable.GameState.WAITING_VRF_FLOP);
+        emit VRFRequested(1, PokerTable.GameState.WAITING_VRF_FLOP, 1);
 
         pokerTable.check(1);
 
         assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.WAITING_VRF_FLOP));
+
+        // Verify VRF adapter received the request
+        assertEq(mockVRF.lastRequestId(), 1);
+        assertEq(mockVRF.lastHandId(), 1);
+        assertEq(mockVRF.lastPurpose(), uint8(PokerTable.GameState.WAITING_VRF_FLOP));
     }
 
     function test_FulfillVRF_TransitionToFlop() public {
@@ -311,14 +321,22 @@ contract PokerTableTest is Test {
         vm.roll(block.number + 1);
         pokerTable.check(1);
 
-        // VRF fulfillment
-        pokerTable.fulfillVRF(PokerTable.GameState.BETTING_FLOP);
+        // VRF fulfillment via mock adapter
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
 
         assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.BETTING_FLOP));
 
         // Check that actor is now BB (seat 1) for post-flop
         (,,, uint8 actorSeat,) = pokerTable.getHandInfo();
         assertEq(actorSeat, 1); // Non-button acts first post-flop
+
+        // Verify community cards were dealt (flop = 3 cards)
+        uint8[5] memory cards = pokerTable.getCommunityCards();
+        assertTrue(cards[0] < 52, "Flop card 1 should be dealt");
+        assertTrue(cards[1] < 52, "Flop card 2 should be dealt");
+        assertTrue(cards[2] < 52, "Flop card 3 should be dealt");
+        assertEq(cards[3], 255, "Turn should not be dealt yet");
+        assertEq(cards[4], 255, "River should not be dealt yet");
     }
 
     function test_FullHandToShowdown() public {
@@ -335,7 +353,7 @@ contract PokerTableTest is Test {
         pokerTable.check(1);
 
         // Fulfill VRF for flop
-        pokerTable.fulfillVRF(PokerTable.GameState.BETTING_FLOP);
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
 
         // Flop: BB checks, SB checks
         vm.prank(operator2);
@@ -347,7 +365,7 @@ contract PokerTableTest is Test {
         pokerTable.check(0);
 
         // Fulfill VRF for turn
-        pokerTable.fulfillVRF(PokerTable.GameState.BETTING_TURN);
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS + 1);
 
         // Turn: BB checks, SB checks
         vm.prank(operator2);
@@ -359,7 +377,7 @@ contract PokerTableTest is Test {
         pokerTable.check(0);
 
         // Fulfill VRF for river
-        pokerTable.fulfillVRF(PokerTable.GameState.BETTING_RIVER);
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS + 2);
 
         // River: BB checks, SB checks -> Showdown
         vm.prank(operator2);
@@ -372,6 +390,12 @@ contract PokerTableTest is Test {
 
         assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.SHOWDOWN));
 
+        // Verify all community cards were dealt
+        uint8[5] memory cards = pokerTable.getCommunityCards();
+        for (uint8 i = 0; i < 5; i++) {
+            assertTrue(cards[i] < 52, "All community cards should be dealt");
+        }
+
         // Settle showdown (seat 0 wins for testing)
         pokerTable.settleShowdown(0);
 
@@ -380,6 +404,198 @@ contract PokerTableTest is Test {
         // Seat 0 should have won the pot (40 total)
         PokerTable.Seat memory seat0 = pokerTable.getSeat(0);
         assertEq(seat0.stack, BUY_IN + BIG_BLIND); // Won opponent's blind
+    }
+
+    // ============ VRF Integration Tests (T-0104) ============
+
+    function test_VRF_RequestInSameTxAsFinalAction() public {
+        _setupBothSeats();
+        pokerTable.startHand();
+
+        // SB calls
+        vm.prank(operator1);
+        vm.roll(block.number + 1);
+        pokerTable.call(0);
+
+        // Before BB check, verify no VRF request yet
+        assertEq(mockVRF.lastRequestId(), 0);
+
+        // BB checks - should trigger VRF request in same tx
+        vm.prank(operator2);
+        vm.roll(block.number + 1);
+
+        // Expect both events in same transaction
+        vm.expectEmit(true, false, false, true);
+        emit BettingRoundComplete(1, PokerTable.GameState.BETTING_PRE, PokerTable.GameState.WAITING_VRF_FLOP);
+        vm.expectEmit(true, false, false, true);
+        emit VRFRequested(1, PokerTable.GameState.WAITING_VRF_FLOP, 1);
+
+        pokerTable.check(1);
+
+        // Verify VRF request was made
+        assertEq(mockVRF.lastRequestId(), 1);
+        assertEq(mockVRF.lastTableId(), 1);
+        assertEq(mockVRF.lastHandId(), 1);
+        assertEq(pokerTable.pendingVRFRequestId(), 1);
+    }
+
+    function test_VRF_FlopDealsCommunityCards() public {
+        _setupBothSeats();
+        pokerTable.startHand();
+
+        // Complete pre-flop
+        vm.prank(operator1);
+        vm.roll(block.number + 1);
+        pokerTable.call(0);
+
+        vm.prank(operator2);
+        vm.roll(block.number + 1);
+        pokerTable.check(1);
+
+        // Verify all community cards undealt before VRF
+        uint8[5] memory cardsBefore = pokerTable.getCommunityCards();
+        for (uint8 i = 0; i < 5; i++) {
+            assertEq(cardsBefore[i], 255, "Cards should be undealt");
+        }
+
+        // Fulfill VRF
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
+
+        // Verify flop cards are dealt
+        uint8[5] memory cardsAfter = pokerTable.getCommunityCards();
+        assertTrue(cardsAfter[0] < 52, "Flop card 1 dealt");
+        assertTrue(cardsAfter[1] < 52, "Flop card 2 dealt");
+        assertTrue(cardsAfter[2] < 52, "Flop card 3 dealt");
+        assertEq(cardsAfter[3], 255, "Turn not yet dealt");
+        assertEq(cardsAfter[4], 255, "River not yet dealt");
+    }
+
+    function test_VRF_TurnDealsSingleCard() public {
+        _setupBothSeats();
+        pokerTable.startHand();
+
+        // Get to flop
+        _completePreflop();
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
+
+        // Complete flop betting
+        vm.prank(operator2);
+        vm.roll(block.number + 1);
+        pokerTable.check(1);
+
+        vm.prank(operator1);
+        vm.roll(block.number + 1);
+        pokerTable.check(0);
+
+        // Verify VRF requested for turn
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.WAITING_VRF_TURN));
+
+        // Fulfill VRF for turn
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS + 100);
+
+        // Verify turn card is dealt
+        uint8[5] memory cards = pokerTable.getCommunityCards();
+        assertTrue(cards[3] < 52, "Turn card dealt");
+        assertEq(cards[4], 255, "River not yet dealt");
+    }
+
+    function test_VRF_RiverDealsFinalCard() public {
+        _setupBothSeats();
+        pokerTable.startHand();
+
+        // Get through flop and turn
+        _completePreflop();
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
+
+        _completeFlopBetting();
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS + 100);
+
+        // Complete turn betting
+        vm.prank(operator2);
+        vm.roll(block.number + 1);
+        pokerTable.check(1);
+
+        vm.prank(operator1);
+        vm.roll(block.number + 1);
+        pokerTable.check(0);
+
+        // Verify VRF requested for river
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.WAITING_VRF_RIVER));
+
+        // Fulfill VRF for river
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS + 200);
+
+        // Verify all cards are dealt
+        uint8[5] memory cards = pokerTable.getCommunityCards();
+        for (uint8 i = 0; i < 5; i++) {
+            assertTrue(cards[i] < 52, "All cards should be dealt");
+        }
+    }
+
+    function test_VRF_CommunityCardsResetOnNewHand() public {
+        _setupBothSeats();
+        pokerTable.startHand();
+
+        // Complete a hand
+        _completePreflop();
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
+
+        // Verify flop dealt
+        uint8[5] memory cards1 = pokerTable.getCommunityCards();
+        assertTrue(cards1[0] < 52, "Flop dealt");
+
+        // Fold to end hand
+        vm.prank(operator2);
+        vm.roll(block.number + 1);
+        pokerTable.fold(1);
+
+        // Start new hand
+        pokerTable.startHand();
+
+        // Verify community cards reset
+        uint8[5] memory cards2 = pokerTable.getCommunityCards();
+        for (uint8 i = 0; i < 5; i++) {
+            assertEq(cards2[i], 255, "Cards should be reset");
+        }
+    }
+
+    function test_VRF_CardsDerivedDeterministically() public {
+        _setupBothSeats();
+        pokerTable.startHand();
+
+        _completePreflop();
+
+        // Fulfill with specific randomness
+        uint256 specificRandomness = 999999;
+        mockVRF.fulfillLastRequest(specificRandomness);
+
+        uint8[5] memory cards1 = pokerTable.getCommunityCards();
+
+        // End hand (BB folds on flop)
+        vm.prank(operator2);
+        vm.roll(block.number + 1);
+        pokerTable.fold(1);
+
+        // Start second hand - button has moved
+        pokerTable.startHand();
+
+        // Complete preflop (button is now seat 1, so seat 1 is SB and acts first)
+        vm.prank(operator2);  // seat 1 is now SB
+        vm.roll(block.number + 1);
+        pokerTable.call(1);
+
+        vm.prank(operator1);  // seat 0 is now BB
+        vm.roll(block.number + 1);
+        pokerTable.check(0);
+
+        mockVRF.fulfillLastRequest(specificRandomness);
+
+        uint8[5] memory cards2 = pokerTable.getCommunityCards();
+
+        // Same randomness should produce same cards
+        assertEq(cards1[0], cards2[0], "Same randomness = same flop card 1");
+        assertEq(cards1[1], cards2[1], "Same randomness = same flop card 2");
+        assertEq(cards1[2], cards2[2], "Same randomness = same flop card 3");
     }
 
     // ============ View Function Tests ============
@@ -517,7 +733,7 @@ contract PokerTableTest is Test {
         pokerTable.forceTimeout(); // BB auto-checks
 
         // Fulfill VRF for flop
-        pokerTable.fulfillVRF(PokerTable.GameState.BETTING_FLOP);
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
 
         // Flop: both time out (both auto-check)
         vm.warp(block.timestamp + 31 minutes);
@@ -687,5 +903,27 @@ contract PokerTableTest is Test {
     function _setupBothSeats() internal {
         pokerTable.registerSeat(0, owner1, operator1, BUY_IN);
         pokerTable.registerSeat(1, owner2, operator2, BUY_IN);
+    }
+
+    function _completePreflop() internal {
+        // SB calls, BB checks
+        vm.prank(operator1);
+        vm.roll(block.number + 1);
+        pokerTable.call(0);
+
+        vm.prank(operator2);
+        vm.roll(block.number + 1);
+        pokerTable.check(1);
+    }
+
+    function _completeFlopBetting() internal {
+        // BB checks, SB checks
+        vm.prank(operator2);
+        vm.roll(block.number + 1);
+        pokerTable.check(1);
+
+        vm.prank(operator1);
+        vm.roll(block.number + 1);
+        pokerTable.check(0);
     }
 }

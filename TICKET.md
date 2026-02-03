@@ -266,7 +266,7 @@ cd contracts && forge test -vv   # Runs all 42 tests, all pass
 - Added `getCommunityCards()` view function
 
 ## T-0105 Hand end + settlement event (P0)
-- Status: [ ] TODO
+- Status: [x] DONE
 - Depends on: T-0101..T-0104
 - Goal: End a hand (fold or showdown stub) and distribute pot.
 - Tasks:
@@ -276,6 +276,34 @@ cd contracts && forge test -vv   # Runs all 42 tests, all pass
 - Acceptance:
     - Tests prove a fold ends the hand and transfers pot to winner stack
     - Settlement event emitted and indexable
+
+### DONE Notes (T-0105)
+**Key files changed:**
+- `contracts/test/PokerTable.t.sol` - Added 8 comprehensive settlement tests
+
+**How to run/test:**
+```bash
+cd contracts && forge test -vv   # Runs all 50 tests, all pass
+```
+
+**Manual verification:**
+1. Run `forge test -vv` in contracts/ - all 50 tests pass
+2. Key settlement tests demonstrate:
+   - `test_Settlement_FoldTransfersPotToWinner`: Fold correctly transfers pot to winner
+   - `test_Settlement_FoldEmitsCorrectEvent`: HandSettled event emitted with correct params
+   - `test_Settlement_ShowdownDistributesPot`: Showdown distributes accumulated pot
+   - `test_Settlement_ShowdownEmitsEvent`: HandSettled event emitted at showdown
+   - `test_Settlement_PotAccumulatesFromRaises`: Pot correctly accumulates from betting
+   - `test_Settlement_ButtonMovesAfterHand`: Button position alternates between hands
+   - `test_Settlement_StateTransitionsToSettled`: State correctly becomes SETTLED
+   - `test_Settlement_CanStartNewHandAfterSettlement`: New hand can start after settlement
+
+**Contract features (already implemented):**
+- `fold()` ends hand immediately, opponent wins pot
+- `_settleHand(winnerSeat)` transfers pot and emits `HandSettled`
+- `settleShowdown(winnerSeat)` handles showdown settlement
+- Button moves after each hand
+- State transitions to SETTLED, allowing next hand
 
 ---
 

@@ -442,7 +442,7 @@ cd services/ownerview && pnpm test   # Runs 109 tests, all pass
 - Event listener supports automatic dealing on HandStarted
 
 ## T-0204 Showdown reveal + commit verification (P1)
-- Status: [ ] TODO
+- Status: [x] DONE
 - Depends on: T-0203, T-0105
 - Goal: Make hole cards verifiable at showdown.
 - Tasks:
@@ -452,6 +452,44 @@ cd services/ownerview && pnpm test   # Runs 109 tests, all pass
 - Acceptance:
     - Reveal with wrong cards/salt fails
     - Reveal with correct data succeeds and becomes public
+
+### DONE Notes (T-0204)
+**Key files changed:**
+- `contracts/src/PokerTable.sol` - Added holeCommits mapping, submitHoleCommit(), revealHoleCards(), getRevealedHoleCards(), and HoleCardsRevealed event
+- `contracts/test/PokerTable.t.sol` - Added 18 comprehensive tests for commit/reveal functionality
+- `services/ownerview/src/dealer/cardGenerator.ts` - Updated to use keccak256 (matching on-chain) with viem's encodePacked
+- `services/ownerview/src/dealer/dealerService.ts` - Updated test salt generation to produce valid hex format
+- `services/ownerview/src/dealer/dealer.test.ts` - Updated tests for new salt/commitment format
+
+**How to run/test:**
+```bash
+cd contracts && forge test -vv   # Runs all 68 tests, including 18 new commit/reveal tests
+cd services/ownerview && pnpm test   # Runs 109 tests, all pass
+pnpm build   # Builds all packages successfully
+```
+
+**Manual verification:**
+1. Run `forge test -vv --match-contract PokerTableTest` - all 68 tests pass
+2. Key commit/reveal tests demonstrate:
+   - `test_SubmitHoleCommit_Success`: Commitment submitted and stored on-chain
+   - `test_RevealHoleCards_Success`: Correct reveal verifies and emits HoleCardsRevealed
+   - `test_RevealHoleCards_RevertWithWrongCards`: Wrong cards fail verification
+   - `test_RevealHoleCards_RevertWithWrongSalt`: Wrong salt fails verification
+   - `test_FullShowdownWithReveal`: End-to-end showdown with both seats revealing
+
+**Contract features:**
+- `holeCommits[handId][seatIndex]` mapping stores commitments on-chain
+- `submitHoleCommit(handId, seatIndex, commitment)` for dealer to submit during hand
+- `revealHoleCards(handId, seatIndex, card1, card2, salt)` verifies commitment at showdown
+- `getRevealedHoleCards(handId, seatIndex)` returns revealed cards (255,255 if not revealed)
+- Events: `HoleCommitSubmitted`, `HoleCardsRevealed`
+
+**Security validations:**
+- Reveal only allowed at/after SHOWDOWN state (or SETTLED for previous hands)
+- Commitment verification uses keccak256(abi.encodePacked(handId, seatIndex, card1, card2, salt))
+- Cards validated: 0-51 range, no duplicates
+- Double reveal prevented
+- Dealer service commitment matches on-chain verification format
 
 ---
 

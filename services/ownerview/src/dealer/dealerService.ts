@@ -1,6 +1,19 @@
+import { createHash } from "node:crypto";
+import { toHex } from "viem";
 import type { HoleCardStore } from "../holecards/index.js";
 import type { DealParams, DealResult, DealerConfig } from "./types.js";
 import { dealHoleCards, generateSalt, generateCommitment } from "./cardGenerator.js";
+
+/**
+ * Generate a deterministic test salt from a seed and seat index
+ * Returns a valid 32-byte hex string (0x-prefixed)
+ */
+function generateTestSalt(seed: string, seatIndex: number): string {
+  const hash = createHash("sha256")
+    .update(`${seed}-${seatIndex}`)
+    .digest();
+  return toHex(hash);
+}
 
 /**
  * Error thrown when dealing fails
@@ -75,7 +88,7 @@ export class DealerService {
     for (let seatIndex = 0; seatIndex < SEAT_COUNT; seatIndex++) {
       const cards = holeCards[seatIndex];
       const salt = this.config.testSeed
-        ? `test-salt-${seatIndex}-${this.config.testSeed}`
+        ? generateTestSalt(this.config.testSeed, seatIndex)
         : generateSalt();
       const commitment = generateCommitment(tableId, handId, seatIndex, cards, salt);
 

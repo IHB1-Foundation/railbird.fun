@@ -223,9 +223,9 @@ cd contracts && forge test -vv   # Runs all 36 tests, all pass
 - `_recordAction()` updates `lastActionBlock = block.number` (line 463)
 
 ## T-0104 Betting-round completion => VRF request (P0)
-- Status: [ ] TODO
+- Status: [x] DONE
 - Depends on: T-0101, T-0102, T-0103
-- Goal: On “no more bets” completion, request VRF for next street.
+- Goal: On "no more bets" completion, request VRF for next street.
 - Tasks:
     - Implement minimal betting-round completion check
     - In the SAME TX as final action, emit `VRFRequested(street, handId)` and call adapter
@@ -233,6 +233,37 @@ cd contracts && forge test -vv   # Runs all 36 tests, all pass
 - Acceptance:
     - Tests show: final action triggers VRF request event in same tx
     - Fulfill updates community card state and transitions to next betting round
+
+### DONE Notes (T-0104)
+**Key files changed:**
+- `contracts/src/interfaces/IVRFAdapter.sol` - VRF adapter interface
+- `contracts/src/mocks/MockVRFAdapter.sol` - Mock VRF adapter for testing
+- `contracts/src/PokerTable.sol` - Added community cards, VRF integration
+- `contracts/test/PokerTable.t.sol` - Added 6 VRF tests, updated existing tests
+
+**How to run/test:**
+```bash
+cd contracts && forge test -vv   # Runs all 42 tests, all pass
+```
+
+**Manual verification:**
+1. Run `forge test -vv` in contracts/ - all 42 tests pass
+2. Key VRF tests demonstrate:
+   - `test_VRF_RequestInSameTxAsFinalAction`: VRF request emitted in same tx as betting round completion
+   - `test_VRF_FlopDealsCommunityCards`: Flop deals 3 cards
+   - `test_VRF_TurnDealsSingleCard`: Turn deals 1 card
+   - `test_VRF_RiverDealsFinalCard`: River deals final card
+   - `test_VRF_CommunityCardsResetOnNewHand`: Cards reset to 255 on new hand
+   - `test_VRF_CardsDerivedDeterministically`: Same randomness = same cards
+
+**Contract changes:**
+- Added `communityCards[5]` storage (0-51 = card, 255 = undealt)
+- Added `pendingVRFRequestId` to track pending requests
+- Added `IVRFAdapter` interface with `requestRandomness(tableId, handId, purpose)`
+- `_completeBettingRound()` now calls VRF adapter in same tx
+- `fulfillVRF(requestId, randomness)` derives community cards from randomness
+- Added `CommunityCardsDealt` event
+- Added `getCommunityCards()` view function
 
 ## T-0105 Hand end + settlement event (P0)
 - Status: [ ] TODO

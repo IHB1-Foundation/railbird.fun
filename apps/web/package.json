@@ -1,0 +1,15 @@
+{
+  "name": "@playerco/web",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "echo 'Next.js not configured yet'",
+    "build": "echo 'Next.js not configured yet'",
+    "clean": "rm -rf .next dist",
+    "lint": "echo 'lint not configured yet'"
+  },
+  "dependencies": {
+    "@playerco/shared": "workspace:*"
+  }
+}

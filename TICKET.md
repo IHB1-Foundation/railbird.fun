@@ -310,15 +310,45 @@ cd contracts && forge test -vv   # Runs all 50 tests, all pass
 # M2 — Owner-only Hole Cards (OwnerView + Dealer + Commit/Reveal)
 
 ## T-0201 OwnerView service: wallet-sign auth session (P0)
-- Status: [ ] TODO
+- Status: [x] DONE
 - Depends on: T-0001
-- Goal: Wallet-based “login” without accounts.
+- Goal: Wallet-based "login" without accounts.
 - Tasks:
     - `GET /auth/nonce`
     - `POST /auth/verify` (verify signature, issue session token)
 - Acceptance:
     - No signature => denied
     - Valid signature => session issued
+
+### DONE Notes (T-0201)
+**Key files changed:**
+- `services/ownerview/src/auth/` - Auth module (types, nonceStore, session, authService)
+- `services/ownerview/src/routes/auth.ts` - Express routes for /auth/nonce and /auth/verify
+- `services/ownerview/src/app.ts` - Express app setup
+- `services/ownerview/src/index.ts` - Server entry point
+- `services/ownerview/package.json` - Added express, jose, viem dependencies
+
+**How to run/test:**
+```bash
+pnpm install
+cd services/ownerview && pnpm test   # Runs 28 tests
+pnpm build                            # Builds all packages
+JWT_SECRET=<32+ chars> pnpm start     # Starts server on port 3001
+```
+
+**Manual verification:**
+1. Start server: `JWT_SECRET=your-secret-32-characters-minimum PORT=3001 node dist/index.js`
+2. Get nonce: `curl "http://localhost:3001/auth/nonce?address=0x1234..."`
+3. Sign the returned message with a wallet
+4. Verify: `curl -X POST http://localhost:3001/auth/verify -H "Content-Type: application/json" -d '{"address":"0x...", "nonce":"...", "signature":"0x..."}'`
+5. Receive JWT token on success, error on invalid signature
+
+**Auth flow:**
+1. Client requests nonce with wallet address
+2. Server returns nonce + message to sign
+3. Client signs message with wallet
+4. Client submits address + nonce + signature
+5. Server verifies signature, issues JWT session token (24h expiry)
 
 ## T-0202 OwnerView ACL: seatOwner verification + holecard endpoint (P0)
 - Status: [ ] TODO

@@ -188,7 +188,7 @@ cd contracts && forge test -vv   # Runs all 30 tests, all pass
 - Auto-check if `seats[actor].currentBet == currentHand.currentBet`, else auto-fold
 
 ## T-0103 One action per block per table (P0)
-- Status: [ ] TODO
+- Status: [x] DONE
 - Depends on: T-0101
 - Goal: Prevent multiple actions in same block for the same table.
 - Tasks:
@@ -196,6 +196,31 @@ cd contracts && forge test -vv   # Runs all 30 tests, all pass
     - Action handlers require `block.number > lastActionBlock`
 - Acceptance:
     - Tests attempt two actions in same block: second reverts
+
+### DONE Notes (T-0103)
+**Key files changed:**
+- `contracts/test/PokerTable.t.sol` - Added 6 new tests for one-action-per-block enforcement
+
+**How to run/test:**
+```bash
+cd contracts && forge test -vv   # Runs all 36 tests, all pass
+```
+
+**Manual verification:**
+1. Run `forge test -vv` in contracts/ - all 36 tests pass
+2. Key one-action-per-block tests demonstrate:
+   - `test_OneActionPerBlock_SecondActionReverts`: Second action in same block reverts with "One action per block"
+   - `test_OneActionPerBlock_FoldThenActionReverts`: Even fold followed by opponent action in same block reverts
+   - `test_OneActionPerBlock_RaiseThenActionReverts`: Raise followed by call in same block reverts
+   - `test_OneActionPerBlock_SucceedsAfterBlockAdvance`: After `vm.roll(block.number + 1)`, next action succeeds
+   - `test_OneActionPerBlock_ForceTimeoutRespects`: forceTimeout also respects the one-action-per-block rule
+   - `test_OneActionPerBlock_StartHandSetsLastActionBlock`: startHand sets lastActionBlock, so action in same block reverts
+
+**Contract features (already implemented in T-0101):**
+- `lastActionBlock` state variable (line 119)
+- `oneActionPerBlock` modifier requires `block.number > lastActionBlock` (lines 154-158)
+- Modifier applied to: fold, check, call, raise, forceTimeout
+- `_recordAction()` updates `lastActionBlock = block.number` (line 463)
 
 ## T-0104 Betting-round completion => VRF request (P0)
 - Status: [ ] TODO

@@ -598,6 +598,195 @@ contract PokerTableTest is Test {
         assertEq(cards1[2], cards2[2], "Same randomness = same flop card 3");
     }
 
+    // ============ Settlement Tests (T-0105) ============
+
+    function test_Settlement_FoldTransfersPotToWinner() public {
+        _setupBothSeats();
+        pokerTable.startHand();
+
+        // After startHand: seat0 (SB) has stack = BUY_IN - SB, seat1 (BB) has stack = BUY_IN - BB
+        // Pot = SB + BB
+        uint256 stackAfterBlinds0 = pokerTable.getSeat(0).stack;
+        uint256 stackAfterBlinds1 = pokerTable.getSeat(1).stack;
+        assertEq(stackAfterBlinds0, BUY_IN - SMALL_BLIND, "SB posted blind");
+        assertEq(stackAfterBlinds1, BUY_IN - BIG_BLIND, "BB posted blind");
+
+        // SB (seat 0) folds
+        vm.prank(operator1);
+        vm.roll(block.number + 1);
+        pokerTable.fold(0);
+
+        // Verify winner (seat 1) received the pot
+        uint256 finalStack1 = pokerTable.getSeat(1).stack;
+        uint256 expectedPot = SMALL_BLIND + BIG_BLIND;
+        // Winner had (BUY_IN - BB) and receives full pot
+        assertEq(finalStack1, BUY_IN - BIG_BLIND + expectedPot, "Winner receives pot");
+
+        // Verify loser's stack unchanged after fold (already lost blind)
+        uint256 finalStack0 = pokerTable.getSeat(0).stack;
+        assertEq(finalStack0, BUY_IN - SMALL_BLIND, "Loser stack after fold");
+    }
+
+    function test_Settlement_FoldEmitsCorrectEvent() public {
+        _setupBothSeats();
+        pokerTable.startHand();
+
+        vm.prank(operator1);
+        vm.roll(block.number + 1);
+
+        // Expect HandSettled with correct parameters
+        vm.expectEmit(true, false, false, true);
+        emit HandSettled(1, 1, SMALL_BLIND + BIG_BLIND);
+
+        pokerTable.fold(0);
+    }
+
+    function test_Settlement_ShowdownDistributesPot() public {
+        _setupBothSeats();
+        pokerTable.startHand();
+
+        // Play to showdown with some raises
+        vm.prank(operator1);
+        vm.roll(block.number + 1);
+        pokerTable.raise(0, 100); // SB raises to 100
+
+        vm.prank(operator2);
+        vm.roll(block.number + 1);
+        pokerTable.call(1); // BB calls 100
+
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
+
+        // Check through remaining streets
+        _checkBothPlayers();
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS + 1);
+
+        _checkBothPlayers();
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS + 2);
+
+        _checkBothPlayers();
+
+        // At showdown
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.SHOWDOWN));
+
+        uint256 stackBefore = pokerTable.getSeat(0).stack;
+
+        // Settle - seat 0 wins
+        pokerTable.settleShowdown(0);
+
+        // Pot was 200 (100 from each player)
+        uint256 stackAfter = pokerTable.getSeat(0).stack;
+        assertEq(stackAfter, stackBefore + 200, "Winner receives full pot");
+    }
+
+    function test_Settlement_ShowdownEmitsEvent() public {
+        _setupBothSeats();
+        pokerTable.startHand();
+
+        // Quick path to showdown
+        _completePreflop();
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
+
+        _completeFlopBetting();
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS + 1);
+
+        _checkBothPlayers();
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS + 2);
+
+        _checkBothPlayers();
+
+        // Expect HandSettled event
+        vm.expectEmit(true, false, false, true);
+        emit HandSettled(1, 1, BIG_BLIND * 2);
+
+        pokerTable.settleShowdown(1);
+    }
+
+    function test_Settlement_PotAccumulatesFromRaises() public {
+        _setupBothSeats();
+        pokerTable.startHand();
+
+        // Multiple raises
+        vm.prank(operator1);
+        vm.roll(block.number + 1);
+        pokerTable.raise(0, 60); // SB raises to 60
+
+        vm.prank(operator2);
+        vm.roll(block.number + 1);
+        pokerTable.raise(1, 120); // BB re-raises to 120
+
+        vm.prank(operator1);
+        vm.roll(block.number + 1);
+        pokerTable.call(0); // SB calls 120 - betting round complete, VRF requested
+
+        // Pot should be 240 (120 * 2), state should be WAITING_VRF_FLOP
+        (, uint256 pot,,,) = pokerTable.getHandInfo();
+        assertEq(pot, 240, "Pot accumulates from raises");
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.WAITING_VRF_FLOP));
+
+        // Fulfill VRF to go to flop
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
+
+        // BB folds on flop (BB acts first post-flop)
+        vm.prank(operator2);
+        vm.roll(block.number + 1);
+        pokerTable.fold(1);
+
+        // Winner gets full pot
+        PokerTable.Seat memory seat0 = pokerTable.getSeat(0);
+        assertEq(seat0.stack, BUY_IN - 120 + 240, "Winner receives accumulated pot");
+    }
+
+    function test_Settlement_ButtonMovesAfterHand() public {
+        _setupBothSeats();
+        assertEq(pokerTable.buttonSeat(), 0, "Initial button at seat 0");
+
+        pokerTable.startHand();
+
+        vm.prank(operator1);
+        vm.roll(block.number + 1);
+        pokerTable.fold(0);
+
+        assertEq(pokerTable.buttonSeat(), 1, "Button moves to seat 1 after hand");
+
+        // Start another hand and fold
+        pokerTable.startHand();
+
+        vm.prank(operator2);
+        vm.roll(block.number + 1);
+        pokerTable.fold(1);
+
+        assertEq(pokerTable.buttonSeat(), 0, "Button moves back to seat 0");
+    }
+
+    function test_Settlement_StateTransitionsToSettled() public {
+        _setupBothSeats();
+        pokerTable.startHand();
+
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.BETTING_PRE));
+
+        vm.prank(operator1);
+        vm.roll(block.number + 1);
+        pokerTable.fold(0);
+
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.SETTLED));
+    }
+
+    function test_Settlement_CanStartNewHandAfterSettlement() public {
+        _setupBothSeats();
+        pokerTable.startHand();
+
+        vm.prank(operator1);
+        vm.roll(block.number + 1);
+        pokerTable.fold(0);
+
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.SETTLED));
+
+        // Can start a new hand
+        pokerTable.startHand();
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.BETTING_PRE));
+        assertEq(pokerTable.currentHandId(), 2, "Hand ID increments");
+    }
+
     // ============ View Function Tests ============
 
     function test_GetAmountToCall() public {
@@ -925,5 +1114,28 @@ contract PokerTableTest is Test {
         vm.prank(operator1);
         vm.roll(block.number + 1);
         pokerTable.check(0);
+    }
+
+    function _checkBothPlayers() internal {
+        // Get current actor and check both in correct order
+        (,,, uint8 actor,) = pokerTable.getHandInfo();
+
+        if (actor == 1) {
+            vm.prank(operator2);
+            vm.roll(block.number + 1);
+            pokerTable.check(1);
+
+            vm.prank(operator1);
+            vm.roll(block.number + 1);
+            pokerTable.check(0);
+        } else {
+            vm.prank(operator1);
+            vm.roll(block.number + 1);
+            pokerTable.check(0);
+
+            vm.prank(operator2);
+            vm.roll(block.number + 1);
+            pokerTable.check(1);
+        }
     }
 }

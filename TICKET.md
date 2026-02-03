@@ -395,17 +395,51 @@ cd services/ownerview && pnpm test   # Runs 55 tests, all pass
 - Case-insensitive address matching
 
 ## T-0203 Dealer: per-hand dealing + storage (P0)
-- Status: [ ] TODO
+- Status: [x] DONE
 - Depends on: T-0202, T-0101
 - Goal: Generate hole cards, store privately, and connect to the table lifecycle.
 - Tasks:
-    - Create a “deal” job triggered at `HandStarted`
+    - Create a "deal" job triggered at `HandStarted`
     - Generate 2 hole cards per seat without duplicates
     - Store `(handId, seatId, holeCards, salt)`
     - (If possible in P0) create `holeCommit` and submit commit to chain
 - Acceptance:
     - Owner UI can retrieve hole cards during the hand
     - Public API never exposes hole cards
+
+### DONE Notes (T-0203)
+**Key files changed:**
+- `services/ownerview/src/dealer/types.ts` - Types for dealer service
+- `services/ownerview/src/dealer/cardGenerator.ts` - Card generation with crypto-secure randomness
+- `services/ownerview/src/dealer/dealerService.ts` - Main dealer service for dealing + storage
+- `services/ownerview/src/dealer/eventListener.ts` - HandStarted event listener for automatic dealing
+- `services/ownerview/src/dealer/index.ts` - Module exports
+- `services/ownerview/src/dealer/dealer.test.ts` - 53 tests for dealer functionality
+- `services/ownerview/src/routes/dealer.ts` - API routes: POST /dealer/deal, GET /dealer/commitments, GET /dealer/reveal
+- `services/ownerview/src/routes/dealer.test.ts` - 9 route tests
+- `services/ownerview/src/app.ts` - Integrated dealer service and routes
+
+**How to run/test:**
+```bash
+pnpm install
+pnpm build
+cd services/ownerview && pnpm test   # Runs 109 tests, all pass
+```
+
+**Manual verification:**
+1. Start server: `JWT_SECRET=your-secret-32-chars RPC_URL=http://localhost:8545 POKER_TABLE_ADDRESS=0x... node dist/index.js`
+2. Deal cards: `curl -X POST http://localhost:3001/dealer/deal -H "Content-Type: application/json" -d '{"tableId":"1","handId":"1"}'`
+3. Response contains commitments only (never cards or salts)
+4. Get commitments: `curl "http://localhost:3001/dealer/commitments?tableId=1&handId=1"`
+5. Owner can retrieve their cards via `/owner/holecards` (authenticated)
+6. Verify cards are unique (4 different cards per hand)
+
+**Security validations:**
+- Cards never exposed in /dealer/deal or /dealer/commitments responses
+- Only /owner/holecards exposes cards (with seat-owner ACL)
+- Cryptographically secure randomness (crypto.randomBytes)
+- Deterministic commitments for on-chain verification
+- Event listener supports automatic dealing on HandStarted
 
 ## T-0204 Showdown reveal + commit verification (P1)
 - Status: [ ] TODO

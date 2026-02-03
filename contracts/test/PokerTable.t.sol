@@ -405,6 +405,157 @@ contract PokerTableTest is Test {
         assertTrue(pokerTable.canCheck(1));  // BB can check
     }
 
+    // ============ Timeout Tests (T-0102) ============
+
+    event ForceTimeout(uint256 indexed handId, uint8 indexed seatIndex, PokerTable.ActionType forcedAction);
+
+    function test_Action_RevertAfterDeadline() public {
+        _setupBothSeats();
+        pokerTable.startHand();
+
+        // Advance time past the 30-minute deadline
+        vm.warp(block.timestamp + 31 minutes);
+        vm.roll(block.number + 1);
+
+        // SB tries to act but deadline passed
+        vm.prank(operator1);
+        vm.expectRevert("Action deadline passed");
+        pokerTable.call(0);
+    }
+
+    function test_ForceTimeout_RevertIfDeadlineNotPassed() public {
+        _setupBothSeats();
+        pokerTable.startHand();
+        vm.roll(block.number + 1);
+
+        // Try to force timeout before deadline
+        vm.expectRevert("Deadline not passed");
+        pokerTable.forceTimeout();
+    }
+
+    function test_ForceTimeout_AutoFoldWhenMustCall() public {
+        _setupBothSeats();
+        pokerTable.startHand();
+
+        // SB must call (not at currentBet), so should auto-fold
+        vm.warp(block.timestamp + 31 minutes);
+        vm.roll(block.number + 1);
+
+        // Expect ForceTimeout and HandSettled events
+        vm.expectEmit(true, true, false, true);
+        emit ForceTimeout(1, 0, PokerTable.ActionType.FOLD);
+
+        vm.expectEmit(true, false, false, true);
+        emit HandSettled(1, 1, SMALL_BLIND + BIG_BLIND);
+
+        pokerTable.forceTimeout();
+
+        // Game should be settled, seat 1 wins
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.SETTLED));
+
+        PokerTable.Seat memory seat1 = pokerTable.getSeat(1);
+        assertEq(seat1.stack, BUY_IN - BIG_BLIND + SMALL_BLIND + BIG_BLIND);
+    }
+
+    function test_ForceTimeout_AutoCheckWhenLegal() public {
+        _setupBothSeats();
+        pokerTable.startHand();
+
+        // SB calls to match BB
+        vm.prank(operator1);
+        vm.roll(block.number + 1);
+        pokerTable.call(0);
+
+        // Now BB can check - advance time past deadline
+        vm.warp(block.timestamp + 31 minutes);
+        vm.roll(block.number + 1);
+
+        // Expect ForceTimeout with CHECK
+        vm.expectEmit(true, true, false, true);
+        emit ForceTimeout(1, 1, PokerTable.ActionType.CHECK);
+
+        // Expect betting round to complete
+        vm.expectEmit(true, false, false, true);
+        emit BettingRoundComplete(1, PokerTable.GameState.BETTING_PRE, PokerTable.GameState.WAITING_VRF_FLOP);
+
+        pokerTable.forceTimeout();
+
+        // Should have transitioned to waiting for VRF
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.WAITING_VRF_FLOP));
+    }
+
+    function test_ForceTimeout_ResetsDeadlineAfterAction() public {
+        _setupBothSeats();
+        pokerTable.startHand();
+
+        // SB calls
+        vm.prank(operator1);
+        vm.roll(block.number + 1);
+        pokerTable.call(0);
+
+        // Advance time past deadline and force timeout
+        vm.warp(block.timestamp + 31 minutes);
+        vm.roll(block.number + 1);
+        pokerTable.forceTimeout();
+
+        // After force timeout that auto-checks, should have completed betting round
+        // Now waiting for VRF
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.WAITING_VRF_FLOP));
+    }
+
+    function test_ForceTimeout_MultipleTimeoutsToShowdown() public {
+        _setupBothSeats();
+        pokerTable.startHand();
+
+        // Pre-flop: SB calls, BB times out (auto-check)
+        vm.prank(operator1);
+        vm.roll(block.number + 1);
+        pokerTable.call(0);
+
+        vm.warp(block.timestamp + 31 minutes);
+        vm.roll(block.number + 1);
+        pokerTable.forceTimeout(); // BB auto-checks
+
+        // Fulfill VRF for flop
+        pokerTable.fulfillVRF(PokerTable.GameState.BETTING_FLOP);
+
+        // Flop: both time out (both auto-check)
+        vm.warp(block.timestamp + 31 minutes);
+        vm.roll(block.number + 1);
+        pokerTable.forceTimeout(); // BB (seat 1) auto-checks
+
+        vm.warp(block.timestamp + 31 minutes);
+        vm.roll(block.number + 1);
+        pokerTable.forceTimeout(); // SB (seat 0) auto-checks
+
+        // Should be waiting for VRF for turn
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.WAITING_VRF_TURN));
+    }
+
+    function test_ForceTimeout_RevertIfNotInBettingState() public {
+        _setupBothSeats();
+        pokerTable.startHand();
+
+        // SB calls, BB checks to complete betting round
+        vm.prank(operator1);
+        vm.roll(block.number + 1);
+        pokerTable.call(0);
+
+        vm.prank(operator2);
+        vm.roll(block.number + 1);
+        pokerTable.check(1);
+
+        // Now waiting for VRF
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.WAITING_VRF_FLOP));
+
+        // Force timeout should revert
+        vm.warp(block.timestamp + 31 minutes);
+        vm.roll(block.number + 1);
+
+        vm.expectRevert("Not in betting state");
+        pokerTable.forceTimeout();
+    }
+
     // ============ Helper Functions ============
 
     function _setupBothSeats() internal {

@@ -148,7 +148,7 @@ cd contracts && forge test -vv  # Runs 23 tests, all pass
 - Actor turn validation and authorization checks
 
 ## T-0102 Turn deadline (30 minutes) + forceTimeout (P0)
-- Status: [ ] TODO
+- Status: [x] DONE
 - Depends on: T-0101
 - Goal: Enforce timed turns and allow public advancement.
 - Tasks:
@@ -160,6 +160,32 @@ cd contracts && forge test -vv  # Runs 23 tests, all pass
 - Acceptance:
     - Tests prove late actions revert
     - Tests prove `forceTimeout()` advances state correctly
+
+### DONE Notes (T-0102)
+**Key files changed:**
+- `contracts/src/PokerTable.sol` - Added `forceTimeout()` function and `ForceTimeout` event
+- `contracts/test/PokerTable.t.sol` - Added 7 new tests for timeout enforcement
+
+**How to run/test:**
+```bash
+cd contracts && forge test -vv   # Runs all 30 tests, all pass
+```
+
+**Manual verification:**
+1. Run `forge test -vv` in contracts/ - all 30 tests pass
+2. Key timeout tests demonstrate:
+   - `test_Action_RevertAfterDeadline`: Actions revert after 30-minute deadline
+   - `test_ForceTimeout_RevertIfDeadlineNotPassed`: Cannot force timeout early
+   - `test_ForceTimeout_AutoFoldWhenMustCall`: Auto-folds when player owes money
+   - `test_ForceTimeout_AutoCheckWhenLegal`: Auto-checks when bets are matched
+   - `test_ForceTimeout_MultipleTimeoutsToShowdown`: Multiple forced timeouts work
+   - `test_ForceTimeout_RevertIfNotInBettingState`: Cannot timeout outside betting
+
+**Contract changes:**
+- Added `ForceTimeout(handId, seatIndex, forcedAction)` event
+- Added `forceTimeout()` function callable by anyone after deadline
+- Uses existing `inBettingState` and `oneActionPerBlock` modifiers
+- Auto-check if `seats[actor].currentBet == currentHand.currentBet`, else auto-fold
 
 ## T-0103 One action per block per table (P0)
 - Status: [ ] TODO

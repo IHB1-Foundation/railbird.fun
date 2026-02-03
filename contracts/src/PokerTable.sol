@@ -97,6 +97,12 @@ contract PokerTable {
         uint256 potAmount
     );
 
+    event ForceTimeout(
+        uint256 indexed handId,
+        uint8 indexed seatIndex,
+        ActionType forcedAction
+    );
+
     // ============ State Variables ============
     uint256 public tableId;
     uint256 public smallBlind;
@@ -399,6 +405,56 @@ contract PokerTable {
         emit SeatUpdated(seatIndex, seats[seatIndex].owner, seats[seatIndex].operator, seats[seatIndex].stack);
 
         _advanceAction(seatIndex);
+    }
+
+    // ============ Timeout Enforcement ============
+
+    /**
+     * @notice Force timeout when a player fails to act within the deadline.
+     * @dev Anyone can call this after the action deadline has passed.
+     *      If check is legal, auto-check. Otherwise, auto-fold.
+     */
+    function forceTimeout() external inBettingState oneActionPerBlock {
+        require(block.timestamp > actionDeadline, "Deadline not passed");
+
+        uint8 seatIndex = currentHand.actorSeat;
+
+        // Determine if check is legal (current bet already matched)
+        bool canCheckNow = seats[seatIndex].currentBet == currentHand.currentBet;
+
+        _recordAction();
+
+        if (canCheckNow) {
+            // Auto-check
+            currentHand.hasActed[seatIndex] = true;
+
+            emit ForceTimeout(currentHandId, seatIndex, ActionType.CHECK);
+            emit ActionTaken(
+                currentHandId,
+                seatIndex,
+                ActionType.CHECK,
+                0,
+                currentHand.pot
+            );
+
+            _advanceAction(seatIndex);
+        } else {
+            // Auto-fold
+            seats[seatIndex].isActive = false;
+
+            emit ForceTimeout(currentHandId, seatIndex, ActionType.FOLD);
+            emit ActionTaken(
+                currentHandId,
+                seatIndex,
+                ActionType.FOLD,
+                0,
+                currentHand.pot
+            );
+
+            // Opponent wins immediately
+            uint8 winnerSeat = 1 - seatIndex;
+            _settleHand(winnerSeat);
+        }
     }
 
     // ============ Internal Functions ============

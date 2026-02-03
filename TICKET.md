@@ -351,16 +351,48 @@ JWT_SECRET=<32+ chars> pnpm start     # Starts server on port 3001
 5. Server verifies signature, issues JWT session token (24h expiry)
 
 ## T-0202 OwnerView ACL: seatOwner verification + holecard endpoint (P0)
-- Status: [ ] TODO
+- Status: [x] DONE
 - Depends on: T-0201, PlayerRegistry or Table seat ownership
 - Goal: Only the seat owner can fetch their hole cards.
 - Tasks:
     - `GET /owner/holecards?tableId=&handId=`
     - On request, verify requester wallet is seat owner (on-chain lookup)
-    - Return only that seat’s cards
+    - Return only that seat's cards
 - Acceptance:
     - Wrong wallet cannot fetch anything
     - Correct wallet fetches hole cards for its seat only
+
+### DONE Notes (T-0202)
+**Key files changed:**
+- `services/ownerview/src/middleware/auth.ts` - JWT auth middleware for session verification
+- `services/ownerview/src/chain/chainService.ts` - On-chain seat ownership lookup via PokerTable
+- `services/ownerview/src/chain/pokerTableAbi.ts` - Minimal ABI for PokerTable contract
+- `services/ownerview/src/holecards/holeCardStore.ts` - In-memory hole card storage
+- `services/ownerview/src/routes/owner.ts` - GET /owner/holecards endpoint with ACL
+- `services/ownerview/src/app.ts` - Updated to include new services and routes
+
+**How to run/test:**
+```bash
+pnpm install
+pnpm build
+cd services/ownerview && pnpm test   # Runs 55 tests, all pass
+```
+
+**Manual verification:**
+1. Start server with chain config:
+   ```bash
+   JWT_SECRET=your-secret-32-chars RPC_URL=http://localhost:8545 POKER_TABLE_ADDRESS=0x... node dist/index.js
+   ```
+2. Authenticate: GET /auth/nonce, sign, POST /auth/verify -> get JWT token
+3. Request hole cards: `curl -H "Authorization: Bearer <token>" "http://localhost:3001/owner/holecards?tableId=1&handId=1"`
+4. Non-owner returns 403 "NOT_SEAT_OWNER"
+5. Owner returns their seat's cards only (never salt/commitment)
+
+**Security validations:**
+- OwnerView hole card endpoint denies non-owners (403)
+- Ownership determined by on-chain lookup, not request params
+- Salt and commitment never exposed in API response
+- Case-insensitive address matching
 
 ## T-0203 Dealer: per-hand dealing + storage (P0)
 - Status: [ ] TODO

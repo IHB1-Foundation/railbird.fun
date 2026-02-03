@@ -58,7 +58,7 @@ pnpm build        # builds all packages (TS compilation + forge build)
 4. Check `services/indexer/dist/index.js` exists after build
 
 ## T-0002 Chain config + ABI/address injection system
-- Status: [ ] TODO
+- Status: [x] DONE
 - Depends on: T-0001
 - Goal: No hardcoded chain addresses/ABIs across codebase.
 - Tasks:
@@ -69,6 +69,38 @@ pnpm build        # builds all packages (TS compilation + forge build)
 - Acceptance:
     - Web and services can read Lens/router addresses from config
     - Missing config throws clear errors
+
+### DONE Notes (T-0002)
+**Key files changed:**
+- `packages/shared/src/types.ts` - TypeScript types for ChainEnv, Address, ContractAddresses, ChainConfig
+- `packages/shared/src/chainConfig.ts` - Config loading with validation and caching
+- `packages/shared/src/index.ts` - Re-exports config functions and types
+- `packages/shared/src/chainConfig.test.ts` - 12 unit tests for config loading
+- `packages/shared/package.json` - Added test script and tsx dependency
+- `.env.example` - Environment template with all required variables
+
+**How to run/test:**
+```bash
+pnpm install               # Install dependencies
+pnpm build                 # Build all packages
+cd packages/shared && pnpm test  # Run 12 config tests
+```
+
+**Manual verification:**
+1. Run `pnpm test` in packages/shared - all 12 tests pass
+2. Try importing config in another package:
+   ```ts
+   import { getChainConfig, validateChainConfigEnv } from "@playerco/shared";
+   ```
+3. Without env vars set, `getChainConfig()` throws ChainConfigError with clear message
+4. With all env vars set, `getChainConfig()` returns full config object
+
+**Supported env vars:**
+- CHAIN_ENV (local/testnet/mainnet)
+- RPC_URL
+- POKER_TABLE_ADDRESS, PLAYER_REGISTRY_ADDRESS, PLAYER_VAULT_ADDRESS, VRF_ADAPTER_ADDRESS
+- NADFUN_LENS_ADDRESS, NADFUN_BONDING_ROUTER_ADDRESS, NADFUN_DEX_ROUTER_ADDRESS
+- WMON_ADDRESS
 
 ---
 

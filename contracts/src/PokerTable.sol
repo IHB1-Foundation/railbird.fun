@@ -112,6 +112,19 @@ contract PokerTable {
         ActionType forcedAction
     );
 
+    event HoleCommitSubmitted(
+        uint256 indexed handId,
+        uint8 indexed seatIndex,
+        bytes32 commitment
+    );
+
+    event HoleCardsRevealed(
+        uint256 indexed handId,
+        uint8 indexed seatIndex,
+        uint8 card1,
+        uint8 card2
+    );
+
     // ============ State Variables ============
     uint256 public tableId;
     uint256 public smallBlind;
@@ -133,6 +146,15 @@ contract PokerTable {
     // Community cards (0-51 card encoding, 255 = not dealt)
     // Index: 0-2 = flop, 3 = turn, 4 = river
     uint8[5] public communityCards;
+
+    // Hole card commitments: handId => seatIndex => commitment
+    mapping(uint256 => mapping(uint8 => bytes32)) public holeCommits;
+
+    // Revealed hole cards: handId => seatIndex => [card1, card2]
+    mapping(uint256 => mapping(uint8 => uint8[2])) internal _revealedHoleCards;
+
+    // Track if hole cards are revealed: handId => seatIndex => revealed
+    mapping(uint256 => mapping(uint8 => bool)) public isHoleCardsRevealed;
 
     // ============ Modifiers ============
     modifier onlyOperator(uint8 seatIndex) {
@@ -656,6 +678,106 @@ contract PokerTable {
         require(gameState == GameState.SHOWDOWN, "Not at showdown");
         // In production: verify hole card reveals here
         _settleHand(winnerSeat);
+    }
+
+    // ============ Hole Card Commit/Reveal ============
+
+    /**
+     * @notice Submit hole card commitment for a seat
+     * @dev Should be called by dealer after dealing hole cards
+     * @param handId The hand ID for which to submit commitment
+     * @param seatIndex The seat index (0 or 1)
+     * @param commitment The keccak256 hash of (handId, seatIndex, card1, card2, salt)
+     */
+    function submitHoleCommit(
+        uint256 handId,
+        uint8 seatIndex,
+        bytes32 commitment
+    ) external {
+        require(seatIndex < MAX_SEATS, "Invalid seat");
+        require(handId > 0 && handId <= currentHandId, "Invalid hand ID");
+        require(commitment != bytes32(0), "Empty commitment");
+        require(holeCommits[handId][seatIndex] == bytes32(0), "Commitment already exists");
+
+        // Can only submit during active hand (not after settlement)
+        // For current hand: allowed from BETTING_PRE onwards until showdown settlement
+        if (handId == currentHandId) {
+            require(
+                gameState != GameState.WAITING_FOR_SEATS &&
+                gameState != GameState.SETTLED,
+                "Cannot submit commit now"
+            );
+        }
+
+        holeCommits[handId][seatIndex] = commitment;
+
+        emit HoleCommitSubmitted(handId, seatIndex, commitment);
+    }
+
+    /**
+     * @notice Reveal hole cards at showdown
+     * @dev Verifies the commitment matches the revealed cards
+     * @param handId The hand ID
+     * @param seatIndex The seat index
+     * @param card1 First hole card (0-51)
+     * @param card2 Second hole card (0-51)
+     * @param salt The salt used in the commitment
+     */
+    function revealHoleCards(
+        uint256 handId,
+        uint8 seatIndex,
+        uint8 card1,
+        uint8 card2,
+        bytes32 salt
+    ) external {
+        require(seatIndex < MAX_SEATS, "Invalid seat");
+        require(handId > 0 && handId <= currentHandId, "Invalid hand ID");
+        require(card1 < 52 && card2 < 52, "Invalid card value");
+        require(card1 != card2, "Duplicate cards");
+
+        bytes32 commitment = holeCommits[handId][seatIndex];
+        require(commitment != bytes32(0), "No commitment found");
+        require(!isHoleCardsRevealed[handId][seatIndex], "Already revealed");
+
+        // For current hand, can only reveal at/after showdown
+        if (handId == currentHandId) {
+            require(
+                gameState == GameState.SHOWDOWN || gameState == GameState.SETTLED,
+                "Not at showdown"
+            );
+        }
+
+        // Verify commitment
+        bytes32 computedCommitment = keccak256(
+            abi.encodePacked(handId, seatIndex, card1, card2, salt)
+        );
+        require(computedCommitment == commitment, "Invalid reveal");
+
+        // Store revealed cards
+        _revealedHoleCards[handId][seatIndex] = [card1, card2];
+        isHoleCardsRevealed[handId][seatIndex] = true;
+
+        emit HoleCardsRevealed(handId, seatIndex, card1, card2);
+    }
+
+    /**
+     * @notice Get revealed hole cards for a hand/seat
+     * @param handId The hand ID
+     * @param seatIndex The seat index
+     * @return card1 First hole card (255 if not revealed)
+     * @return card2 Second hole card (255 if not revealed)
+     */
+    function getRevealedHoleCards(
+        uint256 handId,
+        uint8 seatIndex
+    ) external view returns (uint8 card1, uint8 card2) {
+        require(seatIndex < MAX_SEATS, "Invalid seat");
+
+        if (!isHoleCardsRevealed[handId][seatIndex]) {
+            return (255, 255);
+        }
+
+        return (_revealedHoleCards[handId][seatIndex][0], _revealedHoleCards[handId][seatIndex][1]);
     }
 
     // ============ View Functions ============

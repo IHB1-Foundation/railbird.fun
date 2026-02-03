@@ -13,10 +13,10 @@ import { HoleCardStore } from "../holecards/index.js";
 
 describe("Card Generator", () => {
   describe("generateSalt", () => {
-    it("should generate 64 character hex string", () => {
+    it("should generate 0x-prefixed 32-byte hex string", () => {
       const salt = generateSalt();
-      assert.equal(salt.length, 64);
-      assert.match(salt, /^[0-9a-f]{64}$/);
+      assert.equal(salt.length, 66); // 0x + 64 hex chars
+      assert.match(salt, /^0x[0-9a-f]{64}$/);
     });
 
     it("should generate unique salts", () => {
@@ -29,45 +29,51 @@ describe("Card Generator", () => {
   });
 
   describe("generateCommitment", () => {
+    // Valid 32-byte hex salt for tests
+    const testSalt = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
+
     it("should generate a 0x-prefixed hex string", () => {
-      const commitment = generateCommitment("1", "1", 0, [10, 25], "abc123");
+      const commitment = generateCommitment("1", "1", 0, [10, 25], testSalt);
       assert.match(commitment, /^0x[0-9a-f]{64}$/);
     });
 
     it("should be deterministic for same inputs", () => {
-      const c1 = generateCommitment("1", "1", 0, [10, 25], "salt123");
-      const c2 = generateCommitment("1", "1", 0, [10, 25], "salt123");
+      const c1 = generateCommitment("1", "1", 0, [10, 25], testSalt);
+      const c2 = generateCommitment("1", "1", 0, [10, 25], testSalt);
       assert.equal(c1, c2);
     });
 
-    it("should differ for different tableId", () => {
-      const c1 = generateCommitment("1", "1", 0, [10, 25], "salt");
-      const c2 = generateCommitment("2", "1", 0, [10, 25], "salt");
-      assert.notEqual(c1, c2);
+    it("should differ for different tableId (uses handId for on-chain)", () => {
+      // Note: tableId is not used in commitment (matches on-chain format)
+      // The commitment only uses handId, seatIndex, cards, salt
+      const c1 = generateCommitment("1", "1", 0, [10, 25], testSalt);
+      const c2 = generateCommitment("2", "1", 0, [10, 25], testSalt);
+      // tableId is ignored in commitment, so they should be equal
+      assert.equal(c1, c2, "tableId is not part of commitment (on-chain compatibility)");
     });
 
     it("should differ for different handId", () => {
-      const c1 = generateCommitment("1", "1", 0, [10, 25], "salt");
-      const c2 = generateCommitment("1", "2", 0, [10, 25], "salt");
+      const c1 = generateCommitment("1", "1", 0, [10, 25], testSalt);
+      const c2 = generateCommitment("1", "2", 0, [10, 25], testSalt);
       assert.notEqual(c1, c2);
     });
 
     it("should differ for different seatIndex", () => {
-      const c1 = generateCommitment("1", "1", 0, [10, 25], "salt");
-      const c2 = generateCommitment("1", "1", 1, [10, 25], "salt");
+      const c1 = generateCommitment("1", "1", 0, [10, 25], testSalt);
+      const c2 = generateCommitment("1", "1", 1, [10, 25], testSalt);
       assert.notEqual(c1, c2);
     });
 
     it("should differ for different cards", () => {
-      const c1 = generateCommitment("1", "1", 0, [10, 25], "salt");
-      const c2 = generateCommitment("1", "1", 0, [10, 26], "salt");
+      const c1 = generateCommitment("1", "1", 0, [10, 25], testSalt);
+      const c2 = generateCommitment("1", "1", 0, [10, 26], testSalt);
       assert.notEqual(c1, c2);
     });
 
     it("should differ for different salt", () => {
-      // Use valid hex strings (like generateSalt produces)
-      const salt1 = "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2";
-      const salt2 = "b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3";
+      // Use valid 0x-prefixed hex strings (like generateSalt produces)
+      const salt1 = "0xa1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2";
+      const salt2 = "0xb2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3";
       const c1 = generateCommitment("1", "1", 0, [10, 25], salt1);
       const c2 = generateCommitment("1", "1", 0, [10, 25], salt2);
       assert.notEqual(c1, c2);
@@ -346,7 +352,8 @@ describe("DealerService", () => {
       const record = realHoleCardStore.get("1", "1", 0);
 
       assert.ok(record);
-      assert.equal(record.salt.length, 64, "Salt should be 64 hex chars");
+      assert.equal(record.salt.length, 66, "Salt should be 0x + 64 hex chars");
+      assert.match(record.salt, /^0x[0-9a-f]{64}$/, "Salt should be valid hex");
       // Verify it's random (not predictable)
       const record2 = realHoleCardStore.get("1", "1", 1);
       assert.ok(record2);

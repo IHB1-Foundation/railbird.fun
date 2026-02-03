@@ -813,6 +813,8 @@ contract PokerTableTest is Test {
     // ============ Timeout Tests (T-0102) ============
 
     event ForceTimeout(uint256 indexed handId, uint8 indexed seatIndex, PokerTable.ActionType forcedAction);
+    event HoleCommitSubmitted(uint256 indexed handId, uint8 indexed seatIndex, bytes32 commitment);
+    event HoleCardsRevealed(uint256 indexed handId, uint8 indexed seatIndex, uint8 card1, uint8 card2);
 
     function test_Action_RevertAfterDeadline() public {
         _setupBothSeats();
@@ -1087,6 +1089,299 @@ contract PokerTableTest is Test {
         pokerTable.call(0);
     }
 
+    // ============ Hole Card Commit/Reveal Tests (T-0204) ============
+
+    function test_SubmitHoleCommit_Success() public {
+        _setupBothSeats();
+        pokerTable.startHand();
+
+        bytes32 commitment = keccak256(abi.encodePacked(uint256(1), uint8(0), uint8(10), uint8(25), bytes32("salt123")));
+
+        vm.expectEmit(true, true, false, true);
+        emit HoleCommitSubmitted(1, 0, commitment);
+
+        pokerTable.submitHoleCommit(1, 0, commitment);
+
+        assertEq(pokerTable.holeCommits(1, 0), commitment);
+    }
+
+    function test_SubmitHoleCommit_BothSeats() public {
+        _setupBothSeats();
+        pokerTable.startHand();
+
+        bytes32 commit0 = keccak256(abi.encodePacked(uint256(1), uint8(0), uint8(10), uint8(25), bytes32("salt0")));
+        bytes32 commit1 = keccak256(abi.encodePacked(uint256(1), uint8(1), uint8(30), uint8(40), bytes32("salt1")));
+
+        pokerTable.submitHoleCommit(1, 0, commit0);
+        pokerTable.submitHoleCommit(1, 1, commit1);
+
+        assertEq(pokerTable.holeCommits(1, 0), commit0);
+        assertEq(pokerTable.holeCommits(1, 1), commit1);
+    }
+
+    function test_SubmitHoleCommit_RevertIfAlreadySubmitted() public {
+        _setupBothSeats();
+        pokerTable.startHand();
+
+        bytes32 commitment = keccak256("test");
+        pokerTable.submitHoleCommit(1, 0, commitment);
+
+        vm.expectRevert("Commitment already exists");
+        pokerTable.submitHoleCommit(1, 0, keccak256("another"));
+    }
+
+    function test_SubmitHoleCommit_RevertIfEmptyCommitment() public {
+        _setupBothSeats();
+        pokerTable.startHand();
+
+        vm.expectRevert("Empty commitment");
+        pokerTable.submitHoleCommit(1, 0, bytes32(0));
+    }
+
+    function test_SubmitHoleCommit_RevertIfInvalidSeat() public {
+        _setupBothSeats();
+        pokerTable.startHand();
+
+        vm.expectRevert("Invalid seat");
+        pokerTable.submitHoleCommit(1, 2, keccak256("test"));
+    }
+
+    function test_SubmitHoleCommit_RevertIfInvalidHandId() public {
+        _setupBothSeats();
+        pokerTable.startHand();
+
+        vm.expectRevert("Invalid hand ID");
+        pokerTable.submitHoleCommit(0, 0, keccak256("test"));
+
+        vm.expectRevert("Invalid hand ID");
+        pokerTable.submitHoleCommit(2, 0, keccak256("test")); // hand 2 doesn't exist yet
+    }
+
+    function test_SubmitHoleCommit_RevertIfGameNotStarted() public {
+        _setupBothSeats();
+        // Don't start hand - state is WAITING_FOR_SEATS
+        // Actually after setupBothSeats we're still in WAITING_FOR_SEATS
+
+        // Hand ID 0 is invalid, and hand 1 doesn't exist yet
+        vm.expectRevert("Invalid hand ID");
+        pokerTable.submitHoleCommit(1, 0, keccak256("test"));
+    }
+
+    function test_RevealHoleCards_Success() public {
+        _setupBothSeats();
+        pokerTable.startHand();
+
+        // Play to showdown
+        _playToShowdown();
+
+        // Submit commitment
+        uint8 card1 = 10;
+        uint8 card2 = 25;
+        bytes32 salt = bytes32("test-salt-12345678901234567890");
+        bytes32 commitment = keccak256(abi.encodePacked(uint256(1), uint8(0), card1, card2, salt));
+        pokerTable.submitHoleCommit(1, 0, commitment);
+
+        // Reveal should succeed
+        vm.expectEmit(true, true, false, true);
+        emit HoleCardsRevealed(1, 0, card1, card2);
+
+        pokerTable.revealHoleCards(1, 0, card1, card2, salt);
+
+        assertTrue(pokerTable.isHoleCardsRevealed(1, 0));
+
+        (uint8 revealedCard1, uint8 revealedCard2) = pokerTable.getRevealedHoleCards(1, 0);
+        assertEq(revealedCard1, card1);
+        assertEq(revealedCard2, card2);
+    }
+
+    function test_RevealHoleCards_RevertWithWrongCards() public {
+        _setupBothSeats();
+        pokerTable.startHand();
+
+        _playToShowdown();
+
+        uint8 card1 = 10;
+        uint8 card2 = 25;
+        bytes32 salt = bytes32("salt");
+        bytes32 commitment = keccak256(abi.encodePacked(uint256(1), uint8(0), card1, card2, salt));
+        pokerTable.submitHoleCommit(1, 0, commitment);
+
+        // Try to reveal with wrong cards
+        vm.expectRevert("Invalid reveal");
+        pokerTable.revealHoleCards(1, 0, 11, 25, salt); // wrong card1
+
+        vm.expectRevert("Invalid reveal");
+        pokerTable.revealHoleCards(1, 0, 10, 26, salt); // wrong card2
+    }
+
+    function test_RevealHoleCards_RevertWithWrongSalt() public {
+        _setupBothSeats();
+        pokerTable.startHand();
+
+        _playToShowdown();
+
+        uint8 card1 = 10;
+        uint8 card2 = 25;
+        bytes32 salt = bytes32("correct-salt");
+        bytes32 commitment = keccak256(abi.encodePacked(uint256(1), uint8(0), card1, card2, salt));
+        pokerTable.submitHoleCommit(1, 0, commitment);
+
+        // Try to reveal with wrong salt
+        vm.expectRevert("Invalid reveal");
+        pokerTable.revealHoleCards(1, 0, card1, card2, bytes32("wrong-salt"));
+    }
+
+    function test_RevealHoleCards_RevertIfNoCommitment() public {
+        _setupBothSeats();
+        pokerTable.startHand();
+
+        _playToShowdown();
+
+        // Try to reveal without commitment
+        vm.expectRevert("No commitment found");
+        pokerTable.revealHoleCards(1, 0, 10, 25, bytes32("salt"));
+    }
+
+    function test_RevealHoleCards_RevertIfAlreadyRevealed() public {
+        _setupBothSeats();
+        pokerTable.startHand();
+
+        _playToShowdown();
+
+        uint8 card1 = 10;
+        uint8 card2 = 25;
+        bytes32 salt = bytes32("salt");
+        bytes32 commitment = keccak256(abi.encodePacked(uint256(1), uint8(0), card1, card2, salt));
+        pokerTable.submitHoleCommit(1, 0, commitment);
+
+        pokerTable.revealHoleCards(1, 0, card1, card2, salt);
+
+        // Try to reveal again
+        vm.expectRevert("Already revealed");
+        pokerTable.revealHoleCards(1, 0, card1, card2, salt);
+    }
+
+    function test_RevealHoleCards_RevertIfNotAtShowdown() public {
+        _setupBothSeats();
+        pokerTable.startHand();
+
+        uint8 card1 = 10;
+        uint8 card2 = 25;
+        bytes32 salt = bytes32("salt");
+        bytes32 commitment = keccak256(abi.encodePacked(uint256(1), uint8(0), card1, card2, salt));
+        pokerTable.submitHoleCommit(1, 0, commitment);
+
+        // Still in BETTING_PRE state
+        vm.expectRevert("Not at showdown");
+        pokerTable.revealHoleCards(1, 0, card1, card2, salt);
+    }
+
+    function test_RevealHoleCards_RevertIfInvalidCards() public {
+        _setupBothSeats();
+        pokerTable.startHand();
+
+        _playToShowdown();
+
+        bytes32 salt = bytes32("salt");
+        bytes32 commitment = keccak256(abi.encodePacked(uint256(1), uint8(0), uint8(52), uint8(25), salt));
+        pokerTable.submitHoleCommit(1, 0, commitment);
+
+        // Card value 52 is invalid (must be 0-51)
+        vm.expectRevert("Invalid card value");
+        pokerTable.revealHoleCards(1, 0, 52, 25, salt);
+    }
+
+    function test_RevealHoleCards_RevertIfDuplicateCards() public {
+        _setupBothSeats();
+        pokerTable.startHand();
+
+        _playToShowdown();
+
+        bytes32 salt = bytes32("salt");
+        bytes32 commitment = keccak256(abi.encodePacked(uint256(1), uint8(0), uint8(10), uint8(10), salt));
+        pokerTable.submitHoleCommit(1, 0, commitment);
+
+        // Same card twice is invalid
+        vm.expectRevert("Duplicate cards");
+        pokerTable.revealHoleCards(1, 0, 10, 10, salt);
+    }
+
+    function test_GetRevealedHoleCards_ReturnsUnrevealedDefault() public {
+        _setupBothSeats();
+        pokerTable.startHand();
+
+        // Without revealing, should return (255, 255)
+        (uint8 card1, uint8 card2) = pokerTable.getRevealedHoleCards(1, 0);
+        assertEq(card1, 255);
+        assertEq(card2, 255);
+    }
+
+    function test_RevealHoleCards_CanRevealAfterSettlement() public {
+        _setupBothSeats();
+        pokerTable.startHand();
+
+        // Submit commitment
+        uint8 card1 = 10;
+        uint8 card2 = 25;
+        bytes32 salt = bytes32("salt");
+        bytes32 commitment = keccak256(abi.encodePacked(uint256(1), uint8(0), card1, card2, salt));
+        pokerTable.submitHoleCommit(1, 0, commitment);
+
+        // Fold to settle hand
+        vm.prank(operator1);
+        vm.roll(block.number + 1);
+        pokerTable.fold(0);
+
+        // State should be SETTLED
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.SETTLED));
+
+        // Can still reveal after settlement
+        pokerTable.revealHoleCards(1, 0, card1, card2, salt);
+
+        assertTrue(pokerTable.isHoleCardsRevealed(1, 0));
+    }
+
+    function test_FullShowdownWithReveal() public {
+        _setupBothSeats();
+        pokerTable.startHand();
+
+        // Submit commitments for both seats
+        uint8 s0_card1 = 10;
+        uint8 s0_card2 = 25;
+        bytes32 s0_salt = bytes32("salt-seat-0");
+        bytes32 s0_commitment = keccak256(abi.encodePacked(uint256(1), uint8(0), s0_card1, s0_card2, s0_salt));
+        pokerTable.submitHoleCommit(1, 0, s0_commitment);
+
+        uint8 s1_card1 = 30;
+        uint8 s1_card2 = 45;
+        bytes32 s1_salt = bytes32("salt-seat-1");
+        bytes32 s1_commitment = keccak256(abi.encodePacked(uint256(1), uint8(1), s1_card1, s1_card2, s1_salt));
+        pokerTable.submitHoleCommit(1, 1, s1_commitment);
+
+        // Play to showdown
+        _playToShowdown();
+
+        // Reveal both seats
+        pokerTable.revealHoleCards(1, 0, s0_card1, s0_card2, s0_salt);
+        pokerTable.revealHoleCards(1, 1, s1_card1, s1_card2, s1_salt);
+
+        // Verify both revealed
+        assertTrue(pokerTable.isHoleCardsRevealed(1, 0));
+        assertTrue(pokerTable.isHoleCardsRevealed(1, 1));
+
+        // Settle showdown
+        pokerTable.settleShowdown(0);
+
+        // Verify cards are accessible after settlement
+        (uint8 r0c1, uint8 r0c2) = pokerTable.getRevealedHoleCards(1, 0);
+        assertEq(r0c1, s0_card1);
+        assertEq(r0c2, s0_card2);
+
+        (uint8 r1c1, uint8 r1c2) = pokerTable.getRevealedHoleCards(1, 1);
+        assertEq(r1c1, s1_card1);
+        assertEq(r1c2, s1_card2);
+    }
+
     // ============ Helper Functions ============
 
     function _setupBothSeats() internal {
@@ -1137,5 +1432,25 @@ contract PokerTableTest is Test {
             vm.roll(block.number + 1);
             pokerTable.check(1);
         }
+    }
+
+    function _playToShowdown() internal {
+        // Pre-flop: SB calls, BB checks
+        _completePreflop();
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
+
+        // Flop: both check
+        _completeFlopBetting();
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS + 1);
+
+        // Turn: both check
+        _checkBothPlayers();
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS + 2);
+
+        // River: both check -> Showdown
+        _checkBothPlayers();
+
+        // Should now be at showdown
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.SHOWDOWN));
     }
 }

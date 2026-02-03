@@ -1,4 +1,5 @@
-import { randomBytes, createHash } from "node:crypto";
+import { randomBytes } from "node:crypto";
+import { keccak256, encodePacked, toHex } from "viem";
 import type { Card } from "../holecards/types.js";
 
 /**
@@ -18,18 +19,24 @@ export class CardGeneratorError extends Error {
 
 /**
  * Generate a cryptographically secure random salt
- * @returns 32-byte hex string (64 characters)
+ * @returns 32-byte hex string prefixed with 0x (66 characters total)
  */
 export function generateSalt(): string {
-  return randomBytes(32).toString("hex");
+  return toHex(randomBytes(32));
 }
 
 /**
- * Generate a commitment hash for hole cards
- * commitment = keccak256(tableId || handId || seatIndex || card1 || card2 || salt)
+ * Generate a commitment hash for hole cards using keccak256
+ * commitment = keccak256(abi.encodePacked(handId, seatIndex, card1, card2, salt))
  *
- * Note: Using SHA-256 for MVP. In production with on-chain verification,
- * this should match the hash function used in the smart contract (keccak256).
+ * This matches the Solidity contract's verification:
+ * keccak256(abi.encodePacked(handId, seatIndex, card1, card2, salt))
+ *
+ * @param handId Numeric hand ID (as string, will be converted to uint256)
+ * @param seatIndex Seat index (0 or 1)
+ * @param cards Tuple of two card values (0-51)
+ * @param salt 32-byte hex salt (with or without 0x prefix)
+ * @returns keccak256 hash as 0x-prefixed hex string
  */
 export function generateCommitment(
   tableId: string,
@@ -38,18 +45,20 @@ export function generateCommitment(
   cards: [Card, Card],
   salt: string
 ): string {
-  // Pack data in a deterministic format
-  const data = Buffer.concat([
-    Buffer.from(tableId, "utf8"),
-    Buffer.from(handId, "utf8"),
-    Buffer.from([seatIndex]),
-    Buffer.from([cards[0], cards[1]]),
-    Buffer.from(salt, "hex"),
-  ]);
+  // Convert handId to BigInt for uint256 encoding
+  const handIdBigInt = BigInt(handId);
 
-  // Use SHA-256 (for MVP - production should use keccak256 to match on-chain)
-  const hash = createHash("sha256").update(data).digest("hex");
-  return `0x${hash}`;
+  // Normalize salt to have 0x prefix
+  const normalizedSalt = salt.startsWith("0x") ? salt : `0x${salt}`;
+
+  // Use encodePacked to match Solidity's abi.encodePacked
+  // keccak256(abi.encodePacked(handId, seatIndex, card1, card2, salt))
+  const packed = encodePacked(
+    ["uint256", "uint8", "uint8", "uint8", "bytes32"],
+    [handIdBigInt, seatIndex, cards[0], cards[1], normalizedSalt as `0x${string}`]
+  );
+
+  return keccak256(packed);
 }
 
 /**

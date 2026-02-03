@@ -556,6 +556,132 @@ contract PokerTableTest is Test {
         pokerTable.forceTimeout();
     }
 
+    // ============ One Action Per Block Tests (T-0103) ============
+
+    function test_OneActionPerBlock_SecondActionReverts() public {
+        _setupBothSeats();
+        pokerTable.startHand();
+
+        // Advance one block so first action can proceed
+        vm.roll(block.number + 1);
+
+        // First action (SB calls) - should succeed
+        vm.prank(operator1);
+        pokerTable.call(0);
+
+        // Second action in SAME block - should revert
+        // Note: turn passes to BB (seat 1) after call
+        vm.prank(operator2);
+        vm.expectRevert("One action per block");
+        pokerTable.check(1);
+    }
+
+    function test_OneActionPerBlock_FoldThenActionReverts() public {
+        _setupBothSeats();
+        pokerTable.startHand();
+
+        // Start a second hand to test fold scenario
+        // First complete a hand
+        vm.roll(block.number + 1);
+        vm.prank(operator1);
+        pokerTable.fold(0);
+
+        // Start second hand (button moves to seat 1)
+        pokerTable.startHand();
+
+        // Advance one block
+        vm.roll(block.number + 1);
+
+        // Seat 1 is now SB, folds
+        vm.prank(operator2);
+        pokerTable.fold(1);
+
+        // Game is settled, start another hand
+        pokerTable.startHand();
+
+        vm.roll(block.number + 1);
+
+        // Now test: first action succeeds
+        vm.prank(operator1);
+        pokerTable.call(0);
+
+        // Second action in same block reverts (even after call when BB should act)
+        vm.prank(operator2);
+        vm.expectRevert("One action per block");
+        pokerTable.check(1);
+    }
+
+    function test_OneActionPerBlock_RaiseThenActionReverts() public {
+        _setupBothSeats();
+        pokerTable.startHand();
+
+        vm.roll(block.number + 1);
+
+        // SB raises
+        vm.prank(operator1);
+        pokerTable.raise(0, 60);
+
+        // BB tries to respond in same block - should revert
+        vm.prank(operator2);
+        vm.expectRevert("One action per block");
+        pokerTable.call(1);
+    }
+
+    function test_OneActionPerBlock_SucceedsAfterBlockAdvance() public {
+        _setupBothSeats();
+        pokerTable.startHand();
+
+        vm.roll(block.number + 1);
+
+        // First action succeeds
+        vm.prank(operator1);
+        pokerTable.call(0);
+
+        // Advance block
+        vm.roll(block.number + 1);
+
+        // Second action now succeeds
+        vm.prank(operator2);
+        pokerTable.check(1);
+
+        // Should have completed betting round
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.WAITING_VRF_FLOP));
+    }
+
+    function test_OneActionPerBlock_ForceTimeoutRespects() public {
+        _setupBothSeats();
+        pokerTable.startHand();
+
+        vm.roll(block.number + 1);
+
+        // SB calls
+        vm.prank(operator1);
+        pokerTable.call(0);
+
+        // Advance time past deadline
+        vm.warp(block.timestamp + 31 minutes);
+
+        // Same block - forceTimeout should also respect one-action-per-block
+        vm.expectRevert("One action per block");
+        pokerTable.forceTimeout();
+
+        // Advance block
+        vm.roll(block.number + 1);
+
+        // Now forceTimeout succeeds
+        pokerTable.forceTimeout();
+    }
+
+    function test_OneActionPerBlock_StartHandSetsLastActionBlock() public {
+        _setupBothSeats();
+        pokerTable.startHand();
+
+        // Without advancing block, action should fail
+        vm.prank(operator1);
+        vm.expectRevert("One action per block");
+        pokerTable.call(0);
+    }
+
     // ============ Helper Functions ============
 
     function _setupBothSeats() internal {

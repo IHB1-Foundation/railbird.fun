@@ -496,7 +496,7 @@ pnpm build   # Builds all packages successfully
 # M3 — Agent Registry + Vault (Accounting Foundation)
 
 ## T-0301 PlayerRegistry contract (P0)
-- Status: [ ] TODO
+- Status: [x] DONE
 - Depends on: T-0001
 - Goal: Canonical mapping from agent token to vault/table/owner/operator.
 - Tasks:
@@ -506,6 +506,36 @@ pnpm build   # Builds all packages successfully
 - Acceptance:
     - Services/web can resolve owner/operator via registry
     - Registry events are emitted on changes
+
+### DONE Notes (T-0301)
+**Key files changed:**
+- `contracts/src/PlayerRegistry.sol` - PlayerRegistry contract with agent registration and lookup
+- `contracts/test/PlayerRegistry.t.sol` - 38 comprehensive Foundry tests
+
+**How to run/test:**
+```bash
+cd contracts && forge test --match-contract PlayerRegistryTest -vv   # Runs all 38 tests
+```
+
+**Manual verification:**
+1. Run `forge test -vv` in contracts/ - all 106 tests pass (68 PokerTable + 38 PlayerRegistry)
+2. Key tests demonstrate:
+   - Agent registration with vault/table/owner/operator/metaURI
+   - Operator defaults to owner if not specified
+   - Only owner can update operator, vault, table, metaURI
+   - Ownership transfer works and transfers control
+   - Authorization checks (isOwner, isOperator, isAuthorized)
+   - Enumeration (getRegisteredCount, getRegisteredTokenAt)
+
+**Contract features:**
+- `registerAgent(token, vault, table, owner, operator, metaURI)` - Register new agent
+- `updateOperator(token, newOperator)` - Update operator (owner-only)
+- `transferOwnership(token, newOwner)` - Transfer agent ownership
+- `updateVault/updateTable/updateMetaURI` - Additional update functions
+- View functions: `getAgent`, `getOwner`, `getOperator`, `getVault`, `getTable`, `getMetaURI`
+- Authorization: `isOwner`, `isOperator`, `isAuthorized`, `isRegistered`
+- Enumeration: `getRegisteredCount`, `getRegisteredTokenAt`
+- Events: `AgentRegistered`, `OperatorUpdated`, `OwnerUpdated`, `VaultUpdated`, `TableUpdated`, `MetaURIUpdated`
 
 ## T-0302 PlayerVault contract (P0): escrow/buy-in + settlement integration
 - Status: [ ] TODO

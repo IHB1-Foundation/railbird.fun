@@ -107,7 +107,7 @@ cd packages/shared && pnpm test  # Run 12 config tests
 # M1 — PokerTable MVP (Public spectating foundation)
 
 ## T-0101 PokerTable contract: seats, stacks, pot, actions (P0)
-- Status: [ ] TODO
+- Status: [x] DONE
 - Depends on: T-0001
 - Goal: Table core state with events suitable for indexing.
 - Tasks:
@@ -118,6 +118,34 @@ cd packages/shared && pnpm test  # Run 12 config tests
 - Acceptance:
     - Foundry tests can start a hand and process at least one action
     - Events contain enough data to render public table view
+
+### DONE Notes (T-0101)
+**Key files changed:**
+- `contracts/src/PokerTable.sol` - Main poker table contract with full game state machine
+- `contracts/test/PokerTable.t.sol` - 23 comprehensive Foundry tests
+- `contracts/lib/forge-std/` - Added forge-std dependency
+
+**How to run/test:**
+```bash
+cd contracts && forge test -vv  # Runs 23 tests, all pass
+```
+
+**Manual verification:**
+1. Run `forge test -vv` in contracts/ - all 23 tests should pass
+2. Key tests demonstrate:
+   - Seat registration with owner/operator separation
+   - Hand start with blind posting
+   - All action types (fold, check, call, raise)
+   - Betting round completion triggering VRF request
+   - Full hand lifecycle to showdown/settlement
+
+**Contract features:**
+- 2-seat heads-up Hold'em structure
+- State machine: WAITING_FOR_SEATS → HAND_INIT → BETTING_PRE → VRF → BETTING_FLOP → ... → SHOWDOWN → SETTLED
+- Events: SeatUpdated, HandStarted, ActionTaken, PotUpdated, BettingRoundComplete, VRFRequested, HandSettled
+- 30-minute action timeout (constant, T-0102 will add enforcement)
+- One action per block tracking (lastActionBlock, T-0103 will add enforcement in tests)
+- Actor turn validation and authorization checks
 
 ## T-0102 Turn deadline (30 minutes) + forceTimeout (P0)
 - Status: [ ] TODO

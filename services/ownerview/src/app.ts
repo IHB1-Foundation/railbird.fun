@@ -3,8 +3,9 @@ import type { Address } from "@playerco/shared";
 import { AuthService } from "./auth/index.js";
 import { ChainService } from "./chain/index.js";
 import { HoleCardStore } from "./holecards/index.js";
+import { DealerService, HandStartedEventListener } from "./dealer/index.js";
 import { createAuthMiddleware } from "./middleware/index.js";
-import { createAuthRoutes, createOwnerRoutes } from "./routes/index.js";
+import { createAuthRoutes, createOwnerRoutes, createDealerRoutes } from "./routes/index.js";
 
 export interface AppConfig {
   jwtSecret: string;
@@ -14,6 +15,10 @@ export interface AppConfig {
   rpcUrl?: string;
   /** PokerTable contract address (required for owner routes) */
   pokerTableAddress?: Address;
+  /** Table ID for dealer event listener (optional) */
+  tableId?: string;
+  /** Enable event listener for automatic dealing (default: false) */
+  enableEventListener?: boolean;
 }
 
 export interface AppContext {
@@ -21,6 +26,8 @@ export interface AppContext {
   authService: AuthService;
   chainService?: ChainService;
   holeCardStore: HoleCardStore;
+  dealerService: DealerService;
+  eventListener?: HandStartedEventListener;
 }
 
 /**
@@ -44,6 +51,9 @@ export function createApp(config: AppConfig): AppContext {
   // Hole card store (in-memory)
   const holeCardStore = new HoleCardStore();
 
+  // Dealer service (generates and stores hole cards)
+  const dealerService = new DealerService(holeCardStore);
+
   // Chain service (optional - required for owner routes)
   let chainService: ChainService | undefined;
   if (config.rpcUrl && config.pokerTableAddress) {
@@ -53,8 +63,29 @@ export function createApp(config: AppConfig): AppContext {
     });
   }
 
+  // Event listener for automatic dealing (optional)
+  let eventListener: HandStartedEventListener | undefined;
+  if (
+    config.enableEventListener &&
+    config.rpcUrl &&
+    config.pokerTableAddress &&
+    config.tableId
+  ) {
+    eventListener = new HandStartedEventListener(
+      {
+        rpcUrl: config.rpcUrl,
+        pokerTableAddress: config.pokerTableAddress,
+      },
+      dealerService,
+      config.tableId
+    );
+  }
+
   // Auth routes (public)
   app.use("/auth", createAuthRoutes(authService));
+
+  // Dealer routes (for dealing and commitments)
+  app.use("/dealer", createDealerRoutes(dealerService));
 
   // Owner routes (authenticated, requires chain service)
   if (chainService) {
@@ -75,6 +106,8 @@ export function createApp(config: AppConfig): AppContext {
     res.json({
       status: "ok",
       chainServiceEnabled: !!chainService,
+      dealerEnabled: true,
+      eventListenerEnabled: !!eventListener,
     });
   });
 
@@ -87,5 +120,5 @@ export function createApp(config: AppConfig): AppContext {
     });
   });
 
-  return { app, authService, chainService, holeCardStore };
+  return { app, authService, chainService, holeCardStore, dealerService, eventListener };
 }

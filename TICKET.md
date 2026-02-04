@@ -1165,7 +1165,7 @@ pnpm start
 - Hole cards only fetched for bot's own seat (ACL enforced by OwnerView)
 
 ## T-0702 KeeperBot (P0)
-- Status: [ ] TODO
+- Status: [x] DONE
 - Depends on: M1, M6
 - Goal: Liveness and automation.
 - Tasks:
@@ -1175,6 +1175,58 @@ pnpm start
     - Trigger rebalance when allowed
 - Acceptance:
     - With KeeperBot only, table does not stall
+
+### DONE Notes (T-0702)
+**Key files changed:**
+- `bots/keeper/package.json` - Added viem and tsx dependencies
+- `bots/keeper/src/chain/pokerTableAbi.ts` - PokerTable ABI for keeper operations
+- `bots/keeper/src/chain/playerVaultAbi.ts` - PlayerVault ABI for rebalancing
+- `bots/keeper/src/chain/client.ts` - ChainClient for table state and keeper actions
+- `bots/keeper/src/bot.ts` - Main KeeperBot with polling loop and liveness checks
+- `bots/keeper/src/index.ts` - Entry point with env config and graceful shutdown
+- `bots/keeper/src/keeper.test.ts` - 13 tests for decision logic
+
+**How to run/test:**
+```bash
+pnpm install
+pnpm build
+cd bots/keeper && pnpm test   # Runs 13 tests, all pass
+
+# To run the keeper:
+RPC_URL=http://localhost:8545 \
+KEEPER_PRIVATE_KEY=0x... \
+POKER_TABLE_ADDRESS=0x... \
+PLAYER_VAULT_ADDRESS=0x... \
+ENABLE_REBALANCING=true \
+pnpm start
+```
+
+**Manual verification:**
+1. Run `pnpm build` - all packages build successfully
+2. Run `cd bots/keeper && pnpm test` - all 13 tests pass
+3. Deploy PokerTable contract locally with registered seats
+4. Start keeper with env vars
+5. Keeper polls table state every 2s (configurable)
+6. On timeout: calls forceTimeout (auto-check or auto-fold)
+7. On SETTLED: starts new hand
+8. On SHOWDOWN: settles with winner (MVP: based on hand ID)
+9. On rebalance eligible: triggers buy/sell (if enabled)
+
+**Keeper features:**
+- Chain interaction via viem (read state, submit keeper txs)
+- Detects action deadline passed → forceTimeout
+- Detects SETTLED state → startHand
+- Detects SHOWDOWN state → settleShowdown
+- Detects rebalance eligibility → trigger buy/sell
+- One-action-per-block awareness
+- Statistics tracking: timeouts, hands started, showdowns, rebalances, errors
+- Graceful shutdown with SIGINT/SIGTERM
+
+**Security notes:**
+- Keeper requires its own private key (not seat owner/operator)
+- forceTimeout is public function, anyone can call
+- settleShowdown requires winner seat - MVP uses pseudo-random
+- Rebalancing respects accretive-only constraints (enforced on-chain)
 
 ---
 

@@ -795,7 +795,7 @@ cd services/indexer && pnpm test   # Runs 50 tests, all pass
 # M5 — Web App (Public/Owner) + In-app nad.fun Trading
 
 ## T-0501 Public web app pages (P0)
-- Status: [ ] TODO
+- Status: [x] DONE
 - Depends on: T-0401..T-0403
 - Goal: Public lobby, table viewer, agent page, leaderboard.
 - Acceptance:
@@ -803,6 +803,51 @@ cd services/indexer && pnpm test   # Runs 50 tests, all pass
     - Table viewer shows real-time public state
     - Agent page shows accounting snapshots and history
     - Leaderboard tabs render correctly
+
+### DONE Notes (T-0501)
+**Key files changed:**
+- `apps/web/package.json` - Added Next.js 14, React 18 dependencies
+- `apps/web/next.config.js` - Next.js configuration with indexer/WS URLs
+- `apps/web/tsconfig.json` - TypeScript config for Next.js with ES2020 target
+- `apps/web/src/lib/types.ts` - API response types matching indexer
+- `apps/web/src/lib/api.ts` - API client for indexer REST endpoints
+- `apps/web/src/lib/utils.ts` - Utility functions (card display, formatting)
+- `apps/web/src/lib/useWebSocket.ts` - WebSocket hook for real-time updates
+- `apps/web/src/app/layout.tsx` - Root layout with header navigation
+- `apps/web/src/app/globals.css` - Global styles for poker UI
+- `apps/web/src/app/page.tsx` - Lobby page (table list)
+- `apps/web/src/app/table/[id]/page.tsx` - Table page wrapper
+- `apps/web/src/app/table/[id]/TableViewer.tsx` - Real-time table viewer with WebSocket
+- `apps/web/src/app/agent/[token]/page.tsx` - Agent page with A/B/N/P stats and history
+- `apps/web/src/app/leaderboard/page.tsx` - Leaderboard with metric/period tabs
+- `apps/web/src/app/leaderboard/LeaderboardTable.tsx` - Leaderboard table component
+
+**How to run/test:**
+```bash
+pnpm install
+pnpm build                    # Builds all packages including web app
+cd apps/web && pnpm dev       # Start dev server on port 3000
+```
+
+**Manual verification:**
+1. Run `pnpm build` - web app builds successfully with Next.js
+2. Start indexer service (see T-0401) and web app: `pnpm dev`
+3. Visit http://localhost:3000 - Lobby page loads without wallet requirement
+4. Click a table - Table viewer shows seats, pot, community cards, action log
+5. Real-time updates via WebSocket (connection status shown in bottom-right)
+6. Visit /agent/:token - Agent page shows A/B/N/P accounting stats and NAV history
+7. Visit /leaderboard - Leaderboard shows metric tabs (ROI/PnL/Winrate/MDD) and period tabs (24h/7d/30d/all)
+
+**Public pages implemented:**
+- `/` - Lobby with live tables, blinds, seats, pot preview
+- `/table/[id]` - Table viewer with real-time WebSocket updates, community cards, seat panels, action log, timer
+- `/agent/[token]` - Agent page with A/B/N/P stats, ROI, PnL, NAV history table, nad.fun fallback link
+- `/leaderboard` - Leaderboard with 4 metrics and 4 time periods, sortable
+
+**Security validations:**
+- No hole cards displayed on any public page
+- WebSocket receives only public table state
+- Agent page shows only accounting data (no hole cards)
 
 ## T-0502 Owner web pages + hole cards (P0)
 - Status: [ ] TODO

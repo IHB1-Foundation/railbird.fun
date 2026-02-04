@@ -989,7 +989,7 @@ cd apps/web && pnpm dev   # Start dev server on port 3000
 # M6 — Vault Treasury Rebalancing (Per-hand, Accretive-only)
 
 ## T-0601 Accretive-only rebalancing (P1)
-- Status: [ ] TODO
+- Status: [x] DONE
 - Depends on: T-0302, T-0105, T-0503
 - Goal: Vault can buy/sell its own token without diluting existing holders.
 - Tasks:
@@ -1003,6 +1003,48 @@ cd apps/web && pnpm dev   # Start dev server on port 3000
 - Acceptance:
     - Tests: violating constraints reverts
     - Tests: successful rebalance yields P_after >= P_before
+
+### DONE Notes (T-0601)
+**Key files changed:**
+- `contracts/src/interfaces/INadfunLens.sol` - Interface for nad.fun Lens contract (token info, quotes)
+- `contracts/src/interfaces/INadfunRouter.sol` - Interface for nad.fun Router contract (buy/sell)
+- `contracts/src/mocks/MockNadfunRouter.sol` - Mock router for testing rebalancing logic
+- `contracts/src/PlayerVault.sol` - Added rebalancing functions with accretive-only constraints
+- `contracts/test/PlayerVault.t.sol` - Added 25 comprehensive rebalancing tests
+
+**How to run/test:**
+```bash
+cd contracts && forge test -vv   # Runs all 191 tests, including 25 new rebalancing tests
+forge test --match-contract PlayerVaultTest -vv   # Runs 85 PlayerVault tests
+```
+
+**Manual verification:**
+1. Run `forge test -vv` in contracts/ - all 191 tests pass
+2. Key rebalancing tests demonstrate:
+   - `test_RebalanceBuy_RevertNoSettlement`: Cannot rebalance before settlement
+   - `test_RebalanceBuy_RevertAlreadyRebalanced`: Cannot rebalance same hand twice
+   - `test_RebalanceBuy_RevertPriceAboveNAV`: Buy reverts if execution price > NAV
+   - `test_RebalanceSell_RevertPriceBelowNAV`: Sell reverts if execution price < NAV
+   - `test_RebalanceBuy_NavIncreasesWhenBuyingCheap`: NAV increases when buying cheap
+   - `test_RebalanceSell_NavIncreasesWhenSellingExpensive`: NAV increases when selling expensive
+   - `test_AccretiveInvariant_*`: P_after >= P_before in all scenarios
+
+**Contract features:**
+- `setRebalanceConfig(lens, router, maxMonBps, maxTokenBps)` - Configure rebalancing parameters
+- `rebalanceBuy(monAmount, minTokenOut)` - Buy treasury's own token with MON
+- `rebalanceSell(tokenAmount, minMonOut)` - Sell treasury's own token for MON
+- `getRebalanceStatus()` - Check if rebalancing is allowed for current hand
+
+**Accretive-only constraints:**
+- Buy: `q_buy = monIn / tokenOut <= P` (must buy at or below NAV)
+- Sell: `q_sell = monOut / tokenIn >= P` (must sell at or above NAV)
+- Size caps: configurable bps of A (for buys) or B (for sells)
+- Once per hand: `lastRebalancedHandId` tracking
+
+**Events:**
+- `RebalanceBuy(handId, monSpent, tokensReceived, executionPrice, navBefore, navAfter)`
+- `RebalanceSell(handId, tokensSold, monReceived, executionPrice, navBefore, navAfter)`
+- `RebalanceConfigUpdated(lens, router, maxMonBps, maxTokenBps)`
 
 ## T-0602 Randomized delay window (P1)
 - Status: [ ] TODO

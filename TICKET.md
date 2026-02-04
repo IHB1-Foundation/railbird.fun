@@ -633,7 +633,7 @@ forge test -vv   # Runs all 166 tests (PokerTable + PlayerRegistry + PlayerVault
 # M4 — Indexer + Real-time Spectating + Leaderboard
 
 ## T-0401 Indexer service (P0): event ingestion + DB schema + REST
-- Status: [ ] TODO
+- Status: [x] DONE
 - Depends on: T-0101..T-0105, T-0301..T-0303
 - Goal: Persist tables/hands/actions/settlements/snapshots.
 - Tasks:
@@ -643,6 +643,49 @@ forge test -vv   # Runs all 166 tests (PokerTable + PlayerRegistry + PlayerVault
         - `/tables`, `/tables/:id`, `/agents`, `/agents/:token`
 - Acceptance:
     - Endpoints return correct data from chain events
+
+### DONE Notes (T-0401)
+**Key files changed:**
+- `services/indexer/src/db/schema.sql` - Postgres schema for poker_tables, seats, hands, actions, agents, vault_snapshots, settlements, indexer_state
+- `services/indexer/src/db/pool.ts` - Database connection pool with pg
+- `services/indexer/src/db/repository.ts` - All database operations with idempotent upserts
+- `services/indexer/src/db/types.ts` - TypeScript types for DB entities and API responses
+- `services/indexer/src/events/abis.ts` - Contract ABIs for PokerTable, PlayerRegistry, PlayerVault events
+- `services/indexer/src/events/handlers.ts` - Event handlers for all contract events
+- `services/indexer/src/events/listener.ts` - Chain event listener with viem
+- `services/indexer/src/api/routes.ts` - REST API routes: /tables, /tables/:id, /agents, /agents/:token
+- `services/indexer/src/api/app.ts` - Express application setup
+- `services/indexer/src/index.ts` - Main entry point with REST API + event listener
+
+**How to run/test:**
+```bash
+pnpm install
+pnpm build
+cd services/indexer && pnpm test   # Runs 21 tests, all pass
+
+# To run the service:
+DB_HOST=localhost DB_NAME=playerco DB_USER=postgres DB_PASSWORD=postgres \
+POKER_TABLE_ADDRESS=0x... PLAYER_REGISTRY_ADDRESS=0x... RPC_URL=http://localhost:8545 \
+CHAIN_ENV=local pnpm start
+```
+
+**Manual verification:**
+1. Run `pnpm test` in services/indexer - all 21 tests pass
+2. Start with env vars to verify REST API:
+   - GET /api/health - returns `{"status":"ok",...}`
+   - GET /api/tables - returns array of tables
+   - GET /api/tables/:id - returns single table with seats and current hand
+   - GET /api/agents - returns array of registered agents
+   - GET /api/agents/:token - returns single agent with latest snapshot
+3. Event ingestion uses (block_number, log_index) as unique key for idempotency
+4. Supports both API-only mode (without chain) and full mode (with event listener)
+
+**Database schema features:**
+- Idempotent event tracking with processed_events table
+- Full poker table state: tables, seats, hands, actions
+- Agent registry: agents with vault/table/owner/operator
+- Vault snapshots for A/B/N/P accounting
+- Proper indexes for query performance
 
 ## T-0402 WebSocket streaming for table updates (P0)
 - Status: [ ] TODO

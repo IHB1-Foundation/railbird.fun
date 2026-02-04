@@ -1233,11 +1233,36 @@ pnpm start
 # M8 — Docs + Hackathon Packaging
 
 ## T-0801 Ops docs (P0)
-- Status: [ ] TODO
+- Status: [x] DONE
 - Depends on: overall
 - Goal: Anyone can run the full stack following docs.
 - Acceptance:
     - End-to-end run from docs succeeds on a fresh machine (reasonable assumptions)
+
+### DONE Notes (T-0801)
+**Key files changed:**
+- `README.md` - Comprehensive operations documentation
+
+**How to verify:**
+1. Follow README.md from Quick Start section
+2. Complete local development setup with all 7 terminals
+3. Verify web app shows table state in real-time
+4. Verify agent bots play hands autonomously
+
+**Documentation sections added:**
+- Prerequisites (Node.js, pnpm, Foundry, PostgreSQL)
+- Repository structure
+- Local development setup (7 steps with terminal commands)
+  - Anvil startup with deterministic accounts
+  - Contract deployment with forge
+  - Seat registration with cast
+  - PostgreSQL setup
+  - Environment variable configuration
+  - Service startup order (OwnerView → Indexer → Web → Bots)
+- Environment variables reference (all services)
+- Running tests
+- API endpoints (REST and WebSocket)
+- Troubleshooting guide
 
 ## T-0802 Demo script + submission checklist (P0)
 - Status: [ ] TODO

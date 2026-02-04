@@ -588,7 +588,7 @@ forge test -vv   # Runs all 153 tests (PokerTable + PlayerRegistry + PlayerVault
 - P = NAV per share = A / N (scaled by 1e18)
 
 ## T-0303 Accounting functions: A/B/N/P + reproducibility
-- Status: [ ] TODO
+- Status: [x] DONE
 - Depends on: T-0302
 - Goal: Standardize NAV computation for UI/leaderboard.
 - Tasks:
@@ -598,6 +598,35 @@ forge test -vv   # Runs all 153 tests (PokerTable + PlayerRegistry + PlayerVault
     - Event schema documented and stable
 - Acceptance:
     - Indexer can compute ROI and MDD using only events and on-chain reads
+
+### DONE Notes (T-0303)
+**Key files changed:**
+- `contracts/src/interfaces/IPlayerVault.sol` - Added VaultInitialized event, enhanced VaultSnapshot with cumulativePnl, documented event schema for indexers
+- `contracts/src/PlayerVault.sol` - Added cumulativePnl/initialNavPerShare/handCount storage, initialize(), getCumulativePnl(), getInitialNavPerShare(), getHandCount(), getFullAccountingData()
+- `contracts/test/PlayerVault.t.sol` - Added 13 new tests for accounting reproducibility
+
+**How to run/test:**
+```bash
+cd contracts && forge test --match-contract PlayerVaultTest -vv   # Runs all 60 tests
+forge test -vv   # Runs all 166 tests (PokerTable + PlayerRegistry + PlayerVault)
+```
+
+**Manual verification:**
+1. Run `forge test -vv` in contracts/ - all 166 tests pass
+2. Key accounting tests demonstrate:
+   - `test_Initialize_EmitsVaultInitialized`: Baseline NAV emitted for ROI calculation
+   - `test_CumulativePnl_TracksNetPnl`: PnL tracked across wins/losses
+   - `test_Indexer_CanComputeROI`: ROI = (P_current - P_initial) / P_initial
+   - `test_Indexer_CanComputeMDD`: MDD tracked via peak/trough comparison
+   - `test_EventSchema_CompleteForIndexer`: All required fields in events
+
+**Event schema for indexers:**
+- `VaultInitialized(agentToken, owner, initialAssets, initialNavPerShare)` - Emitted once at vault initialization, marks baseline for ROI
+- `VaultSnapshot(handId, A, B, N, P, cumulativePnl)` - Emitted after each settlement
+
+**Indexer algorithms documented in interface:**
+- ROI: `(navPerShare - initialNavPerShare) / initialNavPerShare`
+- MDD: Track peak P, compute `(peak - current) / peak`, keep max
 
 ---
 

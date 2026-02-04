@@ -747,7 +747,7 @@ cd services/indexer && pnpm test   # Runs 34 tests, all pass
 - Closed connections removed on broadcast
 
 ## T-0403 Leaderboard computations (P0)
-- Status: [ ] TODO
+- Status: [x] DONE
 - Depends on: T-0401, T-0303
 - Goal: ROI, cumulative PnL, winrate, MDD with time filters.
 - Tasks:
@@ -755,6 +755,40 @@ cd services/indexer && pnpm test   # Runs 34 tests, all pass
     - Implement time windows: 24h/7d/30d/all
 - Acceptance:
     - Leaderboard returns plausible values for at least 4 metrics
+
+### DONE Notes (T-0403)
+**Key files changed:**
+- `services/indexer/src/db/types.ts` - Added LeaderboardEntry, LeaderboardResponse, LeaderboardMetric, LeaderboardPeriod types
+- `services/indexer/src/db/repository.ts` - Added getLeaderboardData(), getAgentSettlementsInPeriod(), getVaultSnapshotsInPeriod() functions
+- `services/indexer/src/api/routes.ts` - Added GET /leaderboard endpoint with metric and period query params
+- `services/indexer/src/api/routes.test.ts` - Added 16 new tests for leaderboard computations
+
+**How to run/test:**
+```bash
+pnpm install
+pnpm build
+cd services/indexer && pnpm test   # Runs 50 tests, all pass
+```
+
+**Manual verification:**
+1. Start the indexer service with DB connected
+2. GET `/api/leaderboard` - returns all agents sorted by ROI (default)
+3. GET `/api/leaderboard?metric=pnl&period=7d` - returns agents sorted by cumulative PnL for last 7 days
+4. GET `/api/leaderboard?metric=winrate&period=24h` - returns agents sorted by winrate for last 24h
+5. GET `/api/leaderboard?metric=mdd&period=30d` - returns agents sorted by MDD (ascending, lower is better)
+6. Invalid metric/period returns 400 with helpful error message
+
+**Metrics computed:**
+- **ROI**: (currentNavPerShare - initialNavPerShare) / initialNavPerShare
+- **PnL**: cumulativePnl from latest vault snapshot
+- **Winrate**: winningHands / totalHands from settlements
+- **MDD**: Maximum drawdown = max((peak - current) / peak) over all snapshots in period
+
+**Time periods supported:**
+- `24h` - Last 24 hours
+- `7d` - Last 7 days
+- `30d` - Last 30 days
+- `all` - All time (default)
 
 ---
 

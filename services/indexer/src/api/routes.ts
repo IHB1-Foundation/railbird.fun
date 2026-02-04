@@ -13,6 +13,8 @@ import {
   getAllAgents,
   getLatestVaultSnapshot,
   getVaultSnapshots,
+  getVaultSnapshotsInPeriod,
+  getAgentSettlementsInPeriod,
 } from "../db/index.js";
 import { getWsManager } from "../ws/index.js";
 import type {
@@ -22,6 +24,10 @@ import type {
   ActionResponse,
   AgentResponse,
   VaultSnapshotResponse,
+  LeaderboardEntry,
+  LeaderboardResponse,
+  LeaderboardMetric,
+  LeaderboardPeriod,
 } from "../db/types.js";
 
 export const router: RouterType = Router();
@@ -186,6 +192,159 @@ router.get("/agents/:token/snapshots", async (req, res) => {
     res.json(snapshots.map(formatSnapshotResponse));
   } catch (error) {
     console.error("Error fetching snapshots:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ============ Leaderboard ============
+
+const VALID_METRICS: LeaderboardMetric[] = ["roi", "pnl", "winrate", "mdd"];
+const VALID_PERIODS: LeaderboardPeriod[] = ["24h", "7d", "30d", "all"];
+
+function getPeriodStartDate(period: LeaderboardPeriod): Date | null {
+  if (period === "all") return null;
+
+  const now = new Date();
+  switch (period) {
+    case "24h":
+      return new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    case "7d":
+      return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    case "30d":
+      return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    default:
+      return null;
+  }
+}
+
+router.get("/leaderboard", async (req, res) => {
+  try {
+    // Parse and validate query params
+    const metric = (req.query.metric as string || "roi").toLowerCase() as LeaderboardMetric;
+    const period = (req.query.period as string || "all").toLowerCase() as LeaderboardPeriod;
+
+    if (!VALID_METRICS.includes(metric)) {
+      return res.status(400).json({
+        error: `Invalid metric. Valid values: ${VALID_METRICS.join(", ")}`,
+      });
+    }
+    if (!VALID_PERIODS.includes(period)) {
+      return res.status(400).json({
+        error: `Invalid period. Valid values: ${VALID_PERIODS.join(", ")}`,
+      });
+    }
+
+    const periodStart = getPeriodStartDate(period);
+
+    // Get all agents
+    const agents = await getAllAgents();
+
+    // Build leaderboard entries
+    const entries: LeaderboardEntry[] = [];
+
+    for (const agent of agents) {
+      if (!agent.vault_address) continue;
+
+      // Get snapshots in period
+      const snapshots = await getVaultSnapshotsInPeriod(agent.vault_address, periodStart);
+
+      if (snapshots.length === 0) {
+        // No data for this agent in this period
+        continue;
+      }
+
+      const firstSnapshot = snapshots[0];
+      const lastSnapshot = snapshots[snapshots.length - 1];
+
+      // Get win/loss stats
+      const { total, wins } = await getAgentSettlementsInPeriod(agent.token_address, periodStart);
+
+      // Calculate metrics
+      const initialNav = BigInt(firstSnapshot.nav_per_share);
+      const currentNav = BigInt(lastSnapshot.nav_per_share);
+      const cumulativePnl = BigInt(lastSnapshot.cumulative_pnl);
+
+      // ROI: (currentNav - initialNav) / initialNav
+      // Scale: 1e18 precision
+      let roi = "0";
+      if (initialNav > 0n) {
+        const roiNum = ((currentNav - initialNav) * 10000n) / initialNav;
+        roi = (Number(roiNum) / 10000).toString();
+      }
+
+      // Winrate: wins / total
+      let winrate = "0";
+      if (total > 0) {
+        winrate = (wins / total).toFixed(4);
+      }
+
+      // MDD: Maximum Drawdown
+      // Track peak and calculate max drawdown
+      let peakNav = 0n;
+      let maxDrawdown = 0n;
+      for (const snap of snapshots) {
+        const nav = BigInt(snap.nav_per_share);
+        if (nav > peakNav) {
+          peakNav = nav;
+        }
+        if (peakNav > 0n) {
+          const drawdown = ((peakNav - nav) * 10000n) / peakNav;
+          if (drawdown > maxDrawdown) {
+            maxDrawdown = drawdown;
+          }
+        }
+      }
+      const mdd = (Number(maxDrawdown) / 10000).toString();
+
+      entries.push({
+        rank: 0, // Will be set after sorting
+        tokenAddress: agent.token_address,
+        ownerAddress: agent.owner_address,
+        metaUri: agent.meta_uri,
+        roi,
+        cumulativePnl: cumulativePnl.toString(),
+        winrate,
+        mdd,
+        totalHands: total,
+        winningHands: wins,
+        losingHands: total - wins,
+        currentNavPerShare: currentNav.toString(),
+        initialNavPerShare: initialNav.toString(),
+      });
+    }
+
+    // Sort by selected metric
+    entries.sort((a, b) => {
+      switch (metric) {
+        case "roi":
+          return parseFloat(b.roi) - parseFloat(a.roi);
+        case "pnl":
+          return Number(BigInt(b.cumulativePnl) - BigInt(a.cumulativePnl));
+        case "winrate":
+          return parseFloat(b.winrate) - parseFloat(a.winrate);
+        case "mdd":
+          // Lower MDD is better, so ascending order
+          return parseFloat(a.mdd) - parseFloat(b.mdd);
+        default:
+          return 0;
+      }
+    });
+
+    // Assign ranks
+    entries.forEach((entry, index) => {
+      entry.rank = index + 1;
+    });
+
+    const response: LeaderboardResponse = {
+      metric,
+      period,
+      entries,
+      updatedAt: new Date().toISOString(),
+    };
+
+    res.json(response);
+  } catch (error) {
+    console.error("Error fetching leaderboard:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });

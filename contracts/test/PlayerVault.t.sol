@@ -1281,7 +1281,7 @@ contract PlayerVaultTest is Test {
         _setupRebalancing();
 
         // Initially not eligible (no settlement)
-        (bool canRebalance, uint256 currentHandId, uint256 lastRebalanced) = vault.getRebalanceStatus();
+        (bool canRebalance, uint256 currentHandId, uint256 lastRebalanced, uint256 eligibleBlock, uint256 blocksRemaining) = vault.getRebalanceStatus();
         assertFalse(canRebalance);
         assertEq(currentHandId, 0);
         assertEq(lastRebalanced, 0);
@@ -1290,17 +1290,19 @@ contract PlayerVaultTest is Test {
         vm.prank(mockTable);
         vault.onSettlement(1, 100);
 
-        (canRebalance, currentHandId, lastRebalanced) = vault.getRebalanceStatus();
+        (canRebalance, currentHandId, lastRebalanced, eligibleBlock, blocksRemaining) = vault.getRebalanceStatus();
         assertTrue(canRebalance);
         assertEq(currentHandId, 1);
         assertEq(lastRebalanced, 0);
+        assertEq(eligibleBlock, block.number);
+        assertEq(blocksRemaining, 0);
 
         // After rebalance, not eligible for same hand
         mockRouter.setBuyRate(_getAccretiveBuyRate());
         vm.prank(owner);
         vault.rebalanceBuy(0.5 ether, 0);
 
-        (canRebalance, currentHandId, lastRebalanced) = vault.getRebalanceStatus();
+        (canRebalance, currentHandId, lastRebalanced, eligibleBlock, blocksRemaining) = vault.getRebalanceStatus();
         assertFalse(canRebalance);
         assertEq(currentHandId, 1);
         assertEq(lastRebalanced, 1);
@@ -1309,7 +1311,7 @@ contract PlayerVaultTest is Test {
         vm.prank(mockTable);
         vault.onSettlement(2, 50);
 
-        (canRebalance, currentHandId, lastRebalanced) = vault.getRebalanceStatus();
+        (canRebalance, currentHandId, lastRebalanced, eligibleBlock, blocksRemaining) = vault.getRebalanceStatus();
         assertTrue(canRebalance);
         assertEq(currentHandId, 2);
         assertEq(lastRebalanced, 1);
@@ -1475,5 +1477,282 @@ contract PlayerVaultTest is Test {
         vm.prank(owner);
         vault.rebalanceBuy(0.3 ether, 0);
         assertEq(vault.lastRebalancedHandId(), 3);
+    }
+
+    // ============ T-0602: Randomized Delay Window Tests ============
+
+    event RebalanceDelaySet(
+        uint256 indexed handId,
+        uint256 eligibleBlock,
+        uint256 delayBlocks
+    );
+
+    event RebalanceDelayConfigUpdated(uint256 maxDelayBlocks);
+
+    function test_SetRebalanceDelayConfig_Success() public {
+        vm.expectEmit(false, false, false, true);
+        emit RebalanceDelayConfigUpdated(100);
+
+        vm.prank(owner);
+        vault.setRebalanceDelayConfig(100);
+
+        assertEq(vault.rebalanceDelayMaxBlocks(), 100);
+    }
+
+    function test_SetRebalanceDelayConfig_RevertNotOwner() public {
+        vm.prank(user);
+        vm.expectRevert("Not owner");
+        vault.setRebalanceDelayConfig(100);
+    }
+
+    function test_OnSettlementWithVRF_SetsRandomizedDelay() public {
+        _setupRebalancing();
+
+        // Set max delay to 100 blocks
+        vm.prank(owner);
+        vault.setRebalanceDelayConfig(100);
+
+        // VRF randomness of 250 should give delay of 250 % 100 = 50 blocks
+        uint256 vrfRandomness = 250;
+        uint256 expectedDelay = vrfRandomness % 100; // 50 blocks
+        uint256 currentBlock = block.number;
+
+        vm.expectEmit(true, false, false, true);
+        emit RebalanceDelaySet(1, currentBlock + expectedDelay, expectedDelay);
+
+        vm.prank(mockTable);
+        vault.onSettlementWithVRF(1, 100, vrfRandomness);
+
+        assertEq(vault.rebalanceEligibleBlock(), currentBlock + expectedDelay);
+        assertEq(vault.lastSnapshotHandId(), 1);
+    }
+
+    function test_OnSettlementWithVRF_ZeroMaxDelay() public {
+        _setupRebalancing();
+
+        // Max delay is 0 (not configured) - should have no delay
+        assertEq(vault.rebalanceDelayMaxBlocks(), 0);
+
+        uint256 currentBlock = block.number;
+
+        vm.prank(mockTable);
+        vault.onSettlementWithVRF(1, 100, 12345);
+
+        // With max delay = 0, eligible block should be current block
+        assertEq(vault.rebalanceEligibleBlock(), currentBlock);
+    }
+
+    function test_RebalanceBuy_RevertBeforeEligibleBlock() public {
+        _setupRebalancing();
+
+        // Set max delay to 50 blocks
+        vm.prank(owner);
+        vault.setRebalanceDelayConfig(50);
+
+        // Settlement with VRF randomness of 75 -> delay = 75 % 50 = 25 blocks
+        vm.prank(mockTable);
+        vault.onSettlementWithVRF(1, 100, 75);
+
+        uint256 eligibleBlock = vault.rebalanceEligibleBlock();
+        assertEq(eligibleBlock, block.number + 25);
+
+        // Set accretive buy rate
+        mockRouter.setBuyRate(_getAccretiveBuyRate());
+
+        // Attempt rebalance before eligible block should fail
+        vm.prank(owner);
+        vm.expectRevert("Rebalance delay not passed");
+        vault.rebalanceBuy(0.5 ether, 0);
+    }
+
+    function test_RebalanceBuy_SucceedsAfterEligibleBlock() public {
+        _setupRebalancing();
+
+        // Set max delay to 50 blocks
+        vm.prank(owner);
+        vault.setRebalanceDelayConfig(50);
+
+        // Settlement with VRF randomness of 75 -> delay = 75 % 50 = 25 blocks
+        vm.prank(mockTable);
+        vault.onSettlementWithVRF(1, 100, 75);
+
+        uint256 eligibleBlock = vault.rebalanceEligibleBlock();
+
+        // Advance blocks past the eligible block
+        vm.roll(eligibleBlock);
+
+        // Set accretive buy rate
+        mockRouter.setBuyRate(_getAccretiveBuyRate());
+
+        // Now rebalance should succeed
+        vm.prank(owner);
+        vault.rebalanceBuy(0.5 ether, 0);
+
+        assertEq(vault.lastRebalancedHandId(), 1);
+    }
+
+    function test_RebalanceSell_RevertBeforeEligibleBlock() public {
+        _setupRebalancing();
+
+        // Give vault some tokens
+        agentToken.mint(address(vault), 2e18);
+
+        // Set max delay to 30 blocks
+        vm.prank(owner);
+        vault.setRebalanceDelayConfig(30);
+
+        // Settlement with VRF randomness of 100 -> delay = 100 % 30 = 10 blocks
+        vm.prank(mockTable);
+        vault.onSettlementWithVRF(1, 100, 100);
+
+        // Set sell rate for accretive sell
+        mockRouter.setSellRate(0.12e18);
+
+        // Attempt rebalance before eligible block should fail
+        vm.prank(owner);
+        vm.expectRevert("Rebalance delay not passed");
+        vault.rebalanceSell(0.1e18, 0);
+    }
+
+    function test_RebalanceSell_SucceedsAfterEligibleBlock() public {
+        _setupRebalancing();
+
+        // Give vault some tokens
+        agentToken.mint(address(vault), 2e18);
+
+        // Set max delay to 30 blocks
+        vm.prank(owner);
+        vault.setRebalanceDelayConfig(30);
+
+        // Settlement with VRF randomness of 100 -> delay = 100 % 30 = 10 blocks
+        vm.prank(mockTable);
+        vault.onSettlementWithVRF(1, 100, 100);
+
+        uint256 eligibleBlock = vault.rebalanceEligibleBlock();
+
+        // Advance blocks past the eligible block
+        vm.roll(eligibleBlock);
+
+        // Set sell rate for accretive sell
+        mockRouter.setSellRate(0.12e18);
+
+        // Now rebalance should succeed
+        vm.prank(owner);
+        vault.rebalanceSell(0.1e18, 0);
+
+        assertEq(vault.lastRebalancedHandId(), 1);
+    }
+
+    function test_OnSettlement_NoDelay_ImmediateRebalance() public {
+        _setupRebalancing();
+
+        // Using regular onSettlement (no VRF) should have no delay
+        vm.prank(mockTable);
+        vault.onSettlement(1, 100);
+
+        // Eligible block should be current block
+        assertEq(vault.rebalanceEligibleBlock(), block.number);
+
+        // Set accretive buy rate
+        mockRouter.setBuyRate(_getAccretiveBuyRate());
+
+        // Rebalance should succeed immediately
+        vm.prank(owner);
+        vault.rebalanceBuy(0.5 ether, 0);
+
+        assertEq(vault.lastRebalancedHandId(), 1);
+    }
+
+    function test_RebalanceStatus_ShowsBlocksRemaining() public {
+        _setupRebalancing();
+
+        // Set max delay to 100 blocks
+        vm.prank(owner);
+        vault.setRebalanceDelayConfig(100);
+
+        // Settlement with VRF randomness of 75 -> delay = 75 blocks
+        vm.prank(mockTable);
+        vault.onSettlementWithVRF(1, 100, 75);
+
+        (bool canRebalance, , , uint256 eligibleBlock, uint256 blocksRemaining) = vault.getRebalanceStatus();
+
+        // Should not be able to rebalance yet
+        assertFalse(canRebalance);
+        assertEq(eligibleBlock, block.number + 75);
+        assertEq(blocksRemaining, 75);
+
+        // Advance 50 blocks
+        vm.roll(block.number + 50);
+
+        (, , , , blocksRemaining) = vault.getRebalanceStatus();
+        assertEq(blocksRemaining, 25);
+
+        // Advance past eligible block
+        vm.roll(eligibleBlock);
+
+        (canRebalance, , , , blocksRemaining) = vault.getRebalanceStatus();
+        assertTrue(canRebalance);
+        assertEq(blocksRemaining, 0);
+    }
+
+    function test_DelayVariesWithVRFRandomness() public {
+        _setupRebalancing();
+
+        // Set max delay to 100 blocks
+        vm.prank(owner);
+        vault.setRebalanceDelayConfig(100);
+
+        // Different VRF values should give different delays
+        uint256 currentBlock = block.number;
+
+        // VRF = 0 -> delay = 0
+        vm.prank(mockTable);
+        vault.onSettlementWithVRF(1, 0, 0);
+        assertEq(vault.rebalanceEligibleBlock(), currentBlock + 0);
+
+        // Reset for next test
+        mockRouter.setBuyRate(_getAccretiveBuyRate());
+        vm.prank(owner);
+        vault.rebalanceBuy(0.3 ether, 0);
+
+        // VRF = 50 -> delay = 50
+        vm.prank(mockTable);
+        vault.onSettlementWithVRF(2, 0, 50);
+        assertEq(vault.rebalanceEligibleBlock(), currentBlock + 50);
+
+        vm.roll(currentBlock + 50);
+        vm.prank(owner);
+        vault.rebalanceBuy(0.3 ether, 0);
+
+        // VRF = 99 -> delay = 99
+        vm.prank(mockTable);
+        vault.onSettlementWithVRF(3, 0, 99);
+        assertEq(vault.rebalanceEligibleBlock(), currentBlock + 50 + 99);
+
+        vm.roll(currentBlock + 50 + 99);
+        vm.prank(owner);
+        vault.rebalanceBuy(0.3 ether, 0);
+
+        // VRF = 199 -> delay = 199 % 100 = 99
+        vm.prank(mockTable);
+        vault.onSettlementWithVRF(4, 0, 199);
+        assertEq(vault.rebalanceEligibleBlock(), currentBlock + 50 + 99 + 99);
+    }
+
+    function test_LargeVRFRandomness_WrapsCorrectly() public {
+        _setupRebalancing();
+
+        // Set max delay to 50 blocks
+        vm.prank(owner);
+        vault.setRebalanceDelayConfig(50);
+
+        // Large VRF value should wrap correctly
+        uint256 largeVRF = type(uint256).max;
+        uint256 expectedDelay = largeVRF % 50;
+
+        vm.prank(mockTable);
+        vault.onSettlementWithVRF(1, 100, largeVRF);
+
+        assertEq(vault.rebalanceEligibleBlock(), block.number + expectedDelay);
     }
 }

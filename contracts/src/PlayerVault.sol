@@ -81,6 +81,14 @@ contract PlayerVault is IPlayerVault {
     /// @notice Basis points denominator
     uint256 public constant BPS_DENOMINATOR = 10000;
 
+    // ============ Randomized Delay State ============
+
+    /// @notice Block number after which rebalancing is allowed for the current hand
+    uint256 public rebalanceEligibleBlock;
+
+    /// @notice Maximum delay in blocks for rebalancing (R in the formula: delay = vrfRand % R)
+    uint256 public rebalanceDelayMaxBlocks;
+
     // ============ Rebalancing Events ============
 
     /**
@@ -128,6 +136,23 @@ contract PlayerVault is IPlayerVault {
         uint256 maxMonBps,
         uint256 maxTokenBps
     );
+
+    /**
+     * @notice Emitted when rebalance delay window is set after settlement.
+     * @param handId The hand ID that triggered the delay
+     * @param eligibleBlock Block number after which rebalancing is allowed
+     * @param delayBlocks Number of blocks to wait (derived from VRF randomness)
+     */
+    event RebalanceDelaySet(
+        uint256 indexed handId,
+        uint256 eligibleBlock,
+        uint256 delayBlocks
+    );
+
+    /**
+     * @notice Emitted when rebalance delay config is updated.
+     */
+    event RebalanceDelayConfigUpdated(uint256 maxDelayBlocks);
 
     // ============ Modifiers ============
 
@@ -243,10 +268,33 @@ contract PlayerVault is IPlayerVault {
     /**
      * @notice Called by table to notify vault of settlement.
      * @dev Updates accounting and emits VaultSnapshot.
+     *      No randomized delay - rebalancing allowed immediately.
      * @param handId The hand ID that was settled
      * @param pnl The profit/loss from the hand (positive = win, negative = loss)
      */
     function onSettlement(uint256 handId, int256 pnl) external override onlyAuthorizedTable {
+        _processSettlement(handId, pnl);
+        // Immediate eligibility (no delay)
+        rebalanceEligibleBlock = block.number;
+    }
+
+    /**
+     * @notice Called by table to notify vault of settlement with VRF randomness.
+     * @dev Updates accounting and sets randomized delay before rebalancing is allowed.
+     *      This reduces predictability of when rebalancing will occur.
+     * @param handId The hand ID that was settled
+     * @param pnl The profit/loss from the hand (positive = win, negative = loss)
+     * @param vrfRandomness The VRF randomness from the hand (used to compute delay)
+     */
+    function onSettlementWithVRF(uint256 handId, int256 pnl, uint256 vrfRandomness) external override onlyAuthorizedTable {
+        _processSettlement(handId, pnl);
+        _setRebalanceDelay(handId, vrfRandomness);
+    }
+
+    /**
+     * @notice Internal function to process settlement accounting.
+     */
+    function _processSettlement(uint256 handId, int256 pnl) internal {
         // Update cumulative PnL and hand count
         cumulativePnl += pnl;
         handCount++;
@@ -255,6 +303,22 @@ contract PlayerVault is IPlayerVault {
         _emitSnapshot(handId);
 
         emit SettlementReceived(msg.sender, handId, pnl >= 0 ? uint256(pnl) : 0);
+    }
+
+    /**
+     * @notice Internal function to set randomized rebalance delay.
+     * @param handId The hand ID for event emission
+     * @param vrfRandomness The VRF randomness to derive delay from
+     */
+    function _setRebalanceDelay(uint256 handId, uint256 vrfRandomness) internal {
+        uint256 delayBlocks = 0;
+        if (rebalanceDelayMaxBlocks > 0) {
+            // Derive delay from VRF: delay = vrfRandomness % maxDelay
+            delayBlocks = vrfRandomness % rebalanceDelayMaxBlocks;
+        }
+        rebalanceEligibleBlock = block.number + delayBlocks;
+
+        emit RebalanceDelaySet(handId, rebalanceEligibleBlock, delayBlocks);
     }
 
     /**
@@ -330,6 +394,16 @@ contract PlayerVault is IPlayerVault {
     }
 
     /**
+     * @notice Set rebalancing delay configuration.
+     * @dev Delay is computed as: eligibleBlock = currentBlock + (vrfRand % maxDelayBlocks)
+     * @param _maxDelayBlocks Maximum delay in blocks (R in the formula)
+     */
+    function setRebalanceDelayConfig(uint256 _maxDelayBlocks) external onlyOwner {
+        rebalanceDelayMaxBlocks = _maxDelayBlocks;
+        emit RebalanceDelayConfigUpdated(_maxDelayBlocks);
+    }
+
+    /**
      * @notice Execute a buy rebalance (treasury buys its own token).
      * @dev Buys token using MON. Requires:
      *      - Settlement has occurred (handCount > 0 and lastSnapshotHandId > lastRebalancedHandId)
@@ -347,6 +421,8 @@ contract PlayerVault is IPlayerVault {
         require(handCount > 0, "No settlement yet");
         // Must not have rebalanced this hand already
         require(lastSnapshotHandId > lastRebalancedHandId, "Already rebalanced this hand");
+        // Must wait for randomized delay window
+        require(block.number >= rebalanceEligibleBlock, "Rebalance delay not passed");
 
         // Check size cap
         uint256 maxMon = (getExternalAssets() * rebalanceMaxMonBps) / BPS_DENOMINATOR;
@@ -416,6 +492,8 @@ contract PlayerVault is IPlayerVault {
         require(handCount > 0, "No settlement yet");
         // Must not have rebalanced this hand already
         require(lastSnapshotHandId > lastRebalancedHandId, "Already rebalanced this hand");
+        // Must wait for randomized delay window
+        require(block.number >= rebalanceEligibleBlock, "Rebalance delay not passed");
 
         // Check size cap
         uint256 treasuryShares = getTreasuryShares();
@@ -474,15 +552,31 @@ contract PlayerVault is IPlayerVault {
      * @return canRebalance Whether rebalancing is currently allowed
      * @return currentHandId The current hand ID (lastSnapshotHandId)
      * @return lastRebalanced The last hand ID that was rebalanced
+     * @return eligibleBlock Block number after which rebalancing is allowed
+     * @return blocksRemaining Blocks remaining until eligible (0 if already eligible)
      */
     function getRebalanceStatus() external view returns (
         bool canRebalance,
         uint256 currentHandId,
-        uint256 lastRebalanced
+        uint256 lastRebalanced,
+        uint256 eligibleBlock,
+        uint256 blocksRemaining
     ) {
         currentHandId = lastSnapshotHandId;
         lastRebalanced = lastRebalancedHandId;
-        canRebalance = handCount > 0 && lastSnapshotHandId > lastRebalancedHandId;
+        eligibleBlock = rebalanceEligibleBlock;
+
+        // Calculate blocks remaining
+        if (block.number < rebalanceEligibleBlock) {
+            blocksRemaining = rebalanceEligibleBlock - block.number;
+        } else {
+            blocksRemaining = 0;
+        }
+
+        // Can rebalance if: settlement happened, not already rebalanced, and delay passed
+        canRebalance = handCount > 0
+            && lastSnapshotHandId > lastRebalancedHandId
+            && block.number >= rebalanceEligibleBlock;
     }
 
     /**

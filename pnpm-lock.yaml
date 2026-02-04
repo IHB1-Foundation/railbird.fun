@@ -44,10 +44,16 @@ importers:
       '@playerco/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      viem:
+        specifier: ^2.21.0
+        version: 2.45.1(typescript@5.9.3)
     devDependencies:
       '@types/node':
         specifier: ^20.11.0
         version: 20.19.31
+      tsx:
+        specifier: ^4.7.0
+        version: 4.21.0
       typescript:
         specifier: ^5.3.3
         version: 5.9.3

@@ -113,6 +113,15 @@ interface IPlayerVault {
     function onSettlement(uint256 handId, int256 pnl) external;
 
     /**
+     * @notice Called by table to notify vault of settlement with VRF randomness.
+     * @dev This version sets a randomized delay window before rebalancing is allowed.
+     * @param handId The hand ID that was settled
+     * @param pnl The profit/loss from the hand (positive = win, negative = loss)
+     * @param vrfRandomness The VRF randomness from the hand (used to compute delay)
+     */
+    function onSettlementWithVRF(uint256 handId, int256 pnl, uint256 vrfRandomness) external;
+
+    /**
      * @notice Get current external assets (A).
      */
     function getExternalAssets() external view returns (uint256);

@@ -1047,7 +1047,7 @@ forge test --match-contract PlayerVaultTest -vv   # Runs 85 PlayerVault tests
 - `RebalanceConfigUpdated(lens, router, maxMonBps, maxTokenBps)`
 
 ## T-0602 Randomized delay window (P1)
-- Status: [ ] TODO
+- Status: [x] DONE
 - Depends on: T-0601, T-0104
 - Goal: Reduce predictability of rebalancing execution.
 - Tasks:
@@ -1057,12 +1057,50 @@ forge test --match-contract PlayerVaultTest -vv   # Runs 85 PlayerVault tests
     - Attempt before eligibleBlock fails
     - After eligibleBlock succeeds (when constraints hold)
 
+### DONE Notes (T-0602)
+**Key files changed:**
+- `contracts/src/interfaces/IPlayerVault.sol` - Added `onSettlementWithVRF()` function to interface
+- `contracts/src/PlayerVault.sol` - Added randomized delay logic with configurable max delay
+- `contracts/test/PlayerVault.t.sol` - Added 12 new tests for randomized delay window
+
+**How to run/test:**
+```bash
+cd contracts && forge test --match-contract PlayerVaultTest -vv   # Runs all 97 tests
+forge test -vv   # Runs all 203 tests (PokerTable + PlayerRegistry + PlayerVault)
+```
+
+**Manual verification:**
+1. Run `forge test -vv` in contracts/ - all 203 tests pass
+2. Key delay window tests demonstrate:
+   - `test_OnSettlementWithVRF_SetsRandomizedDelay`: VRF randomness computes delay correctly
+   - `test_RebalanceBuy_RevertBeforeEligibleBlock`: Rebalance reverts before delay passes
+   - `test_RebalanceBuy_SucceedsAfterEligibleBlock`: Rebalance succeeds after delay
+   - `test_RebalanceSell_RevertBeforeEligibleBlock`: Sell also respects delay
+   - `test_RebalanceStatus_ShowsBlocksRemaining`: Status shows remaining blocks
+   - `test_DelayVariesWithVRFRandomness`: Different VRF values give different delays
+
+**Contract features:**
+- `setRebalanceDelayConfig(maxDelayBlocks)` - Configure max delay in blocks (R)
+- `onSettlementWithVRF(handId, pnl, vrfRandomness)` - Settlement with delay computation
+- `rebalanceEligibleBlock` - Block number after which rebalancing is allowed
+- Delay formula: `eligibleBlock = currentBlock + (vrfRandomness % maxDelayBlocks)`
+- `getRebalanceStatus()` now returns `(canRebalance, handId, lastRebalanced, eligibleBlock, blocksRemaining)`
+
+**Events:**
+- `RebalanceDelaySet(handId, eligibleBlock, delayBlocks)` - Emitted when delay is set
+- `RebalanceDelayConfigUpdated(maxDelayBlocks)` - Emitted when config changes
+
+**Security validations:**
+- Rebalancing checks `block.number >= rebalanceEligibleBlock` before executing
+- Regular `onSettlement()` still works with immediate eligibility (no delay)
+- `onSettlementWithVRF()` provides predictability reduction for production use
+
 ---
 
 # M7 — Bots + End-to-end Demo
 
 ## T-0701 AgentBot (P0)
-- Status: [ ] TODO
+- Status: [x] DONE
 - Depends on: M1 + hole card retrieval method
 - Goal: Keep the game running with valid actions.
 - Tasks:
@@ -1071,6 +1109,60 @@ forge test --match-contract PlayerVaultTest -vv   # Runs 85 PlayerVault tests
     - Submit legal actions quickly (avoid timeouts)
 - Acceptance:
     - Runs 50+ hands without manual intervention
+
+### DONE Notes (T-0701)
+**Key files changed:**
+- `bots/agent/package.json` - Added viem and tsx dependencies
+- `bots/agent/src/chain/pokerTableAbi.ts` - PokerTable contract ABI for chain interaction
+- `bots/agent/src/chain/client.ts` - ChainClient class for reading state and submitting actions
+- `bots/agent/src/auth/ownerviewClient.ts` - OwnerView API client for wallet auth + hole card fetching
+- `bots/agent/src/strategy/types.ts` - Strategy types and interfaces
+- `bots/agent/src/strategy/simpleStrategy.ts` - Simple rule-based poker strategy with hand scoring
+- `bots/agent/src/bot.ts` - Main AgentBot class with polling loop and action submission
+- `bots/agent/src/index.ts` - Entry point with environment config and graceful shutdown
+- `bots/agent/src/strategy/simpleStrategy.test.ts` - 17 tests for strategy logic
+
+**How to run/test:**
+```bash
+pnpm install
+pnpm build
+cd bots/agent && pnpm test   # Runs 17 tests, all pass
+
+# To run the bot:
+RPC_URL=http://localhost:8545 \
+OPERATOR_PRIVATE_KEY=0x... \
+POKER_TABLE_ADDRESS=0x... \
+OWNERVIEW_URL=http://localhost:3001 \
+MAX_HANDS=50 \
+pnpm start
+```
+
+**Manual verification:**
+1. Run `pnpm build` - all packages build successfully
+2. Run `cd bots/agent && pnpm test` - all 17 tests pass
+3. Deploy PokerTable contract locally, register seats
+4. Start OwnerView service
+5. Run bot with env vars pointing to local contracts
+6. Bot finds its seat, waits for turn, submits legal actions
+7. Bot tracks stats: hands played, won, profit, errors
+
+**Bot features:**
+- Chain interaction via viem (read state, submit actions)
+- OwnerView authentication with wallet signature
+- Hole card fetching for informed decisions
+- Simple hand strength scoring (0-100)
+- Rule-based strategy: check when free, call/fold based on strength
+- Configurable aggression for raises
+- Fail-safe: auto-fold on action errors
+- Graceful shutdown with SIGINT/SIGTERM
+- Statistics tracking: hands, wins, profit, errors
+- One-action-per-block awareness
+- Auto-start new hands when SETTLED
+
+**Security validations:**
+- Private key only used for signing, never exposed
+- OwnerView API requires JWT authentication
+- Hole cards only fetched for bot's own seat (ACL enforced by OwnerView)
 
 ## T-0702 KeeperBot (P0)
 - Status: [ ] TODO

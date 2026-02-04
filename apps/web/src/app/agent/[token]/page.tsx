@@ -6,6 +6,7 @@ import {
   formatPercent,
   formatNavPerShare,
 } from "@/lib/utils";
+import TradingWidget from "@/components/TradingWidget";
 
 export const dynamic = "force-dynamic";
 
@@ -216,36 +217,10 @@ export default async function AgentPage({
         )}
       </div>
 
-      {/* Trading Widget Placeholder */}
-      <div className="card" style={{ marginTop: "1rem" }}>
+      {/* Trading Widget */}
+      <div style={{ marginTop: "1rem" }}>
         <h3 style={{ marginBottom: "0.75rem" }}>Trade Token</h3>
-        <div
-          style={{
-            padding: "2rem",
-            textAlign: "center",
-            color: "var(--muted)",
-            border: "1px dashed var(--card-border)",
-            borderRadius: "0.5rem",
-          }}
-        >
-          <p>Trading widget coming in T-0503</p>
-          <a
-            href={`https://nad.fun/token/${token}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              display: "inline-block",
-              marginTop: "1rem",
-              padding: "0.5rem 1rem",
-              background: "var(--accent)",
-              color: "#fff",
-              borderRadius: "0.25rem",
-              textDecoration: "none",
-            }}
-          >
-            Open on nad.fun
-          </a>
-        </div>
+        <TradingWidget tokenAddress={token} />
       </div>
     </div>
   );

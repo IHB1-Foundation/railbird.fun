@@ -914,7 +914,7 @@ cd apps/web && pnpm dev   # Start dev server on port 3000
 5. Use JWT for authenticated API calls (/owner/holecards)
 
 ## T-0503 In-app nad.fun trading widget (P0)
-- Status: [ ] TODO
+- Status: [x] DONE
 - Depends on: T-0002, T-0501
 - Goal: Quote + execute buy/sell in our UI.
 - Tasks:
@@ -922,10 +922,67 @@ cd apps/web && pnpm dev   # Start dev server on port 3000
     - Execute buy/sell via router contracts
     - Slippage + deadline controls
     - Display token stage (bonding/locked/graduated)
-    - Provide fallback “Open on nad.fun”
+    - Provide fallback "Open on nad.fun"
 - Acceptance:
     - On testnet, at least one successful buy and one successful sell
     - UI reflects stage changes correctly (where available)
+
+### DONE Notes (T-0503)
+**Key files changed:**
+- `apps/web/src/lib/nadfun/types.ts` - Types and ABIs for nad.fun Lens, Bonding Router, DEX Router contracts
+- `apps/web/src/lib/nadfun/client.ts` - Chain client with getTokenInfo, getBuyQuote, getSellQuote, executeBuy/Sell functions
+- `apps/web/src/lib/nadfun/index.ts` - Module exports
+- `apps/web/src/components/TradingWidget.tsx` - Full trading widget with stage display, buy/sell, slippage, deadline
+- `apps/web/src/app/agent/[token]/page.tsx` - Updated to use TradingWidget instead of placeholder
+- `apps/web/src/app/globals.css` - Added 380+ lines of trading widget styles
+- `apps/web/next.config.js` - Added NEXT_PUBLIC_* env vars for nad.fun contracts
+- `.env.example` - Documented new client-side environment variables
+
+**How to run/test:**
+```bash
+pnpm install
+pnpm build   # Builds all packages including web app
+cd apps/web && pnpm dev   # Start dev server on port 3000
+```
+
+**Manual verification:**
+1. Run `pnpm build` - all packages build successfully, including web app
+2. Set env vars for nad.fun contracts:
+   ```bash
+   NEXT_PUBLIC_NADFUN_LENS_ADDRESS=0x...
+   NEXT_PUBLIC_NADFUN_BONDING_ROUTER_ADDRESS=0x...
+   NEXT_PUBLIC_NADFUN_DEX_ROUTER_ADDRESS=0x...
+   NEXT_PUBLIC_WMON_ADDRESS=0x...
+   NEXT_PUBLIC_RPC_URL=https://testnet-rpc.monad.xyz
+   ```
+3. Start web app: `cd apps/web && pnpm dev`
+4. Visit /agent/:token - Trading widget shows:
+   - Token stage indicator (Bonding Curve / Locked / Graduated)
+   - Current price from Lens contract
+   - Buy/Sell mode toggle
+   - Amount input with MAX button
+   - Real-time quote with price impact
+   - Slippage tolerance selector (0.5%, 1%, 2%, 5%, custom)
+   - Transaction deadline setting (default 20 min)
+   - Execute trade button (requires wallet connection)
+   - Fallback "Open on nad.fun" link always visible
+
+**Widget features:**
+- Queries nad.fun Lens for token info (stage, price, marketCap, bondingProgress, tradeable)
+- Supports bonding curve and graduated DEX trading
+- Automatic router selection based on token stage
+- ERC20 approval handling for sell orders
+- Shows user balances when wallet connected
+- Transaction success/error feedback with explorer link
+- Slippage protection (minAmountOut calculated client-side)
+- Deadline enforcement (configurable minutes)
+
+**Security validations:**
+- No private keys stored in frontend
+- All transactions require wallet signature
+- Slippage protection prevents sandwich attacks
+- Deadline prevents stale transactions
+- Fallback link allows users to trade on nad.fun directly
 
 ---
 

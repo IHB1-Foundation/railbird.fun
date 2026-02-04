@@ -8,13 +8,21 @@
     "build": "tsc",
     "clean": "rm -rf dist",
     "start": "node dist/index.js",
-    "lint": "echo 'lint not configured yet'"
+    "test": "tsx --test src/**/*.test.ts",
+    "lint": "echo 'lint not configured yet'",
+    "db:migrate": "node dist/db/migrate.js"
   },
   "dependencies": {
-    "@playerco/shared": "workspace:*"
+    "@playerco/shared": "workspace:*",
+    "express": "^4.18.2",
+    "pg": "^8.11.3",
+    "viem": "^2.21.0"
   },
   "devDependencies": {
+    "@types/express": "^4.17.21",
     "@types/node": "^20.11.0",
+    "@types/pg": "^8.10.9",
+    "tsx": "^4.7.0",
     "typescript": "^5.3.3"
   }
 }

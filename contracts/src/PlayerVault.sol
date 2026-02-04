@@ -38,6 +38,18 @@ contract PlayerVault is IPlayerVault {
     /// @notice Last hand ID for which we emitted a snapshot
     uint256 public lastSnapshotHandId;
 
+    /// @notice Cumulative realized PnL since vault creation (can be negative)
+    int256 public cumulativePnl;
+
+    /// @notice Initial NAV per share at vault creation (baseline for ROI)
+    uint256 public initialNavPerShare;
+
+    /// @notice Total number of hands settled
+    uint256 public handCount;
+
+    /// @notice Whether the vault has been initialized (for one-time setup)
+    bool public initialized;
+
     // ============ Modifiers ============
 
     modifier onlyOwner() {
@@ -61,6 +73,25 @@ contract PlayerVault is IPlayerVault {
         require(_owner != address(0), "Invalid owner");
         agentToken = _agentToken;
         owner = _owner;
+    }
+
+    /**
+     * @notice Initialize the vault with baseline values.
+     * @dev Must be called after initial deposit to set proper baseline NAV.
+     *      Can only be called once.
+     */
+    function initialize() external {
+        require(!initialized, "Already initialized");
+        initialized = true;
+
+        initialNavPerShare = getNavPerShare();
+
+        emit VaultInitialized(
+            agentToken,
+            owner,
+            getExternalAssets(),
+            initialNavPerShare
+        );
     }
 
     // ============ Receive/Fallback ============
@@ -137,8 +168,9 @@ contract PlayerVault is IPlayerVault {
      * @param pnl The profit/loss from the hand (positive = win, negative = loss)
      */
     function onSettlement(uint256 handId, int256 pnl) external override onlyAuthorizedTable {
-        // For now, the actual MON transfer happens separately
-        // This callback is for accounting and snapshot emission
+        // Update cumulative PnL and hand count
+        cumulativePnl += pnl;
+        handCount++;
 
         lastSnapshotHandId = handId;
         _emitSnapshot(handId);
@@ -299,6 +331,59 @@ contract PlayerVault is IPlayerVault {
         P = getNavPerShare();
     }
 
+    /**
+     * @notice Get cumulative realized PnL since vault creation.
+     * @dev Positive = net profit, negative = net loss.
+     */
+    function getCumulativePnl() external view override returns (int256) {
+        return cumulativePnl;
+    }
+
+    /**
+     * @notice Get the initial NAV per share at vault creation.
+     * @dev Used as baseline for ROI calculations. Returns 0 if not initialized.
+     */
+    function getInitialNavPerShare() external view override returns (uint256) {
+        return initialNavPerShare;
+    }
+
+    /**
+     * @notice Get total number of hands settled by this vault.
+     * @dev Used for winrate calculations (wins / handCount).
+     */
+    function getHandCount() external view override returns (uint256) {
+        return handCount;
+    }
+
+    /**
+     * @notice Get full accounting data for indexer/UI.
+     * @dev Combines all accounting fields needed for ROI/MDD computation.
+     * @return A External assets
+     * @return B Treasury shares
+     * @return N Outstanding shares
+     * @return P Current NAV per share
+     * @return P0 Initial NAV per share (baseline)
+     * @return pnl Cumulative PnL
+     * @return hands Total hands settled
+     */
+    function getFullAccountingData() external view returns (
+        uint256 A,
+        uint256 B,
+        uint256 N,
+        uint256 P,
+        uint256 P0,
+        int256 pnl,
+        uint256 hands
+    ) {
+        A = getExternalAssets();
+        B = getTreasuryShares();
+        N = getOutstandingShares();
+        P = getNavPerShare();
+        P0 = initialNavPerShare;
+        pnl = cumulativePnl;
+        hands = handCount;
+    }
+
     // ============ Internal Functions ============
 
     /**
@@ -311,7 +396,8 @@ contract PlayerVault is IPlayerVault {
             getExternalAssets(),
             getTreasuryShares(),
             getOutstandingShares(),
-            getNavPerShare()
+            getNavPerShare(),
+            cumulativePnl
         );
     }
 

@@ -1265,11 +1265,38 @@ pnpm start
 - Troubleshooting guide
 
 ## T-0802 Demo script + submission checklist (P0)
-- Status: [ ] TODO
+- Status: [x] DONE
 - Depends on: M1..M7
 - Goal: Repeatable demo flow:
     - spectate → owner hole cards → settlement → leaderboard update → in-app trade
 - Acceptance:
     - Demo flow reproducible at least once without patching code
+
+### DONE Notes (T-0802)
+**Key files changed:**
+- `scripts/demo.sh` - Automated demo script to verify full flow
+- `SUBMISSION.md` - Hackathon submission checklist
+
+**How to run:**
+```bash
+# Ensure all services are running (see README.md)
+./scripts/demo.sh <POKER_TABLE_ADDRESS>
+```
+
+**Demo script verifies:**
+1. Services health check (Indexer, OwnerView)
+2. Public spectating - Table list and details
+3. Owner auth flow - Nonce request documented
+4. Leaderboard - Metrics query
+5. Agent registry - List agents
+6. Web app URLs - All pages documented
+
+**Submission checklist includes:**
+- Code quality verification
+- Component checklist (contracts, services, frontend, bots)
+- Demo flow steps
+- Security verification checklist
+- Testnet deployment instructions
+- Known limitations
 
 ---

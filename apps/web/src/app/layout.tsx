@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import "./globals.css";
+import { Providers } from "./providers";
+import { WalletButton } from "@/components/WalletButton";
 
 export const metadata: Metadata = {
   title: "PlayerCo - Poker Agent Company",
@@ -15,18 +17,22 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <div className="container">
-          <header className="header">
-            <Link href="/">
-              <h1>PlayerCo</h1>
-            </Link>
-            <nav className="nav">
-              <Link href="/">Tables</Link>
-              <Link href="/leaderboard">Leaderboard</Link>
-            </nav>
-          </header>
-          <main>{children}</main>
-        </div>
+        <Providers>
+          <div className="container">
+            <header className="header">
+              <Link href="/">
+                <h1>PlayerCo</h1>
+              </Link>
+              <nav className="nav">
+                <Link href="/">Tables</Link>
+                <Link href="/leaderboard">Leaderboard</Link>
+                <Link href="/me">My Agents</Link>
+              </nav>
+              <WalletButton />
+            </header>
+            <main>{children}</main>
+          </div>
+        </Providers>
       </body>
     </html>
   );

@@ -850,7 +850,7 @@ cd apps/web && pnpm dev       # Start dev server on port 3000
 - Agent page shows only accounting data (no hole cards)
 
 ## T-0502 Owner web pages + hole cards (P0)
-- Status: [ ] TODO
+- Status: [x] DONE
 - Depends on: T-0201..T-0202, T-0501
 - Goal: Owner can see their hole cards.
 - Tasks:
@@ -860,6 +860,58 @@ cd apps/web && pnpm dev       # Start dev server on port 3000
 - Acceptance:
     - Owner sees hole cards
     - Non-owner cannot access hole cards
+
+### DONE Notes (T-0502)
+**Key files changed:**
+- `apps/web/package.json` - Added viem dependency for wallet interaction
+- `apps/web/src/lib/auth/types.ts` - Auth types (AuthState, NonceResponse, VerifyResponse, HoleCardsResponse)
+- `apps/web/src/lib/auth/ownerviewApi.ts` - OwnerView API client (getNonce, verifySignature, getHoleCards)
+- `apps/web/src/lib/auth/AuthContext.tsx` - Auth context with wallet connection, signature login, hole cards fetching
+- `apps/web/src/lib/auth/index.ts` - Auth module exports
+- `apps/web/src/types/global.d.ts` - TypeScript declaration for window.ethereum
+- `apps/web/src/components/WalletButton.tsx` - Wallet connect/sign-in/disconnect button
+- `apps/web/src/app/providers.tsx` - Client-side providers wrapper for AuthProvider
+- `apps/web/src/app/layout.tsx` - Updated with AuthProvider, WalletButton, and /me nav link
+- `apps/web/src/app/me/page.tsx` - My Agents page showing owned agents from registry
+- `apps/web/src/app/table/[id]/TableViewer.tsx` - Enhanced with owner mode and hole cards display
+- `apps/web/src/app/globals.css` - Added styles for wallet button, auth, hole cards, owner mode
+
+**How to run/test:**
+```bash
+pnpm install
+pnpm build   # Builds all packages including web app
+cd apps/web && pnpm dev   # Start dev server on port 3000
+```
+
+**Manual verification:**
+1. Run indexer and ownerview services:
+   ```bash
+   # Terminal 1 - Start ownerview service
+   JWT_SECRET=your-secret-32-chars RPC_URL=http://localhost:8545 POKER_TABLE_ADDRESS=0x... node services/ownerview/dist/index.js
+
+   # Terminal 2 - Start indexer service
+   DB_HOST=localhost DB_NAME=playerco ... pnpm --filter @playerco/indexer start
+   ```
+2. Start web app: `cd apps/web && pnpm dev`
+3. Visit http://localhost:3000 - Click "Connect Wallet" in header
+4. After connecting, click "Sign In" to authenticate with signature
+5. Visit /me - Shows owned agents filtered by connected wallet
+6. Visit /table/:id - If owner of a seat, shows "Owner Mode" banner and hole cards
+7. Non-owners see normal public table view without hole cards
+
+**Security validations:**
+- OwnerView hole card endpoint denies non-owners (403 NOT_SEAT_OWNER)
+- No hole cards appear in WebSocket streams (public data only)
+- Hole cards only displayed for the seat owned by authenticated wallet
+- Session stored in sessionStorage with JWT expiry validation
+- Account change in wallet clears auth session
+
+**Auth flow:**
+1. Connect wallet (eth_requestAccounts)
+2. Request nonce from OwnerView (/auth/nonce)
+3. Sign message with wallet (personal_sign)
+4. Verify signature and get JWT (/auth/verify)
+5. Use JWT for authenticated API calls (/owner/holecards)
 
 ## T-0503 In-app nad.fun trading widget (P0)
 - Status: [ ] TODO

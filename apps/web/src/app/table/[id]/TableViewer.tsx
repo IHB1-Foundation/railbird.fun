@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useWebSocket } from "@/lib/useWebSocket";
+import { useAuth, type HoleCardsResponse } from "@/lib/auth";
 import {
   formatMon,
   shortenAddress,
@@ -22,6 +23,10 @@ interface TableViewerProps {
 export function TableViewer({ initialData, tableId }: TableViewerProps) {
   const [table, setTable] = useState(initialData);
   const [timeRemaining, setTimeRemaining] = useState<string>("--");
+  const [holeCards, setHoleCards] = useState<HoleCardsResponse | null>(null);
+  const [holeCardsError, setHoleCardsError] = useState<string | null>(null);
+
+  const { isAuthenticated, address, getHoleCards } = useAuth();
 
   // Handle WebSocket messages
   const handleMessage = useCallback((message: WsMessage) => {
@@ -47,6 +52,36 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
     return () => clearInterval(interval);
   }, [table.actionDeadline]);
 
+  // Fetch hole cards when authenticated and hand is active
+  useEffect(() => {
+    const fetchHoleCards = async () => {
+      if (!isAuthenticated || !table.currentHand) {
+        setHoleCards(null);
+        setHoleCardsError(null);
+        return;
+      }
+
+      try {
+        const cards = await getHoleCards(tableId, table.currentHand.handId);
+        setHoleCards(cards);
+        setHoleCardsError(null);
+      } catch (err) {
+        setHoleCards(null);
+        setHoleCardsError(
+          err instanceof Error ? err.message : "Failed to fetch hole cards"
+        );
+      }
+    };
+
+    fetchHoleCards();
+  }, [isAuthenticated, tableId, table.currentHand?.handId, getHoleCards]);
+
+  // Determine which seat the current user owns (if any)
+  const ownedSeatIndex =
+    (address && table.seats.find(
+      (s) => s.isActive && s.ownerAddress.toLowerCase() === address.toLowerCase()
+    )?.seatIndex) ?? null;
+
   const gameState = GAME_STATES[table.gameState] || table.gameState;
   const currentHand = table.currentHand;
   const isActive = gameState !== "Waiting for Seats" && gameState !== "Settled";
@@ -57,6 +92,33 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
       <div className={cn("connection-status", connected ? "connected" : "disconnected")}>
         {connected ? "Live" : "Disconnected"}
       </div>
+
+      {/* Owner Mode Banner */}
+      {isAuthenticated && ownedSeatIndex !== null && (
+        <div
+          style={{
+            background: "rgba(16, 185, 129, 0.1)",
+            border: "1px solid var(--accent)",
+            borderRadius: "0.5rem",
+            padding: "0.75rem 1rem",
+            marginBottom: "1rem",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <span>
+            <strong style={{ color: "var(--accent)" }}>Owner Mode</strong> - You
+            own Seat {ownedSeatIndex}
+          </span>
+          {holeCards && (
+            <div className="hole-cards">
+              <PokerCard cardIndex={holeCards.cards[0]} />
+              <PokerCard cardIndex={holeCards.cards[1]} />
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
@@ -87,6 +149,8 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
             seat={table.seats[0]}
             isActor={currentHand?.actorSeat === 0}
             isButton={table.buttonSeat === 0}
+            isOwner={ownedSeatIndex === 0}
+            holeCards={ownedSeatIndex === 0 ? holeCards : null}
           />
         </div>
 
@@ -121,6 +185,8 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
             seat={table.seats[1]}
             isActor={currentHand?.actorSeat === 1}
             isButton={table.buttonSeat === 1}
+            isOwner={ownedSeatIndex === 1}
+            holeCards={ownedSeatIndex === 1 ? holeCards : null}
           />
         </div>
       </div>
@@ -158,6 +224,17 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
             <div key={seat.seatIndex} style={{ flex: 1 }}>
               <div style={{ fontWeight: 500, marginBottom: "0.25rem" }}>
                 Seat {seat.seatIndex}
+                {ownedSeatIndex === seat.seatIndex && (
+                  <span
+                    style={{
+                      marginLeft: "0.5rem",
+                      fontSize: "0.75rem",
+                      color: "var(--accent)",
+                    }}
+                  >
+                    (You)
+                  </span>
+                )}
               </div>
               {seat.isActive ? (
                 <>
@@ -198,10 +275,14 @@ function SeatPanel({
   seat,
   isActor,
   isButton,
+  isOwner,
+  holeCards,
 }: {
   seat: TableResponse["seats"][0];
   isActor: boolean;
   isButton: boolean;
+  isOwner: boolean;
+  holeCards: HoleCardsResponse | null;
 }) {
   if (!seat.isActive) {
     return (
@@ -213,15 +294,26 @@ function SeatPanel({
   }
 
   return (
-    <div className={cn("seat-panel", isActor && "active")}>
+    <div className={cn("seat-panel", isActor && "active", isOwner && "owner")}>
       <div className="seat-label">
         Seat {seat.seatIndex}
         {isButton && " (D)"}
+        {isOwner && " - You"}
       </div>
       <div className="seat-address">{shortenAddress(seat.ownerAddress)}</div>
       <div className="seat-stack">{formatMon(seat.stack)}</div>
       {seat.currentBet !== "0" && (
         <div className="seat-bet">Bet: {formatMon(seat.currentBet)}</div>
+      )}
+      {/* Owner's hole cards - only shown to the seat owner */}
+      {isOwner && holeCards && (
+        <div className="seat-holecards">
+          <div className="hole-cards-label">Your Hand</div>
+          <div className="hole-cards">
+            <PokerCard cardIndex={holeCards.cards[0]} />
+            <PokerCard cardIndex={holeCards.cards[1]} />
+          </div>
+        </div>
       )}
     </div>
   );

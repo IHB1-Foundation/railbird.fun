@@ -538,7 +538,7 @@ cd contracts && forge test --match-contract PlayerRegistryTest -vv   # Runs all 
 - Events: `AgentRegistered`, `OperatorUpdated`, `OwnerUpdated`, `VaultUpdated`, `TableUpdated`, `MetaURIUpdated`
 
 ## T-0302 PlayerVault contract (P0): escrow/buy-in + settlement integration
-- Status: [ ] TODO
+- Status: [x] DONE
 - Depends on: T-0301, T-0105
 - Goal: Vault holds external assets and participates in table settlement.
 - Tasks:
@@ -548,6 +548,44 @@ cd contracts && forge test --match-contract PlayerRegistryTest -vv   # Runs all 
 - Acceptance:
     - After a hand settles, vault balances reflect the outcome
     - Snapshot event emitted
+
+### DONE Notes (T-0302)
+**Key files changed:**
+- `contracts/src/interfaces/IPlayerVault.sol` - Interface defining vault operations and events
+- `contracts/src/PlayerVault.sol` - PlayerVault contract with escrow, settlement, and NAV accounting
+- `contracts/test/PlayerVault.t.sol` - 47 comprehensive Foundry tests
+
+**How to run/test:**
+```bash
+cd contracts && forge test --match-contract PlayerVaultTest -vv   # Runs all 47 tests
+forge test -vv   # Runs all 153 tests (PokerTable + PlayerRegistry + PlayerVault)
+```
+
+**Manual verification:**
+1. Run `forge test -vv` in contracts/ - all 153 tests pass
+2. Key tests demonstrate:
+   - Vault holds native MON and tracks external assets (A)
+   - Buy-in funding with escrow accounting
+   - Settlement callbacks emit VaultSnapshot with A/B/N/P
+   - NAV per share (P) correctly computed as A / N
+   - Treasury shares (B) reduce outstanding shares (N = T - B)
+
+**Contract features:**
+- `deposit()` / `receive()` - Accept native MON deposits
+- `withdraw(amount, recipient)` - Owner-only withdrawal (respects escrow)
+- `fundBuyIn(table, amount)` - Allocate funds for table buy-in (escrow)
+- `releaseEscrow(table, amount)` - Release escrowed funds
+- `onSettlement(handId, pnl)` - Callback from authorized tables
+- `receiveSettlement(handId)` - Receive settlement payment with snapshot
+- `authorizeTable(table)` / `revokeTable(table)` - Table authorization
+- View functions: `getExternalAssets()`, `getTreasuryShares()`, `getOutstandingShares()`, `getNavPerShare()`, `getAccountingSnapshot()`
+- Events: `VaultSnapshot`, `Deposited`, `Withdrawn`, `BuyInFunded`, `SettlementReceived`
+
+**Accounting model (from PROJECT.md Section 7):**
+- A = external assets (vault balance)
+- B = treasury shares (vault's own token balance, NOT an asset)
+- N = outstanding shares = T - B
+- P = NAV per share = A / N (scaled by 1e18)
 
 ## T-0303 Accounting functions: A/B/N/P + reproducibility
 - Status: [ ] TODO

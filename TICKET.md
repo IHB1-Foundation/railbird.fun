@@ -688,7 +688,7 @@ CHAIN_ENV=local pnpm start
 - Proper indexes for query performance
 
 ## T-0402 WebSocket streaming for table updates (P0)
-- Status: [ ] TODO
+- Status: [x] DONE
 - Depends on: T-0401
 - Goal: Public UI can update in real time.
 - Tasks:
@@ -696,6 +696,55 @@ CHAIN_ENV=local pnpm start
     - Push updates on new actions/VRF/settlement
 - Acceptance:
     - Table Viewer reflects actions without refresh
+
+### DONE Notes (T-0402)
+**Key files changed:**
+- `services/indexer/src/ws/types.ts` - WebSocket message types for all table events
+- `services/indexer/src/ws/manager.ts` - WsManager tracks connections per table with subscribe/unsubscribe/broadcast
+- `services/indexer/src/ws/server.ts` - WebSocket server setup with path parsing for `/ws/tables/:id`
+- `services/indexer/src/ws/broadcaster.ts` - Broadcast functions called from event handlers
+- `services/indexer/src/ws/index.ts` - Module exports
+- `services/indexer/src/ws/ws.test.ts` - 13 tests for WebSocket functionality
+- `services/indexer/src/events/handlers.ts` - Added broadcast calls to all poker table event handlers
+- `services/indexer/src/api/routes.ts` - Health endpoint now includes WebSocket stats
+- `services/indexer/src/index.ts` - Integrated WebSocket server with HTTP server
+- `services/indexer/package.json` - Added ws and @types/ws dependencies
+
+**How to run/test:**
+```bash
+pnpm install
+pnpm build
+cd services/indexer && pnpm test   # Runs 34 tests, all pass
+```
+
+**Manual verification:**
+1. Start the indexer service:
+   ```bash
+   DB_HOST=localhost DB_NAME=playerco DB_USER=postgres DB_PASSWORD=postgres \
+   POKER_TABLE_ADDRESS=0x... RPC_URL=http://localhost:8545 CHAIN_ENV=local \
+   pnpm start
+   ```
+2. Connect via WebSocket: `wscat -c ws://localhost:3002/ws/tables/1`
+3. Receive "connected" message confirming subscription
+4. When events occur on table 1, receive real-time updates
+5. Check `/api/health` for WebSocket stats: `{"status":"ok","timestamp":"...","websocket":{"tables":1,"totalConnections":1}}`
+
+**WebSocket message types:**
+- `connected` - Subscription confirmed
+- `action` - Player action (fold/check/call/raise)
+- `hand_started` - New hand begins
+- `betting_round_complete` - Betting round transitions
+- `vrf_requested` - VRF randomness requested
+- `community_cards` - Community cards dealt
+- `hand_settled` - Hand winner and pot distribution
+- `seat_updated` - Seat stack/owner changes
+- `pot_updated` - Pot amount changes
+- `force_timeout` - Timeout action triggered
+
+**Security validations:**
+- No hole cards appear in WebSocket streams (public data only)
+- Connection cleanup on disconnect
+- Closed connections removed on broadcast
 
 ## T-0403 Leaderboard computations (P0)
 - Status: [ ] TODO

@@ -2,6 +2,8 @@
 pragma solidity ^0.8.24;
 
 import "./interfaces/IPlayerVault.sol";
+import "./interfaces/INadfunLens.sol";
+import "./interfaces/INadfunRouter.sol";
 
 /**
  * @title PlayerVault
@@ -16,6 +18,12 @@ import "./interfaces/IPlayerVault.sol";
  * - P = NAV per share = A / N
  *
  * Key rule: B is NOT an asset. It only reduces N.
+ *
+ * Rebalancing constraints (accretive-only):
+ * - Buy: q_buy = monIn / tokenOut <= P (buy at or below NAV)
+ * - Sell: q_sell = monOut / tokenIn >= P (sell at or above NAV)
+ * - Only allowed after HandSettled, at most once per hand
+ * - Size capped by configurable bps of A (for buys) or B (for sells)
  */
 contract PlayerVault is IPlayerVault {
     // ============ State Variables ============
@@ -49,6 +57,77 @@ contract PlayerVault is IPlayerVault {
 
     /// @notice Whether the vault has been initialized (for one-time setup)
     bool public initialized;
+
+    // ============ Rebalancing State ============
+
+    /// @notice nad.fun Lens contract for quotes
+    address public nadfunLens;
+
+    /// @notice nad.fun Router contract for trades (can be bonding or DEX router)
+    address public nadfunRouter;
+
+    /// @notice Last hand ID for which rebalancing was executed
+    uint256 public lastRebalancedHandId;
+
+    /// @notice Maximum MON to spend on buy rebalance (basis points of A)
+    uint256 public rebalanceMaxMonBps;
+
+    /// @notice Maximum tokens to sell on sell rebalance (basis points of B)
+    uint256 public rebalanceMaxTokenBps;
+
+    /// @notice Default transaction deadline offset (seconds)
+    uint256 public constant REBALANCE_DEADLINE_OFFSET = 300; // 5 minutes
+
+    /// @notice Basis points denominator
+    uint256 public constant BPS_DENOMINATOR = 10000;
+
+    // ============ Rebalancing Events ============
+
+    /**
+     * @notice Emitted when treasury buys its own token.
+     * @param handId The hand ID that triggered this rebalance
+     * @param monSpent Amount of MON spent
+     * @param tokensReceived Amount of tokens received
+     * @param executionPrice Effective price (monSpent * 1e18 / tokensReceived)
+     * @param navPerShareBefore NAV per share before rebalance
+     * @param navPerShareAfter NAV per share after rebalance
+     */
+    event RebalanceBuy(
+        uint256 indexed handId,
+        uint256 monSpent,
+        uint256 tokensReceived,
+        uint256 executionPrice,
+        uint256 navPerShareBefore,
+        uint256 navPerShareAfter
+    );
+
+    /**
+     * @notice Emitted when treasury sells its own token.
+     * @param handId The hand ID that triggered this rebalance
+     * @param tokensSold Amount of tokens sold
+     * @param monReceived Amount of MON received
+     * @param executionPrice Effective price (monReceived * 1e18 / tokensSold)
+     * @param navPerShareBefore NAV per share before rebalance
+     * @param navPerShareAfter NAV per share after rebalance
+     */
+    event RebalanceSell(
+        uint256 indexed handId,
+        uint256 tokensSold,
+        uint256 monReceived,
+        uint256 executionPrice,
+        uint256 navPerShareBefore,
+        uint256 navPerShareAfter
+    );
+
+    /**
+     * @notice Emitted when rebalancing config is updated.
+     */
+    event RebalanceConfigUpdated(
+        address nadfunLens,
+        address nadfunRouter,
+        uint256 maxMonBps,
+        uint256 maxTokenBps
+    );
 
     // ============ Modifiers ============
 
@@ -222,6 +301,201 @@ contract PlayerVault is IPlayerVault {
     function transferOwnership(address newOwner) external onlyOwner {
         require(newOwner != address(0), "Invalid new owner");
         owner = newOwner;
+    }
+
+    // ============ Rebalancing Functions ============
+
+    /**
+     * @notice Set rebalancing configuration.
+     * @param _nadfunLens nad.fun Lens contract address
+     * @param _nadfunRouter nad.fun Router contract address
+     * @param _maxMonBps Max MON to spend on buy (basis points of A)
+     * @param _maxTokenBps Max tokens to sell (basis points of B)
+     */
+    function setRebalanceConfig(
+        address _nadfunLens,
+        address _nadfunRouter,
+        uint256 _maxMonBps,
+        uint256 _maxTokenBps
+    ) external onlyOwner {
+        require(_maxMonBps <= BPS_DENOMINATOR, "Invalid maxMonBps");
+        require(_maxTokenBps <= BPS_DENOMINATOR, "Invalid maxTokenBps");
+
+        nadfunLens = _nadfunLens;
+        nadfunRouter = _nadfunRouter;
+        rebalanceMaxMonBps = _maxMonBps;
+        rebalanceMaxTokenBps = _maxTokenBps;
+
+        emit RebalanceConfigUpdated(_nadfunLens, _nadfunRouter, _maxMonBps, _maxTokenBps);
+    }
+
+    /**
+     * @notice Execute a buy rebalance (treasury buys its own token).
+     * @dev Buys token using MON. Requires:
+     *      - Settlement has occurred (handCount > 0 and lastSnapshotHandId > lastRebalancedHandId)
+     *      - Execution price q_buy <= P (accretive constraint)
+     *      - Amount within size cap
+     * @param monAmount Amount of MON to spend
+     * @param minTokenOut Minimum tokens to receive (slippage protection)
+     */
+    function rebalanceBuy(uint256 monAmount, uint256 minTokenOut) external onlyOwner {
+        require(nadfunRouter != address(0), "Router not configured");
+        require(agentToken != address(0), "No agent token");
+        require(monAmount > 0, "Zero amount");
+
+        // Must have settled at least one hand
+        require(handCount > 0, "No settlement yet");
+        // Must not have rebalanced this hand already
+        require(lastSnapshotHandId > lastRebalancedHandId, "Already rebalanced this hand");
+
+        // Check size cap
+        uint256 maxMon = (getExternalAssets() * rebalanceMaxMonBps) / BPS_DENOMINATOR;
+        require(monAmount <= maxMon, "Exceeds max buy size");
+
+        // Check available balance (not escrowed)
+        uint256 available = getAvailableBalance();
+        require(monAmount <= available, "Insufficient available balance");
+
+        // Get NAV per share before
+        uint256 navBefore = getNavPerShare();
+        require(navBefore > 0, "Zero NAV");
+
+        // Execute buy via router
+        uint256 deadline = block.timestamp + REBALANCE_DEADLINE_OFFSET;
+        uint256 tokensReceived = INadfunRouter(nadfunRouter).buy{value: monAmount}(
+            agentToken,
+            minTokenOut,
+            deadline,
+            address(this)
+        );
+
+        require(tokensReceived > 0, "Zero tokens received");
+
+        // Calculate execution price: q_buy = monSpent / tokensReceived (scaled by 1e18)
+        uint256 executionPrice = (monAmount * 1e18) / tokensReceived;
+
+        // Accretive constraint: q_buy <= P (buy at or below NAV)
+        // This ensures we're buying "cheap" relative to NAV
+        require(executionPrice <= navBefore, "Price above NAV (not accretive)");
+
+        // Verify NAV didn't decrease (sanity check)
+        uint256 navAfter = getNavPerShare();
+        require(navAfter >= navBefore, "NAV decreased (invariant violated)");
+
+        // Mark this hand as rebalanced
+        lastRebalancedHandId = lastSnapshotHandId;
+
+        emit RebalanceBuy(
+            lastSnapshotHandId,
+            monAmount,
+            tokensReceived,
+            executionPrice,
+            navBefore,
+            navAfter
+        );
+
+        // Emit updated snapshot
+        _emitSnapshot(lastSnapshotHandId);
+    }
+
+    /**
+     * @notice Execute a sell rebalance (treasury sells its own token).
+     * @dev Sells token for MON. Requires:
+     *      - Settlement has occurred (handCount > 0 and lastSnapshotHandId > lastRebalancedHandId)
+     *      - Execution price q_sell >= P (accretive constraint)
+     *      - Amount within size cap
+     * @param tokenAmount Amount of tokens to sell
+     * @param minMonOut Minimum MON to receive (slippage protection)
+     */
+    function rebalanceSell(uint256 tokenAmount, uint256 minMonOut) external onlyOwner {
+        require(nadfunRouter != address(0), "Router not configured");
+        require(agentToken != address(0), "No agent token");
+        require(tokenAmount > 0, "Zero amount");
+
+        // Must have settled at least one hand
+        require(handCount > 0, "No settlement yet");
+        // Must not have rebalanced this hand already
+        require(lastSnapshotHandId > lastRebalancedHandId, "Already rebalanced this hand");
+
+        // Check size cap
+        uint256 treasuryShares = getTreasuryShares();
+        uint256 maxTokens = (treasuryShares * rebalanceMaxTokenBps) / BPS_DENOMINATOR;
+        require(tokenAmount <= maxTokens, "Exceeds max sell size");
+        require(tokenAmount <= treasuryShares, "Exceeds treasury balance");
+
+        // Get NAV per share before
+        uint256 navBefore = getNavPerShare();
+        require(navBefore > 0, "Zero NAV");
+
+        // Approve router to spend tokens
+        _approveToken(agentToken, nadfunRouter, tokenAmount);
+
+        // Execute sell via router
+        uint256 deadline = block.timestamp + REBALANCE_DEADLINE_OFFSET;
+        uint256 monReceived = INadfunRouter(nadfunRouter).sell(
+            agentToken,
+            tokenAmount,
+            minMonOut,
+            deadline,
+            address(this)
+        );
+
+        require(monReceived > 0, "Zero MON received");
+
+        // Calculate execution price: q_sell = monReceived / tokensSold (scaled by 1e18)
+        uint256 executionPrice = (monReceived * 1e18) / tokenAmount;
+
+        // Accretive constraint: q_sell >= P (sell at or above NAV)
+        // This ensures we're selling "expensive" relative to NAV
+        require(executionPrice >= navBefore, "Price below NAV (not accretive)");
+
+        // Verify NAV didn't decrease (sanity check)
+        uint256 navAfter = getNavPerShare();
+        require(navAfter >= navBefore, "NAV decreased (invariant violated)");
+
+        // Mark this hand as rebalanced
+        lastRebalancedHandId = lastSnapshotHandId;
+
+        emit RebalanceSell(
+            lastSnapshotHandId,
+            tokenAmount,
+            monReceived,
+            executionPrice,
+            navBefore,
+            navAfter
+        );
+
+        // Emit updated snapshot
+        _emitSnapshot(lastSnapshotHandId);
+    }
+
+    /**
+     * @notice Get rebalancing eligibility status.
+     * @return canRebalance Whether rebalancing is currently allowed
+     * @return currentHandId The current hand ID (lastSnapshotHandId)
+     * @return lastRebalanced The last hand ID that was rebalanced
+     */
+    function getRebalanceStatus() external view returns (
+        bool canRebalance,
+        uint256 currentHandId,
+        uint256 lastRebalanced
+    ) {
+        currentHandId = lastSnapshotHandId;
+        lastRebalanced = lastRebalancedHandId;
+        canRebalance = handCount > 0 && lastSnapshotHandId > lastRebalancedHandId;
+    }
+
+    /**
+     * @notice Approve token spending for router.
+     * @param token Token to approve
+     * @param spender Address to approve
+     * @param amount Amount to approve
+     */
+    function _approveToken(address token, address spender, uint256 amount) internal {
+        (bool success, ) = token.call(
+            abi.encodeWithSignature("approve(address,uint256)", spender, amount)
+        );
+        require(success, "Token approval failed");
     }
 
     // ============ View Functions ============

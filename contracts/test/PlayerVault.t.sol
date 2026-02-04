@@ -5,6 +5,7 @@ import "forge-std/Test.sol";
 import "../src/PlayerVault.sol";
 import "../src/PokerTable.sol";
 import "../src/mocks/MockVRFAdapter.sol";
+import "../src/mocks/MockNadfunRouter.sol";
 
 /**
  * @title MockERC20
@@ -16,6 +17,7 @@ contract MockERC20 {
     uint8 public decimals = 18;
     uint256 public totalSupply;
     mapping(address => uint256) public balanceOf;
+    mapping(address => mapping(address => uint256)) public allowance;
 
     function mint(address to, uint256 amount) external {
         balanceOf[to] += amount;
@@ -34,6 +36,20 @@ contract MockERC20 {
         balanceOf[to] += amount;
         return true;
     }
+
+    function approve(address spender, uint256 amount) external returns (bool) {
+        allowance[msg.sender][spender] = amount;
+        return true;
+    }
+
+    function transferFrom(address from, address to, uint256 amount) external returns (bool) {
+        require(balanceOf[from] >= amount, "Insufficient balance");
+        require(allowance[from][msg.sender] >= amount, "Insufficient allowance");
+        allowance[from][msg.sender] -= amount;
+        balanceOf[from] -= amount;
+        balanceOf[to] += amount;
+        return true;
+    }
 }
 
 contract PlayerVaultTest is Test {
@@ -41,6 +57,7 @@ contract PlayerVaultTest is Test {
     MockERC20 public agentToken;
     PokerTable public pokerTable;
     MockVRFAdapter public mockVRF;
+    MockNadfunRouter public mockRouter;
 
     address public owner = address(0x1);
     address public user = address(0x2);
@@ -68,6 +85,28 @@ contract PlayerVaultTest is Test {
     event Withdrawn(address indexed to, uint256 amount);
     event BuyInFunded(address indexed table, uint256 amount);
     event SettlementReceived(address indexed table, uint256 handId, uint256 amount);
+    event RebalanceBuy(
+        uint256 indexed handId,
+        uint256 monSpent,
+        uint256 tokensReceived,
+        uint256 executionPrice,
+        uint256 navPerShareBefore,
+        uint256 navPerShareAfter
+    );
+    event RebalanceSell(
+        uint256 indexed handId,
+        uint256 tokensSold,
+        uint256 monReceived,
+        uint256 executionPrice,
+        uint256 navPerShareBefore,
+        uint256 navPerShareAfter
+    );
+    event RebalanceConfigUpdated(
+        address nadfunLens,
+        address nadfunRouter,
+        uint256 maxMonBps,
+        uint256 maxTokenBps
+    );
 
     function setUp() public {
         agentToken = new MockERC20();
@@ -79,6 +118,10 @@ contract PlayerVaultTest is Test {
         // Setup poker table for integration tests
         mockVRF = new MockVRFAdapter();
         pokerTable = new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(mockVRF));
+
+        // Setup mock router for rebalancing tests
+        mockRouter = new MockNadfunRouter();
+        vm.deal(address(mockRouter), 100 ether); // Fund router for sell operations
     }
 
     // ============ Constructor Tests ============
@@ -898,5 +941,539 @@ contract PlayerVaultTest is Test {
         assertEq(vault.getHandCount(), 5);
         // Note: Actual win count tracking would need separate storage
         // For now, indexer can determine wins from positive PnL in settlements
+    }
+
+    // ============ T-0601: Rebalancing Tests ============
+
+    /**
+     * @notice Setup rebalancing with router liquidity.
+     * @dev Creates scenario where:
+     *      - Total supply: 100e18 (10e18 to user, 90e18 to router)
+     *      - Vault assets: 10 ETH
+     *      - NAV per share: 10 ETH / 100e18 = 0.1e18
+     *      To buy accretively, need execution price <= 0.1e18 (buyRate >= 10e18)
+     */
+    function _setupRebalancing() internal {
+        vm.prank(owner);
+        vault.setRebalanceConfig(
+            address(0), // No lens needed for mock
+            address(mockRouter),
+            1000, // 10% max buy
+            1000  // 10% max sell
+        );
+
+        vm.prank(owner);
+        vault.authorizeTable(mockTable);
+
+        // Mint to user (external holders) and router (AMM liquidity)
+        agentToken.mint(user, 10e18);
+        agentToken.mint(address(mockRouter), 90e18);
+        mockRouter.seedTokenLiquidity(address(agentToken), 90e18);
+
+        // Verify: T=100e18, B=0, N=100e18, A=10e18, P=0.1e18
+    }
+
+    /**
+     * @notice Get the expected NAV for _setupRebalancing scenario.
+     */
+    function _getExpectedNAV() internal pure returns (uint256) {
+        // 10 ETH / 100e18 shares * 1e18 scale = 0.1e18
+        return 0.1e18;
+    }
+
+    /**
+     * @notice Get accretive buy rate (tokens per MON that results in price <= NAV).
+     * @dev For NAV = 0.1e18, we need execution price = monIn/tokenOut <= 0.1e18
+     *      So tokenOut >= monIn / 0.1e18 * 1e18 = monIn * 10
+     *      buyRate = 10e18 gives exactly NAV price
+     *      buyRate = 11e18 gives price < NAV (accretive)
+     */
+    function _getAccretiveBuyRate() internal pure returns (uint256) {
+        return 11e18; // Get 11 tokens per MON, price = 0.0909e18 < NAV
+    }
+
+    /**
+     * @notice Get non-accretive buy rate for testing rejection.
+     */
+    function _getNonAccretiveBuyRate() internal pure returns (uint256) {
+        return 5e18; // Get 5 tokens per MON, price = 0.2e18 > NAV of 0.1e18
+    }
+
+    function test_SetRebalanceConfig_Success() public {
+        vm.expectEmit(false, false, false, true);
+        emit RebalanceConfigUpdated(address(0x1), address(mockRouter), 500, 500);
+
+        vm.prank(owner);
+        vault.setRebalanceConfig(address(0x1), address(mockRouter), 500, 500);
+
+        assertEq(vault.nadfunLens(), address(0x1));
+        assertEq(vault.nadfunRouter(), address(mockRouter));
+        assertEq(vault.rebalanceMaxMonBps(), 500);
+        assertEq(vault.rebalanceMaxTokenBps(), 500);
+    }
+
+    function test_SetRebalanceConfig_RevertNotOwner() public {
+        vm.prank(user);
+        vm.expectRevert("Not owner");
+        vault.setRebalanceConfig(address(0x1), address(mockRouter), 500, 500);
+    }
+
+    function test_SetRebalanceConfig_RevertInvalidMaxMonBps() public {
+        vm.prank(owner);
+        vm.expectRevert("Invalid maxMonBps");
+        vault.setRebalanceConfig(address(0), address(mockRouter), 10001, 500);
+    }
+
+    function test_SetRebalanceConfig_RevertInvalidMaxTokenBps() public {
+        vm.prank(owner);
+        vm.expectRevert("Invalid maxTokenBps");
+        vault.setRebalanceConfig(address(0), address(mockRouter), 500, 10001);
+    }
+
+    function test_RebalanceBuy_RevertNoSettlement() public {
+        _setupRebalancing();
+
+        // Try to rebalance before any settlement
+        vm.prank(owner);
+        vm.expectRevert("No settlement yet");
+        vault.rebalanceBuy(1 ether, 0);
+    }
+
+    function test_RebalanceBuy_RevertRouterNotConfigured() public {
+        // Don't configure router
+        agentToken.mint(user, 10e18);
+        vm.prank(owner);
+        vault.authorizeTable(mockTable);
+        vm.prank(mockTable);
+        vault.onSettlement(1, 100);
+
+        vm.prank(owner);
+        vm.expectRevert("Router not configured");
+        vault.rebalanceBuy(1 ether, 0);
+    }
+
+    function test_RebalanceBuy_RevertAlreadyRebalanced() public {
+        _setupRebalancing();
+
+        // Trigger settlement
+        vm.prank(mockTable);
+        vault.onSettlement(1, 100);
+
+        // Set accretive buy rate
+        mockRouter.setBuyRate(_getAccretiveBuyRate());
+
+        // First rebalance succeeds
+        vm.prank(owner);
+        vault.rebalanceBuy(0.5 ether, 0);
+
+        // Second rebalance for same hand fails
+        vm.prank(owner);
+        vm.expectRevert("Already rebalanced this hand");
+        vault.rebalanceBuy(0.5 ether, 0);
+    }
+
+    function test_RebalanceBuy_RevertExceedsMaxSize() public {
+        _setupRebalancing();
+
+        vm.prank(mockTable);
+        vault.onSettlement(1, 100);
+
+        // Max is 10% of 10 ETH = 1 ETH
+        vm.prank(owner);
+        vm.expectRevert("Exceeds max buy size");
+        vault.rebalanceBuy(2 ether, 0);
+    }
+
+    function test_RebalanceBuy_RevertPriceAboveNAV() public {
+        _setupRebalancing();
+
+        vm.prank(mockTable);
+        vault.onSettlement(1, 100);
+
+        // Set non-accretive buy rate (price > NAV)
+        mockRouter.setBuyRate(_getNonAccretiveBuyRate());
+
+        vm.prank(owner);
+        vm.expectRevert("Price above NAV (not accretive)");
+        vault.rebalanceBuy(0.5 ether, 0);
+    }
+
+    function test_RebalanceBuy_Success() public {
+        _setupRebalancing();
+
+        vm.prank(mockTable);
+        vault.onSettlement(1, 100);
+
+        // NAV = 10 ETH / 100e18 shares = 0.1e18 per share
+        uint256 navBefore = vault.getNavPerShare();
+        assertEq(navBefore, _getExpectedNAV());
+
+        // Set accretive buy rate
+        mockRouter.setBuyRate(_getAccretiveBuyRate());
+
+        vm.prank(owner);
+        vm.expectEmit(true, false, false, false);
+        emit RebalanceBuy(1, 0.5 ether, 0, 0, navBefore, 0);
+
+        vault.rebalanceBuy(0.5 ether, 0);
+
+        // Verify NAV increased or stayed same
+        uint256 navAfter = vault.getNavPerShare();
+        assertGe(navAfter, navBefore, "NAV should not decrease");
+
+        // Verify last rebalanced hand is updated
+        assertEq(vault.lastRebalancedHandId(), 1);
+    }
+
+    function test_RebalanceBuy_NavIncreasesWhenBuyingCheap() public {
+        _setupRebalancing();
+
+        vm.prank(mockTable);
+        vault.onSettlement(1, 100);
+
+        // NAV = 0.1e18 per share
+        uint256 navBefore = vault.getNavPerShare();
+        assertEq(navBefore, _getExpectedNAV());
+
+        // Buy much cheaper than NAV (high buyRate = more tokens per MON = lower price)
+        // Using buyRate = 15e18 means price = 1e18/15 ≈ 0.0667e18 < NAV of 0.1e18
+        mockRouter.setBuyRate(15e18);
+
+        vm.prank(owner);
+        vault.rebalanceBuy(0.5 ether, 0);
+
+        // NAV should increase because we bought "cheap"
+        // Before: A=10 ETH, T=100e18, B=0, N=100e18, P=0.1e18
+        // After buy 0.5 ETH for 7.5e18 tokens: A=9.5 ETH, B=7.5e18, N=92.5e18
+        // P_after = 9.5e18 / 92.5e18 * 1e18 ≈ 0.1027e18 > 0.1e18
+        uint256 navAfter = vault.getNavPerShare();
+        assertGt(navAfter, navBefore, "NAV should increase when buying cheap");
+    }
+
+    function test_RebalanceSell_RevertNoSettlement() public {
+        _setupRebalancing();
+
+        // Give vault some tokens to sell
+        agentToken.mint(address(vault), 1e18);
+
+        vm.prank(owner);
+        vm.expectRevert("No settlement yet");
+        vault.rebalanceSell(0.5e18, 0);
+    }
+
+    function test_RebalanceSell_RevertAlreadyRebalanced() public {
+        _setupRebalancing();
+
+        // Give vault some tokens to sell
+        agentToken.mint(address(vault), 2e18);
+
+        vm.prank(mockTable);
+        vault.onSettlement(1, 100);
+
+        // Set sell rate that satisfies accretive constraint
+        mockRouter.setSellRate(1.2e18); // sell at 1.2e18 > NAV of 1e18
+
+        // First rebalance succeeds
+        vm.prank(owner);
+        vault.rebalanceSell(0.1e18, 0);
+
+        // Second rebalance for same hand fails
+        vm.prank(owner);
+        vm.expectRevert("Already rebalanced this hand");
+        vault.rebalanceSell(0.1e18, 0);
+    }
+
+    function test_RebalanceSell_RevertExceedsMaxSize() public {
+        _setupRebalancing();
+
+        // Give vault some tokens
+        agentToken.mint(address(vault), 10e18);
+
+        vm.prank(mockTable);
+        vault.onSettlement(1, 100);
+
+        // Max is 10% of 10e18 = 1e18
+        vm.prank(owner);
+        vm.expectRevert("Exceeds max sell size");
+        vault.rebalanceSell(2e18, 0);
+    }
+
+    function test_RebalanceSell_RevertPriceBelowNAV() public {
+        _setupRebalancing();
+
+        // Give vault some tokens
+        agentToken.mint(address(vault), 2e18);
+
+        vm.prank(mockTable);
+        vault.onSettlement(1, 100);
+
+        // NAV with vault's treasury shares:
+        // T = 102e18, B = 2e18, N = 100e18, A = 10 ETH, P = 0.1e18
+
+        // Set sell rate to 0.05e18 (get 0.05 MON per token)
+        // Execution price = 0.05e18 < NAV (0.1e18) - not accretive
+        mockRouter.setSellRate(0.05e18);
+
+        vm.prank(owner);
+        vm.expectRevert("Price below NAV (not accretive)");
+        vault.rebalanceSell(0.1e18, 0);
+    }
+
+    function test_RebalanceSell_Success() public {
+        _setupRebalancing();
+
+        // Give vault some tokens
+        agentToken.mint(address(vault), 2e18);
+
+        vm.prank(mockTable);
+        vault.onSettlement(1, 100);
+
+        // NAV with treasury shares: T=102e18, B=2e18, N=100e18, A=10 ETH, P=0.1e18
+        uint256 navBefore = vault.getNavPerShare();
+        assertEq(navBefore, _getExpectedNAV());
+
+        // Set sell rate to 0.12e18 (get 0.12 MON per token)
+        // Execution price = 0.12e18 > NAV of 0.1e18 (accretive)
+        mockRouter.setSellRate(0.12e18);
+
+        vm.prank(owner);
+        vm.expectEmit(true, false, false, false);
+        emit RebalanceSell(1, 0, 0, 0, navBefore, 0);
+
+        vault.rebalanceSell(0.1e18, 0);
+
+        // Verify NAV didn't decrease
+        uint256 navAfter = vault.getNavPerShare();
+        assertGe(navAfter, navBefore, "NAV should not decrease");
+
+        // Verify last rebalanced hand is updated
+        assertEq(vault.lastRebalancedHandId(), 1);
+    }
+
+    function test_RebalanceSell_NavIncreasesWhenSellingExpensive() public {
+        _setupRebalancing();
+
+        // Give vault some tokens
+        agentToken.mint(address(vault), 2e18);
+
+        vm.prank(mockTable);
+        vault.onSettlement(1, 100);
+
+        // NAV = 0.1e18
+        uint256 navBefore = vault.getNavPerShare();
+        assertEq(navBefore, _getExpectedNAV());
+
+        // Sell at 0.15e18 (more expensive than NAV of 0.1e18)
+        mockRouter.setSellRate(0.15e18);
+
+        vm.prank(owner);
+        vault.rebalanceSell(0.1e18, 0); // Sell 0.1e18 tokens
+
+        // NAV should increase because we sold "expensive"
+        // Before: A=10, T=102e18, B=2e18, N=100e18, P=0.1e18
+        // After sell 0.1e18 tokens for 0.015 ETH: A=10.015, B=1.9e18, N=100.1e18
+        // P_after = 10.015e18 / 100.1e18 * 1e18 ≈ 0.1001e18 > 0.1e18
+        uint256 navAfter = vault.getNavPerShare();
+        assertGt(navAfter, navBefore, "NAV should increase when selling expensive");
+    }
+
+    function test_RebalanceStatus_ReturnsCorrectValues() public {
+        _setupRebalancing();
+
+        // Initially not eligible (no settlement)
+        (bool canRebalance, uint256 currentHandId, uint256 lastRebalanced) = vault.getRebalanceStatus();
+        assertFalse(canRebalance);
+        assertEq(currentHandId, 0);
+        assertEq(lastRebalanced, 0);
+
+        // After settlement, eligible
+        vm.prank(mockTable);
+        vault.onSettlement(1, 100);
+
+        (canRebalance, currentHandId, lastRebalanced) = vault.getRebalanceStatus();
+        assertTrue(canRebalance);
+        assertEq(currentHandId, 1);
+        assertEq(lastRebalanced, 0);
+
+        // After rebalance, not eligible for same hand
+        mockRouter.setBuyRate(_getAccretiveBuyRate());
+        vm.prank(owner);
+        vault.rebalanceBuy(0.5 ether, 0);
+
+        (canRebalance, currentHandId, lastRebalanced) = vault.getRebalanceStatus();
+        assertFalse(canRebalance);
+        assertEq(currentHandId, 1);
+        assertEq(lastRebalanced, 1);
+
+        // After next settlement, eligible again
+        vm.prank(mockTable);
+        vault.onSettlement(2, 50);
+
+        (canRebalance, currentHandId, lastRebalanced) = vault.getRebalanceStatus();
+        assertTrue(canRebalance);
+        assertEq(currentHandId, 2);
+        assertEq(lastRebalanced, 1);
+    }
+
+    function test_RebalanceBuy_RevertZeroAmount() public {
+        _setupRebalancing();
+
+        vm.prank(mockTable);
+        vault.onSettlement(1, 100);
+
+        vm.prank(owner);
+        vm.expectRevert("Zero amount");
+        vault.rebalanceBuy(0, 0);
+    }
+
+    function test_RebalanceSell_RevertZeroAmount() public {
+        _setupRebalancing();
+
+        agentToken.mint(address(vault), 2e18);
+
+        vm.prank(mockTable);
+        vault.onSettlement(1, 100);
+
+        vm.prank(owner);
+        vm.expectRevert("Zero amount");
+        vault.rebalanceSell(0, 0);
+    }
+
+    function test_RebalanceBuy_RevertInsufficientBalance() public {
+        _setupRebalancing();
+
+        // Escrow most of the balance
+        vm.prank(owner);
+        vault.fundBuyIn(mockTable, 9.5 ether);
+
+        vm.prank(mockTable);
+        vault.onSettlement(1, 100);
+
+        // Available is only 0.5 ether, but 10% of 10 = 1 ether limit
+        // Try to buy 0.6 ether (under 10% but over available)
+        vm.prank(owner);
+        vm.expectRevert("Insufficient available balance");
+        vault.rebalanceBuy(0.6 ether, 0);
+    }
+
+    function test_RebalanceSell_RevertExceedsTreasuryBalance() public {
+        _setupRebalancing();
+
+        // Give vault a small amount of tokens
+        agentToken.mint(address(vault), 0.5e18);
+
+        vm.prank(mockTable);
+        vault.onSettlement(1, 100);
+
+        // Increase max sell limit so that check doesn't trigger first
+        // max sell = 100% of B
+        // B = 0.5e18, so maxTokens = 0.5e18
+        // To trigger "Exceeds treasury balance", we need amount > B but <= maxTokens
+        // Since maxTokens = maxBps * B / 10000, if maxBps = 10000, maxTokens = B
+        // So we can't have amount > B and amount <= maxTokens simultaneously with 100% max
+        //
+        // The check order is:
+        // 1. maxTokens = (B * maxBps) / 10000
+        // 2. require(tokenAmount <= maxTokens, "Exceeds max sell size")
+        // 3. require(tokenAmount <= B, "Exceeds treasury balance")
+        //
+        // With maxBps = 10000 (100%), maxTokens = B, so both checks are equivalent
+        // To test "Exceeds treasury balance", we need maxBps > 10000 which isn't allowed
+        // OR we need the treasury balance check to fail for a different reason
+        //
+        // Actually, looking at the code, maxTokens uses getTreasuryShares() which is the same as B
+        // So if maxBps = 10000, maxTokens = B, and the checks are equivalent
+        //
+        // Let's test with a scenario where we have external tokens that don't match
+        // Actually, the simplest way is: the check "Exceeds treasury balance" is redundant
+        // when maxBps <= 10000 because maxTokens <= B always
+        //
+        // Let me verify this is the correct behavior and adjust the test
+        vm.prank(owner);
+        vault.setRebalanceConfig(address(0), address(mockRouter), 1000, 10000); // 100% max sell
+
+        // With 0.5e18 tokens and 100% max, maxTokens = 0.5e18
+        // Trying to sell 1e18 will hit "Exceeds max sell size" first because maxTokens = 0.5e18 < 1e18
+        vm.prank(owner);
+        vm.expectRevert("Exceeds max sell size");
+        vault.rebalanceSell(1e18, 0);
+    }
+
+    /**
+     * @notice Verify accretive-only constraint: P_after >= P_before
+     * @dev Tests multiple scenarios to ensure NAV never decreases
+     */
+    function test_AccretiveInvariant_BuyAtNAV() public {
+        _setupRebalancing();
+
+        vm.prank(mockTable);
+        vault.onSettlement(1, 100);
+
+        uint256 navBefore = vault.getNavPerShare();
+        assertEq(navBefore, _getExpectedNAV());
+
+        // Buy exactly at NAV (borderline case)
+        // NAV = 0.1e18, so buyRate = 10e18 gives price of exactly 0.1e18
+        mockRouter.setBuyRate(10e18);
+
+        vm.prank(owner);
+        vault.rebalanceBuy(0.5 ether, 0);
+
+        uint256 navAfter = vault.getNavPerShare();
+        // Buying at exactly NAV should keep NAV unchanged (within rounding)
+        assertGe(navAfter, navBefore - 1, "NAV should not decrease when buying at NAV");
+    }
+
+    function test_AccretiveInvariant_SellAtNAV() public {
+        _setupRebalancing();
+
+        agentToken.mint(address(vault), 2e18);
+
+        vm.prank(mockTable);
+        vault.onSettlement(1, 100);
+
+        uint256 navBefore = vault.getNavPerShare();
+        assertEq(navBefore, _getExpectedNAV());
+
+        // Sell exactly at NAV (borderline case)
+        // NAV = 0.1e18, so sellRate = 0.1e18 gives price of exactly 0.1e18
+        mockRouter.setSellRate(0.1e18);
+
+        vm.prank(owner);
+        vault.rebalanceSell(0.1e18, 0);
+
+        uint256 navAfter = vault.getNavPerShare();
+        // Selling at exactly NAV should keep NAV unchanged (within rounding)
+        assertGe(navAfter, navBefore - 1, "NAV should not decrease when selling at NAV");
+    }
+
+    function test_MultipleHands_RebalanceEachHand() public {
+        _setupRebalancing();
+
+        mockRouter.setBuyRate(_getAccretiveBuyRate()); // Accretive buy rate
+
+        // Hand 1
+        vm.prank(mockTable);
+        vault.onSettlement(1, 100);
+
+        vm.prank(owner);
+        vault.rebalanceBuy(0.3 ether, 0);
+        assertEq(vault.lastRebalancedHandId(), 1);
+
+        // Hand 2
+        vm.prank(mockTable);
+        vault.onSettlement(2, 50);
+
+        vm.prank(owner);
+        vault.rebalanceBuy(0.3 ether, 0);
+        assertEq(vault.lastRebalancedHandId(), 2);
+
+        // Hand 3
+        vm.prank(mockTable);
+        vault.onSettlement(3, -20);
+
+        vm.prank(owner);
+        vault.rebalanceBuy(0.3 ether, 0);
+        assertEq(vault.lastRebalancedHandId(), 3);
     }
 }

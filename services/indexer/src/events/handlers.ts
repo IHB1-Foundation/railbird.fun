@@ -20,6 +20,17 @@ import {
   insertVaultSnapshot,
 } from "../db/index.js";
 import { gameStateToString, actionTypeToString } from "./abis.js";
+import {
+  broadcastAction,
+  broadcastHandStarted,
+  broadcastBettingRoundComplete,
+  broadcastVRFRequested,
+  broadcastCommunityCards,
+  broadcastHandSettled,
+  broadcastSeatUpdated,
+  broadcastPotUpdated,
+  broadcastForceTimeout,
+} from "../ws/index.js";
 
 export interface EventContext {
   tableId: bigint;
@@ -63,6 +74,9 @@ export async function handleSeatUpdated(
 
   await markEventProcessed(meta.blockNumber, meta.logIndex, meta.txHash, "SeatUpdated");
   console.log(`[SeatUpdated] table=${ctx.tableId} seat=${args.seatIndex} stack=${args.stack}`);
+
+  // Broadcast to WebSocket clients
+  broadcastSeatUpdated(ctx.tableId, args.seatIndex, args.owner, args.operator, args.stack);
 }
 
 export async function handleHandStarted(
@@ -92,6 +106,9 @@ export async function handleHandStarted(
 
   await markEventProcessed(meta.blockNumber, meta.logIndex, meta.txHash, "HandStarted");
   console.log(`[HandStarted] table=${ctx.tableId} hand=${args.handId} button=${args.buttonSeat}`);
+
+  // Broadcast to WebSocket clients
+  broadcastHandStarted(ctx.tableId, args.handId, args.smallBlind, args.bigBlind, args.buttonSeat);
 }
 
 export async function handleActionTaken(
@@ -122,6 +139,18 @@ export async function handleActionTaken(
 
   await markEventProcessed(meta.blockNumber, meta.logIndex, meta.txHash, "ActionTaken");
   console.log(`[ActionTaken] hand=${args.handId} seat=${args.seatIndex} action=${actionType} amount=${args.amount}`);
+
+  // Broadcast to WebSocket clients
+  broadcastAction(
+    ctx.tableId,
+    args.handId,
+    args.seatIndex,
+    args.action,
+    args.amount,
+    args.potAfter,
+    meta.blockNumber,
+    meta.txHash
+  );
 }
 
 export async function handlePotUpdated(
@@ -137,6 +166,9 @@ export async function handlePotUpdated(
   await updateHand(ctx.tableId, args.handId, { pot: args.pot });
 
   await markEventProcessed(meta.blockNumber, meta.logIndex, meta.txHash, "PotUpdated");
+
+  // Broadcast to WebSocket clients
+  broadcastPotUpdated(ctx.tableId, args.handId, args.pot);
 }
 
 export async function handleBettingRoundComplete(
@@ -155,6 +187,9 @@ export async function handleBettingRoundComplete(
 
   await markEventProcessed(meta.blockNumber, meta.logIndex, meta.txHash, "BettingRoundComplete");
   console.log(`[BettingRoundComplete] hand=${args.handId} ${gameStateToString(args.fromState)} -> ${toStateStr}`);
+
+  // Broadcast to WebSocket clients
+  broadcastBettingRoundComplete(ctx.tableId, args.handId, args.fromState, args.toState);
 }
 
 export async function handleVRFRequested(
@@ -173,6 +208,9 @@ export async function handleVRFRequested(
 
   await markEventProcessed(meta.blockNumber, meta.logIndex, meta.txHash, "VRFRequested");
   console.log(`[VRFRequested] hand=${args.handId} street=${streetStr} requestId=${args.requestId}`);
+
+  // Broadcast to WebSocket clients
+  broadcastVRFRequested(ctx.tableId, args.handId, args.street, args.requestId);
 }
 
 export async function handleCommunityCardsDealt(
@@ -193,6 +231,9 @@ export async function handleCommunityCardsDealt(
 
   await markEventProcessed(meta.blockNumber, meta.logIndex, meta.txHash, "CommunityCardsDealt");
   console.log(`[CommunityCardsDealt] hand=${args.handId} cards=[${args.cards.join(",")}]`);
+
+  // Broadcast to WebSocket clients
+  broadcastCommunityCards(ctx.tableId, args.handId, args.street, args.cards);
 }
 
 export async function handleHandSettled(
@@ -228,6 +269,9 @@ export async function handleHandSettled(
 
   await markEventProcessed(meta.blockNumber, meta.logIndex, meta.txHash, "HandSettled");
   console.log(`[HandSettled] hand=${args.handId} winner=${args.winnerSeat} pot=${args.potAmount}`);
+
+  // Broadcast to WebSocket clients
+  broadcastHandSettled(ctx.tableId, args.handId, args.winnerSeat, args.potAmount);
 }
 
 export async function handleForceTimeout(
@@ -243,6 +287,9 @@ export async function handleForceTimeout(
   // ForceTimeout is informational - ActionTaken will handle the actual action
   await markEventProcessed(meta.blockNumber, meta.logIndex, meta.txHash, "ForceTimeout");
   console.log(`[ForceTimeout] hand=${args.handId} seat=${args.seatIndex} action=${actionTypeToString(args.forcedAction)}`);
+
+  // Broadcast to WebSocket clients
+  broadcastForceTimeout(ctx.tableId, args.handId, args.seatIndex, args.forcedAction);
 }
 
 // ============ PlayerRegistry Event Handlers ============

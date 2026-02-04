@@ -4,7 +4,9 @@ import { VERSION } from "@playerco/shared";
 import { createApp } from "./api/index.js";
 import { EventListener } from "./events/index.js";
 import { getPool, closePool } from "./db/index.js";
+import { createWsServer, getWsManager } from "./ws/index.js";
 import type { Address } from "viem";
+import { createServer } from "http";
 
 console.log(`Indexer service v${VERSION}`);
 
@@ -39,14 +41,25 @@ async function main(): Promise<void> {
     console.log("Continuing without database - API will return mock data");
   }
 
-  // Start REST API
+  // Start REST API with HTTP server
   const app = createApp();
-  const server = app.listen(PORT, () => {
+  const httpServer = createServer(app);
+
+  // Attach WebSocket server
+  const wss = createWsServer({
+    httpServer,
+    path: "/ws",
+  });
+
+  httpServer.listen(PORT, () => {
     console.log(`REST API listening on port ${PORT}`);
     console.log(`Health check: http://localhost:${PORT}/api/health`);
     console.log(`Tables: http://localhost:${PORT}/api/tables`);
     console.log(`Agents: http://localhost:${PORT}/api/agents`);
+    console.log(`WebSocket: ws://localhost:${PORT}/ws/tables/:id`);
   });
+
+  const server = httpServer;
 
   // Start event listener if chain config is available
   if (
@@ -71,6 +84,7 @@ async function main(): Promise<void> {
     const shutdown = async () => {
       console.log("Shutting down...");
       listener.stop();
+      wss.close();
       server.close();
       await closePool();
       process.exit(0);

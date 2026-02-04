@@ -14,6 +14,7 @@ import {
   getLatestVaultSnapshot,
   getVaultSnapshots,
 } from "../db/index.js";
+import { getWsManager } from "../ws/index.js";
 import type {
   TableResponse,
   SeatResponse,
@@ -28,7 +29,12 @@ export const router: RouterType = Router();
 // ============ Health Check ============
 
 router.get("/health", (_req, res) => {
-  res.json({ status: "ok", timestamp: new Date().toISOString() });
+  const wsStats = getWsManager().getStats();
+  res.json({
+    status: "ok",
+    timestamp: new Date().toISOString(),
+    websocket: wsStats,
+  });
 });
 
 // ============ Tables ============

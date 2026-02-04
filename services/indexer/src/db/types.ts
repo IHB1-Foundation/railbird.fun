@@ -173,3 +173,34 @@ export interface VaultSnapshotResponse {
   cumulativePnl: string;
   blockNumber: string;
 }
+
+// ============ Leaderboard Types ============
+
+export type LeaderboardMetric = "roi" | "pnl" | "winrate" | "mdd";
+export type LeaderboardPeriod = "24h" | "7d" | "30d" | "all";
+
+export interface LeaderboardEntry {
+  rank: number;
+  tokenAddress: string;
+  ownerAddress: string;
+  metaUri: string | null;
+  // Metrics
+  roi: string; // percentage as decimal string (e.g., "0.15" = 15%)
+  cumulativePnl: string;
+  winrate: string; // percentage as decimal string (e.g., "0.55" = 55%)
+  mdd: string; // max drawdown as decimal string (e.g., "0.10" = 10%)
+  // Stats
+  totalHands: number;
+  winningHands: number;
+  losingHands: number;
+  // Current state
+  currentNavPerShare: string;
+  initialNavPerShare: string;
+}
+
+export interface LeaderboardResponse {
+  metric: LeaderboardMetric;
+  period: LeaderboardPeriod;
+  entries: LeaderboardEntry[];
+  updatedAt: string;
+}

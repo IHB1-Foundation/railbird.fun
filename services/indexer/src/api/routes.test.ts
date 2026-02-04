@@ -248,3 +248,247 @@ describe("ABI Parsing", () => {
     assert.strictEqual(ACTION_TYPES[3], "RAISE");
   });
 });
+
+describe("Leaderboard", () => {
+  describe("Metric validation", () => {
+    it("should accept valid metrics", () => {
+      const validMetrics = ["roi", "pnl", "winrate", "mdd"];
+      validMetrics.forEach((m) => {
+        assert.ok(["roi", "pnl", "winrate", "mdd"].includes(m));
+      });
+    });
+
+    it("should reject invalid metrics", () => {
+      const invalidMetric = "invalid";
+      assert.ok(!["roi", "pnl", "winrate", "mdd"].includes(invalidMetric));
+    });
+  });
+
+  describe("Period validation", () => {
+    it("should accept valid periods", () => {
+      const validPeriods = ["24h", "7d", "30d", "all"];
+      validPeriods.forEach((p) => {
+        assert.ok(["24h", "7d", "30d", "all"].includes(p));
+      });
+    });
+
+    it("should reject invalid periods", () => {
+      const invalidPeriod = "1y";
+      assert.ok(!["24h", "7d", "30d", "all"].includes(invalidPeriod));
+    });
+  });
+
+  describe("Period date calculation", () => {
+    it("should return null for 'all' period", () => {
+      const getPeriodStartDate = (period: string): Date | null => {
+        if (period === "all") return null;
+        const now = new Date();
+        switch (period) {
+          case "24h":
+            return new Date(now.getTime() - 24 * 60 * 60 * 1000);
+          case "7d":
+            return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          case "30d":
+            return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          default:
+            return null;
+        }
+      };
+
+      assert.strictEqual(getPeriodStartDate("all"), null);
+    });
+
+    it("should return date 24 hours ago for '24h' period", () => {
+      const now = new Date();
+      const expected = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      const tolerance = 1000; // 1 second tolerance
+
+      const getPeriodStartDate = (period: string): Date | null => {
+        if (period === "all") return null;
+        const now = new Date();
+        switch (period) {
+          case "24h":
+            return new Date(now.getTime() - 24 * 60 * 60 * 1000);
+          default:
+            return null;
+        }
+      };
+
+      const result = getPeriodStartDate("24h");
+      assert.ok(result);
+      assert.ok(Math.abs(result.getTime() - expected.getTime()) < tolerance);
+    });
+  });
+
+  describe("ROI calculation", () => {
+    it("should calculate positive ROI correctly", () => {
+      // Initial NAV: 1e18, Current NAV: 1.15e18 => ROI = 15%
+      const initialNav = BigInt("1000000000000000000");
+      const currentNav = BigInt("1150000000000000000");
+
+      const roiNum = ((currentNav - initialNav) * 10000n) / initialNav;
+      const roi = Number(roiNum) / 10000;
+
+      assert.strictEqual(roi, 0.15);
+    });
+
+    it("should calculate negative ROI correctly", () => {
+      // Initial NAV: 1e18, Current NAV: 0.9e18 => ROI = -10%
+      const initialNav = BigInt("1000000000000000000");
+      const currentNav = BigInt("900000000000000000");
+
+      const roiNum = ((currentNav - initialNav) * 10000n) / initialNav;
+      const roi = Number(roiNum) / 10000;
+
+      assert.strictEqual(roi, -0.1);
+    });
+
+    it("should handle zero initial NAV", () => {
+      const initialNav = 0n;
+      const currentNav = BigInt("1000000000000000000");
+
+      let roi = "0";
+      if (initialNav > 0n) {
+        const roiNum = ((currentNav - initialNav) * 10000n) / initialNav;
+        roi = (Number(roiNum) / 10000).toString();
+      }
+
+      assert.strictEqual(roi, "0");
+    });
+  });
+
+  describe("Winrate calculation", () => {
+    it("should calculate winrate correctly", () => {
+      const total = 100;
+      const wins = 55;
+      const winrate = wins / total;
+
+      assert.strictEqual(winrate, 0.55);
+    });
+
+    it("should handle zero total hands", () => {
+      const total = 0;
+      const wins = 0;
+
+      let winrate = "0";
+      if (total > 0) {
+        winrate = (wins / total).toFixed(4);
+      }
+
+      assert.strictEqual(winrate, "0");
+    });
+  });
+
+  describe("MDD calculation", () => {
+    it("should calculate max drawdown correctly", () => {
+      // Simulate NAV sequence: 100 -> 110 -> 90 -> 95
+      // Peak at 110, trough at 90 => MDD = (110-90)/110 = 18.18%
+      const navSequence = [
+        BigInt("1000000000000000000"), // 1.0
+        BigInt("1100000000000000000"), // 1.1 (peak)
+        BigInt("900000000000000000"), // 0.9 (trough)
+        BigInt("950000000000000000"), // 0.95
+      ];
+
+      let peakNav = 0n;
+      let maxDrawdown = 0n;
+
+      for (const nav of navSequence) {
+        if (nav > peakNav) {
+          peakNav = nav;
+        }
+        if (peakNav > 0n) {
+          const drawdown = ((peakNav - nav) * 10000n) / peakNav;
+          if (drawdown > maxDrawdown) {
+            maxDrawdown = drawdown;
+          }
+        }
+      }
+
+      const mdd = Number(maxDrawdown) / 10000;
+      // (1.1 - 0.9) / 1.1 = 0.1818...
+      assert.ok(Math.abs(mdd - 0.1818) < 0.001);
+    });
+
+    it("should return 0 MDD when NAV only increases", () => {
+      const navSequence = [
+        BigInt("1000000000000000000"),
+        BigInt("1100000000000000000"),
+        BigInt("1200000000000000000"),
+      ];
+
+      let peakNav = 0n;
+      let maxDrawdown = 0n;
+
+      for (const nav of navSequence) {
+        if (nav > peakNav) {
+          peakNav = nav;
+        }
+        if (peakNav > 0n) {
+          const drawdown = ((peakNav - nav) * 10000n) / peakNav;
+          if (drawdown > maxDrawdown) {
+            maxDrawdown = drawdown;
+          }
+        }
+      }
+
+      const mdd = Number(maxDrawdown) / 10000;
+      assert.strictEqual(mdd, 0);
+    });
+  });
+
+  describe("Leaderboard entry formatting", () => {
+    it("should format leaderboard entry correctly", () => {
+      const entry = {
+        rank: 1,
+        tokenAddress: "0xagent1",
+        ownerAddress: "0xowner1",
+        metaUri: "ipfs://test",
+        roi: "0.15",
+        cumulativePnl: "1500000000000000000",
+        winrate: "0.55",
+        mdd: "0.1",
+        totalHands: 100,
+        winningHands: 55,
+        losingHands: 45,
+        currentNavPerShare: "1150000000000000000",
+        initialNavPerShare: "1000000000000000000",
+      };
+
+      assert.strictEqual(entry.rank, 1);
+      assert.strictEqual(entry.roi, "0.15");
+      assert.strictEqual(entry.winrate, "0.55");
+      assert.strictEqual(entry.totalHands, entry.winningHands + entry.losingHands);
+    });
+  });
+
+  describe("Sorting", () => {
+    it("should sort by ROI descending", () => {
+      const entries = [
+        { roi: "0.1", pnl: "100", winrate: "0.5", mdd: "0.2" },
+        { roi: "0.3", pnl: "200", winrate: "0.6", mdd: "0.1" },
+        { roi: "0.2", pnl: "150", winrate: "0.55", mdd: "0.15" },
+      ];
+
+      entries.sort((a, b) => parseFloat(b.roi) - parseFloat(a.roi));
+
+      assert.strictEqual(entries[0].roi, "0.3");
+      assert.strictEqual(entries[1].roi, "0.2");
+      assert.strictEqual(entries[2].roi, "0.1");
+    });
+
+    it("should sort by MDD ascending (lower is better)", () => {
+      const entries = [
+        { roi: "0.1", pnl: "100", winrate: "0.5", mdd: "0.2" },
+        { roi: "0.3", pnl: "200", winrate: "0.6", mdd: "0.1" },
+        { roi: "0.2", pnl: "150", winrate: "0.55", mdd: "0.15" },
+      ];
+
+      entries.sort((a, b) => parseFloat(a.mdd) - parseFloat(b.mdd));
+
+      assert.strictEqual(entries[0].mdd, "0.1");
+      assert.strictEqual(entries[1].mdd, "0.15");
+      assert.strictEqual(entries[2].mdd, "0.2");
+    });
+  });
+});

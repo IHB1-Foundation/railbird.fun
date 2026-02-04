@@ -499,3 +499,168 @@ export async function getSettlement(
   );
   return result.rows[0] || null;
 }
+
+// ============ Leaderboard ============
+
+export interface AgentLeaderboardData {
+  token_address: string;
+  owner_address: string;
+  meta_uri: string | null;
+  vault_address: string | null;
+  // Initial state (for ROI calculation)
+  initial_nav_per_share: string | null;
+  // Current/latest state
+  current_nav_per_share: string | null;
+  cumulative_pnl: string | null;
+  // Peak nav for MDD calculation
+  peak_nav_per_share: string | null;
+  // Win/loss stats from settlements in period
+  total_hands: number;
+  winning_hands: number;
+}
+
+export async function getLeaderboardData(
+  periodStart: Date | null
+): Promise<AgentLeaderboardData[]> {
+  // This query aggregates:
+  // 1. Agent info
+  // 2. Initial NAV (first snapshot or snapshot at period start)
+  // 3. Current NAV (latest snapshot)
+  // 4. Peak NAV (max NAV in period for MDD)
+  // 5. Win/loss stats from settlements
+
+  const periodCondition = periodStart
+    ? `AND vs.created_at >= $1`
+    : "";
+  const settlementCondition = periodStart
+    ? `AND s.created_at >= $1`
+    : "";
+
+  const params = periodStart ? [periodStart.toISOString()] : [];
+
+  const sql = `
+    WITH agent_snapshots AS (
+      SELECT
+        a.token_address,
+        a.owner_address,
+        a.meta_uri,
+        a.vault_address,
+        vs.nav_per_share,
+        vs.cumulative_pnl,
+        vs.created_at,
+        ROW_NUMBER() OVER (PARTITION BY a.token_address ORDER BY vs.created_at ASC) as first_rank,
+        ROW_NUMBER() OVER (PARTITION BY a.token_address ORDER BY vs.created_at DESC) as last_rank,
+        MAX(vs.nav_per_share::numeric) OVER (PARTITION BY a.token_address) as peak_nav
+      FROM agents a
+      LEFT JOIN vault_snapshots vs ON a.vault_address = vs.vault_address
+      WHERE a.is_registered = true
+      ${periodCondition}
+    ),
+    initial_snapshots AS (
+      SELECT token_address, nav_per_share as initial_nav
+      FROM agent_snapshots
+      WHERE first_rank = 1
+    ),
+    latest_snapshots AS (
+      SELECT token_address, nav_per_share as current_nav, cumulative_pnl, peak_nav
+      FROM agent_snapshots
+      WHERE last_rank = 1
+    ),
+    win_stats AS (
+      SELECT
+        a.token_address,
+        COUNT(s.id) as total_hands,
+        COUNT(CASE
+          WHEN (s.winner_seat = 0 AND se.seat_index = 0) OR
+               (s.winner_seat = 1 AND se.seat_index = 1)
+          THEN 1
+        END) as winning_hands
+      FROM agents a
+      LEFT JOIN seats se ON a.owner_address = se.owner_address
+      LEFT JOIN settlements s ON se.table_id::text = s.table_id
+        AND s.table_id IS NOT NULL
+        ${settlementCondition}
+      WHERE a.is_registered = true
+      GROUP BY a.token_address
+    )
+    SELECT
+      a.token_address,
+      a.owner_address,
+      a.meta_uri,
+      a.vault_address,
+      i.initial_nav as initial_nav_per_share,
+      l.current_nav as current_nav_per_share,
+      l.cumulative_pnl,
+      l.peak_nav::text as peak_nav_per_share,
+      COALESCE(w.total_hands, 0)::int as total_hands,
+      COALESCE(w.winning_hands, 0)::int as winning_hands
+    FROM agents a
+    LEFT JOIN initial_snapshots i ON a.token_address = i.token_address
+    LEFT JOIN latest_snapshots l ON a.token_address = l.token_address
+    LEFT JOIN win_stats w ON a.token_address = w.token_address
+    WHERE a.is_registered = true
+  `;
+
+  const result = await query<AgentLeaderboardData>(sql, params);
+  return result.rows;
+}
+
+export async function getAgentSettlementsInPeriod(
+  tokenAddress: string,
+  periodStart: Date | null
+): Promise<{ total: number; wins: number }> {
+  // Get agent's vault to find their table/seat
+  const agent = await getAgent(tokenAddress);
+  if (!agent || !agent.vault_address) {
+    return { total: 0, wins: 0 };
+  }
+
+  const periodCondition = periodStart
+    ? `AND s.created_at >= $2`
+    : "";
+  const params = periodStart
+    ? [agent.owner_address.toLowerCase(), periodStart.toISOString()]
+    : [agent.owner_address.toLowerCase()];
+
+  // Find settlements where this agent's seat won
+  const sql = `
+    SELECT
+      COUNT(*) as total,
+      COUNT(CASE
+        WHEN (s.winner_seat = se.seat_index)
+        THEN 1
+      END) as wins
+    FROM seats se
+    JOIN settlements s ON se.table_id::text = s.table_id
+    WHERE se.owner_address = $1
+    ${periodCondition}
+  `;
+
+  const result = await query<{ total: string; wins: string }>(sql, params);
+  const row = result.rows[0];
+  return {
+    total: parseInt(row?.total || "0"),
+    wins: parseInt(row?.wins || "0"),
+  };
+}
+
+export async function getVaultSnapshotsInPeriod(
+  vaultAddress: string,
+  periodStart: Date | null
+): Promise<VaultSnapshot[]> {
+  const periodCondition = periodStart
+    ? `AND created_at >= $2`
+    : "";
+  const params = periodStart
+    ? [vaultAddress.toLowerCase(), periodStart.toISOString()]
+    : [vaultAddress.toLowerCase()];
+
+  const result = await query<VaultSnapshot>(
+    `SELECT * FROM vault_snapshots
+     WHERE vault_address = $1
+     ${periodCondition}
+     ORDER BY created_at ASC`,
+    params
+  );
+  return result.rows;
+}

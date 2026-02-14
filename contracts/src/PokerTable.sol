@@ -5,17 +5,17 @@ import "./interfaces/IVRFAdapter.sol";
 
 /**
  * @title PokerTable
- * @notice Heads-up Hold'em table with on-chain betting and VRF-driven community cards.
- * @dev MVP: 2 seats, fixed blinds, simplified betting rounds.
+ * @notice 4-player Hold'em table with on-chain betting and VRF-driven community cards.
+ * @dev Supports 4 seats, fixed blinds, simplified betting rounds.
  */
 contract PokerTable {
     // ============ Constants ============
-    uint8 public constant MAX_SEATS = 2;
+    uint8 public constant MAX_SEATS = 4;
     uint256 public constant ACTION_TIMEOUT = 30 minutes;
 
     // ============ Enums ============
     enum GameState {
-        WAITING_FOR_SEATS,  // Waiting for both seats to be filled
+        WAITING_FOR_SEATS,  // Waiting for all seats to be filled
         HAND_INIT,          // Hand starting, blinds to be posted
         BETTING_PRE,        // Pre-flop betting
         WAITING_VRF_FLOP,   // Waiting for VRF to deal flop
@@ -51,7 +51,7 @@ contract PokerTable {
         uint8 actorSeat;             // Seat index that must act next
         uint8 lastAggressor;         // Last seat that raised (for betting round logic)
         uint8 actionsInRound;        // Number of actions in current betting round
-        bool[2] hasActed;            // Whether each seat has acted in this round
+        bool[4] hasActed;            // Whether each seat has acted in this round
     }
 
     // ============ Events ============
@@ -132,7 +132,7 @@ contract PokerTable {
 
     GameState public gameState;
     uint256 public currentHandId;
-    uint8 public buttonSeat; // Dealer button position (0 or 1)
+    uint8 public buttonSeat; // Dealer button position (0..3)
 
     Seat[MAX_SEATS] public seats;
     Hand public currentHand;
@@ -211,7 +211,7 @@ contract PokerTable {
 
     /**
      * @notice Register a seat at the table
-     * @param seatIndex 0 or 1
+     * @param seatIndex 0..3
      * @param owner Address that owns this seat
      * @param operator Address that can submit actions
      * @param buyIn Initial chip stack
@@ -240,10 +240,13 @@ contract PokerTable {
     }
 
     /**
-     * @notice Check if both seats are filled
+     * @notice Check if all seats are filled
      */
-    function bothSeatsFilled() public view returns (bool) {
-        return seats[0].owner != address(0) && seats[1].owner != address(0);
+    function allSeatsFilled() public view returns (bool) {
+        for (uint8 i = 0; i < MAX_SEATS; i++) {
+            if (seats[i].owner == address(0)) return false;
+        }
+        return true;
     }
 
     // ============ Hand Lifecycle ============
@@ -256,11 +259,11 @@ contract PokerTable {
             gameState == GameState.WAITING_FOR_SEATS || gameState == GameState.SETTLED,
             "Cannot start hand now"
         );
-        require(bothSeatsFilled(), "Need both seats filled");
+        require(allSeatsFilled(), "Need all seats filled");
 
-        // Both seats must have enough chips for blinds
-        uint8 sbSeat = buttonSeat;
-        uint8 bbSeat = 1 - buttonSeat;
+        // Positions: SB = button+1, BB = button+2
+        uint8 sbSeat = (buttonSeat + 1) % MAX_SEATS;
+        uint8 bbSeat = (buttonSeat + 2) % MAX_SEATS;
         require(seats[sbSeat].stack >= smallBlind, "SB seat has insufficient stack");
         require(seats[bbSeat].stack >= bigBlind, "BB seat has insufficient stack");
 
@@ -287,15 +290,18 @@ contract PokerTable {
 
         uint256 initialPot = smallBlind + bigBlind;
 
+        // Pre-flop: UTG (seat after BB) acts first
+        uint8 firstActor = (buttonSeat + 3) % MAX_SEATS;
+
         // Initialize hand state
         currentHand = Hand({
             handId: currentHandId,
             pot: initialPot,
             currentBet: bigBlind,
-            actorSeat: sbSeat, // SB acts first pre-flop in heads-up
+            actorSeat: firstActor,
             lastAggressor: bbSeat, // BB is considered the aggressor (posted blind)
             actionsInRound: 0,
-            hasActed: [false, false]
+            hasActed: [false, false, false, false]
         });
 
         gameState = GameState.BETTING_PRE;
@@ -333,9 +339,13 @@ contract PokerTable {
             currentHand.pot
         );
 
-        // Opponent wins immediately
-        uint8 winnerSeat = 1 - seatIndex;
-        _settleHand(winnerSeat);
+        // Check if only one active player remains
+        (uint8 activeCount, uint8 lastActive) = _countActivePlayers();
+        if (activeCount == 1) {
+            _settleHand(lastActive);
+        } else {
+            _advanceAction(seatIndex);
+        }
     }
 
     /**
@@ -433,8 +443,12 @@ contract PokerTable {
         currentHand.lastAggressor = seatIndex;
         currentHand.hasActed[seatIndex] = true;
 
-        // Reset opponent's hasActed since they need to respond to the raise
-        currentHand.hasActed[1 - seatIndex] = false;
+        // Reset all other active players' hasActed since they need to respond
+        for (uint8 i = 0; i < MAX_SEATS; i++) {
+            if (i != seatIndex && seats[i].isActive) {
+                currentHand.hasActed[i] = false;
+            }
+        }
 
         emit ActionTaken(
             currentHandId,
@@ -493,9 +507,13 @@ contract PokerTable {
                 currentHand.pot
             );
 
-            // Opponent wins immediately
-            uint8 winnerSeat = 1 - seatIndex;
-            _settleHand(winnerSeat);
+            // Check if only one active player remains
+            (uint8 activeCount, uint8 lastActive) = _countActivePlayers();
+            if (activeCount == 1) {
+                _settleHand(lastActive);
+            } else {
+                _advanceAction(seatIndex);
+            }
         }
     }
 
@@ -508,26 +526,52 @@ contract PokerTable {
     }
 
     function _advanceAction(uint8 actorSeat) internal {
-        uint8 opponentSeat = 1 - actorSeat;
-
         // Check if betting round is complete
         if (_isBettingRoundComplete()) {
             _completeBettingRound();
         } else {
-            // Pass action to opponent
-            currentHand.actorSeat = opponentSeat;
+            // Pass action to next active player
+            currentHand.actorSeat = _nextActiveSeat(actorSeat);
         }
     }
 
+    /**
+     * @notice Check if the betting round is complete.
+     * @dev All active players must have acted and matched the current bet.
+     */
     function _isBettingRoundComplete() internal view returns (bool) {
-        // Both players must have acted
-        if (!currentHand.hasActed[0] || !currentHand.hasActed[1]) {
-            return false;
+        for (uint8 i = 0; i < MAX_SEATS; i++) {
+            if (seats[i].isActive) {
+                if (!currentHand.hasActed[i]) return false;
+                if (seats[i].currentBet != currentHand.currentBet) return false;
+            }
         }
-        // Both players must have matched the current bet
-        if (seats[0].currentBet != currentHand.currentBet) return false;
-        if (seats[1].currentBet != currentHand.currentBet) return false;
         return true;
+    }
+
+    /**
+     * @notice Find the next active seat clockwise from the given seat.
+     */
+    function _nextActiveSeat(uint8 fromSeat) internal view returns (uint8) {
+        for (uint8 i = 1; i <= MAX_SEATS; i++) {
+            uint8 next = (fromSeat + i) % MAX_SEATS;
+            if (seats[next].isActive) {
+                return next;
+            }
+        }
+        revert("No active seat found");
+    }
+
+    /**
+     * @notice Count active players and track the last active seat index.
+     */
+    function _countActivePlayers() internal view returns (uint8 count, uint8 lastActive) {
+        for (uint8 i = 0; i < MAX_SEATS; i++) {
+            if (seats[i].isActive) {
+                count++;
+                lastActive = i;
+            }
+        }
     }
 
     function _completeBettingRound() internal {
@@ -550,8 +594,6 @@ contract PokerTable {
 
         if (nextState == GameState.SHOWDOWN) {
             gameState = GameState.SHOWDOWN;
-            // For MVP, we'll need a separate call to settle or auto-settle
-            // In full version, this triggers showdown reveal process
         } else {
             gameState = nextState;
 
@@ -600,8 +642,8 @@ contract PokerTable {
         currentHand.currentBet = 0;
         currentHand.actionsInRound = 0;
 
-        // Post-flop: non-button (BB) acts first
-        currentHand.actorSeat = 1 - buttonSeat;
+        // Post-flop: first active player after button acts first
+        currentHand.actorSeat = _firstActiveAfterButton();
 
         // Determine next betting state based on current VRF state
         GameState nextBettingState;
@@ -616,6 +658,20 @@ contract PokerTable {
         gameState = nextBettingState;
         actionDeadline = block.timestamp + ACTION_TIMEOUT;
         pendingVRFRequestId = 0;
+    }
+
+    /**
+     * @notice Find first active player after the button (clockwise).
+     * @dev Used for post-flop action order.
+     */
+    function _firstActiveAfterButton() internal view returns (uint8) {
+        for (uint8 i = 1; i <= MAX_SEATS; i++) {
+            uint8 seat = (buttonSeat + i) % MAX_SEATS;
+            if (seats[seat].isActive) {
+                return seat;
+            }
+        }
+        revert("No active player");
     }
 
     /**
@@ -660,7 +716,7 @@ contract PokerTable {
 
         // Prepare for next hand
         gameState = GameState.SETTLED;
-        buttonSeat = 1 - buttonSeat; // Move button
+        buttonSeat = (buttonSeat + 1) % MAX_SEATS; // Move button clockwise
 
         // Reset hand state
         currentHand.pot = 0;
@@ -686,7 +742,7 @@ contract PokerTable {
      * @notice Submit hole card commitment for a seat
      * @dev Should be called by dealer after dealing hole cards
      * @param handId The hand ID for which to submit commitment
-     * @param seatIndex The seat index (0 or 1)
+     * @param seatIndex The seat index (0..3)
      * @param commitment The keccak256 hash of (handId, seatIndex, card1, card2, salt)
      */
     function submitHoleCommit(

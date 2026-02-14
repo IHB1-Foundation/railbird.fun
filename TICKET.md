@@ -16,6 +16,132 @@
 
 ---
 
+# M9 — Real-Play Hardening (No Mock Runtime)
+
+## T-0901 Expand table from heads-up to 4 playable seats (P0)
+- Status: [x] DONE
+- Depends on: M1, M2, M7
+- Goal: Support 4 real agents playing on one table (not 2-seat heads-up only).
+- Tasks:
+    - Upgrade `PokerTable` seat model from fixed 2 seats to 4 seats.
+    - Generalize betting turn progression, blind rotation, and hand lifecycle for 4 active seats.
+    - Update all contract checks/events/tests that currently assume seat `0/1` or `MAX_SEATS=2`.
+    - Preserve one-action-per-block and timeout invariants.
+- Acceptance:
+    - Foundry tests cover 4-seat hand lifecycle end-to-end.
+    - All seat-index assumptions (`0..1`) removed from production contract code.
+    - At least 4 registered seats can post blinds, act, and settle without manual patching.
+
+### DONE Notes (T-0901)
+**Key files changed:**
+- `contracts/src/PokerTable.sol` - Upgraded from 2-seat to 4-seat: MAX_SEATS=4, generalized blind rotation (SB=button+1, BB=button+2, UTG=button+3), multi-player betting round logic, fold handling for 3+ players, button rotation mod 4
+- `contracts/test/PokerTable.t.sol` - Rewritten for 4 seats: 76 tests covering seat registration, hand lifecycle, 4-player preflop/postflop action order, fold cascades, VRF, timeouts, one-action-per-block, commit/reveal for all 4 seats
+
+**How to run/test:**
+```bash
+cd contracts && forge test --match-contract PokerTableTest -vv   # Runs all 76 tests
+forge test -vv   # Runs all 211 tests (PokerTable + PlayerRegistry + PlayerVault)
+```
+
+**Manual verification:**
+1. Run `forge test -vv` in contracts/ - all 211 tests pass
+2. Key 4-seat tests demonstrate:
+   - `test_FourSeat_PreflopActionOrder`: UTG(3) → BTN(0) → SB(1) → BB(2)
+   - `test_FourSeat_PostflopActionOrder`: SB(1) → BB(2) → UTG(3) → BTN(0)
+   - `test_FourSeat_FoldSkipsInTurnOrder`: Folded players skipped in action order
+   - `test_FourSeat_MultipleFoldsMidRound`: Multiple folds leave 2 active, round completes
+   - `test_FourSeat_ButtonRotatesFullCycle`: Button rotates 0→1→2→3→0
+   - `test_FourSeat_PostflopWithFoldedPlayers`: Post-flop with only 2 remaining active
+   - `test_FourSeat_FoldCompletesRoundIfAllActed`: Fold triggers round completion if all remaining active players have acted
+   - `test_FullShowdownWithReveal_AllFourSeats`: Commit/reveal for all 4 seats
+
+**Contract changes:**
+- `MAX_SEATS` changed from 2 to 4
+- `Hand.hasActed` changed from `bool[2]` to `bool[4]`
+- `bothSeatsFilled()` replaced with `allSeatsFilled()` (loops all 4 seats)
+- `startHand()`: Blind positions generalized (SB=button+1, BB=button+2, UTG=button+3 acts first preflop)
+- `fold()`: Counts active players; settles only when 1 remains, otherwise advances action
+- `_advanceAction()`: Uses `_nextActiveSeat()` to find next active clockwise
+- `_isBettingRoundComplete()`: Checks all active seats (not just 0 and 1)
+- `raise()`: Resets `hasActed` for all other active seats (not just `1 - seatIndex`)
+- `fulfillVRF()`: Uses `_firstActiveAfterButton()` for post-flop first actor
+- `_settleHand()`: Button rotates `(button + 1) % 4` (not `1 - button`)
+- `forceTimeout()`: Auto-fold checks if 1 player remains or advances action
+- New helpers: `_nextActiveSeat()`, `_countActivePlayers()`, `_firstActiveAfterButton()`
+- All hardcoded `0/1` seat assumptions removed from production code
+
+## T-0902 Real showdown settlement (remove pseudo-random winner) (P0)
+- Status: [ ] TODO
+- Depends on: T-0901, M2
+- Goal: Determine winners from actual cards, not keeper heuristic.
+- Tasks:
+    - Implement hand evaluation at showdown from community + revealed hole cards.
+    - Replace `settleShowdown(winnerSeat)` manual winner input with verifiable settlement flow.
+    - Update keeper to only trigger progression/liveness, not choose winners.
+    - Add tie/pot-split handling and missing-reveal policy.
+- Acceptance:
+    - Keeper no longer contains pseudo-random or fixed winner logic.
+    - Contract tests verify winner correctness for representative hand ranks and tie cases.
+    - Showdown outcome is reproducible from revealed card data.
+
+## T-0903 Replace mock VRF in runtime path with production adapter (P0)
+- Status: [ ] TODO
+- Depends on: M1
+- Goal: Remove mock randomness dependency from real deployments.
+- Tasks:
+    - Implement production VRF adapter contract and deployment flow.
+    - Keep `MockVRFAdapter` only for local tests/dev.
+    - Add environment/network gating so prod/testnet runbooks never use mock adapter.
+    - Add fallback/retry policy for delayed VRF fulfillment.
+- Acceptance:
+    - Testnet deployment docs use production VRF adapter only.
+    - Runtime config validation fails if mock adapter is configured on non-local environments.
+    - End-to-end hand progression works with asynchronous real VRF callbacks.
+
+## T-0904 Remove non-real runtime fallbacks in services (P0)
+- Status: [ ] TODO
+- Depends on: M4
+- Goal: Services should fail fast on missing real dependencies.
+- Tasks:
+    - Ensure indexer/ownerview startup requires explicit production-safe configuration.
+    - Remove misleading messages implying mock-data fallback on runtime failure.
+    - Require explicit `JWT_SECRET` (no insecure implicit default in non-local mode).
+    - Add health checks that report dependency readiness (DB/RPC) as hard failures.
+- Acceptance:
+    - Service startup fails when required dependencies are unavailable.
+    - No runtime path returns fabricated/mock API data.
+    - Health endpoints clearly distinguish ready vs degraded states.
+
+## T-0905 OwnerView durability + secure dealer endpoints (P1)
+- Status: [ ] TODO
+- Depends on: M2, T-0901
+- Goal: Make hole-card and reveal pipeline durable and production-safe.
+- Tasks:
+    - Replace in-memory hole-card store with persistent storage.
+    - Generalize storage/query paths for 4 seats.
+    - Protect `/dealer/*` privileged endpoints with operator auth.
+    - Add retention/cleanup policy tied to settlement lifecycle.
+- Acceptance:
+    - Restarting OwnerView does not lose active hand card records.
+    - Dealer/reveal endpoints reject unauthorized calls.
+    - 4-seat hole-card retrieval works with owner ACL.
+
+## T-0906 Four-agent orchestration + E2E validation (P0)
+- Status: [ ] TODO
+- Depends on: T-0901, T-0902, T-0903, T-0904, T-0905
+- Goal: Run 4 autonomous agent processes that play real hands continuously.
+- Tasks:
+    - Add run scripts/config (`docker-compose` or process runner) for 4 agent bots.
+    - Add env layout for `AGENT_1..4` operator keys and seat ownership mapping.
+    - Update README/demo script to use 4 agents as the default real-play scenario.
+    - Add E2E smoke test that validates actions/settlements/indexed outputs across 4 agents.
+- Acceptance:
+    - One command starts services + 4 agent bots on local/testnet.
+    - E2E test confirms multiple hands complete with real settlements and indexer updates.
+    - Docs no longer describe 2-agent-only demo as target architecture.
+
+---
+
 # M0 — Scaffolding & Config
 
 ## T-0001 Monorepo scaffolding + basic tooling

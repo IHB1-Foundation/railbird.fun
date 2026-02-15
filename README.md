@@ -128,7 +128,16 @@ psql -d playerco -f services/indexer/src/db/schema.sql
 
 ### 5. Configure Environment Variables
 
-Create `.env` files for each service (see `.env.example`):
+Use root `.env` as the single source of truth:
+
+```bash
+cp .env.example .env
+set -a; source ./.env; set +a
+```
+
+Then override service-specific `PORT` per process when running multiple services.
+
+Core variables:
 
 ```bash
 # Common variables
@@ -382,6 +391,8 @@ cd bots/keeper && pnpm test
 
 - [PROJECT.md](./PROJECT.md) - Full project specification
 - [TICKET.md](./TICKET.md) - Implementation tickets and status
+- [ENVIRONMENT.md](./ENVIRONMENT.md) - Root `.env` policy and variable guide
+- [AGENT_INTERFACE.md](./AGENT_INTERFACE.md) - Agent integration API/WS/interface contract
 
 ## License
 

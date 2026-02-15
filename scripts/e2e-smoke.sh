@@ -24,6 +24,14 @@ YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
+# Load root .env if present
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+if [ -f "$ROOT_DIR/.env" ]; then
+  set -a
+  . "$ROOT_DIR/.env"
+  set +a
+fi
+
 NUM_HANDS=${1:-3}
 RPC_URL=${RPC_URL:-http://localhost:8545}
 CHAIN_ID=31337

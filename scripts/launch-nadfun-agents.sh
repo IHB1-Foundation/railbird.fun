@@ -1,0 +1,226 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Launch nad.fun tokens for 4 agents, deploy vaults, and register in PlayerRegistry.
+# This script is safe-by-default:
+# - It runs a strict preflight balance check before sending any tx.
+# - If balances are insufficient, it exits without broadcasting.
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+if [ -f "$ROOT_DIR/.env" ]; then
+  set -a
+  . "$ROOT_DIR/.env"
+  set +a
+fi
+
+require_env() {
+  local k="$1"
+  if [ -z "${!k:-}" ]; then
+    echo "Missing required env: $k" >&2
+    exit 1
+  fi
+}
+
+require_cmd() {
+  local c="$1"
+  if ! command -v "$c" >/dev/null 2>&1; then
+    echo "Missing required command: $c" >&2
+    exit 1
+  fi
+}
+
+require_cmd cast
+require_cmd forge
+require_cmd jq
+require_cmd node
+
+require_env RPC_URL
+require_env NADFUN_BONDING_ROUTER_ADDRESS
+require_env NADFUN_LENS_ADDRESS
+require_env PLAYER_REGISTRY_ADDRESS
+require_env POKER_TABLE_ADDRESS
+require_env DEPLOYER_PRIVATE_KEY
+require_env AGENT_1_OPERATOR_PRIVATE_KEY
+require_env AGENT_2_OPERATOR_PRIVATE_KEY
+require_env AGENT_3_OPERATOR_PRIVATE_KEY
+require_env AGENT_4_OPERATOR_PRIVATE_KEY
+
+AGENT_KEYS=(
+  "$AGENT_1_OPERATOR_PRIVATE_KEY"
+  "$AGENT_2_OPERATOR_PRIVATE_KEY"
+  "$AGENT_3_OPERATOR_PRIVATE_KEY"
+  "$AGENT_4_OPERATOR_PRIVATE_KEY"
+)
+
+AGENT_NAMES=(
+  "${AGENT_1_NAME:-Railbird Player A}"
+  "${AGENT_2_NAME:-Railbird Player B}"
+  "${AGENT_3_NAME:-Railbird Player C}"
+  "${AGENT_4_NAME:-Railbird Player D}"
+)
+
+AGENT_SYMBOLS=(
+  "${AGENT_1_SYMBOL:-RBPA}"
+  "${AGENT_2_SYMBOL:-RBPB}"
+  "${AGENT_3_SYMBOL:-RBPC}"
+  "${AGENT_4_SYMBOL:-RBPD}"
+)
+
+AGENT_CODES=("A" "B" "C" "D")
+
+TOKEN_METADATA_BASE_URL="${TOKEN_METADATA_BASE_URL:-https://be.railbird.fun/api/token-metadata}"
+TOKEN_METADATA_BASE_URL="${TOKEN_METADATA_BASE_URL%/}"
+
+AGENT_TOKEN_URIS=(
+  "${AGENT_1_TOKEN_URI:-$TOKEN_METADATA_BASE_URL/player-a.json}"
+  "${AGENT_2_TOKEN_URI:-$TOKEN_METADATA_BASE_URL/player-b.json}"
+  "${AGENT_3_TOKEN_URI:-$TOKEN_METADATA_BASE_URL/player-c.json}"
+  "${AGENT_4_TOKEN_URI:-$TOKEN_METADATA_BASE_URL/player-d.json}"
+)
+
+# Default initial buy is 0 MON to minimize launch cost.
+# You can override with INITIAL_BUY_WEI per run.
+INITIAL_BUY_WEI="${INITIAL_BUY_WEI:-0}"
+
+CURVE="$(cast call "$NADFUN_BONDING_ROUTER_ADDRESS" "curve()(address)" --rpc-url "$RPC_URL")"
+DEPLOY_FEE_WEI="$(cast call "$CURVE" "feeConfig()(uint256,uint256,uint24)" --rpc-url "$RPC_URL" | awk 'NR==1{print $1}')"
+TOTAL_REQUIRED_WEI="$(node -e 'console.log((BigInt(process.argv[1]) + BigInt(process.argv[2])).toString())' "$DEPLOY_FEE_WEI" "$INITIAL_BUY_WEI")"
+
+echo "=== nad.fun Agent Launch ==="
+echo "RPC_URL=$RPC_URL"
+echo "BondingRouter=$NADFUN_BONDING_ROUTER_ADDRESS"
+echo "Curve=$CURVE"
+echo "Deploy fee (wei)=$DEPLOY_FEE_WEI"
+echo "Initial buy (wei)=$INITIAL_BUY_WEI"
+echo "Required per agent (wei)=$TOTAL_REQUIRED_WEI"
+echo
+
+echo "Preflight balance check..."
+for i in 0 1 2 3; do
+  addr="$(cast wallet address --private-key "${AGENT_KEYS[$i]}")"
+  bal="$(cast balance "$addr" --rpc-url "$RPC_URL")"
+  ok="$(node -e 'console.log(BigInt(process.argv[1]) >= BigInt(process.argv[2]) ? "yes" : "no")' "$bal" "$TOTAL_REQUIRED_WEI")"
+  echo "Agent $((i+1)) $addr balance=$bal enough=$ok"
+  if [ "$ok" != "yes" ]; then
+    short="$(node -e 'const b=BigInt(process.argv[1]);const r=BigInt(process.argv[2]);console.log((r>b?r-b:0n).toString())' "$bal" "$TOTAL_REQUIRED_WEI")"
+    echo "Insufficient balance for Agent $((i+1)). Shortfall (wei)=$short" >&2
+    echo "Aborting before any transaction broadcast." >&2
+    exit 1
+  fi
+done
+
+CREATE_SIG="$(cast keccak "CurveCreate(address,address,address,string,string,string,uint256,uint256,uint256)")"
+VAULT_CREATION_BYTECODE="$(cd "$ROOT_DIR/contracts" && forge inspect src/PlayerVault.sol:PlayerVault bytecode)"
+if [ -z "$VAULT_CREATION_BYTECODE" ] || [ "$VAULT_CREATION_BYTECODE" = "0x" ]; then
+  echo "Failed to load PlayerVault creation bytecode" >&2
+  exit 1
+fi
+
+deploy_player_vault() {
+  local token="$1"
+  local owner="$2"
+  local ctor_data payload deploy_tx_json tx_hash deploy_receipt_json vault
+
+  ctor_data="$(cast abi-encode "constructor(address,address)" "$token" "$owner")"
+  payload="0x${VAULT_CREATION_BYTECODE#0x}${ctor_data#0x}"
+
+  deploy_tx_json="$(cast send \
+    --rpc-url "$RPC_URL" \
+    --private-key "$DEPLOYER_PRIVATE_KEY" \
+    --json \
+    --create "$payload")"
+
+  tx_hash="$(echo "$deploy_tx_json" | jq -r '.transactionHash // .hash')"
+  if [ -z "$tx_hash" ] || [ "$tx_hash" = "null" ]; then
+    echo "Failed to parse vault deployment tx hash" >&2
+    exit 1
+  fi
+
+  deploy_receipt_json="$(cast receipt "$tx_hash" --rpc-url "$RPC_URL" --json)"
+  vault="$(echo "$deploy_receipt_json" | jq -r '.contractAddress')"
+  if [ -z "$vault" ] || [ "$vault" = "null" ] || [ "$vault" = "0x0000000000000000000000000000000000000000" ]; then
+    echo "Failed to parse deployed vault address from receipt tx=$tx_hash" >&2
+    exit 1
+  fi
+
+  echo "$vault"
+}
+
+OUT_FILE="$ROOT_DIR/scripts/nadfun-agents.generated.env"
+: > "$OUT_FILE"
+echo "# Generated by scripts/launch-nadfun-agents.sh" >> "$OUT_FILE"
+echo "# $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> "$OUT_FILE"
+
+echo
+echo "Launching tokens + deploying vaults + registering agents..."
+for i in 0 1 2 3; do
+  key="${AGENT_KEYS[$i]}"
+  owner="$(cast wallet address --private-key "$key")"
+  name="${AGENT_NAMES[$i]}"
+  symbol="${AGENT_SYMBOLS[$i]}"
+  token_uri="${AGENT_TOKEN_URIS[$i]}"
+
+  if [ "$INITIAL_BUY_WEI" = "0" ]; then
+    amount_out="0"
+  else
+    amount_out="$(cast call "$NADFUN_LENS_ADDRESS" "getInitialBuyAmountOut(uint256)(uint256)" "$INITIAL_BUY_WEI" --rpc-url "$RPC_URL" | awk '{print $1}')"
+  fi
+
+  salt="$(cast keccak "railbird-agent-$((i+1))-$(date +%s)-$RANDOM")"
+  echo
+  echo "[Agent $((i+1))] create token: $name ($symbol)"
+
+  create_tx_json="$(cast send "$NADFUN_BONDING_ROUTER_ADDRESS" \
+    "create((string,string,string,uint256,bytes32,uint8))" \
+    "(\"$name\",\"$symbol\",\"$token_uri\",$amount_out,$salt,0)" \
+    --value "$TOTAL_REQUIRED_WEI" \
+    --rpc-url "$RPC_URL" \
+    --private-key "$key" \
+    --json)"
+
+  tx_hash="$(echo "$create_tx_json" | jq -r '.transactionHash')"
+  receipt_json="$(cast receipt "$tx_hash" --rpc-url "$RPC_URL" --json)"
+  token_topic="$(echo "$receipt_json" | jq -r --arg sig "$CREATE_SIG" '.logs[] | select((.topics[0]|ascii_downcase)==($sig|ascii_downcase)) | .topics[2]' | head -n1)"
+  pool_topic="$(echo "$receipt_json" | jq -r --arg sig "$CREATE_SIG" '.logs[] | select((.topics[0]|ascii_downcase)==($sig|ascii_downcase)) | .topics[3]' | head -n1)"
+
+  if [ -z "$token_topic" ] || [ "$token_topic" = "null" ]; then
+    echo "Failed to parse token address from CurveCreate event for tx=$tx_hash" >&2
+    exit 1
+  fi
+
+  token="0x${token_topic:26}"
+  pool="0x${pool_topic:26}"
+  echo "[Agent $((i+1))] token=$token pool=$pool tx=$tx_hash"
+
+  vault="$(deploy_player_vault "$token" "$owner")"
+  echo "[Agent $((i+1))] vault=$vault"
+
+  code="${AGENT_CODES[$i]}"
+  meta_uri="railbird://agent/${code}?codename=${symbol}"
+  cast send "$PLAYER_REGISTRY_ADDRESS" \
+    "registerAgent(address,address,address,address,address,string)" \
+    "$token" "$vault" "$POKER_TABLE_ADDRESS" "$owner" "$owner" "$meta_uri" \
+    --rpc-url "$RPC_URL" \
+    --private-key "$DEPLOYER_PRIVATE_KEY" >/dev/null
+  echo "[Agent $((i+1))] registered in PlayerRegistry"
+
+  cast send "$vault" "authorizeTable(address)" "$POKER_TABLE_ADDRESS" \
+    --rpc-url "$RPC_URL" \
+    --private-key "$key" >/dev/null
+  cast send "$vault" "initialize()" \
+    --rpc-url "$RPC_URL" \
+    --private-key "$key" >/dev/null
+  echo "[Agent $((i+1))] vault authorized + initialized"
+
+  n=$((i+1))
+  {
+    echo "AGENT_${n}_TOKEN_ADDRESS=$token"
+    echo "AGENT_${n}_VAULT_ADDRESS=$vault"
+    echo "AGENT_${n}_OWNER_ADDRESS=$owner"
+  } >> "$OUT_FILE"
+done
+
+echo
+echo "Done. Generated:"
+echo "  $OUT_FILE"
+cat "$OUT_FILE"

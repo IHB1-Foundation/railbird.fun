@@ -32,6 +32,167 @@ import type {
 
 export const router: RouterType = Router();
 
+type PlayerKey = "a" | "b" | "c" | "d";
+
+interface TokenProfile {
+  key: PlayerKey;
+  slug: string;
+  player: "A" | "B" | "C" | "D";
+  name: string;
+  symbol: string;
+  archetype: string;
+  aggression: string;
+  riskProfile: string;
+  style: string;
+  description: string;
+  palette: {
+    bgA: string;
+    bgB: string;
+    accent: string;
+    text: string;
+  };
+}
+
+const TOKEN_PROFILES: Record<PlayerKey, TokenProfile> = {
+  a: {
+    key: "a",
+    slug: "player-a",
+    player: "A",
+    name: "Railbird Player A",
+    symbol: "RBPA",
+    archetype: "Tight",
+    aggression: "0.15",
+    riskProfile: "Low",
+    style: "Selective preflop entries and value-first betting lines.",
+    description:
+      "Disciplined tight profile focused on high-probability spots, bankroll protection, and low-variance play.",
+    palette: {
+      bgA: "#0f172a",
+      bgB: "#1e293b",
+      accent: "#22d3ee",
+      text: "#e2e8f0",
+    },
+  },
+  b: {
+    key: "b",
+    slug: "player-b",
+    player: "B",
+    name: "Railbird Player B",
+    symbol: "RBPB",
+    archetype: "Balanced",
+    aggression: "0.35",
+    riskProfile: "Medium",
+    style: "Adaptive tempo with controlled pressure and robust showdown paths.",
+    description:
+      "Balanced profile that blends positional pressure and pot control, aiming for steady edge across streets.",
+    palette: {
+      bgA: "#052e16",
+      bgB: "#14532d",
+      accent: "#4ade80",
+      text: "#dcfce7",
+    },
+  },
+  c: {
+    key: "c",
+    slug: "player-c",
+    player: "C",
+    name: "Railbird Player C",
+    symbol: "RBPC",
+    archetype: "Loose",
+    aggression: "0.60",
+    riskProfile: "High",
+    style: "Wider ranges, frequent probes, and momentum-driven turn pressure.",
+    description:
+      "Loose profile that opens wider and contests more pots, trading variance for higher upside in active games.",
+    palette: {
+      bgA: "#172554",
+      bgB: "#1d4ed8",
+      accent: "#60a5fa",
+      text: "#dbeafe",
+    },
+  },
+  d: {
+    key: "d",
+    slug: "player-d",
+    player: "D",
+    name: "Railbird Player D",
+    symbol: "RBPD",
+    archetype: "Maniac",
+    aggression: "0.85",
+    riskProfile: "Very High",
+    style: "Relentless pressure, high-bet frequency, and volatility-first strategy.",
+    description:
+      "Maniac profile optimized for maximum table pressure, forcing difficult decisions and embracing volatility.",
+    palette: {
+      bgA: "#450a0a",
+      bgB: "#991b1b",
+      accent: "#f97316",
+      text: "#fee2e2",
+    },
+  },
+};
+
+function getBaseUrl(req: Request): string {
+  return `${req.protocol}://${req.get("host")}`;
+}
+
+function getProfileByParam(raw: string | undefined): TokenProfile | null {
+  if (!raw) return null;
+  const normalized = raw.toLowerCase().replace(".json", "").replace(".svg", "").replace("player-", "");
+  if (normalized === "a" || normalized === "b" || normalized === "c" || normalized === "d") {
+    return TOKEN_PROFILES[normalized];
+  }
+  return null;
+}
+
+function buildTokenMetadata(req: Request, profile: TokenProfile) {
+  const baseUrl = getBaseUrl(req);
+  const imageUrl = `${baseUrl}/api/token-assets/${profile.slug}.svg`;
+  const externalUrl = `${baseUrl}/agent/${profile.key}`;
+  return {
+    name: profile.name,
+    symbol: profile.symbol,
+    description: profile.description,
+    image: imageUrl,
+    external_url: externalUrl,
+    attributes: [
+      { trait_type: "Project", value: "Railbird" },
+      { trait_type: "Role", value: "Poker Agent" },
+      { trait_type: "Player", value: profile.player },
+      { trait_type: "Archetype", value: profile.archetype },
+      { trait_type: "Aggression", value: profile.aggression },
+      { trait_type: "Risk Profile", value: profile.riskProfile },
+      { trait_type: "Play Style", value: profile.style },
+    ],
+  };
+}
+
+function buildTokenSvg(profile: TokenProfile): string {
+  const { bgA, bgB, accent, text } = profile.palette;
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1200" role="img" aria-label="${profile.name}">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="${bgA}"/>
+      <stop offset="100%" stop-color="${bgB}"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="70%" cy="30%" r="45%">
+      <stop offset="0%" stop-color="${accent}" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="${accent}" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1200" height="1200" fill="url(#bg)"/>
+  <rect width="1200" height="1200" fill="url(#glow)"/>
+  <g>
+    <circle cx="600" cy="600" r="310" fill="none" stroke="${accent}" stroke-width="14" opacity="0.85"/>
+    <circle cx="600" cy="600" r="250" fill="none" stroke="${text}" stroke-width="2" opacity="0.35"/>
+  </g>
+  <text x="600" y="590" fill="${text}" font-size="220" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-weight="800" text-anchor="middle">${profile.player}</text>
+  <text x="600" y="700" fill="${accent}" font-size="56" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-weight="700" text-anchor="middle">${profile.symbol}</text>
+  <text x="600" y="770" fill="${text}" opacity="0.9" font-size="38" font-family="system-ui, -apple-system, Segoe UI, sans-serif" text-anchor="middle">${profile.archetype} - Aggression ${profile.aggression}</text>
+</svg>`;
+}
+
 // ============ Health Check ============
 
 router.get("/health", async (_req, res) => {
@@ -65,6 +226,30 @@ router.get("/health", async (_req, res) => {
     },
     websocket: wsStats,
   });
+});
+
+// ============ Token Metadata / Assets ============
+
+router.get("/token-metadata/:player", (req, res) => {
+  const profile = getProfileByParam(req.params.player);
+  if (!profile) {
+    return res.status(404).json({ error: "Unknown player metadata" });
+  }
+
+  res.setHeader("Content-Type", "application/json; charset=utf-8");
+  res.setHeader("Cache-Control", "public, max-age=300");
+  res.json(buildTokenMetadata(req, profile));
+});
+
+router.get("/token-assets/:player", (req, res) => {
+  const profile = getProfileByParam(req.params.player);
+  if (!profile) {
+    return res.status(404).json({ error: "Unknown player asset" });
+  }
+
+  res.setHeader("Content-Type", "image/svg+xml; charset=utf-8");
+  res.setHeader("Cache-Control", "public, max-age=300");
+  res.send(buildTokenSvg(profile));
 });
 
 // ============ Tables ============

@@ -1,142 +1,86 @@
-# PlayerCo - Hackathon Submission Checklist
+# Railbird - Submission Summary
 
-## Project Overview
+## Project Description
+Railbird is a Monad-based on-chain poker AI system where each agent is operated like a tokenized strategy profile.
 
-**PlayerCo** turns a poker-playing AI agent into an on-chain "company" with:
-- Wallet-based identity (no email/password)
-- Public spectating + owner-only hole cards
-- In-app nad.fun trading
-- Per-hand accretive-only treasury rebalancing
+Core product features:
+- Wallet-native identity (no email/password accounts)
+- Public table spectating with real-time updates
+- Owner-only hole-card visibility with strict access control
+- In-app nad.fun trading (buy/sell with quote, slippage, and router-stage handling)
+- Per-hand treasury rebalancing logic designed to be accretive-only
 
-## Pre-Submission Checklist
+System components:
+- Smart contracts: `PokerTable`, `PlayerRegistry`, `PlayerVault`, `ProductionVRFAdapter`, `RailwayChip`
+- Services: `OwnerView` (auth + ACL), `Indexer` (event ingestion + REST/WS)
+- Bots: `AgentBot` (actions), `KeeperBot` (liveness/timeouts/settlement helpers)
+- Web app: lobby/table/agent/leaderboard/trading pages
 
-### Code Quality
-- [x] All packages build successfully (`pnpm build`)
-- [x] All tests pass (`pnpm test`)
-- [x] No hardcoded addresses - uses chain config system
-- [x] TypeScript strict mode enabled
-- [x] No credentials in repository
+## Monad Integration
+- Chain: Monad Testnet
+- Chain ID: `10143`
+- RPC: `https://testnet-rpc.monad.xyz`
 
-### Smart Contracts (/contracts)
-- [x] PokerTable - Heads-up Hold'em with VRF
-- [x] PlayerRegistry - Agent token mapping
-- [x] PlayerVault - Treasury with accretive-only rebalancing
-- [x] MockVRFAdapter - For local testing
-- [x] 200+ Foundry tests passing
+Protocol flow on Monad:
+- Table state and actions are executed on `PokerTable`
+- Agent-to-owner/operator mapping is resolved by `PlayerRegistry`
+- Vault and rebalancing state are managed by `PlayerVault`
+- Randomness for hand progression uses `ProductionVRFAdapter`
+- Off-chain services index events and expose APIs/WebSockets for real-time UI
 
-### Backend Services
-- [x] OwnerView - Wallet auth + hole card ACL (109 tests)
-- [x] Indexer - Event ingestion + REST + WebSocket (50 tests)
-- [x] Dealer service - Card dealing with commitments
+nad.fun integration approach (as of 2026-02-15):
+- Native nad.fun launch flow is not reliably available on Monad testnet.
+- For testnet demo and end-to-end validation, we deployed a nad.fun-compatible router/lens pair.
+- The app keeps the same quote/trade flow (`buy/sell/getTokenInfo/getInitialBuyAmountOut`) against this compatible interface.
 
-### Frontend (/apps/web)
-- [x] Public pages - Lobby, Table viewer, Agent, Leaderboard
-- [x] Owner pages - My Agents, Table with hole cards
-- [x] nad.fun trading widget - Buy/sell with slippage control
-- [x] Real-time updates via WebSocket
+## nad.fun Token Metadata Strategy
+- Each player token uses a dedicated token profile:
+  - `Railbird Player A` (Tight, aggression `0.15`)
+  - `Railbird Player B` (Balanced, aggression `0.35`)
+  - `Railbird Player C` (Loose, aggression `0.60`)
+  - `Railbird Player D` (Maniac, aggression `0.85`)
+- `tokenURI` points to backend-served metadata JSON:
+  - `/api/token-metadata/player-a.json`
+  - `/api/token-metadata/player-b.json`
+  - `/api/token-metadata/player-c.json`
+  - `/api/token-metadata/player-d.json`
+- Metadata JSON includes style narrative and structured attributes (`Archetype`, `Aggression`, `Risk Profile`, `Play Style`).
+- `image` inside metadata points to backend-served SVG logos:
+  - `/api/token-assets/player-a.svg`
+  - `/api/token-assets/player-b.svg`
+  - `/api/token-assets/player-c.svg`
+  - `/api/token-assets/player-d.svg`
 
-### Bots
-- [x] AgentBot - Automated poker play (17 tests)
-- [x] KeeperBot - Liveness + rebalancing (13 tests)
+## Associated Addresses
+Environment snapshot source: root `.env` (Monad Testnet deployment)
 
-### Documentation
-- [x] README.md - Comprehensive setup guide
-- [x] PROJECT.md - Full specification
-- [x] TICKET.md - Implementation status
-- [x] Demo script - `/scripts/demo.sh`
+- `POKER_TABLE_ADDRESS`: `0xC5d4Ad9ce78447501024ED699842d267A9D77a58`
+- `PLAYER_REGISTRY_ADDRESS`: `0x2b85AF079eb1a86912b2c79e790759018641fFd4`
+- `PLAYER_VAULT_ADDRESS`: `0xf434455eF0Dd722dec4f9caBFB5e67Ea26332C96`
+- `VRF_ADAPTER_ADDRESS`: `0xEa22C8FB76b4C26C4cb94c1d7a879abd694a70b0`
+- `RCHIP_TOKEN_ADDRESS`: `0x66e817138F285e59109b408a04a5Ca5B3Cb07cdf`
+- `NADFUN_LENS_ADDRESS` (compat): `0xd2F5843b64329D6A296A4e6BB05BA2a9BD3816F8`
+- `NADFUN_BONDING_ROUTER_ADDRESS` (compat): `0xa69d9F9B3D64bdD781cB4351E071FBA5DC43018d`
+- `NADFUN_DEX_ROUTER_ADDRESS` (compat): `0xa69d9F9B3D64bdD781cB4351E071FBA5DC43018d`
+- `WMON_ADDRESS`: `0x5a4E0bFDeF88C9032CB4d24338C5EB3d3870BfDd`
 
-## Demo Flow
+Launched player tokens and vaults (compat flow):
+- `Railbird Player A` token: `0x53afee4f302f2dd8b88d5f211ae9d9fb369578ff`
+- `Railbird Player A` vault: `0x395b21d69e95cd4c5072b13fb1f457c1c8d6305e`
+- `Railbird Player B` token: `0x9287b7e5dcd97e1328cba37bb5b0b2e00ec0b056`
+- `Railbird Player B` vault: `0x928f1921a5e3daefd3220dc79855d3a602a459e8`
+- `Railbird Player C` token: `0xcf76ea8e95fb216d8e875af6092047ef3a5d9b80`
+- `Railbird Player C` vault: `0xfdaeda9e10d09da49210e4984e69f782d1c3c10e`
+- `Railbird Player D` token: `0x0d10d8c5b0cda3636d88a9e8fd7e17b6652c45d8`
+- `Railbird Player D` vault: `0x71fd5c29922126a1eaf827dd75cb10e90dd55dba`
 
-### 1. Public Spectating (No Wallet)
-1. Visit http://localhost:3000 (Lobby)
-2. Click any table to view live state
-3. See community cards, pot, stacks, action log
-4. Real-time updates via WebSocket
+## Token Contract Address (Must be live on Nad.Fun)
+Submission field:
+- `Token Contract Address`: `0x53afee4f302f2dd8b88d5f211ae9d9fb369578ff` (Railbird Player A)
 
-### 2. Owner Hole Cards
-1. Connect wallet in header
-2. Click "Sign In" to authenticate
-3. If you own a seat, see your hole cards highlighted
-4. Visit /me to see all your agents
-
-### 3. Settlement
-1. Watch hand play out to completion
-2. See pot distributed to winner
-3. Check leaderboard updates
-4. View NAV history on agent page
-
-### 4. Leaderboard
-1. Visit /leaderboard
-2. Toggle metrics: ROI, PnL, Winrate, MDD
-3. Toggle periods: 24h, 7d, 30d, All
-4. Click agent to view details
-
-### 5. In-App Trading
-1. Visit any agent page
-2. See token stage (Bonding/Locked/Graduated)
-3. Enter buy/sell amount
-4. Set slippage tolerance
-5. Execute trade or fallback to nad.fun
-
-## Security Verification
-
-### Hole Card Protection
-- [ ] `/api/tables/:id` never returns hole cards
-- [ ] WebSocket messages never include hole cards
-- [ ] `/owner/holecards` requires JWT + seat ownership
-- [ ] Non-owner requests return 403
-
-### Treasury Protection
-- [ ] Rebalancing only after settlement
-- [ ] Accretive-only constraint enforced on-chain
-- [ ] Buy: execution price <= NAV per share
-- [ ] Sell: execution price >= NAV per share
-
-### Access Control
-- [ ] Wallet signature required for auth
-- [ ] Operator can act for owner
-- [ ] One action per block enforced
-- [ ] 30-minute timeout enforced
-
-## Testnet Deployment (Optional)
-
-```bash
-# Deploy to Monad testnet
-cd contracts
-
-# Set private key with testnet funds
-export PRIVATE_KEY=0x...
-
-# Deploy contracts
-forge create src/PokerTable.sol:PokerTable \
-  --constructor-args 1 5000000000000000 10000000000000000 <VRF_ADAPTER> \
-  --rpc-url https://testnet-rpc.monad.xyz \
-  --private-key $PRIVATE_KEY
-
-# Update environment variables with deployed addresses
-# Configure nad.fun addresses for testnet
-```
-
-## Known Limitations (MVP)
-
-1. **Showdown winner** - Currently determined by keeper (MVP), production needs hand evaluation
-2. **VRF integration** - Uses mock adapter locally, needs real VRF for production
-3. **Side pots** - Not implemented (heads-up only)
-4. **Hand history** - Basic, could add replay
-5. **Mobile UI** - Desktop-focused
-
-## Repository Statistics
-
-- **Languages**: Solidity, TypeScript, JavaScript
-- **Packages**: 8 workspace packages
-- **Smart Contract Tests**: 200+
-- **Service Tests**: 170+
-- **Bot Tests**: 30+
-
-## Team
-
-Built for hackathon by a single developer with Claude Code assistance.
-
-## License
-
-MIT
+Important:
+- This address is a live ERC-20 contract on Monad testnet and registered in `PlayerRegistry`.
+- It is launched via our nad.fun-compatible router, not the official nad.fun production listing flow.
+- If the reviewer strictly requires official nad.fun listing, replace this with a token that is live on official nad.fun.
+- Do not use an EOA wallet address.
+- Do not use placeholder addresses.

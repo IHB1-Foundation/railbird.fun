@@ -1,0 +1,187 @@
+# Railway Monorepo Deployment (Railbird)
+
+이 문서는 "레포 1개를 Railway에 연결하고 서비스 여러 개를 분리 배포"하는 기준으로 작성했다.
+
+## 1) 서비스 구성
+
+Railway 서비스 8개를 만든다.
+
+- `ownerview`
+- `indexer`
+- `keeper`
+- `vrf-operator`
+- `agent-1`
+- `agent-2`
+- `agent-3`
+- `agent-4`
+
+## 2) 공통 Build Command
+
+모든 서비스에 동일하게:
+
+```bash
+pnpm -r build
+```
+
+참고:
+- 루트 `railway.json`에 이미 `buildCommand`/`startCommand` 기본값을 넣어두었다.
+- 서비스 생성 시 Railway가 이 값을 읽으면 별도 입력 없이 동작한다.
+
+## 3) Start Command
+
+권장: 모든 서비스 Start Command를 동일하게 설정한다.
+
+```bash
+bash scripts/railway/start-service.sh
+```
+
+자동 분기 방식:
+- 서비스명을 아래처럼 만들면(`ownerview`, `indexer`, `keeper`, `vrf-operator`, `agent-1`~`agent-4`)  
+  `RAILWAY_SERVICE_ROLE` 없이 자동 분기된다.
+- `agent-1`~`agent-4`는 `AGENT_SLOT`도 서비스명에서 자동 추론된다.
+
+수동 분기 방식(원할 때만):
+
+- `ownerview`: `RAILWAY_SERVICE_ROLE=ownerview`
+- `indexer`: `RAILWAY_SERVICE_ROLE=indexer`
+- `keeper`: `RAILWAY_SERVICE_ROLE=keeper`
+- `vrf-operator`: `RAILWAY_SERVICE_ROLE=vrf-operator`
+- `agent-1~4`: `RAILWAY_SERVICE_ROLE=agent`
+
+대안으로, 각 서비스에 전용 start 스크립트를 직접 넣어도 된다.
+
+- `ownerview`
+  - `bash scripts/railway/start-ownerview.sh`
+- `indexer`
+  - `bash scripts/railway/start-indexer.sh`
+- `keeper`
+  - `bash scripts/railway/start-keeper.sh`
+- `vrf-operator`
+  - `bash scripts/railway/start-vrf-operator.sh`
+- `agent-1` ~ `agent-4`
+  - `bash scripts/railway/start-agent.sh`
+
+`agent-*`는 같은 start command를 쓰고, 서비스명을 `agent-1..4`로 주면 slot까지 자동으로 맞춰진다.
+
+## 4) 공통 환경변수 (모든 서비스)
+
+```bash
+CHAIN_ENV=testnet
+CHAIN_ID=10143
+RPC_URL=https://testnet-rpc.monad.xyz
+
+POKER_TABLE_ADDRESS=0xC5d4Ad9ce78447501024ED699842d267A9D77a58
+PLAYER_REGISTRY_ADDRESS=0x2b85AF079eb1a86912b2c79e790759018641fFd4
+PLAYER_VAULT_ADDRESS=0xf434455eF0Dd722dec4f9caBFB5e67Ea26332C96
+VRF_ADAPTER_ADDRESS=0xEa22C8FB76b4C26C4cb94c1d7a879abd694a70b0
+RCHIP_TOKEN_ADDRESS=0x66e817138F285e59109b408a04a5Ca5B3Cb07cdf
+
+NADFUN_LENS_ADDRESS=0xd2F5843b64329D6A296A4e6BB05BA2a9BD3816F8
+NADFUN_BONDING_ROUTER_ADDRESS=0xa69d9F9B3D64bdD781cB4351E071FBA5DC43018d
+NADFUN_DEX_ROUTER_ADDRESS=0xa69d9F9B3D64bdD781cB4351E071FBA5DC43018d
+WMON_ADDRESS=0x5a4E0bFDeF88C9032CB4d24338C5EB3d3870BfDd
+```
+
+## 5) 서비스별 추가 환경변수
+
+### `ownerview`
+
+```bash
+JWT_SECRET=<32자 이상>
+DEALER_API_KEY=<강한 값>
+HOLECARD_DATA_DIR=/data/holecards
+CORS_ALLOWED_ORIGINS=https://railbird.fun,https://www.railbird.fun
+```
+
+### `indexer`
+
+Railway Postgres 값 연결:
+
+```bash
+DB_HOST=<railway-postgres-host>
+DB_PORT=<railway-postgres-port>
+DB_NAME=<railway-postgres-db>
+DB_USER=<railway-postgres-user>
+DB_PASSWORD=<railway-postgres-password>
+START_BLOCK=0
+POLL_INTERVAL_MS=2000
+```
+
+### `keeper`
+
+```bash
+KEEPER_PRIVATE_KEY=0x...
+ENABLE_REBALANCING=false
+REBALANCE_BUY_AMOUNT_MON=0
+REBALANCE_SELL_AMOUNT_TOKENS=0
+```
+
+### `vrf-operator`
+
+```bash
+VRF_OPERATOR_PRIVATE_KEY=0x...
+VRF_OPERATOR_POLL_INTERVAL_MS=1500
+VRF_OPERATOR_MIN_CONFIRMATIONS=1
+VRF_OPERATOR_RESCAN_WINDOW=256
+```
+
+중요:
+- `VRF_OPERATOR_PRIVATE_KEY`의 주소가 반드시 on-chain `ProductionVRFAdapter.operator`와 같아야 한다.
+
+### `agent-1` ~ `agent-4` 공통
+
+```bash
+OWNERVIEW_URL=https://ownerview.railbird.fun
+POLL_INTERVAL_MS=1000
+MAX_HANDS=0
+TURN_ACTION_DELAY_MS=900000
+
+AGENT_1_OPERATOR_PRIVATE_KEY=0x...
+AGENT_2_OPERATOR_PRIVATE_KEY=0x...
+AGENT_3_OPERATOR_PRIVATE_KEY=0x...
+AGENT_4_OPERATOR_PRIVATE_KEY=0x...
+
+AGENT_1_AGGRESSION=0.15
+AGENT_2_AGGRESSION=0.35
+AGENT_3_AGGRESSION=0.60
+AGENT_4_AGGRESSION=0.85
+```
+
+### `agent-1` 개별
+
+```bash
+AGENT_SLOT=1
+```
+
+### `agent-2` 개별
+
+```bash
+AGENT_SLOT=2
+```
+
+### `agent-3` 개별
+
+```bash
+AGENT_SLOT=3
+```
+
+### `agent-4` 개별
+
+```bash
+AGENT_SLOT=4
+```
+
+## 6) 실행 확인 순서
+
+1. `ownerview` healthy
+2. `indexer` healthy
+3. `vrf-operator`가 request fulfill 로그 출력
+4. `keeper` + `agent-1~4` 실행
+5. 웹에서 액션/핸드 진행 확인
+
+## 7) 빠른 점검 API
+
+- `GET https://indexer.railbird.fun/api/health`
+- `GET https://ownerview.railbird.fun/health`
+- `GET https://indexer.railbird.fun/api/token-metadata/player-a.json`
+- `GET https://indexer.railbird.fun/api/token-assets/player-a.svg`

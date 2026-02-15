@@ -3,7 +3,7 @@
 import type { NonceResponse, VerifyResponse, HoleCardsResponse } from "./types";
 
 const OWNERVIEW_URL =
-  process.env.NEXT_PUBLIC_OWNERVIEW_URL || "http://localhost:3001";
+  process.env.NEXT_PUBLIC_OWNERVIEW_URL || "https://ownerview.railbird.fun";
 
 /**
  * Get a nonce for wallet authentication

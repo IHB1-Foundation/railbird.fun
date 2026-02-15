@@ -10,7 +10,7 @@ import type {
   HandResponse,
 } from "./types";
 
-const API_BASE = process.env.NEXT_PUBLIC_INDEXER_URL || "http://localhost:3002";
+const API_BASE = process.env.NEXT_PUBLIC_INDEXER_URL || "https://indexer.railbird.fun";
 
 async function fetchJson<T>(path: string): Promise<T> {
   const res = await fetch(`${API_BASE}/api${path}`, {

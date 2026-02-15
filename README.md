@@ -9,6 +9,13 @@ Wallet-based identity | Public spectating | Owner-only hole cards | In-app nad.f
 - Settlement source: 테이블의 실제 `winnerSeat`를 사용해 자동 정산
 - Current scope: 베팅 지갑/티켓은 브라우저 `localStorage` 기반 가상 장부(온체인 escrow/payout 아님)
 
+## Table Capacity
+
+- Poker table supports **up to 9 seats**.
+- New hand start condition: **at least 2 funded seats** (full table not required).
+- Empty seats are skipped in blind/action rotation.
+- Seats with zero stack are evicted automatically between hands.
+
 ## Quick Start
 
 ```bash
@@ -97,7 +104,7 @@ forge create src/PlayerRegistry.sol:PlayerRegistry \
 # See contracts/src/PlayerVault.sol for required constructor arguments
 ```
 
-### 3. Register 4 Seats on Table
+### 3. Register Seats on Table (min 2, max 9)
 
 ```bash
 # Approve buy-in first (1 rCHIP)
@@ -161,6 +168,14 @@ cast send <POKER_TABLE_ADDRESS> \
   --private-key 0x7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6
 ```
 
+### Add Another Player/Agent in Demo
+
+- Open `http://localhost:3000/table/<TABLE_ID>`.
+- Use **Add Player / Agent** panel:
+  - choose an empty seat,
+  - input buy-in (`rCHIP`),
+  - optional operator address (set this to agent wallet if owner/operator 분리 운영).
+
 ### 4. Set Up PostgreSQL (for Indexer)
 
 ```bash
@@ -194,11 +209,11 @@ export PLAYER_VAULT_ADDRESS=<deployed_address>
 export VRF_ADAPTER_ADDRESS=<deployed_address>
 export RCHIP_TOKEN_ADDRESS=<deployed_address>
 
-# nad.fun addresses (use zero addresses for local testing)
-export NADFUN_LENS_ADDRESS=0x0000000000000000000000000000000000000000
-export NADFUN_BONDING_ROUTER_ADDRESS=0x0000000000000000000000000000000000000000
-export NADFUN_DEX_ROUTER_ADDRESS=0x0000000000000000000000000000000000000000
-export WMON_ADDRESS=0x0000000000000000000000000000000000000000
+# nad.fun addresses (Monad testnet defaults)
+export NADFUN_LENS_ADDRESS=0xB056d79CA5257589692699a46623F901a3BB76f1
+export NADFUN_BONDING_ROUTER_ADDRESS=0x865054F0F6A288adaAc30261731361EA7E908003
+export NADFUN_DEX_ROUTER_ADDRESS=0x5D4a4f430cA3B1b2dB86B9cFE48a5316800F5fb2
+export WMON_ADDRESS=0x5a4E0bFDeF88C9032CB4d24338C5EB3d3870BfDd
 ```
 
 ### 6. Start Services
@@ -259,7 +274,7 @@ RPC_URL=http://localhost:8545 \
 OPERATOR_PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
 POKER_TABLE_ADDRESS=<address> \
 OWNERVIEW_URL=http://localhost:3001 \
-MAX_HANDS=50 \
+MAX_HANDS=0 \
 pnpm start
 ```
 
@@ -270,7 +285,7 @@ RPC_URL=http://localhost:8545 \
 OPERATOR_PRIVATE_KEY=0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d \
 POKER_TABLE_ADDRESS=<address> \
 OWNERVIEW_URL=http://localhost:3001 \
-MAX_HANDS=50 \
+MAX_HANDS=0 \
 pnpm start
 ```
 
@@ -281,7 +296,7 @@ RPC_URL=http://localhost:8545 \
 OPERATOR_PRIVATE_KEY=0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a \
 POKER_TABLE_ADDRESS=<address> \
 OWNERVIEW_URL=http://localhost:3001 \
-MAX_HANDS=50 \
+MAX_HANDS=0 \
 pnpm start
 ```
 
@@ -292,7 +307,7 @@ RPC_URL=http://localhost:8545 \
 OPERATOR_PRIVATE_KEY=0x7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6 \
 POKER_TABLE_ADDRESS=<address> \
 OWNERVIEW_URL=http://localhost:3001 \
-MAX_HANDS=50 \
+MAX_HANDS=0 \
 pnpm start
 ```
 
@@ -347,6 +362,7 @@ pnpm start
 | `OPERATOR_PRIVATE_KEY` | Yes | - | Private key for seat operator |
 | `OWNERVIEW_URL` | No | localhost:3001 | OwnerView service URL |
 | `AGGRESSION_FACTOR` | No | 0.3 | Strategy aggression (`0.0~1.0`) |
+| `TURN_ACTION_DELAY_MS` | No | 900000 | Delay from turn start to action (ms) |
 | `MAX_HANDS` | No | 0 (unlimited) | Stop after N hands |
 | `POLL_INTERVAL_MS` | No | 1000 | State polling interval |
 
@@ -366,10 +382,10 @@ pnpm start
 | `NEXT_PUBLIC_INDEXER_URL` | No | localhost:3002 | Indexer API URL |
 | `NEXT_PUBLIC_OWNERVIEW_URL` | No | localhost:3001 | OwnerView URL |
 | `NEXT_PUBLIC_WS_URL` | No | localhost:3002 | WebSocket URL |
-| `NEXT_PUBLIC_NADFUN_LENS_ADDRESS` | No | - | nad.fun Lens contract |
-| `NEXT_PUBLIC_NADFUN_BONDING_ROUTER_ADDRESS` | No | - | nad.fun bonding router |
-| `NEXT_PUBLIC_NADFUN_DEX_ROUTER_ADDRESS` | No | - | nad.fun DEX router |
-| `NEXT_PUBLIC_WMON_ADDRESS` | No | - | Wrapped MON address |
+| `NEXT_PUBLIC_NADFUN_LENS_ADDRESS` | No | `0xB056d79CA5257589692699a46623F901a3BB76f1` | nad.fun Lens contract |
+| `NEXT_PUBLIC_NADFUN_BONDING_ROUTER_ADDRESS` | No | `0x865054F0F6A288adaAc30261731361EA7E908003` | nad.fun bonding router |
+| `NEXT_PUBLIC_NADFUN_DEX_ROUTER_ADDRESS` | No | `0x5D4a4f430cA3B1b2dB86B9cFE48a5316800F5fb2` | nad.fun DEX router |
+| `NEXT_PUBLIC_WMON_ADDRESS` | No | `0x5a4E0bFDeF88C9032CB4d24338C5EB3d3870BfDd` | Wrapped MON address |
 | `NEXT_PUBLIC_RPC_URL` | No | - | RPC for client-side calls |
 | `NEXT_PUBLIC_CHIP_SYMBOL` | No | `rCHIP` | UI label for poker chips |
 

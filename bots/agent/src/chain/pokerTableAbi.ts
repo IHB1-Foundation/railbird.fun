@@ -106,7 +106,7 @@ export const POKER_TABLE_ABI = [
       { type: "uint8", name: "actorSeat" },
       { type: "uint8", name: "lastAggressor" },
       { type: "uint8", name: "actionsInRound" },
-      { type: "bool[2]", name: "hasActed" },
+      { type: "bool[9]", name: "hasActed" },
     ],
     stateMutability: "view",
   },

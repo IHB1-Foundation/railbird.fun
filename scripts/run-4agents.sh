@@ -12,8 +12,9 @@
 # Environment overrides:
 #   RPC_URL              - RPC endpoint (default: http://localhost:8545)
 #   OWNERVIEW_URL        - OwnerView service (default: http://localhost:3001)
-#   MAX_HANDS            - Stop after N hands (default: 50)
+#   MAX_HANDS            - Stop after N hands (default: 0, unlimited)
 #   POLL_INTERVAL_MS     - Polling interval (default: 500)
+#   TURN_ACTION_DELAY_MS - Delay from turn start to action (default: 900000 = 15 min)
 
 set -e
 
@@ -34,9 +35,10 @@ fi
 POKER_TABLE_ADDRESS=${1:-$POKER_TABLE_ADDRESS}
 RPC_URL=${RPC_URL:-http://localhost:8545}
 OWNERVIEW_URL=${OWNERVIEW_URL:-http://localhost:3001}
-MAX_HANDS=${MAX_HANDS:-50}
+MAX_HANDS=${MAX_HANDS:-0}
 POLL_INTERVAL_MS=${POLL_INTERVAL_MS:-500}
 CHAIN_ID=${CHAIN_ID:-31337}
+TURN_ACTION_DELAY_MS=${TURN_ACTION_DELAY_MS:-900000}
 
 if [ -z "$POKER_TABLE_ADDRESS" ]; then
   echo -e "${RED}Error: POKER_TABLE_ADDRESS not provided${NC}"
@@ -76,6 +78,7 @@ echo "  RPC:           $RPC_URL"
 echo "  OwnerView:     $OWNERVIEW_URL"
 echo "  Max hands:     $MAX_HANDS"
 echo "  Poll interval: ${POLL_INTERVAL_MS}ms"
+echo "  Turn delay:    ${TURN_ACTION_DELAY_MS}ms"
 echo ""
 echo "Agents:"
 echo "  Seat 0: $AGENT_1_ADDR"
@@ -128,6 +131,7 @@ CHAIN_ID=$CHAIN_ID \
 POLL_INTERVAL_MS=$POLL_INTERVAL_MS \
 MAX_HANDS=$MAX_HANDS \
 AGGRESSION_FACTOR=$AGENT_1_AGGRESSION \
+TURN_ACTION_DELAY_MS=$TURN_ACTION_DELAY_MS \
 node --import tsx bots/agent/src/index.ts &
 PIDS+=($!)
 echo "  Agent 1 PID: ${PIDS[-1]}"
@@ -142,6 +146,7 @@ CHAIN_ID=$CHAIN_ID \
 POLL_INTERVAL_MS=$POLL_INTERVAL_MS \
 MAX_HANDS=$MAX_HANDS \
 AGGRESSION_FACTOR=$AGENT_2_AGGRESSION \
+TURN_ACTION_DELAY_MS=$TURN_ACTION_DELAY_MS \
 node --import tsx bots/agent/src/index.ts &
 PIDS+=($!)
 echo "  Agent 2 PID: ${PIDS[-1]}"
@@ -156,6 +161,7 @@ CHAIN_ID=$CHAIN_ID \
 POLL_INTERVAL_MS=$POLL_INTERVAL_MS \
 MAX_HANDS=$MAX_HANDS \
 AGGRESSION_FACTOR=$AGENT_3_AGGRESSION \
+TURN_ACTION_DELAY_MS=$TURN_ACTION_DELAY_MS \
 node --import tsx bots/agent/src/index.ts &
 PIDS+=($!)
 echo "  Agent 3 PID: ${PIDS[-1]}"
@@ -170,6 +176,7 @@ CHAIN_ID=$CHAIN_ID \
 POLL_INTERVAL_MS=$POLL_INTERVAL_MS \
 MAX_HANDS=$MAX_HANDS \
 AGGRESSION_FACTOR=$AGENT_4_AGGRESSION \
+TURN_ACTION_DELAY_MS=$TURN_ACTION_DELAY_MS \
 node --import tsx bots/agent/src/index.ts &
 PIDS+=($!)
 echo "  Agent 4 PID: ${PIDS[-1]}"
@@ -178,8 +185,8 @@ echo ""
 echo -e "${GREEN}All bots started. Waiting for completion (Ctrl+C to stop)...${NC}"
 echo ""
 
-# Wait for all agent bots to finish (keeper runs forever)
-# We wait for any agent to exit (they all have MAX_HANDS limit)
+# Wait for agent bots (keeper runs forever).
+# With MAX_HANDS=0 (default), this keeps running until interrupted.
 for pid in "${PIDS[@]:1}"; do
   wait "$pid" 2>/dev/null || true
 done

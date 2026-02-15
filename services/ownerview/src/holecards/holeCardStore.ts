@@ -2,8 +2,6 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync, readdir
 import { join } from "node:path";
 import type { HoleCardRecord, Card } from "./types.js";
 
-const MAX_SEATS = 4;
-
 /**
  * Error thrown when hole card operations fail
  */
@@ -121,9 +119,17 @@ export class HoleCardStore {
   }
 
   deleteHand(tableId: string, handId: string): number {
+    if (this.dataDir) {
+      const records = this.readHandFile(tableId, handId);
+      this.writeHandFile(tableId, handId, []);
+      return records.length;
+    }
+
+    const prefix = `${tableId}:${handId}:`;
     let deleted = 0;
-    for (let seatIndex = 0; seatIndex < MAX_SEATS; seatIndex++) {
-      if (this.delete(tableId, handId, seatIndex)) {
+    for (const key of this.memStore.keys()) {
+      if (key.startsWith(prefix)) {
+        this.memStore.delete(key);
         deleted++;
       }
     }
@@ -134,13 +140,14 @@ export class HoleCardStore {
     if (this.dataDir) {
       return this.readHandFile(tableId, handId);
     }
+    const prefix = `${tableId}:${handId}:`;
     const records: HoleCardRecord[] = [];
-    for (let seatIndex = 0; seatIndex < MAX_SEATS; seatIndex++) {
-      const record = this.get(tableId, handId, seatIndex);
-      if (record) {
+    for (const [key, record] of this.memStore.entries()) {
+      if (key.startsWith(prefix)) {
         records.push(record);
       }
     }
+    records.sort((a, b) => a.seatIndex - b.seatIndex);
     return records;
   }
 

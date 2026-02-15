@@ -28,10 +28,7 @@ export class DealerError extends Error {
   }
 }
 
-/**
- * Number of seats at the table
- */
-const SEAT_COUNT = 4;
+const DEFAULT_SEAT_COUNT = 9;
 
 /**
  * Dealer service responsible for generating and storing hole cards
@@ -73,20 +70,26 @@ export class DealerService {
     }
 
     // Check if already dealt for this hand
-    if (this.holeCardStore.has(tableId, handId, 0)) {
+    if (this.holeCardStore.getHand(tableId, handId).length > 0) {
       throw new DealerError(
         `Hole cards already dealt for table=${tableId}, hand=${handId}`,
         "ALREADY_DEALT"
       );
     }
 
-    // Generate unique hole cards for all seats
-    const holeCards = dealHoleCards(SEAT_COUNT, 2, this.config.testSeed);
+    const seatIndexes = this.resolveSeatIndexes(params);
+    if (seatIndexes.length === 0) {
+      throw new DealerError("No seat indexes to deal", "INVALID_PARAMS");
+    }
+
+    // Generate unique hole cards for requested seats.
+    const holeCards = dealHoleCards(seatIndexes.length, 2, this.config.testSeed);
 
     const seats: DealResult["seats"] = [];
 
-    for (let seatIndex = 0; seatIndex < SEAT_COUNT; seatIndex++) {
-      const cards = holeCards[seatIndex];
+    for (let i = 0; i < seatIndexes.length; i++) {
+      const seatIndex = seatIndexes[i];
+      const cards = holeCards[i];
       const salt = this.config.testSeed
         ? generateTestSalt(this.config.testSeed, seatIndex)
         : generateSalt();
@@ -167,7 +170,7 @@ export class DealerService {
    * Check if a hand has been dealt
    */
   isHandDealt(tableId: string, handId: string): boolean {
-    return this.holeCardStore.has(tableId, handId, 0);
+    return this.holeCardStore.getHand(tableId, handId).length > 0;
   }
 
   /**
@@ -177,5 +180,24 @@ export class DealerService {
    */
   cleanupHand(tableId: string, handId: string): number {
     return this.holeCardStore.deleteHand(tableId, handId);
+  }
+
+  private resolveSeatIndexes(params: DealParams): number[] {
+    if (params.seatIndexes && params.seatIndexes.length > 0) {
+      const uniq = new Set<number>();
+      for (const seat of params.seatIndexes) {
+        if (!Number.isInteger(seat) || seat < 0 || seat > 255) {
+          throw new DealerError(`Invalid seat index: ${seat}`, "INVALID_PARAMS");
+        }
+        uniq.add(seat);
+      }
+      return Array.from(uniq).sort((a, b) => a - b);
+    }
+
+    const count = this.config.defaultSeatCount ?? DEFAULT_SEAT_COUNT;
+    if (!Number.isInteger(count) || count <= 0 || count > 52 / 2) {
+      throw new DealerError(`Invalid default seat count: ${count}`, "INVALID_PARAMS");
+    }
+    return Array.from({ length: count }, (_, i) => i);
   }
 }

@@ -380,6 +380,32 @@ h5 {
   max-width: 620px;
 }
 
+.seats-row.seats-wrap {
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  max-width: 100%;
+}
+
+.seats-row.seats-wrap .seat-panel {
+  width: min(100%, 190px);
+}
+
+.join-seat-controls {
+  margin-top: 0.8rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.7rem;
+  align-items: end;
+}
+
+.join-seat-controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
 .community-cards {
   display: flex;
   gap: 0.5rem;

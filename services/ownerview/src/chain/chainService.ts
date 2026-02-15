@@ -25,6 +25,7 @@ export class ChainError extends Error {
 export class ChainService {
   private client: PublicClient;
   private pokerTableAddress: Address;
+  private maxSeatsCache: number | null = null;
 
   constructor(config: ChainServiceConfig) {
     this.client = createPublicClient({
@@ -37,8 +38,9 @@ export class ChainService {
    * Get seat information from PokerTable contract
    */
   async getSeat(seatIndex: number): Promise<SeatInfo> {
-    if (seatIndex < 0 || seatIndex > 3) {
-      throw new ChainError("Invalid seat index (must be 0-3)", "INVALID_SEAT");
+    const maxSeats = await this.getMaxSeats();
+    if (seatIndex < 0 || seatIndex >= maxSeats) {
+      throw new ChainError(`Invalid seat index (must be 0-${maxSeats - 1})`, "INVALID_SEAT");
     }
 
     try {
@@ -89,8 +91,9 @@ export class ChainService {
    */
   async findSeatByOwner(ownerAddress: Address): Promise<number | null> {
     const normalizedOwner = ownerAddress.toLowerCase();
+    const maxSeats = await this.getMaxSeats();
 
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < maxSeats; i++) {
       try {
         const seat = await this.getSeat(i);
         if (seat.owner.toLowerCase() === normalizedOwner) {
@@ -102,6 +105,31 @@ export class ChainService {
     }
 
     return null;
+  }
+
+  async getMaxSeats(): Promise<number> {
+    if (this.maxSeatsCache !== null) {
+      return this.maxSeatsCache;
+    }
+
+    try {
+      const result = await this.client.readContract({
+        address: this.pokerTableAddress,
+        abi: PokerTableABI,
+        functionName: "MAX_SEATS",
+      });
+      const maxSeats = Number(result);
+      if (!Number.isInteger(maxSeats) || maxSeats <= 0) {
+        throw new Error(`Invalid MAX_SEATS value: ${String(result)}`);
+      }
+      this.maxSeatsCache = maxSeats;
+      return maxSeats;
+    } catch (err) {
+      throw new ChainError(
+        `Failed to read MAX_SEATS from contract: ${err instanceof Error ? err.message : String(err)}`,
+        "CONTRACT_ERROR"
+      );
+    }
   }
 
   /**

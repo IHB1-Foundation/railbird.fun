@@ -7,12 +7,12 @@ import "./HandEvaluator.sol";
 
 /**
  * @title PokerTable
- * @notice 4-player Hold'em table with on-chain betting and VRF-driven community cards.
- * @dev Supports 4 seats, fixed blinds, simplified betting rounds.
+ * @notice 9-player Hold'em table with on-chain betting and VRF-driven community cards.
+ * @dev Supports up to 9 seats, fixed blinds, simplified betting rounds.
  */
 contract PokerTable {
     // ============ Constants ============
-    uint8 public constant MAX_SEATS = 4;
+    uint8 public constant MAX_SEATS = 9;
     uint256 public constant ACTION_TIMEOUT = 30 minutes;
     uint256 public constant VRF_TIMEOUT = 5 minutes;
 
@@ -54,7 +54,7 @@ contract PokerTable {
         uint8 actorSeat;             // Seat index that must act next
         uint8 lastAggressor;         // Last seat that raised (for betting round logic)
         uint8 actionsInRound;        // Number of actions in current betting round
-        bool[4] hasActed;            // Whether each seat has acted in this round
+        bool[MAX_SEATS] hasActed;    // Whether each seat has acted in this round
     }
 
     // ============ Events ============
@@ -85,6 +85,10 @@ contract PokerTable {
         address indexed owner,
         address indexed recipient,
         uint256 amount
+    );
+    event SeatEvicted(
+        uint8 indexed seatIndex,
+        address indexed owner
     );
 
     event HandStarted(
@@ -165,7 +169,7 @@ contract PokerTable {
 
     GameState public gameState;
     uint256 public currentHandId;
-    uint8 public buttonSeat; // Dealer button position (0..3)
+    uint8 public buttonSeat; // Dealer button position (0..MAX_SEATS-1)
 
     Seat[MAX_SEATS] public seats;
     Hand public currentHand;
@@ -248,7 +252,7 @@ contract PokerTable {
 
     /**
      * @notice Register a seat at the table
-     * @param seatIndex 0..3
+     * @param seatIndex 0..MAX_SEATS-1
      * @param owner Address that owns this seat
      * @param operator Address that can submit actions
      * @param buyIn Initial chip stack
@@ -379,19 +383,19 @@ contract PokerTable {
             gameState == GameState.WAITING_FOR_SEATS || gameState == GameState.SETTLED,
             "Cannot start hand now"
         );
-        require(allSeatsFilled(), "Need all seats filled");
+        _evictBustedSeats();
+        require(_countPlayableSeats() >= 2, "Need at least 2 funded seats");
 
-        // Positions: SB = button+1, BB = button+2
-        uint8 sbSeat = (buttonSeat + 1) % MAX_SEATS;
-        uint8 bbSeat = (buttonSeat + 2) % MAX_SEATS;
-        require(seats[sbSeat].stack >= smallBlind, "SB seat has insufficient stack");
-        require(seats[bbSeat].stack >= bigBlind, "BB seat has insufficient stack");
+        // Positions: SB = first playable seat clockwise from button, BB = next playable seat.
+        uint8 sbSeat = _nextPlayableSeat(buttonSeat);
+        uint8 bbSeat = _nextPlayableSeat(sbSeat);
+        require(sbSeat != bbSeat, "Need at least 2 funded seats");
 
         currentHandId++;
 
         // Reset seats for new hand
         for (uint8 i = 0; i < MAX_SEATS; i++) {
-            seats[i].isActive = true;
+            seats[i].isActive = _isSeatPlayable(i);
             seats[i].currentBet = 0;
         }
 
@@ -411,8 +415,10 @@ contract PokerTable {
 
         uint256 initialPot = smallBlind + bigBlind;
 
-        // Pre-flop: UTG (seat after BB) acts first
-        uint8 firstActor = (buttonSeat + 3) % MAX_SEATS;
+        // Pre-flop: first active seat after BB acts first.
+        uint8 firstActor = _nextActiveSeat(bbSeat);
+
+        bool[MAX_SEATS] memory initialHasActed;
 
         // Initialize hand state
         currentHand = Hand({
@@ -422,7 +428,7 @@ contract PokerTable {
             actorSeat: firstActor,
             lastAggressor: bbSeat, // BB is considered the aggressor (posted blind)
             actionsInRound: 0,
-            hasActed: [false, false, false, false]
+            hasActed: initialHasActed
         });
 
         gameState = GameState.BETTING_PRE;
@@ -862,7 +868,7 @@ contract PokerTable {
 
         // Prepare for next hand
         gameState = GameState.SETTLED;
-        buttonSeat = (buttonSeat + 1) % MAX_SEATS; // Move button clockwise
+        _advanceButton(); // Move button clockwise to next occupied seat
 
         // Reset hand state
         currentHand.pot = 0;
@@ -870,6 +876,7 @@ contract PokerTable {
             seats[i].currentBet = 0;
             seats[i].isActive = false;
         }
+        _evictBustedSeats();
     }
 
     /**
@@ -885,8 +892,8 @@ contract PokerTable {
 
         // Evaluate revealed active seats
         uint8 revealedCount;
-        uint8[4] memory revSeats;
-        uint256[4] memory scores;
+        uint8[MAX_SEATS] memory revSeats;
+        uint256[MAX_SEATS] memory scores;
 
         for (uint8 i = 0; i < MAX_SEATS; i++) {
             if (seats[i].isActive && isHoleCardsRevealed[handId][i]) {
@@ -937,8 +944,8 @@ contract PokerTable {
      * @dev Remainder (if any) goes to the first winner clockwise from button.
      */
     function _settleHandSplit(
-        uint8[4] memory revSeats,
-        uint256[4] memory scores,
+        uint8[MAX_SEATS] memory revSeats,
+        uint256[MAX_SEATS] memory scores,
         uint8 revealedCount,
         uint256 bestScore,
         uint8 winnerCount
@@ -979,12 +986,13 @@ contract PokerTable {
 
         // Prepare for next hand
         gameState = GameState.SETTLED;
-        buttonSeat = (buttonSeat + 1) % MAX_SEATS;
+        _advanceButton();
         currentHand.pot = 0;
         for (uint8 i = 0; i < MAX_SEATS; i++) {
             seats[i].currentBet = 0;
             seats[i].isActive = false;
         }
+        _evictBustedSeats();
     }
 
     // ============ Hole Card Commit/Reveal ============
@@ -993,7 +1001,7 @@ contract PokerTable {
      * @notice Submit hole card commitment for a seat
      * @dev Should be called by dealer after dealing hole cards
      * @param handId The hand ID for which to submit commitment
-     * @param seatIndex The seat index (0..3)
+     * @param seatIndex The seat index (0..MAX_SEATS-1)
      * @param commitment The keccak256 hash of (handId, seatIndex, card1, card2, salt)
      */
     function submitHoleCommit(
@@ -1127,5 +1135,55 @@ contract PokerTable {
 
     function getCommunityCards() external view returns (uint8[5] memory) {
         return communityCards;
+    }
+
+    function canStartHand() external view returns (bool) {
+        if (!(gameState == GameState.WAITING_FOR_SEATS || gameState == GameState.SETTLED)) return false;
+        return _countPlayableSeats() >= 2;
+    }
+
+    function _isSeatOccupied(uint8 seatIndex) internal view returns (bool) {
+        return seats[seatIndex].owner != address(0);
+    }
+
+    function _isSeatPlayable(uint8 seatIndex) internal view returns (bool) {
+        return _isSeatOccupied(seatIndex) && seats[seatIndex].stack >= bigBlind;
+    }
+
+    function _countPlayableSeats() internal view returns (uint8 count) {
+        for (uint8 i = 0; i < MAX_SEATS; i++) {
+            if (_isSeatPlayable(i)) count++;
+        }
+    }
+
+    function _nextPlayableSeat(uint8 fromSeat) internal view returns (uint8) {
+        for (uint8 i = 1; i <= MAX_SEATS; i++) {
+            uint8 next = (fromSeat + i) % MAX_SEATS;
+            if (_isSeatPlayable(next)) return next;
+        }
+        revert("No playable seat found");
+    }
+
+    function _nextOccupiedSeat(uint8 fromSeat) internal view returns (uint8) {
+        for (uint8 i = 1; i <= MAX_SEATS; i++) {
+            uint8 next = (fromSeat + i) % MAX_SEATS;
+            if (_isSeatOccupied(next)) return next;
+        }
+        return fromSeat;
+    }
+
+    function _advanceButton() internal {
+        buttonSeat = _nextOccupiedSeat(buttonSeat);
+    }
+
+    function _evictBustedSeats() internal {
+        for (uint8 i = 0; i < MAX_SEATS; i++) {
+            if (seats[i].owner != address(0) && seats[i].stack == 0) {
+                address owner = seats[i].owner;
+                delete seats[i];
+                emit SeatUpdated(i, address(0), address(0), 0);
+                emit SeatEvicted(i, owner);
+            }
+        }
     }
 }

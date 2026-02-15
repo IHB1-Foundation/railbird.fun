@@ -139,7 +139,7 @@ export function createDealerRoutes(dealerService: DealerService, dealerApiKey?: 
    * GET /dealer/reveal
    * Get reveal data for showdown (internal use)
    *
-   * Query: tableId, handId, seatIndex
+   * Query: tableId, handId, seatIndex (uint8)
    */
   router.get("/reveal", (req: Request, res: Response) => {
     const { tableId, handId, seatIndex } = req.query;
@@ -161,9 +161,9 @@ export function createDealerRoutes(dealerService: DealerService, dealerApiKey?: 
     }
 
     const seatIdx = Number(seatIndex);
-    if (isNaN(seatIdx) || seatIdx < 0 || seatIdx > 3) {
+    if (!Number.isInteger(seatIdx) || seatIdx < 0 || seatIdx > 255) {
       res.status(400).json({
-        error: "Missing or invalid seatIndex (must be 0-3)",
+        error: "Missing or invalid seatIndex (must be uint8)",
         code: "INVALID_SEAT_INDEX",
       });
       return;

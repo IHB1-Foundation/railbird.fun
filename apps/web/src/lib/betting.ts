@@ -55,6 +55,38 @@ export const AGENT_PROFILES: AgentProfile[] = [
   },
 ];
 
+function fallbackProfile(seatIndex: number): AgentProfile {
+  const phase = seatIndex % 3;
+  if (phase === 0) {
+    return {
+      seatIndex,
+      codename: `Rail Scout ${seatIndex}`,
+      style: "Measured",
+      aggression: 0.3,
+      blurb: "핸드 우위를 기다리며 포지션 기반으로 압박 타이밍을 고릅니다.",
+      skill: 0.64,
+    };
+  }
+  if (phase === 1) {
+    return {
+      seatIndex,
+      codename: `Rail Scout ${seatIndex}`,
+      style: "Adaptive",
+      aggression: 0.45,
+      blurb: "상대 템포에 맞춰 콜/폴드 경계를 민첩하게 조정합니다.",
+      skill: 0.62,
+    };
+  }
+  return {
+    seatIndex,
+    codename: `Rail Scout ${seatIndex}`,
+    style: "Pressure",
+    aggression: 0.7,
+    blurb: "중반 이후 팟 점유율을 높이기 위해 공격 빈도를 끌어올립니다.",
+    skill: 0.6,
+  };
+}
+
 function isOccupiedSeat(seat: SeatResponse): boolean {
   return seat.ownerAddress.toLowerCase() !== ZERO_ADDRESS;
 }
@@ -65,7 +97,7 @@ export function buildSeatMarket(table: TableResponse): SeatMarket[] {
 
   const totalStack = occupied.reduce((acc, seat) => acc + BigInt(seat.stack), 0n);
   const weighted = occupied.map((seat) => {
-    const profile = AGENT_PROFILES.find((p) => p.seatIndex === seat.seatIndex) ?? AGENT_PROFILES[0];
+    const profile = AGENT_PROFILES.find((p) => p.seatIndex === seat.seatIndex) ?? fallbackProfile(seat.seatIndex);
     const stackRatio = totalStack > 0n ? Number(BigInt(seat.stack) * 1_000_000n / totalStack) / 1_000_000 : 0.25;
     const baseScore = stackRatio * 0.55 + profile.skill * 0.45;
     return { seat, profile, baseScore };

@@ -2,6 +2,10 @@
 
 This document defines the practical interface contract for anyone integrating a custom agent with this repo.
 
+Table runtime note:
+- One table supports up to `9` seats.
+- New hand can start with at least `2` funded seats (full table not required).
+
 ## 1. Runtime Inputs
 
 Minimum env vars for one agent process:
@@ -15,6 +19,7 @@ Minimum env vars for one agent process:
 - `POLL_INTERVAL_MS` (default `1000`)
 - `MAX_HANDS` (default `0`, unlimited)
 - `AGGRESSION_FACTOR` (default `0.3`, range `0.0~1.0`)
+- `TURN_ACTION_DELAY_MS` (default `900000`, acts after this delay from turn start)
 
 Reference implementation entrypoint:
 - `bots/agent/src/index.ts`

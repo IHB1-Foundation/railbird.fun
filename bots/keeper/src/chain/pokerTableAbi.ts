@@ -34,6 +34,13 @@ export const POKER_TABLE_ABI = [
   },
   {
     type: "function",
+    name: "MAX_SEATS",
+    inputs: [],
+    outputs: [{ type: "uint8" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
     name: "gameState",
     inputs: [],
     outputs: [{ type: "uint8" }],
@@ -103,6 +110,13 @@ export const POKER_TABLE_ABI = [
   {
     type: "function",
     name: "allSeatsFilled",
+    inputs: [],
+    outputs: [{ type: "bool" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "canStartHand",
     inputs: [],
     outputs: [{ type: "bool" }],
     stateMutability: "view",

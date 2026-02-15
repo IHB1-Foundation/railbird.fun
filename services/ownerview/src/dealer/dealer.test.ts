@@ -204,7 +204,7 @@ describe("DealerService", () => {
 
   beforeEach(() => {
     holeCardStore = new HoleCardStore();
-    dealerService = new DealerService(holeCardStore, { testSeed: "test-seed" });
+    dealerService = new DealerService(holeCardStore, { testSeed: "test-seed", defaultSeatCount: 4 });
   });
 
   describe("deal", () => {
@@ -353,7 +353,7 @@ describe("DealerService", () => {
     it("should store salt that is not guessable", () => {
       // Use non-test service for this test
       const realHoleCardStore = new HoleCardStore();
-      const realDealerService = new DealerService(realHoleCardStore);
+      const realDealerService = new DealerService(realHoleCardStore, { defaultSeatCount: 4 });
 
       realDealerService.deal({ tableId: "1", handId: "1" });
       const record = realHoleCardStore.get("1", "1", 0);
@@ -394,7 +394,7 @@ describe("DealerService", () => {
 describe("Dealer Integration", () => {
   it("should work end-to-end: deal 4 seats, retrieve via owner, verify commitment", () => {
     const holeCardStore = new HoleCardStore();
-    const dealerService = new DealerService(holeCardStore, { testSeed: "e2e-test" });
+    const dealerService = new DealerService(holeCardStore, { testSeed: "e2e-test", defaultSeatCount: 4 });
 
     // 1. Deal cards for 4 seats
     const dealResult = dealerService.deal({ tableId: "100", handId: "50" });

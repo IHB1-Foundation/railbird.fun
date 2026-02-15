@@ -106,7 +106,7 @@ describe("Dealer Routes", () => {
 
   beforeEach(() => {
     holeCardStore = new HoleCardStore();
-    dealerService = new DealerService(holeCardStore, { testSeed: "test-seed" });
+    dealerService = new DealerService(holeCardStore, { testSeed: "test-seed", defaultSeatCount: 4 });
   });
 
   describe("POST /dealer/deal", () => {

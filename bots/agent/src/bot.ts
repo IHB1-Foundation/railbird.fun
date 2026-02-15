@@ -12,6 +12,7 @@ export interface AgentBotConfig {
   ownerviewUrl: string;
   chainId?: number;
   pollIntervalMs?: number;
+  turnActionDelayMs?: number;
   strategy?: Strategy;
 }
 
@@ -41,6 +42,7 @@ export class AgentBot {
   private lastHandId: bigint = 0n;
   private lastStack: bigint | null = null;
   private mySeatIndex: number | null = null;
+  private waitingTurnKey: string | null = null;
 
   constructor(config: AgentBotConfig) {
     this.config = config;
@@ -191,7 +193,29 @@ export class AgentBot {
 
     if (state.hand.actorSeat !== this.mySeatIndex) {
       // Not our turn
+      this.waitingTurnKey = null;
       return;
+    }
+
+    // Enforce per-turn action delay: act only after N ms from turn start.
+    const turnActionDelayMs = this.config.turnActionDelayMs || 0;
+    if (turnActionDelayMs > 0) {
+      const nowTs = await this.chainClient.getBlockTimestamp();
+      const delaySec = BigInt(Math.floor(turnActionDelayMs / 1000));
+      const turnStartTs = state.actionDeadline - state.actionTimeout;
+      const actionEligibleAt = turnStartTs + delaySec;
+
+      if (nowTs < actionEligibleAt) {
+        const turnKey = `${state.currentHandId}:${state.gameState}:${state.hand.actorSeat}:${state.lastActionBlock}`;
+        if (this.waitingTurnKey !== turnKey) {
+          this.waitingTurnKey = turnKey;
+          console.log(
+            `[AgentBot] My turn started. Waiting ${turnActionDelayMs}ms before action (eligible at ${actionEligibleAt}).`
+          );
+        }
+        return;
+      }
+      this.waitingTurnKey = null;
     }
 
     // Check one-action-per-block

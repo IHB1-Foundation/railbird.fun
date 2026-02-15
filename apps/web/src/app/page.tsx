@@ -4,6 +4,8 @@ import { CHIP_SYMBOL, formatChips, shortenAddress } from "@/lib/utils";
 import { GAME_STATES } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+const MAX_SEATS = Number(process.env.NEXT_PUBLIC_TABLE_MAX_SEATS || "9");
 
 function getStatusClass(gameState: string): string {
   const state = GAME_STATES[gameState] || gameState;
@@ -53,7 +55,7 @@ export default async function LobbyPage() {
         {tables.map((table) => {
           const statusClass = getStatusClass(table.gameState);
           const stateName = GAME_STATES[table.gameState] || table.gameState;
-          const activeSeats = table.seats.filter((s) => s.isActive).length;
+          const activeSeats = table.seats.filter((s) => s.ownerAddress.toLowerCase() !== ZERO_ADDRESS).length;
 
           return (
             <Link key={table.tableId} href={`/table/${table.tableId}`} className="table-link">
@@ -73,7 +75,7 @@ export default async function LobbyPage() {
                   </div>
                   <div>
                     <span className="label">Seats:</span>{" "}
-                    {activeSeats}/4
+                    {activeSeats}/{MAX_SEATS}
                   </div>
                   {table.currentHand && (
                     <>
@@ -95,7 +97,7 @@ export default async function LobbyPage() {
                   {table.seats.map((seat) => (
                     <div key={seat.seatIndex} className="seat-chip">
                       <div className="seat-chip-label">Seat {seat.seatIndex}</div>
-                      {seat.isActive ? (
+                      {seat.ownerAddress.toLowerCase() !== ZERO_ADDRESS ? (
                         <>
                           <div>{shortenAddress(seat.ownerAddress)}</div>
                           <div className="value-accent">{formatChips(seat.stack)} {CHIP_SYMBOL}</div>

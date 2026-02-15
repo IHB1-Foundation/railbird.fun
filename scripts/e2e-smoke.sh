@@ -171,12 +171,12 @@ for i in 0 1 2 3; do
 done
 echo ""
 
-# Verify all seats filled
-SEATS_FILLED=$(cast call $TABLE_ADDR "allSeatsFilled()(bool)" --rpc-url $RPC_URL 2>/dev/null)
-if [ "$SEATS_FILLED" = "true" ]; then
-  pass "All 4 seats confirmed filled"
+# Verify table can start with partial occupancy
+CAN_START=$(cast call $TABLE_ADDR "canStartHand()(bool)" --rpc-url $RPC_URL 2>/dev/null)
+if [ "$CAN_START" = "true" ]; then
+  pass "Table is ready to start with 4 registered seats"
 else
-  fail "allSeatsFilled() returned $SEATS_FILLED"
+  fail "canStartHand() returned $CAN_START"
   exit 1
 fi
 echo ""
@@ -225,6 +225,7 @@ for i in 0 1 2 3; do
   CHAIN_ID=$CHAIN_ID \
   POLL_INTERVAL_MS=200 \
   MAX_HANDS=$NUM_HANDS \
+  TURN_ACTION_DELAY_MS=0 \
   node --import tsx bots/agent/src/index.ts > /tmp/playerco-agent$i.log 2>&1 &
   PIDS+=($!)
   pass "Agent $((i+1)) started (Seat $i, PID: ${PIDS[-1]})"

@@ -34,11 +34,35 @@ export const router: RouterType = Router();
 
 // ============ Health Check ============
 
-router.get("/health", (_req, res) => {
+router.get("/health", async (_req, res) => {
   const wsStats = getWsManager().getStats();
-  res.json({
-    status: "ok",
+
+  // Check database readiness
+  let dbReady = false;
+  try {
+    const { query: dbQuery } = await import("../db/index.js");
+    await dbQuery("SELECT 1");
+    dbReady = true;
+  } catch {
+    dbReady = false;
+  }
+
+  // Check chain config readiness
+  const chainReady = !!(
+    process.env.POKER_TABLE_ADDRESS &&
+    process.env.PLAYER_REGISTRY_ADDRESS &&
+    process.env.RPC_URL
+  );
+
+  const allReady = dbReady && chainReady;
+
+  res.status(allReady ? 200 : 503).json({
+    status: allReady ? "ready" : "degraded",
     timestamp: new Date().toISOString(),
+    dependencies: {
+      database: dbReady ? "ready" : "unavailable",
+      chain: chainReady ? "ready" : "unavailable",
+    },
     websocket: wsStats,
   });
 });

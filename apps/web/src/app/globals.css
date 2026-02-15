@@ -225,6 +225,11 @@ h5 {
   box-shadow: none;
 }
 
+.btn-join {
+  border-color: rgba(74, 222, 128, 0.52);
+  color: #bbf7d0;
+}
+
 .landing-hero {
   position: relative;
   overflow: hidden;

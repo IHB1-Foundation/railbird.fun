@@ -133,7 +133,7 @@ DB_PORT=<railway-postgres-port>
 DB_NAME=<railway-postgres-db>
 DB_USER=<railway-postgres-user>
 DB_PASSWORD=<railway-postgres-password>
-START_BLOCK=0
+START_BLOCK=13011100
 POLL_INTERVAL_MS=2000
 LOG_BLOCK_RANGE=90
 ```
@@ -141,6 +141,7 @@ LOG_BLOCK_RANGE=90
 참고:
 - Monad testnet RPC는 `eth_getLogs` 조회 범위를 크게 제한한다.
 - `LOG_BLOCK_RANGE`는 100 이하(권장 90)로 유지해야 인덱싱이 멈추지 않는다.
+- 현재 배포 주소 기준 Core 배포 블록은 `13011226~13011227`이므로 `START_BLOCK=13011100`(여유 포함)으로 설정했다.
 
 ### `keeper`
 

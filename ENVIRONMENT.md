@@ -37,6 +37,7 @@ set -a; source ./.env; set +a
 - `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_POOL_SIZE`
 - `START_BLOCK` (optional)
 - `POLL_INTERVAL_MS`
+- `LOG_BLOCK_RANGE` (Monad RPC-safe `eth_getLogs` chunk, recommend `<=100`, default `90`)
 - `PORT` (set per-process when running multiple services)
 
 ### OwnerView

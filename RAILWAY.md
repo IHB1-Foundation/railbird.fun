@@ -135,7 +135,12 @@ DB_USER=<railway-postgres-user>
 DB_PASSWORD=<railway-postgres-password>
 START_BLOCK=0
 POLL_INTERVAL_MS=2000
+LOG_BLOCK_RANGE=90
 ```
+
+참고:
+- Monad testnet RPC는 `eth_getLogs` 조회 범위를 크게 제한한다.
+- `LOG_BLOCK_RANGE`는 100 이하(권장 90)로 유지해야 인덱싱이 멈추지 않는다.
 
 ### `keeper`
 

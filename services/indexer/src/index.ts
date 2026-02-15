@@ -90,6 +90,7 @@ async function main(): Promise<void> {
       playerVaultAddress: process.env.PLAYER_VAULT_ADDRESS as Address | undefined,
       startBlock: process.env.START_BLOCK ? BigInt(process.env.START_BLOCK) : undefined,
       pollIntervalMs: parseInt(process.env.POLL_INTERVAL_MS || "2000", 10),
+      logBlockRange: parseInt(process.env.LOG_BLOCK_RANGE || "90", 10),
     });
 
     // Don't block on listener start - run in background

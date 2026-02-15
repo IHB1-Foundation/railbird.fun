@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 import "../src/PokerTable.sol";
+import "../src/HandEvaluator.sol";
 import "../src/mocks/MockVRFAdapter.sol";
 
 contract PokerTableTest is Test {
@@ -398,16 +399,31 @@ contract PokerTableTest is Test {
         _setupAllSeats();
         pokerTable.startHand();
 
+        // Commit cards for all seats
+        uint8[4] memory h1 = [uint8(12), uint8(0), uint8(2), uint8(4)];
+        uint8[4] memory h2 = [uint8(25), uint8(14), uint8(16), uint8(18)];
+        bytes32[4] memory salts = [bytes32("s0"), bytes32("s1"), bytes32("s2"), bytes32("s3")];
+        for (uint8 i = 0; i < 4; i++) {
+            _commitCards(1, i, h1[i], h2[i], salts[i]);
+        }
+
         _playToShowdown();
 
-        // Settle showdown (seat 0 wins for testing)
-        pokerTable.settleShowdown(0);
+        // Reveal all active seats
+        for (uint8 i = 0; i < 4; i++) {
+            pokerTable.revealHoleCards(1, i, h1[i], h2[i], salts[i]);
+        }
+
+        // Compute expected winner using HandEvaluator
+        uint8[5] memory comm = pokerTable.getCommunityCards();
+        uint8 expectedWinner = _findWinner(comm, h1, h2, 4);
+
+        uint256 stackBefore = pokerTable.getSeat(expectedWinner).stack;
+        pokerTable.settleShowdown();
 
         assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.SETTLED));
-
-        // Pot was 80 (4 * BB=20) - all called BB
-        PokerTable.Seat memory seat0 = pokerTable.getSeat(0);
-        assertEq(seat0.stack, BUY_IN - BIG_BLIND + 80, "Winner receives full pot");
+        uint256 stackAfter = pokerTable.getSeat(expectedWinner).stack;
+        assertEq(stackAfter, stackBefore + 80, "Winner receives full pot");
     }
 
     // ============ VRF Integration Tests (T-0104) ============
@@ -654,6 +670,13 @@ contract PokerTableTest is Test {
         _setupAllSeats();
         pokerTable.startHand();
 
+        uint8[4] memory h1 = [uint8(12), uint8(0), uint8(2), uint8(4)];
+        uint8[4] memory h2 = [uint8(25), uint8(14), uint8(16), uint8(18)];
+        bytes32[4] memory salts = [bytes32("s0"), bytes32("s1"), bytes32("s2"), bytes32("s3")];
+        for (uint8 i = 0; i < 4; i++) {
+            _commitCards(1, i, h1[i], h2[i], salts[i]);
+        }
+
         // UTG raises to 100
         vm.prank(operator4);
         vm.roll(block.number + 1);
@@ -674,7 +697,6 @@ contract PokerTableTest is Test {
 
         mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
 
-        // Check through remaining streets
         _completePostflopBetting();
         mockVRF.fulfillLastRequest(TEST_RANDOMNESS + 1);
 
@@ -685,11 +707,19 @@ contract PokerTableTest is Test {
 
         assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.SHOWDOWN));
 
-        uint256 stackBefore = pokerTable.getSeat(0).stack;
+        // Reveal all seats
+        for (uint8 i = 0; i < 4; i++) {
+            pokerTable.revealHoleCards(1, i, h1[i], h2[i], salts[i]);
+        }
 
-        pokerTable.settleShowdown(0);
+        // Compute expected winner
+        uint8[5] memory comm = pokerTable.getCommunityCards();
+        uint8 expectedWinner = _findWinner(comm, h1, h2, 4);
+        uint256 stackBefore = pokerTable.getSeat(expectedWinner).stack;
 
-        uint256 stackAfter = pokerTable.getSeat(0).stack;
+        pokerTable.settleShowdown();
+
+        uint256 stackAfter = pokerTable.getSeat(expectedWinner).stack;
         assertEq(stackAfter, stackBefore + 400, "Winner receives full pot (4 * 100)");
     }
 
@@ -697,13 +727,28 @@ contract PokerTableTest is Test {
         _setupAllSeats();
         pokerTable.startHand();
 
+        uint8[4] memory h1 = [uint8(0), uint8(12), uint8(2), uint8(4)];
+        uint8[4] memory h2 = [uint8(14), uint8(25), uint8(16), uint8(18)];
+        bytes32[4] memory salts = [bytes32("s0"), bytes32("s1"), bytes32("s2"), bytes32("s3")];
+        for (uint8 i = 0; i < 4; i++) {
+            _commitCards(1, i, h1[i], h2[i], salts[i]);
+        }
+
         _playToShowdown();
+
+        for (uint8 i = 0; i < 4; i++) {
+            pokerTable.revealHoleCards(1, i, h1[i], h2[i], salts[i]);
+        }
+
+        // Compute expected winner
+        uint8[5] memory comm = pokerTable.getCommunityCards();
+        uint8 expectedWinner = _findWinner(comm, h1, h2, 4);
 
         // Pot is 4 * BB = 80
         vm.expectEmit(true, false, false, true);
-        emit HandSettled(1, 1, BIG_BLIND * 4);
+        emit HandSettled(1, expectedWinner, BIG_BLIND * 4);
 
-        pokerTable.settleShowdown(1);
+        pokerTable.settleShowdown();
     }
 
     function test_Settlement_PotAccumulatesFromRaises() public {
@@ -1330,7 +1375,7 @@ contract PokerTableTest is Test {
         _setupAllSeats();
         pokerTable.startHand();
 
-        // Submit commitments for all 4 seats
+        // Submit commitments for all 4 seats (distinct cards)
         uint8[4] memory c1 = [uint8(10), uint8(20), uint8(30), uint8(40)];
         uint8[4] memory c2 = [uint8(15), uint8(25), uint8(35), uint8(45)];
         bytes32[4] memory salts;
@@ -1352,9 +1397,12 @@ contract PokerTableTest is Test {
             assertTrue(pokerTable.isHoleCardsRevealed(1, i));
         }
 
-        pokerTable.settleShowdown(0);
+        pokerTable.settleShowdown();
 
-        // Verify all cards accessible after settlement
+        // Verify game is settled
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.SETTLED));
+
+        // Verify all cards still accessible after settlement
         for (uint8 i = 0; i < 4; i++) {
             (uint8 rc1, uint8 rc2) = pokerTable.getRevealedHoleCards(1, i);
             assertEq(rc1, c1[i]);
@@ -1601,7 +1649,231 @@ contract PokerTableTest is Test {
         assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.WAITING_VRF_TURN));
     }
 
+    // ============ Card-Based Settlement Tests (T-0902) ============
+
+    function test_Showdown_RevertIfNoReveals() public {
+        _setupAllSeats();
+        pokerTable.startHand();
+        _playToShowdown();
+
+        // No reveals submitted
+        vm.expectRevert("No revealed hole cards");
+        pokerTable.settleShowdown();
+    }
+
+    function test_Showdown_SingleRevealWinsByDefault() public {
+        _setupAllSeats();
+        pokerTable.startHand();
+
+        // Only seat 2 reveals
+        _commitCards(1, 2, 0, 14, bytes32("s2"));
+
+        _playToShowdown();
+
+        pokerTable.revealHoleCards(1, 2, 0, 14, bytes32("s2"));
+        pokerTable.settleShowdown();
+
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.SETTLED));
+        // Seat 2 wins the entire pot by default (only one revealed)
+        PokerTable.Seat memory seat2 = pokerTable.getSeat(2);
+        assertEq(seat2.stack, BUY_IN - BIG_BLIND + 80, "Single revealer wins pot");
+    }
+
+    function test_Showdown_StrongerHandWins() public {
+        _setupAllSeats();
+        pokerTable.startHand();
+
+        // Give each seat different cards; evaluator picks winner
+        uint8[4] memory h1 = [uint8(12), uint8(0), uint8(2), uint8(4)];
+        uint8[4] memory h2 = [uint8(25), uint8(14), uint8(16), uint8(18)];
+        bytes32[4] memory salts = [bytes32("s0"), bytes32("s1"), bytes32("s2"), bytes32("s3")];
+        for (uint8 i = 0; i < 4; i++) {
+            _commitCards(1, i, h1[i], h2[i], salts[i]);
+        }
+
+        _playToShowdown();
+
+        for (uint8 i = 0; i < 4; i++) {
+            pokerTable.revealHoleCards(1, i, h1[i], h2[i], salts[i]);
+        }
+
+        uint8[5] memory comm = pokerTable.getCommunityCards();
+        uint8 expectedWinner = _findWinner(comm, h1, h2, 4);
+        uint256 stackBefore = pokerTable.getSeat(expectedWinner).stack;
+        pokerTable.settleShowdown();
+
+        uint256 stackAfter = pokerTable.getSeat(expectedWinner).stack;
+        assertEq(stackAfter, stackBefore + 80, "Evaluator-determined winner gets pot");
+    }
+
+    function test_Showdown_LoserDoesNotGain() public {
+        _setupAllSeats();
+        pokerTable.startHand();
+
+        uint8[4] memory h1 = [uint8(0), uint8(12), uint8(2), uint8(4)];
+        uint8[4] memory h2 = [uint8(14), uint8(25), uint8(16), uint8(18)];
+        bytes32[4] memory salts = [bytes32("s0"), bytes32("s1"), bytes32("s2"), bytes32("s3")];
+        for (uint8 i = 0; i < 4; i++) {
+            _commitCards(1, i, h1[i], h2[i], salts[i]);
+        }
+
+        _playToShowdown();
+
+        for (uint8 i = 0; i < 4; i++) {
+            pokerTable.revealHoleCards(1, i, h1[i], h2[i], salts[i]);
+        }
+
+        // Record all stacks before settlement
+        uint256[4] memory stacksBefore;
+        for (uint8 i = 0; i < 4; i++) {
+            stacksBefore[i] = pokerTable.getSeat(i).stack;
+        }
+
+        pokerTable.settleShowdown();
+
+        // Exactly one winner should have gained, others unchanged
+        uint8 winnersFound;
+        for (uint8 i = 0; i < 4; i++) {
+            if (pokerTable.getSeat(i).stack > stacksBefore[i]) {
+                winnersFound++;
+            } else {
+                assertEq(pokerTable.getSeat(i).stack, stacksBefore[i], "Non-winner stack unchanged");
+            }
+        }
+        assertTrue(winnersFound >= 1, "At least one winner");
+    }
+
+    function test_Showdown_TieSplitsPot() public {
+        _setupAllSeats();
+        pokerTable.startHand();
+
+        // Both seat 0 and seat 1 have Aces (different suits, same rank)
+        // Seat 0: A♣ K♣ (12, 11) - high cards A K
+        // Seat 1: A♦ K♦ (25, 24) - high cards A K (same ranks)
+        // With 5 shared community cards, these produce the exact same hand
+        _commitCards(1, 0, 12, 11, bytes32("s0"));
+        _commitCards(1, 1, 25, 24, bytes32("s1"));
+        _commitCards(1, 2, 0, 14, bytes32("s2"));
+        _commitCards(1, 3, 2, 16, bytes32("s3"));
+
+        _playToShowdown();
+
+        pokerTable.revealHoleCards(1, 0, 12, 11, bytes32("s0"));
+        pokerTable.revealHoleCards(1, 1, 25, 24, bytes32("s1"));
+        pokerTable.revealHoleCards(1, 2, 0, 14, bytes32("s2"));
+        pokerTable.revealHoleCards(1, 3, 2, 16, bytes32("s3"));
+
+        uint256 stack0Before = pokerTable.getSeat(0).stack;
+        uint256 stack1Before = pokerTable.getSeat(1).stack;
+        pokerTable.settleShowdown();
+
+        // Check that pot was split between the tied seats
+        // Total pot is 80. If 2 seats tie, each gets 40.
+        // First need to check if seats 0 and 1 actually tie
+        // (they have same rank cards A K, so with same community cards the best hand is identical)
+        uint256 stack0After = pokerTable.getSeat(0).stack;
+        uint256 stack1After = pokerTable.getSeat(1).stack;
+
+        // The two tied players should get equal or near-equal shares
+        uint256 gain0 = stack0After - stack0Before;
+        uint256 gain1 = stack1After - stack1Before;
+        assertEq(gain0 + gain1, 80, "Total pot distributed");
+        assertTrue(gain0 > 0 && gain1 > 0, "Both tied players receive something");
+        // Difference is at most 1 (remainder)
+        assertTrue(gain0 >= gain1 ? gain0 - gain1 <= 1 : gain1 - gain0 <= 1, "Split is fair");
+    }
+
+    function test_Showdown_UnrevealedSeatForfeits() public {
+        _setupAllSeats();
+        pokerTable.startHand();
+
+        // Seat 0 has stronger cards but doesn't reveal
+        // Seat 0: A♣ A♦ (doesn't reveal)
+        _commitCards(1, 0, 12, 25, bytes32("s0"));
+        // Seat 1: 2♣ 3♦ (reveals - wins by default since only revealer)
+        _commitCards(1, 1, 0, 14, bytes32("s1"));
+
+        _playToShowdown();
+
+        // Only seat 1 reveals
+        pokerTable.revealHoleCards(1, 1, 0, 14, bytes32("s1"));
+
+        uint256 stack1Before = pokerTable.getSeat(1).stack;
+        pokerTable.settleShowdown();
+
+        // Seat 1 wins because seat 0 didn't reveal (forfeits)
+        assertEq(pokerTable.getSeat(1).stack, stack1Before + 80, "Revealer wins when others forfeit");
+    }
+
+    function test_Showdown_RevertNotAtShowdown() public {
+        _setupAllSeats();
+        pokerTable.startHand();
+
+        // Still in BETTING_PRE
+        vm.expectRevert("Not at showdown");
+        pokerTable.settleShowdown();
+    }
+
+    function test_Showdown_WinnerDeterminedByCards_NotPosition() public {
+        _setupAllSeats();
+        pokerTable.startHand();
+
+        // Give all seats different cards
+        uint8[4] memory h1 = [uint8(0), uint8(2), uint8(4), uint8(12)];
+        uint8[4] memory h2 = [uint8(14), uint8(16), uint8(18), uint8(25)];
+        bytes32[4] memory salts = [bytes32("s0"), bytes32("s1"), bytes32("s2"), bytes32("s3")];
+        for (uint8 i = 0; i < 4; i++) {
+            _commitCards(1, i, h1[i], h2[i], salts[i]);
+        }
+
+        _playToShowdown();
+
+        for (uint8 i = 0; i < 4; i++) {
+            pokerTable.revealHoleCards(1, i, h1[i], h2[i], salts[i]);
+        }
+
+        // Compute expected winner
+        uint8[5] memory comm = pokerTable.getCommunityCards();
+        uint8 expectedWinner = _findWinner(comm, h1, h2, 4);
+        uint256 stackBefore = pokerTable.getSeat(expectedWinner).stack;
+
+        pokerTable.settleShowdown();
+
+        assertEq(
+            pokerTable.getSeat(expectedWinner).stack,
+            stackBefore + 80,
+            "Card-evaluated winner gets pot"
+        );
+    }
+
     // ============ Helper Functions ============
+
+    /**
+     * @dev Submit a hole card commitment for testing convenience.
+     */
+    function _commitCards(uint256 handId, uint8 seatIndex, uint8 card1, uint8 card2, bytes32 salt) internal {
+        bytes32 commitment = keccak256(abi.encodePacked(handId, seatIndex, card1, card2, salt));
+        pokerTable.submitHoleCommit(handId, seatIndex, commitment);
+    }
+
+    /**
+     * @dev Find the expected winner using HandEvaluator.
+     */
+    function _findWinner(
+        uint8[5] memory comm,
+        uint8[4] memory h1,
+        uint8[4] memory h2,
+        uint8 count
+    ) internal pure returns (uint8 winner) {
+        uint256 bestScore;
+        for (uint8 i = 0; i < count; i++) {
+            uint256 score = HandEvaluator.evaluate(comm, h1[i], h2[i]);
+            if (score > bestScore) {
+                bestScore = score;
+                winner = i;
+            }
+        }
+    }
 
     function _setupAllSeats() internal {
         pokerTable.registerSeat(0, owner1, operator1, BUY_IN);

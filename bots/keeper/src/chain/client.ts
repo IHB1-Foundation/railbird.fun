@@ -48,7 +48,7 @@ export interface TableState {
   seats: Seat[];
   actorSeat: number;
   pot: bigint;
-  bothSeatsFilled: boolean;
+  allSeatsFilled: boolean;
 }
 
 export interface RebalanceStatus {
@@ -124,8 +124,10 @@ export class ChainClient {
       pendingVRFRequestId,
       seat0,
       seat1,
+      seat2,
+      seat3,
       handInfo,
-      bothSeatsFilled,
+      allSeatsFilled,
     ] = await Promise.all([
       this.publicClient.readContract({
         address: this.pokerTableAddress,
@@ -172,12 +174,24 @@ export class ChainClient {
       this.publicClient.readContract({
         address: this.pokerTableAddress,
         abi: POKER_TABLE_ABI,
+        functionName: "getSeat",
+        args: [2],
+      }),
+      this.publicClient.readContract({
+        address: this.pokerTableAddress,
+        abi: POKER_TABLE_ABI,
+        functionName: "getSeat",
+        args: [3],
+      }),
+      this.publicClient.readContract({
+        address: this.pokerTableAddress,
+        abi: POKER_TABLE_ABI,
         functionName: "getHandInfo",
       }),
       this.publicClient.readContract({
         address: this.pokerTableAddress,
         abi: POKER_TABLE_ABI,
-        functionName: "bothSeatsFilled",
+        functionName: "allSeatsFilled",
       }),
     ]);
 
@@ -207,10 +221,10 @@ export class ChainClient {
       actionDeadline: actionDeadline as bigint,
       lastActionBlock: lastActionBlock as bigint,
       pendingVRFRequestId: pendingVRFRequestId as bigint,
-      seats: [parseSeat(seat0), parseSeat(seat1)],
+      seats: [parseSeat(seat0), parseSeat(seat1), parseSeat(seat2), parseSeat(seat3)],
       actorSeat: handInfoData[3],
       pot: handInfoData[1],
-      bothSeatsFilled: bothSeatsFilled as boolean,
+      allSeatsFilled: allSeatsFilled as boolean,
     };
   }
 
@@ -241,14 +255,14 @@ export class ChainClient {
     return hash;
   }
 
-  async settleShowdown(winnerSeat: number): Promise<Hash> {
+  async settleShowdown(): Promise<Hash> {
     const hash = await this.walletClient.writeContract({
       chain: this.chain,
       account: this.account,
       address: this.pokerTableAddress,
       abi: POKER_TABLE_ABI,
       functionName: "settleShowdown",
-      args: [winnerSeat],
+      args: [],
     });
     await this.publicClient.waitForTransactionReceipt({ hash });
     return hash;

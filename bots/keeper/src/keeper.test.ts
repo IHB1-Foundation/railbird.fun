@@ -79,14 +79,13 @@ describe("Keeper decision logic", () => {
   // Helper to determine if keeper should start hand
   function shouldStartHand(
     gameState: GameState,
-    bothSeatsFilled: boolean,
-    seat0Stack: bigint,
-    seat1Stack: bigint,
+    allSeatsFilled: boolean,
+    seatStacks: bigint[],
     minStack: bigint
   ): boolean {
     if (gameState !== GameState.SETTLED) return false;
-    if (!bothSeatsFilled) return false;
-    if (seat0Stack < minStack || seat1Stack < minStack) return false;
+    if (!allSeatsFilled) return false;
+    if (seatStacks.some((s) => s < minStack)) return false;
     return true;
   }
 
@@ -151,9 +150,8 @@ describe("Keeper decision logic", () => {
     assert.strictEqual(
       shouldStartHand(
         GameState.SETTLED,
-        true, // both seats filled
-        1000n, // seat 0 stack
-        1000n, // seat 1 stack
+        true, // all seats filled
+        [1000n, 1000n, 1000n, 1000n], // seat stacks
         10n // min stack
       ),
       true
@@ -165,8 +163,7 @@ describe("Keeper decision logic", () => {
       shouldStartHand(
         GameState.BETTING_PRE,
         true,
-        1000n,
-        1000n,
+        [1000n, 1000n, 1000n, 1000n],
         10n
       ),
       false
@@ -178,8 +175,7 @@ describe("Keeper decision logic", () => {
       shouldStartHand(
         GameState.SETTLED,
         false, // seats not filled
-        1000n,
-        1000n,
+        [1000n, 1000n, 1000n, 1000n],
         10n
       ),
       false
@@ -191,8 +187,7 @@ describe("Keeper decision logic", () => {
       shouldStartHand(
         GameState.SETTLED,
         true,
-        5n, // too small
-        1000n,
+        [5n, 1000n, 1000n, 1000n], // seat 0 too small
         10n
       ),
       false

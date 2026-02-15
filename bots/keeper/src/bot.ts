@@ -158,21 +158,21 @@ export class KeeperBot {
    * Check if table is ready for a new hand and start it
    */
   private async checkAndStartHand(state: TableState): Promise<void> {
-    // Only if settled and both seats filled
     if (state.gameState !== GameState.SETTLED) {
       return;
     }
 
-    if (!state.bothSeatsFilled) {
+    if (!state.allSeatsFilled) {
       return;
     }
 
-    // Check both seats have enough for blinds (minimal check)
-    if (state.seats[0].stack < 10n || state.seats[1].stack < 10n) {
+    // Check all seats have enough for blinds (minimal check)
+    const hasEnoughStack = state.seats.every((s) => s.stack >= 10n);
+    if (!hasEnoughStack) {
       return;
     }
 
-    console.log("[KeeperBot] Table is SETTLED with both seats filled, starting new hand...");
+    console.log("[KeeperBot] Table is SETTLED with all seats filled, starting new hand...");
 
     try {
       const hash = await this.chainClient.startHand();
@@ -180,8 +180,6 @@ export class KeeperBot {
       this.recordAction("startHand");
       console.log(`[KeeperBot] Started new hand, tx: ${hash}`);
     } catch (error) {
-      // Another keeper/player might have started - this is expected
-      // Only log if it's a different error
       const errorMsg = String(error);
       if (!errorMsg.includes("Cannot start hand now")) {
         console.error("[KeeperBot] Failed to start hand:", error);
@@ -191,29 +189,31 @@ export class KeeperBot {
   }
 
   /**
-   * Check if showdown needs to be settled
-   * For MVP, we just pick a random winner since we don't have hole card evaluation
+   * Check if showdown needs to be settled.
+   * Settlement now uses on-chain hand evaluation of revealed hole cards.
+   * Keeper just triggers settleShowdown(); the contract determines the winner.
    */
   private async checkAndSettleShowdown(state: TableState): Promise<void> {
     if (state.gameState !== GameState.SHOWDOWN) {
       return;
     }
 
-    console.log("[KeeperBot] Showdown detected, settling...");
-
-    // For MVP: pick winner based on simple heuristic
-    // In production, this would evaluate hole cards
-    // We'll pick seat 0 as winner for now (or use hand ID as pseudo-random)
-    const winnerSeat = Number(state.currentHandId % 2n);
+    console.log("[KeeperBot] Showdown detected, triggering card-based settlement...");
 
     try {
-      const hash = await this.chainClient.settleShowdown(winnerSeat);
+      const hash = await this.chainClient.settleShowdown();
       this.stats.showdownsSettled++;
       this.recordAction("settleShowdown");
-      console.log(`[KeeperBot] Settled showdown, winner: seat ${winnerSeat}, tx: ${hash}`);
+      console.log(`[KeeperBot] Settled showdown (winner determined by card evaluation), tx: ${hash}`);
     } catch (error) {
-      console.error("[KeeperBot] Failed to settle showdown:", error);
-      this.stats.errors++;
+      const errorMsg = String(error);
+      // "No revealed hole cards" means reveals haven't been submitted yet; retry later
+      if (errorMsg.includes("No revealed hole cards")) {
+        console.log("[KeeperBot] Waiting for hole card reveals before settlement...");
+      } else {
+        console.error("[KeeperBot] Failed to settle showdown:", error);
+        this.stats.errors++;
+      }
     }
   }
 

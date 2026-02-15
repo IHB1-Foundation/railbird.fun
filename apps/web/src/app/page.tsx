@@ -42,25 +42,37 @@ export default async function LobbyPage() {
 
   if (error) {
     return (
-      <div className="empty">
-        <p>Unable to load tables</p>
-        <p className="error-detail">{error}</p>
-      </div>
+      <section className="page-section">
+        <article className="landing-hero card">
+          <div className="landing-hero-copy">
+            <p className="landing-eyebrow">Railbird · Monad Testnet</p>
+            <h1 className="landing-title">Live Poker Tables</h1>
+            <p className="landing-subtitle">
+              Track active hands, watch agent behavior, and monitor table flow in real time.
+            </p>
+          </div>
+        </article>
+        <div className="empty">
+          <p>Unable to load tables</p>
+          <p className="error-detail">{error}</p>
+        </div>
+      </section>
     );
   }
 
-  if (!tables || tables.length === 0) {
-    return (
-      <div className="empty">
-        <p>No active tables</p>
-        <p className="error-detail">
-          Tables will appear here when they are created on-chain
-        </p>
-      </div>
-    );
-  }
+  const safeTables = tables || [];
+  const liveTables = safeTables.filter((table) => isOngoingState(table.gameState));
+  const occupiedSeats = safeTables.reduce(
+    (acc, table) =>
+      acc + table.seats.filter((seat) => seat.ownerAddress.toLowerCase() !== ZERO_ADDRESS).length,
+    0
+  );
+  const livePot = safeTables.reduce(
+    (acc, table) => acc + BigInt(table.currentHand?.pot || "0"),
+    0n
+  );
 
-  const featuredCandidate = [...tables]
+  const featuredCandidate = [...safeTables]
     .sort((a, b) => {
       const aOngoing = isOngoingState(a.gameState) ? 1 : 0;
       const bOngoing = isOngoingState(b.gameState) ? 1 : 0;
@@ -78,6 +90,49 @@ export default async function LobbyPage() {
 
   return (
     <section className="page-section">
+      <article className="landing-hero card">
+        <div className="landing-hero-copy">
+          <p className="landing-eyebrow">Railbird · Monad Testnet</p>
+          <h1 className="landing-title">Live Poker Tables</h1>
+          <p className="landing-subtitle">
+            Built for transparent agent play. Follow seats, pot movement, and hand-by-hand action flow.
+          </p>
+          <div className="landing-cta-row">
+            <Link href="/leaderboard" className="btn">
+              Open Leaderboard
+            </Link>
+            <Link href="/betting" className="btn btn-ghost">
+              Open Rail Bets
+            </Link>
+          </div>
+        </div>
+        <div className="landing-stats-grid">
+          <div className="landing-stat">
+            <p className="landing-stat-label">Active Tables</p>
+            <p className="landing-stat-value">{liveTables.length}</p>
+          </div>
+          <div className="landing-stat">
+            <p className="landing-stat-label">Occupied Seats</p>
+            <p className="landing-stat-value">{occupiedSeats}</p>
+          </div>
+          <div className="landing-stat">
+            <p className="landing-stat-label">Live Pot Total</p>
+            <p className="landing-stat-value">
+              {formatChips(livePot)} {CHIP_SYMBOL}
+            </p>
+          </div>
+        </div>
+      </article>
+
+      {safeTables.length === 0 ? (
+        <div className="empty">
+          <p>No active tables</p>
+          <p className="error-detail">
+            Tables will appear here when on-chain table and seat events are indexed.
+          </p>
+        </div>
+      ) : null}
+
       {featuredTable && (
         <article className="card featured-live-card">
           <header className="featured-live-header">
@@ -165,9 +220,9 @@ export default async function LobbyPage() {
         </article>
       )}
 
-      <h2 className="section-title">Live Tables</h2>
+      {safeTables.length > 0 ? <h2 className="section-title">Live Tables</h2> : null}
       <div className="card-grid">
-        {tables.map((table) => {
+        {safeTables.map((table) => {
           const statusClass = getStatusClass(table.gameState);
           const stateName = GAME_STATES[table.gameState] || table.gameState;
           const activeSeats = table.seats.filter((s) => s.ownerAddress.toLowerCase() !== ZERO_ADDRESS).length;

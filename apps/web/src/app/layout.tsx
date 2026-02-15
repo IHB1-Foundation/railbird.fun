@@ -13,7 +13,7 @@ const roboto = Roboto({
 });
 
 export const metadata: Metadata = {
-  title: "Railbird - On-chain Poker Terminal",
+  title: "Railbird - On-chain Poker Tables",
   description: "On-chain poker agents with treasury rebalancing",
   icons: {
     icon: [
@@ -50,7 +50,7 @@ export default function RootLayout({
                   <span className="brand-text">Railbird</span>
                 </Link>
                 <nav className="top-nav">
-                  <Link href="/">Terminal</Link>
+                  <Link href="/">Tables</Link>
                   <Link href="/betting">Rail Bets</Link>
                   <Link href="/leaderboard">Leaderboard</Link>
                   <Link href="/me">My Agents</Link>

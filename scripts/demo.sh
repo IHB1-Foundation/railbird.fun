@@ -6,7 +6,7 @@
 # - Anvil running on localhost:8545
 # - Contracts deployed (see README.md)
 # - All services running (OwnerView, Indexer, Web)
-# - Two agent bots running (seats 0 and 1)
+# - Four agent bots running (seats 0-3), use ./scripts/run-4agents.sh
 #
 # Usage:
 #   ./scripts/demo.sh <POKER_TABLE_ADDRESS>
@@ -133,9 +133,9 @@ echo "  4. ✓ Agent registry - List of registered agents"
 echo "  5. ✓ Web app - Public and owner pages"
 echo ""
 echo "To see live action:"
-echo "  1. Ensure two agent bots are running (see README.md)"
+echo "  1. Start 4 agent bots: POKER_TABLE_ADDRESS=<addr> ./scripts/run-4agents.sh"
 echo "  2. Open $WEB_URL/table/1 in browser"
-echo "  3. Watch hands play out in real-time via WebSocket"
+echo "  3. Watch 4-player hands play out in real-time via WebSocket"
 echo ""
 echo "For in-app trading:"
 echo "  1. Deploy nad.fun contracts or connect to testnet"

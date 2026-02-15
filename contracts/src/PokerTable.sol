@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import "./interfaces/IVRFAdapter.sol";
+import "./HandEvaluator.sol";
 
 /**
  * @title PokerTable
@@ -727,13 +728,118 @@ contract PokerTable {
     }
 
     /**
-     * @notice Settle hand at showdown - for MVP, winner is passed in
-     * @dev In production, this would verify hole card reveals and compute winner
+     * @notice Settle hand at showdown by evaluating revealed hole cards.
+     * @dev Active seats that have not revealed forfeit (cannot win).
+     *      At least one active seat must have revealed.
+     *      On tie, pot is split evenly; remainder goes to first winner clockwise from button.
      */
-    function settleShowdown(uint8 winnerSeat) external {
+    function settleShowdown() external {
         require(gameState == GameState.SHOWDOWN, "Not at showdown");
-        // In production: verify hole card reveals here
-        _settleHand(winnerSeat);
+
+        uint256 handId = currentHandId;
+
+        // Evaluate revealed active seats
+        uint8 revealedCount;
+        uint8[4] memory revSeats;
+        uint256[4] memory scores;
+
+        for (uint8 i = 0; i < MAX_SEATS; i++) {
+            if (seats[i].isActive && isHoleCardsRevealed[handId][i]) {
+                uint8 c1 = _revealedHoleCards[handId][i][0];
+                uint8 c2 = _revealedHoleCards[handId][i][1];
+                scores[revealedCount] = HandEvaluator.evaluate(communityCards, c1, c2);
+                revSeats[revealedCount] = i;
+                revealedCount++;
+            }
+        }
+
+        require(revealedCount > 0, "No revealed hole cards");
+
+        // Single revealed seat wins by default
+        if (revealedCount == 1) {
+            _settleHand(revSeats[0]);
+            return;
+        }
+
+        // Find best score
+        uint256 bestScore;
+        for (uint8 i = 0; i < revealedCount; i++) {
+            if (scores[i] > bestScore) bestScore = scores[i];
+        }
+
+        // Count winners
+        uint8 winnerCount;
+        for (uint8 i = 0; i < revealedCount; i++) {
+            if (scores[i] == bestScore) winnerCount++;
+        }
+
+        // Single winner
+        if (winnerCount == 1) {
+            for (uint8 i = 0; i < revealedCount; i++) {
+                if (scores[i] == bestScore) {
+                    _settleHand(revSeats[i]);
+                    return;
+                }
+            }
+        }
+
+        // Tie: split pot
+        _settleHandSplit(revSeats, scores, revealedCount, bestScore, winnerCount);
+    }
+
+    /**
+     * @notice Distribute pot among tied winners.
+     * @dev Remainder (if any) goes to the first winner clockwise from button.
+     */
+    function _settleHandSplit(
+        uint8[4] memory revSeats,
+        uint256[4] memory scores,
+        uint8 revealedCount,
+        uint256 bestScore,
+        uint8 winnerCount
+    ) internal {
+        uint256 potAmount = currentHand.pot;
+        uint256 share = potAmount / winnerCount;
+        uint256 remainder = potAmount % winnerCount;
+
+        // Primary winner: first clockwise from button among tied seats
+        uint8 primaryWinner = 255;
+        for (uint8 i = 1; i <= MAX_SEATS; i++) {
+            uint8 seat = (buttonSeat + i) % MAX_SEATS;
+            for (uint8 j = 0; j < revealedCount; j++) {
+                if (revSeats[j] == seat && scores[j] == bestScore) {
+                    primaryWinner = seat;
+                    break;
+                }
+            }
+            if (primaryWinner != 255) break;
+        }
+
+        // Distribute shares
+        for (uint8 i = 0; i < revealedCount; i++) {
+            if (scores[i] == bestScore) {
+                uint256 amount = share;
+                if (revSeats[i] == primaryWinner) amount += remainder;
+                seats[revSeats[i]].stack += amount;
+                emit SeatUpdated(
+                    revSeats[i],
+                    seats[revSeats[i]].owner,
+                    seats[revSeats[i]].operator,
+                    seats[revSeats[i]].stack
+                );
+            }
+        }
+
+        emit HandSettled(currentHandId, primaryWinner, potAmount);
+
+        // Prepare for next hand
+        gameState = GameState.SETTLED;
+        buttonSeat = (buttonSeat + 1) % MAX_SEATS;
+        currentHand.pot = 0;
+        for (uint8 i = 0; i < MAX_SEATS; i++) {
+            seats[i].currentBet = 0;
+            seats[i].isActive = false;
+        }
     }
 
     // ============ Hole Card Commit/Reveal ============

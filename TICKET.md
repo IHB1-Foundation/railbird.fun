@@ -71,7 +71,7 @@ forge test -vv   # Runs all 211 tests (PokerTable + PlayerRegistry + PlayerVault
 - All hardcoded `0/1` seat assumptions removed from production code
 
 ## T-0902 Real showdown settlement (remove pseudo-random winner) (P0)
-- Status: [ ] TODO
+- Status: [x] DONE
 - Depends on: T-0901, M2
 - Goal: Determine winners from actual cards, not keeper heuristic.
 - Tasks:
@@ -83,6 +83,51 @@ forge test -vv   # Runs all 211 tests (PokerTable + PlayerRegistry + PlayerVault
     - Keeper no longer contains pseudo-random or fixed winner logic.
     - Contract tests verify winner correctness for representative hand ranks and tie cases.
     - Showdown outcome is reproducible from revealed card data.
+
+### DONE Notes (T-0902)
+**Key files changed:**
+- `contracts/src/HandEvaluator.sol` - New library: evaluates best 5-card hand from 7 cards (5 community + 2 hole), scores all C(7,2)=21 five-card combinations, supports all hand rankings from high card to straight flush with kicker tie-breaking
+- `contracts/src/PokerTable.sol` - Imported HandEvaluator; replaced `settleShowdown(uint8 winnerSeat)` with `settleShowdown()` that evaluates revealed hole cards on-chain; added `_settleHandSplit()` for tie/pot-split handling; unrevealed active seats forfeit
+- `contracts/test/HandEvaluator.t.sol` - 22 unit tests: hand type ordering (SF>quads>FH>flush>straight>trips>two pair>pair>high card), kicker tie-breaking, wheel/broadway straights, best-of-7 selection, edge cases
+- `contracts/test/PokerTable.t.sol` - Updated all showdown tests for card-based settlement; added 8 new tests: no-reveals revert, single-reveal default win, evaluator-determined winner, loser verification, tie split, unrevealed forfeit, position-independence, non-showdown revert
+- `bots/keeper/src/bot.ts` - Removed pseudo-random winner logic (`handId % 2`); keeper now calls `settleShowdown()` without args; gracefully retries if reveals not yet submitted
+- `bots/keeper/src/chain/client.ts` - Removed `winnerSeat` parameter from `settleShowdown()`; fixed `bothSeatsFilled` → `allSeatsFilled` (broken since T-0901); reads all 4 seats instead of 2
+- `bots/keeper/src/chain/pokerTableAbi.ts` - Updated `settleShowdown` ABI (no args); fixed `bothSeatsFilled` → `allSeatsFilled`
+- `bots/keeper/src/keeper.test.ts` - Updated `shouldStartHand` tests for 4-seat stacks array
+- `bots/agent/src/chain/pokerTableAbi.ts` - Fixed `bothSeatsFilled` → `allSeatsFilled`
+
+**How to run/test:**
+```bash
+cd contracts && forge test -vv   # Runs all 241 tests (84 PokerTable + 22 HandEvaluator + 38 Registry + 97 Vault)
+forge test --match-contract HandEvaluatorTest -vv   # 22 hand evaluator tests
+forge test --match-contract PokerTableTest -vv      # 84 poker table tests
+cd bots/keeper && pnpm test                         # 13 keeper tests
+```
+
+**Manual verification:**
+1. Run `forge test -vv` in contracts/ - all 241 tests pass
+2. HandEvaluator tests verify all 9 hand rankings with correct ordering
+3. PokerTable showdown tests verify:
+   - `test_Showdown_RevertIfNoReveals`: Settlement reverts without any reveals
+   - `test_Showdown_SingleRevealWinsByDefault`: Only revealed seat wins by default
+   - `test_Showdown_StrongerHandWins`: Card-evaluated winner receives full pot
+   - `test_Showdown_TieSplitsPot`: Tied hands split pot with remainder to first clockwise from button
+   - `test_Showdown_UnrevealedSeatForfeits`: Unrevealed seats forfeit even if they would have won
+   - `test_Showdown_WinnerDeterminedByCards_NotPosition`: Winner depends on cards, not seat index
+4. Keeper bot no longer contains any pseudo-random or fixed winner logic
+
+**Hand evaluation scoring:**
+- Score encoding: `(handType << 20) | (k0 << 16) | (k1 << 12) | (k2 << 8) | (k3 << 4) | k4`
+- Hand types: 0=HighCard, 1=Pair, 2=TwoPair, 3=Trips, 4=Straight, 5=Flush, 6=FullHouse, 7=Quads, 8=StraightFlush
+- Card encoding: rank = card % 13 (0=2..12=A), suit = card / 13
+
+**Settlement policy:**
+- At showdown, `settleShowdown()` evaluates all active seats that have revealed hole cards
+- Active seats without reveals forfeit (cannot win)
+- At least one active seat must have revealed (otherwise reverts)
+- Best hand determined by HandEvaluator score comparison
+- On tie: pot split evenly, remainder to first winner clockwise from button
+- Settlement emits `HandSettled(handId, primaryWinner, totalPot)`
 
 ## T-0903 Replace mock VRF in runtime path with production adapter (P0)
 - Status: [ ] TODO

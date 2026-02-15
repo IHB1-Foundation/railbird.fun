@@ -173,7 +173,7 @@ export const POKER_TABLE_ABI = [
   },
   {
     type: "function",
-    name: "bothSeatsFilled",
+    name: "allSeatsFilled",
     inputs: [],
     outputs: [{ type: "bool" }],
     stateMutability: "view",

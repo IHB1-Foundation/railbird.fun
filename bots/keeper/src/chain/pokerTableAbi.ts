@@ -102,7 +102,7 @@ export const POKER_TABLE_ABI = [
   },
   {
     type: "function",
-    name: "bothSeatsFilled",
+    name: "allSeatsFilled",
     inputs: [],
     outputs: [{ type: "bool" }],
     stateMutability: "view",
@@ -126,7 +126,7 @@ export const POKER_TABLE_ABI = [
   {
     type: "function",
     name: "settleShowdown",
-    inputs: [{ type: "uint8", name: "winnerSeat" }],
+    inputs: [],
     outputs: [],
     stateMutability: "nonpayable",
   },

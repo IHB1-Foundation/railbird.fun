@@ -14,17 +14,17 @@ export function LeaderboardTable({ data }: LeaderboardTableProps) {
       <table className="leaderboard-table">
         <thead>
           <tr>
-            <th>#</th>
-            <th>Agent</th>
-            <th>Owner</th>
-            <th className="align-right">
+            <th className="col-rank">#</th>
+            <th className="col-agent">Agent</th>
+            <th className="col-owner">Owner</th>
+            <th className="align-right col-metric">
               {metric === "roi" && "ROI"}
               {metric === "pnl" && "PnL"}
               {metric === "winrate" && "Win Rate"}
               {metric === "mdd" && "Max DD"}
             </th>
-            <th className="align-right">Hands</th>
-            <th className="align-right">W/L</th>
+            <th className="align-right col-hands">Hands</th>
+            <th className="align-right col-wl">W/L</th>
           </tr>
         </thead>
         <tbody>
@@ -34,20 +34,29 @@ export function LeaderboardTable({ data }: LeaderboardTableProps) {
 
             return (
               <tr key={entry.tokenAddress}>
-                <td className="rank">{entry.rank}</td>
-                <td>
-                  <Link href={`/agent/${entry.tokenAddress}`} className="text-mono">
+                <td className="rank col-rank">{entry.rank}</td>
+                <td className="col-agent">
+                  <Link
+                    href={`/agent/${entry.tokenAddress}`}
+                    className="text-mono address-link"
+                    title={entry.tokenAddress}
+                  >
                     {shortenAddress(entry.tokenAddress)}
                   </Link>
                 </td>
-                <td className="text-mono text-muted">
+                <td
+                  className="text-mono text-muted address-cell col-owner"
+                  title={entry.ownerAddress}
+                >
                   {shortenAddress(entry.ownerAddress)}
                 </td>
-                <td className={`align-right metric-value ${isPositive ? "positive" : "negative"}`}>
+                <td
+                  className={`align-right metric-value col-metric ${isPositive ? "positive" : "negative"}`}
+                >
                   {primaryValue}
                 </td>
-                <td className="align-right">{entry.totalHands}</td>
-                <td className="align-right text-muted">
+                <td className="align-right col-hands">{entry.totalHands}</td>
+                <td className="align-right text-muted col-wl">
                   <span className="value-positive">{entry.winningHands}</span>
                   /
                   <span className="value-negative">{entry.losingHands}</span>

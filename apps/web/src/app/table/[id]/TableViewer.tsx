@@ -19,11 +19,27 @@ import { GAME_STATES, ACTION_TYPES } from "@/lib/types";
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 const TABLE_MAX_SEATS = Number(process.env.NEXT_PUBLIC_TABLE_MAX_SEATS || "9");
 const INDEXER_BASE = process.env.NEXT_PUBLIC_INDEXER_URL || "https://indexer.railbird.fun";
+const STREET_LABELS = ["Pre-flop", "Flop", "Turn", "River", "Showdown"] as const;
+
+function getSeatOrbitPosition(seatIndex: number, totalSeats: number): { left: string; top: string } {
+  if (totalSeats <= 1) {
+    return { left: "50%", top: "14%" };
+  }
+
+  const angleDeg = -90 + (360 / totalSeats) * seatIndex;
+  const angleRad = (angleDeg * Math.PI) / 180;
+  const radiusX = 42;
+  const radiusY = 35;
+  const left = 50 + Math.cos(angleRad) * radiusX;
+  const top = 50 + Math.sin(angleRad) * radiusY;
+  return { left: `${left}%`, top: `${top}%` };
+}
 
 interface TableViewerProps {
   initialData: TableResponse;
   tableId: string;
 }
+type TableAction = NonNullable<TableResponse["currentHand"]>["actions"][number];
 
 export function TableViewer({ initialData, tableId }: TableViewerProps) {
   const [table, setTable] = useState(initialData);
@@ -68,6 +84,10 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
 
   const seatByIndex = useMemo(
     () => new Map(normalizedSeats.map((seat) => [seat.seatIndex, seat])),
+    [normalizedSeats]
+  );
+  const occupiedSeats = useMemo(
+    () => normalizedSeats.filter((seat) => seat.ownerAddress.toLowerCase() !== ZERO_ADDRESS),
     [normalizedSeats]
   );
 
@@ -145,6 +165,31 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
   const gameState = GAME_STATES[table.gameState] || table.gameState;
   const currentHand = table.currentHand;
   const isActive = gameState !== "Waiting for Seats" && gameState !== "Settled";
+  const actorSeat = currentHand?.actorSeat ?? null;
+  const actorSeatData = actorSeat !== null ? seatByIndex.get(actorSeat) : null;
+  const streetSections = useMemo(() => {
+    if (!currentHand || currentHand.actions.length === 0) {
+      return [] as Array<{ street: string; actions: TableAction[] }>;
+    }
+
+    const sections: Array<{ street: string; actions: TableAction[] }> = [
+      { street: STREET_LABELS[0], actions: [] },
+    ];
+    let streetIndex = 0;
+
+    for (const action of currentHand.actions) {
+      sections[streetIndex].actions.push(action);
+
+      if (action.endsStreet && streetIndex < STREET_LABELS.length - 1) {
+        streetIndex += 1;
+        if (!sections[streetIndex]) {
+          sections[streetIndex] = { street: STREET_LABELS[streetIndex], actions: [] };
+        }
+      }
+    }
+
+    return sections.filter((section) => section.actions.length > 0);
+  }, [currentHand]);
 
   const handleJoinSeat = useCallback(async () => {
     setJoinStatus("");
@@ -239,6 +284,11 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
               Hand #{currentHand.handId}
             </div>
           )}
+          {actorSeat !== null && actorSeatData ? (
+            <div className="table-turn-indicator">
+              Turn: Seat {actorSeat} ({shortenAddress(actorSeatData.ownerAddress)})
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -294,47 +344,55 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
             {joinLoading ? "Submitting..." : "Join Seat"}
           </button>
         </div>
-        {joinStatus && <div className="muted">{joinStatus}</div>}
+        {joinStatus && <div className="join-status">{joinStatus}</div>}
       </div>
 
       {/* Table Layout */}
       <div className="table-layout">
-        <div className="seats-row seats-wrap">
-          {normalizedSeats.map((seat) => (
-            <SeatPanel
-              key={seat.seatIndex}
-              seat={seat}
-              isActor={currentHand?.actorSeat === seat.seatIndex}
-              isButton={table.buttonSeat === seat.seatIndex}
-              isOwner={ownedSeatIndex === seat.seatIndex}
-              holeCards={ownedSeatIndex === seat.seatIndex ? holeCards : null}
-            />
-          ))}
-        </div>
-
-        {/* Community Cards */}
-        <div className="community-cards">
-          {currentHand && currentHand.communityCards.length > 0 ? (
-            currentHand.communityCards
-              .filter((c) => c !== 255)
-              .map((card, i) => <PokerCard key={i} cardIndex={card} />)
-          ) : (
-            <span className="muted">No community cards</span>
-          )}
-        </div>
-
-        {/* Pot and Timer */}
-        <div className="table-pot-block">
-          {currentHand && (
-            <div className="pot-value">
-              Pot: {formatChips(currentHand.pot)} {CHIP_SYMBOL}
+        <div className="table-surface">
+          <div className="table-center">
+            <div className="community-cards">
+              {currentHand && currentHand.communityCards.length > 0 ? (
+                currentHand.communityCards
+                  .filter((c) => c !== 255)
+                  .map((card, i) => <PokerCard key={i} cardIndex={card} />)
+              ) : (
+                <span className="muted">No community cards</span>
+              )}
             </div>
-          )}
-          {table.actionDeadline && (
-            <div className={cn("timer", timeRemaining === "Expired" && "urgent")}>
-              {timeRemaining}
+
+            <div className="table-pot-block">
+              {currentHand && (
+                <div className="pot-value">
+                  Pot: {formatChips(currentHand.pot)} {CHIP_SYMBOL}
+                </div>
+              )}
+              {table.actionDeadline && (
+                <div className={cn("timer", timeRemaining === "Expired" && "urgent")}>
+                  {timeRemaining}
+                </div>
+              )}
             </div>
-          )}
+          </div>
+
+          <div className="seats-orbit">
+            {occupiedSeats.map((seat) => (
+              <div
+                key={seat.seatIndex}
+                className="seat-node"
+                style={getSeatOrbitPosition(seat.seatIndex, maxSeats)}
+              >
+                <SeatPanel
+                  seat={seat}
+                  isActor={currentHand?.actorSeat === seat.seatIndex}
+                  isButton={table.buttonSeat === seat.seatIndex}
+                  isOwner={ownedSeatIndex === seat.seatIndex}
+                  holeCards={ownedSeatIndex === seat.seatIndex ? holeCards : null}
+                  turnTimeRemaining={timeRemaining}
+                />
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -342,32 +400,39 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
       <div className="card section-card">
         <h3 className="section-title-sm">Action Log</h3>
         <div className="action-log">
-          {currentHand && currentHand.actions.length > 0 ? (
-            [...currentHand.actions].reverse().map((action, i) => {
-              const seat = seatByIndex.get(action.seatIndex);
-              const hasOwner =
-                !!seat && seat.ownerAddress.toLowerCase() !== ZERO_ADDRESS;
+          {streetSections.length > 0 ? (
+            <div className="street-log">
+              {streetSections.map((section) => (
+                <div key={section.street} className="street-block">
+                  <div className="street-title">{section.street}</div>
+                  {section.actions.map((action, i) => {
+                    const seat = seatByIndex.get(action.seatIndex);
+                    const hasOwner =
+                      !!seat && seat.ownerAddress.toLowerCase() !== ZERO_ADDRESS;
 
-              return (
-                <div key={i} className="action-item">
-                  <div className="action-main">
-                    <span>
-                      <strong>Seat {action.seatIndex}</strong>{" "}
-                      {ACTION_TYPES[action.actionType] || action.actionType}
-                      {action.amount !== "0" && ` ${formatChips(action.amount)} ${CHIP_SYMBOL}`}
-                    </span>
-                    {hasOwner ? (
-                      <span className="action-actor">
-                        {shortenAddress(seat.ownerAddress)}
-                      </span>
-                    ) : null}
-                  </div>
-                  <span className="action-time">
-                    {formatTime(action.timestamp)}
-                  </span>
+                    return (
+                      <div key={`${section.street}-${i}`} className="action-item">
+                        <div className="action-main">
+                          <span>
+                            <strong>Seat {action.seatIndex}</strong>{" "}
+                            {ACTION_TYPES[action.actionType] || action.actionType}
+                            {action.amount !== "0" && ` ${formatChips(action.amount)} ${CHIP_SYMBOL}`}
+                          </span>
+                          {hasOwner ? (
+                            <span className="action-actor">
+                              {shortenAddress(seat.ownerAddress)}
+                            </span>
+                          ) : null}
+                        </div>
+                        <span className="action-time">
+                          {formatTime(action.timestamp)}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
-              );
-            })
+              ))}
+            </div>
           ) : (
             <div className="muted">No actions yet</div>
           )}
@@ -427,12 +492,14 @@ function SeatPanel({
   isButton,
   isOwner,
   holeCards,
+  turnTimeRemaining,
 }: {
   seat: TableResponse["seats"][0];
   isActor: boolean;
   isButton: boolean;
   isOwner: boolean;
   holeCards: HoleCardsResponse | null;
+  turnTimeRemaining: string;
 }) {
   if (seat.ownerAddress.toLowerCase() === ZERO_ADDRESS) {
     return (
@@ -446,14 +513,23 @@ function SeatPanel({
   return (
     <div className={cn("seat-panel", isActor && "active", isOwner && "owner")}>
       <div className="seat-label">
-        Seat {seat.seatIndex}
-        {isButton && " (D)"}
-        {isOwner && " - You"}
+        <span>Seat {seat.seatIndex}</span>
+        {isButton && <span className="dealer-chip">D</span>}
+        {isOwner && <span className="you-pill">YOU</span>}
       </div>
-      <div className="seat-address">{shortenAddress(seat.ownerAddress)}</div>
+      <div className="seat-address" title={seat.ownerAddress}>{shortenAddress(seat.ownerAddress)}</div>
       <div className="seat-stack">{formatChips(seat.stack)} {CHIP_SYMBOL}</div>
       {seat.currentBet !== "0" && (
-        <div className="seat-bet">Bet: {formatChips(seat.currentBet)} {CHIP_SYMBOL}</div>
+        <div className="seat-bet">
+          <span className="seat-bet-chip" />
+          Bet: {formatChips(seat.currentBet)} {CHIP_SYMBOL}
+        </div>
+      )}
+      {isActor && <div className="seat-action-badge">ACTING</div>}
+      {isActor && turnTimeRemaining !== "--" && (
+        <div className={cn("seat-turn-timer", turnTimeRemaining === "Expired" && "urgent")}>
+          {turnTimeRemaining}
+        </div>
       )}
       {/* Owner's hole cards - only shown to the seat owner */}
       {isOwner && holeCards && (

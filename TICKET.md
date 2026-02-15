@@ -329,6 +329,39 @@ POKER_TABLE_ADDRESS=<addr> ./scripts/run-4agents.sh
 | 3 | 0x90F7...3906 | 0x7c85...07a6 |
 | Keeper | 0x15d3...6A65 | 0x47e1...926a |
 
+## T-0907 Test runner exit stability for OwnerView (P1)
+- Status: [x] DONE
+- Depends on: T-0905
+- Goal: Ensure `pnpm test` completes cleanly without hanging processes.
+- Tasks:
+    - Investigate open handles in `services/ownerview` tests (retention interval/timers/background resources).
+    - Ensure app/test resources are explicitly disposed in tests (`stopRetention`, interval cleanup, server teardown).
+    - Update test scripts so workspace-level `pnpm test` exits deterministically in CI.
+- Acceptance:
+    - `pnpm --filter @playerco/ownerview test` exits with code 0 without manual kill.
+    - Root `pnpm test` exits with code 0 end-to-end.
+    - No forced process termination required during local or CI runs.
+
+### DONE Notes (T-0907)
+**Key files changed:**
+- `services/ownerview/src/routes/auth.test.ts` - Added `ctx.stopRetention?.()` to `afterEach` teardown. The `createApp()` function starts a retention cleanup interval (default 5 minutes) that was never cleared, keeping the Node.js event loop alive indefinitely after tests completed.
+- `services/ownerview/src/middleware/auth.test.ts` - Added `afterEach` hook with `authService.stop()` for defensive cleanup of AuthService nonce cleanup interval.
+
+**How to run/test:**
+```bash
+pnpm --filter @playerco/ownerview test   # 124 tests pass, exits with code 0
+pnpm test                                 # All workspace tests pass, exits with code 0
+```
+
+**Root cause:**
+- `createApp()` in `app.ts` unconditionally creates a `setInterval` retention timer (default 5-minute interval) for hole card cleanup.
+- `routes/auth.test.ts` called `createApp()` in `beforeEach` but only stopped `authService` in `afterEach`, never calling `stopRetention()`. The leaked interval timer prevented the Node.js process from exiting.
+
+**Manual verification:**
+1. `pnpm --filter @playerco/ownerview test` completes and exits within ~2 seconds (no hang)
+2. `pnpm test` at repo root completes and exits with code 0 (all 228+ tests across 7 packages)
+3. No `--test-force-exit` flag needed in test script
+
 ---
 
 # M0 — Scaffolding & Config

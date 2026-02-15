@@ -49,6 +49,7 @@ describe("Auth Routes", () => {
   });
 
   afterEach(() => {
+    ctx.stopRetention?.();
     ctx.authService.stop();
   });
 

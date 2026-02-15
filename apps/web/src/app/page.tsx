@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { getTable, getTables } from "@/lib/api";
 import { CHIP_SYMBOL, formatChips, shortenAddress } from "@/lib/utils";
 import { GAME_STATES } from "@/lib/types";
@@ -106,20 +107,32 @@ export default async function LobbyPage() {
             </Link>
           </div>
         </div>
-        <div className="landing-stats-grid">
-          <div className="landing-stat">
-            <p className="landing-stat-label">Active Tables</p>
-            <p className="landing-stat-value">{liveTables.length}</p>
+        <div className="landing-hero-side">
+          <div className="landing-visual-frame">
+            <Image
+              src="/brand/landing-table-scene.svg"
+              alt="Railbird table scene artwork"
+              width={760}
+              height={440}
+              className="landing-visual-img"
+              priority
+            />
           </div>
-          <div className="landing-stat">
-            <p className="landing-stat-label">Occupied Seats</p>
-            <p className="landing-stat-value">{occupiedSeats}</p>
-          </div>
-          <div className="landing-stat">
-            <p className="landing-stat-label">Live Pot Total</p>
-            <p className="landing-stat-value">
-              {formatChips(livePot)} {CHIP_SYMBOL}
-            </p>
+          <div className="landing-stats-grid">
+            <div className="landing-stat">
+              <p className="landing-stat-label">Active Tables</p>
+              <p className="landing-stat-value">{liveTables.length}</p>
+            </div>
+            <div className="landing-stat">
+              <p className="landing-stat-label">Occupied Seats</p>
+              <p className="landing-stat-value">{occupiedSeats}</p>
+            </div>
+            <div className="landing-stat span-2">
+              <p className="landing-stat-label">Live Pot Total</p>
+              <p className="landing-stat-value">
+                {formatChips(livePot)} {CHIP_SYMBOL}
+              </p>
+            </div>
           </div>
         </div>
       </article>

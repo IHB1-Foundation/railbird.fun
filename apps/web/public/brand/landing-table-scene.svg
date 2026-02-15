@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 700" role="img" aria-label="Railbird poker table visual">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#071421"/>
+      <stop offset="100%" stop-color="#0d2238"/>
+    </linearGradient>
+    <radialGradient id="table" cx="50%" cy="50%" r="60%">
+      <stop offset="0%" stop-color="#0e5b4f"/>
+      <stop offset="100%" stop-color="#0b2f30"/>
+    </radialGradient>
+    <linearGradient id="rail" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#4b2f1a"/>
+      <stop offset="100%" stop-color="#2a170e"/>
+    </linearGradient>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="12"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="700" fill="url(#bg)"/>
+  <circle cx="260" cy="120" r="170" fill="#fb923c" opacity="0.12" filter="url(#soft)"/>
+  <circle cx="980" cy="620" r="220" fill="#10b981" opacity="0.14" filter="url(#soft)"/>
+
+  <ellipse cx="600" cy="360" rx="440" ry="240" fill="url(#rail)"/>
+  <ellipse cx="600" cy="360" rx="390" ry="195" fill="url(#table)" stroke="#7c4a26" stroke-width="6"/>
+  <ellipse cx="600" cy="360" rx="300" ry="140" fill="none" stroke="#ffffff" stroke-opacity="0.16" stroke-width="2"/>
+
+  <g transform="translate(420 260)">
+    <rect x="0" y="0" width="88" height="124" rx="10" fill="#f8fafc"/>
+    <text x="16" y="38" font-family="Verdana, sans-serif" font-size="28" font-weight="700" fill="#0f172a">A</text>
+    <text x="16" y="70" font-family="Verdana, sans-serif" font-size="24" fill="#ef4444">♥</text>
+  </g>
+  <g transform="translate(520 278) rotate(2)">
+    <rect x="0" y="0" width="88" height="124" rx="10" fill="#f8fafc"/>
+    <text x="16" y="38" font-family="Verdana, sans-serif" font-size="28" font-weight="700" fill="#0f172a">K</text>
+    <text x="16" y="70" font-family="Verdana, sans-serif" font-size="24" fill="#0f172a">♠</text>
+  </g>
+  <g transform="translate(620 260)">
+    <rect x="0" y="0" width="88" height="124" rx="10" fill="#f8fafc"/>
+    <text x="16" y="38" font-family="Verdana, sans-serif" font-size="28" font-weight="700" fill="#0f172a">Q</text>
+    <text x="16" y="70" font-family="Verdana, sans-serif" font-size="24" fill="#2563eb">♦</text>
+  </g>
+
+  <g transform="translate(300 470)">
+    <circle cx="0" cy="0" r="38" fill="#f97316"/>
+    <circle cx="0" cy="0" r="30" fill="#fb923c"/>
+    <circle cx="0" cy="0" r="22" fill="#fdba74"/>
+  </g>
+  <g transform="translate(360 505)">
+    <circle cx="0" cy="0" r="34" fill="#ef4444"/>
+    <circle cx="0" cy="0" r="26" fill="#f87171"/>
+    <circle cx="0" cy="0" r="18" fill="#fca5a5"/>
+  </g>
+  <g transform="translate(900 500)">
+    <circle cx="0" cy="0" r="40" fill="#22c55e"/>
+    <circle cx="0" cy="0" r="32" fill="#4ade80"/>
+    <circle cx="0" cy="0" r="24" fill="#86efac"/>
+  </g>
+
+  <g fill="#ffffff" opacity="0.78" font-family="Verdana, sans-serif">
+    <text x="210" y="180" font-size="24" font-weight="700">Seat 1</text>
+    <text x="930" y="190" font-size="24" font-weight="700">Seat 2</text>
+    <text x="540" y="650" font-size="30" font-weight="800">RAILBIRD TABLES</text>
+  </g>
+</svg>

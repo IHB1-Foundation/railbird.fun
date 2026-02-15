@@ -1,4 +1,4 @@
-import { describe, it, beforeEach } from "node:test";
+import { describe, it, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import { createAuthMiddleware, type AuthenticatedRequest } from "./auth.js";
 import { AuthService } from "../auth/index.js";
@@ -29,6 +29,10 @@ describe("AuthMiddleware", () => {
   beforeEach(() => {
     authService = new AuthService({ jwtSecret });
     middleware = createAuthMiddleware(authService);
+  });
+
+  afterEach(() => {
+    authService.stop();
   });
 
   it("should reject requests without Authorization header", async () => {

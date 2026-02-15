@@ -211,4 +211,90 @@ describe("Keeper decision logic", () => {
       false
     );
   });
+
+  // VRF re-request decision logic (T-0903)
+  function shouldReRequestVRF(
+    gameState: GameState,
+    currentTimestamp: bigint,
+    vrfRequestTimestamp: bigint,
+    vrfTimeout: bigint
+  ): boolean {
+    // Must be in VRF waiting state
+    const isVRFWaiting =
+      gameState === GameState.WAITING_VRF_FLOP ||
+      gameState === GameState.WAITING_VRF_TURN ||
+      gameState === GameState.WAITING_VRF_RIVER;
+    if (!isVRFWaiting) return false;
+
+    // Must have a VRF request timestamp
+    if (vrfRequestTimestamp === 0n) return false;
+
+    // Timeout must have passed
+    if (currentTimestamp <= vrfRequestTimestamp + vrfTimeout) return false;
+
+    return true;
+  }
+
+  test("shouldReRequestVRF returns true when VRF timeout exceeded", () => {
+    assert.strictEqual(
+      shouldReRequestVRF(
+        GameState.WAITING_VRF_FLOP,
+        600n, // current timestamp
+        100n, // VRF requested at
+        300n  // 5 min timeout
+      ),
+      true
+    );
+  });
+
+  test("shouldReRequestVRF returns false if not in VRF waiting state", () => {
+    assert.strictEqual(
+      shouldReRequestVRF(
+        GameState.BETTING_PRE,
+        600n,
+        100n,
+        300n
+      ),
+      false
+    );
+  });
+
+  test("shouldReRequestVRF returns false if timeout not reached", () => {
+    assert.strictEqual(
+      shouldReRequestVRF(
+        GameState.WAITING_VRF_FLOP,
+        200n, // only 100s after request
+        100n,
+        300n
+      ),
+      false
+    );
+  });
+
+  test("shouldReRequestVRF returns false if no VRF request timestamp", () => {
+    assert.strictEqual(
+      shouldReRequestVRF(
+        GameState.WAITING_VRF_FLOP,
+        600n,
+        0n,   // no request timestamp
+        300n
+      ),
+      false
+    );
+  });
+
+  test("shouldReRequestVRF works for all VRF waiting states", () => {
+    const states = [
+      GameState.WAITING_VRF_FLOP,
+      GameState.WAITING_VRF_TURN,
+      GameState.WAITING_VRF_RIVER,
+    ];
+    for (const state of states) {
+      assert.strictEqual(
+        shouldReRequestVRF(state, 600n, 100n, 300n),
+        true,
+        `Should re-request VRF in state ${GameState[state]}`
+      );
+    }
+  });
 });

@@ -45,6 +45,7 @@ export interface TableState {
   actionDeadline: bigint;
   lastActionBlock: bigint;
   pendingVRFRequestId: bigint;
+  vrfRequestTimestamp: bigint;
   seats: Seat[];
   actorSeat: number;
   pot: bigint;
@@ -122,6 +123,7 @@ export class ChainClient {
       actionDeadline,
       lastActionBlock,
       pendingVRFRequestId,
+      vrfRequestTimestamp,
       seat0,
       seat1,
       seat2,
@@ -158,6 +160,11 @@ export class ChainClient {
         address: this.pokerTableAddress,
         abi: POKER_TABLE_ABI,
         functionName: "pendingVRFRequestId",
+      }),
+      this.publicClient.readContract({
+        address: this.pokerTableAddress,
+        abi: POKER_TABLE_ABI,
+        functionName: "vrfRequestTimestamp",
       }),
       this.publicClient.readContract({
         address: this.pokerTableAddress,
@@ -221,6 +228,7 @@ export class ChainClient {
       actionDeadline: actionDeadline as bigint,
       lastActionBlock: lastActionBlock as bigint,
       pendingVRFRequestId: pendingVRFRequestId as bigint,
+      vrfRequestTimestamp: vrfRequestTimestamp as bigint,
       seats: [parseSeat(seat0), parseSeat(seat1), parseSeat(seat2), parseSeat(seat3)],
       actorSeat: handInfoData[3],
       pot: handInfoData[1],
@@ -262,6 +270,19 @@ export class ChainClient {
       address: this.pokerTableAddress,
       abi: POKER_TABLE_ABI,
       functionName: "settleShowdown",
+      args: [],
+    });
+    await this.publicClient.waitForTransactionReceipt({ hash });
+    return hash;
+  }
+
+  async reRequestVRF(): Promise<Hash> {
+    const hash = await this.walletClient.writeContract({
+      chain: this.chain,
+      account: this.account,
+      address: this.pokerTableAddress,
+      abi: POKER_TABLE_ABI,
+      functionName: "reRequestVRF",
       args: [],
     });
     await this.publicClient.waitForTransactionReceipt({ hash });

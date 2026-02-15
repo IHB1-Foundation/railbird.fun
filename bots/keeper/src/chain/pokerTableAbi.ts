@@ -108,6 +108,21 @@ export const POKER_TABLE_ABI = [
     stateMutability: "view",
   },
 
+  {
+    type: "function",
+    name: "vrfRequestTimestamp",
+    inputs: [],
+    outputs: [{ type: "uint256" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "VRF_TIMEOUT",
+    inputs: [],
+    outputs: [{ type: "uint256" }],
+    stateMutability: "view",
+  },
+
   // Keeper actions
   {
     type: "function",
@@ -126,6 +141,13 @@ export const POKER_TABLE_ABI = [
   {
     type: "function",
     name: "settleShowdown",
+    inputs: [],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "reRequestVRF",
     inputs: [],
     outputs: [],
     stateMutability: "nonpayable",

@@ -130,7 +130,7 @@ cd bots/keeper && pnpm test                         # 13 keeper tests
 - Settlement emits `HandSettled(handId, primaryWinner, totalPot)`
 
 ## T-0903 Replace mock VRF in runtime path with production adapter (P0)
-- Status: [ ] TODO
+- Status: [x] DONE
 - Depends on: M1
 - Goal: Remove mock randomness dependency from real deployments.
 - Tasks:
@@ -142,6 +142,61 @@ cd bots/keeper && pnpm test                         # 13 keeper tests
     - Testnet deployment docs use production VRF adapter only.
     - Runtime config validation fails if mock adapter is configured on non-local environments.
     - End-to-end hand progression works with asynchronous real VRF callbacks.
+
+### DONE Notes (T-0903)
+**Key files changed:**
+- `contracts/src/ProductionVRFAdapter.sol` - New production VRF adapter with trusted operator model: access-controlled fulfillment (only operator can fulfill), request tracking with timestamps, owner/operator admin functions, view functions for request status
+- `contracts/src/PokerTable.sol` - Enforced `msg.sender == vrfAdapter` in `fulfillVRF()` (was a TODO comment), added `VRF_TIMEOUT` constant (5 minutes), `vrfRequestTimestamp` tracking, `reRequestVRF()` public function for liveness when VRF fulfillment is delayed, `VRFReRequested` event
+- `contracts/script/DeployProductionVRF.s.sol` - Forge deployment script for production VRF adapter with operator address configuration
+- `contracts/test/ProductionVRFAdapter.t.sol` - 25 tests: constructor, request/fulfill lifecycle, operator access control, admin functions, view functions, integration tests with PokerTable (full hand, caller enforcement, re-request after timeout, old request rejection)
+- `contracts/test/PokerTable.t.sol` - 8 new tests: fulfillVRF caller enforcement (revert if not adapter, succeed through adapter), reRequestVRF (success after timeout, revert before timeout, revert if not VRF state, event emission, old request rejected, multiple re-requests)
+- `packages/shared/src/types.ts` - Added `VRF_ADAPTER_TYPE` env var constant
+- `packages/shared/src/chainConfig.ts` - Added `validateVRFAdapterConfig()`: requires `VRF_ADAPTER_TYPE=production` on testnet/mainnet, allows any type on local; updated `validateChainConfigEnv()` to include VRF_ADAPTER_TYPE for non-local
+- `packages/shared/src/chainConfig.test.ts` - 7 new tests for VRF adapter type validation (local allowed, testnet/mainnet require production, rejects mock, validateChainConfigEnv checks)
+- `bots/keeper/src/bot.ts` - Added `checkAndReRequestVRF()` method: detects VRF waiting state with expired timeout, calls `reRequestVRF()`, tracks `vrfReRequests` stat
+- `bots/keeper/src/chain/client.ts` - Added `vrfRequestTimestamp` to TableState, `reRequestVRF()` method
+- `bots/keeper/src/chain/pokerTableAbi.ts` - Added `vrfRequestTimestamp`, `VRF_TIMEOUT`, and `reRequestVRF` ABI entries
+- `bots/keeper/src/keeper.test.ts` - 5 new tests for `shouldReRequestVRF` decision logic
+- `.env.example` - Added `VRF_ADAPTER_TYPE` and `VRF_OPERATOR_ADDRESS` documentation
+
+**How to run/test:**
+```bash
+cd contracts && forge test -vv   # Runs all 274 tests (92 PokerTable + 25 ProductionVRFAdapter + 22 HandEvaluator + 38 Registry + 97 Vault)
+forge test --match-contract ProductionVRFAdapterTest -vv   # 25 production adapter tests
+cd packages/shared && pnpm test   # 19 config tests (including 7 new VRF validation)
+cd bots/keeper && pnpm test       # 18 keeper tests (including 5 new VRF re-request)
+```
+
+**Testnet deployment:**
+```bash
+# Deploy ProductionVRFAdapter to testnet
+VRF_OPERATOR_ADDRESS=0x<your-operator-address> \
+forge script contracts/script/DeployProductionVRF.s.sol \
+  --rpc-url $RPC_URL --broadcast --private-key $DEPLOYER_PRIVATE_KEY -vvvv
+
+# Set in .env:
+VRF_ADAPTER_ADDRESS=<deployed-address>
+VRF_ADAPTER_TYPE=production
+```
+
+**Manual verification:**
+1. Run `forge test -vv` - all 274 tests pass
+2. ProductionVRFAdapter tests verify:
+   - Only designated operator can fulfill VRF requests
+   - Request tracking prevents double-fulfillment
+   - Integration with PokerTable works end-to-end
+   - Re-request after timeout produces new request ID
+   - Old request fulfillment is rejected after re-request
+3. PokerTable fulfillVRF now enforces `msg.sender == vrfAdapter` (no longer a comment)
+4. `reRequestVRF()` callable by anyone after 5-minute VRF timeout
+5. Chain config rejects `CHAIN_ENV=testnet` without `VRF_ADAPTER_TYPE=production`
+6. Keeper bot automatically detects delayed VRF and calls `reRequestVRF()`
+
+**Security validations:**
+- ProductionVRFAdapter: only operator can fulfill, only owner can change operator
+- PokerTable.fulfillVRF: enforces msg.sender == vrfAdapter (previously a comment)
+- Environment gating: MockVRFAdapter cannot be used on testnet/mainnet
+- Re-request invalidates old request IDs (prevents stale fulfillment)
 
 ## T-0904 Remove non-real runtime fallbacks in services (P0)
 - Status: [ ] TODO

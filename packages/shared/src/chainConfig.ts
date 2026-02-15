@@ -146,6 +146,25 @@ function loadContractAddresses(): ContractAddresses {
 let cachedConfig: ChainConfig | null = null;
 
 /**
+ * Validates VRF adapter configuration for the given environment.
+ * On testnet/mainnet, requires VRF_ADAPTER_TYPE=production.
+ * On local, any adapter type (or none) is acceptable.
+ */
+function validateVRFAdapterConfig(env: ChainEnv): void {
+  if (env === "local") return;
+
+  const adapterType = process.env[ENV_VARS.VRF_ADAPTER_TYPE];
+  if (adapterType !== "production") {
+    throw new ChainConfigError(
+      `VRF_ADAPTER_TYPE must be "production" for ${env} environment (got: "${adapterType || ""}").\n` +
+        `MockVRFAdapter is not allowed on non-local environments.\n` +
+        `Deploy ProductionVRFAdapter and set VRF_ADAPTER_TYPE=production.`,
+      [ENV_VARS.VRF_ADAPTER_TYPE]
+    );
+  }
+}
+
+/**
  * Loads the chain configuration from environment variables.
  * Throws ChainConfigError if required configuration is missing.
  *
@@ -153,6 +172,7 @@ let cachedConfig: ChainConfig | null = null;
  * - CHAIN_ENV: "local" | "testnet" | "mainnet"
  * - RPC_URL: The RPC endpoint URL
  * - All contract addresses (see ENV_VARS)
+ * - VRF_ADAPTER_TYPE: "production" (required on testnet/mainnet)
  *
  * @param forceReload - If true, ignores cached config and reloads from environment
  * @returns The chain configuration
@@ -166,6 +186,9 @@ export function getChainConfig(forceReload = false): ChainConfig {
   const env = parseChainEnv(requireEnv(ENV_VARS.CHAIN_ENV));
   const rpcUrl = requireEnv(ENV_VARS.RPC_URL);
   const contracts = loadContractAddresses();
+
+  // Validate VRF adapter is production-safe for non-local envs
+  validateVRFAdapterConfig(env);
 
   cachedConfig = {
     env,
@@ -203,6 +226,12 @@ export function validateChainConfigEnv(): string[] {
     if (!process.env[varName]) {
       missing.push(varName);
     }
+  }
+
+  // VRF_ADAPTER_TYPE is required on non-local environments
+  const chainEnv = process.env[ENV_VARS.CHAIN_ENV];
+  if (chainEnv && chainEnv !== "local" && !process.env[ENV_VARS.VRF_ADAPTER_TYPE]) {
+    missing.push(ENV_VARS.VRF_ADAPTER_TYPE);
   }
 
   return missing;

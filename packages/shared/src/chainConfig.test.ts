@@ -22,6 +22,7 @@ function setAllEnvVars(): void {
   process.env[ENV_VARS.NADFUN_BONDING_ROUTER_ADDRESS] = "0x6666666666666666666666666666666666666666";
   process.env[ENV_VARS.NADFUN_DEX_ROUTER_ADDRESS] = "0x7777777777777777777777777777777777777777";
   process.env[ENV_VARS.WMON_ADDRESS] = "0x8888888888888888888888888888888888888888";
+  process.env[ENV_VARS.VRF_ADAPTER_TYPE] = "production";
 }
 
 // Helper to clear all env vars
@@ -36,6 +37,7 @@ function clearAllEnvVars(): void {
   delete process.env[ENV_VARS.NADFUN_BONDING_ROUTER_ADDRESS];
   delete process.env[ENV_VARS.NADFUN_DEX_ROUTER_ADDRESS];
   delete process.env[ENV_VARS.WMON_ADDRESS];
+  delete process.env[ENV_VARS.VRF_ADAPTER_TYPE];
 }
 
 describe("chainConfig", () => {
@@ -180,6 +182,76 @@ describe("chainConfig", () => {
     });
   });
 
+  describe("VRF adapter type validation (T-0903)", () => {
+    it("allows any adapter type on local environment", () => {
+      setAllEnvVars();
+      process.env[ENV_VARS.CHAIN_ENV] = "local";
+      delete process.env[ENV_VARS.VRF_ADAPTER_TYPE];
+      clearChainConfigCache();
+
+      assert.doesNotThrow(() => getChainConfig());
+    });
+
+    it("requires production adapter type on testnet", () => {
+      setAllEnvVars();
+      process.env[ENV_VARS.CHAIN_ENV] = "testnet";
+      delete process.env[ENV_VARS.VRF_ADAPTER_TYPE];
+      clearChainConfigCache();
+
+      assert.throws(
+        () => getChainConfig(),
+        (err: Error) => {
+          assert.ok(err instanceof ChainConfigError);
+          assert.ok(err.message.includes("VRF_ADAPTER_TYPE"));
+          assert.ok(err.message.includes("production"));
+          return true;
+        }
+      );
+    });
+
+    it("requires production adapter type on mainnet", () => {
+      setAllEnvVars();
+      process.env[ENV_VARS.CHAIN_ENV] = "mainnet";
+      delete process.env[ENV_VARS.VRF_ADAPTER_TYPE];
+      clearChainConfigCache();
+
+      assert.throws(
+        () => getChainConfig(),
+        (err: Error) => {
+          assert.ok(err instanceof ChainConfigError);
+          assert.ok(err.message.includes("MockVRFAdapter"));
+          return true;
+        }
+      );
+    });
+
+    it("succeeds on testnet with VRF_ADAPTER_TYPE=production", () => {
+      setAllEnvVars();
+      process.env[ENV_VARS.CHAIN_ENV] = "testnet";
+      process.env[ENV_VARS.VRF_ADAPTER_TYPE] = "production";
+      clearChainConfigCache();
+
+      const config = getChainConfig();
+      assert.strictEqual(config.env, "testnet");
+    });
+
+    it("rejects non-production adapter type on testnet", () => {
+      setAllEnvVars();
+      process.env[ENV_VARS.CHAIN_ENV] = "testnet";
+      process.env[ENV_VARS.VRF_ADAPTER_TYPE] = "mock";
+      clearChainConfigCache();
+
+      assert.throws(
+        () => getChainConfig(),
+        (err: Error) => {
+          assert.ok(err instanceof ChainConfigError);
+          assert.ok(err.message.includes("mock"));
+          return true;
+        }
+      );
+    });
+  });
+
   describe("validateChainConfigEnv", () => {
     it("returns empty array when all vars are set", () => {
       setAllEnvVars();
@@ -204,6 +276,22 @@ describe("chainConfig", () => {
     it("does not throw even when vars are missing", () => {
       // No env vars set
       assert.doesNotThrow(() => validateChainConfigEnv());
+    });
+
+    it("includes VRF_ADAPTER_TYPE in missing vars for non-local env", () => {
+      setAllEnvVars();
+      delete process.env[ENV_VARS.VRF_ADAPTER_TYPE];
+      // testnet env requires VRF_ADAPTER_TYPE
+      const missing = validateChainConfigEnv();
+      assert.ok(missing.includes(ENV_VARS.VRF_ADAPTER_TYPE));
+    });
+
+    it("does not require VRF_ADAPTER_TYPE for local env", () => {
+      setAllEnvVars();
+      process.env[ENV_VARS.CHAIN_ENV] = "local";
+      delete process.env[ENV_VARS.VRF_ADAPTER_TYPE];
+      const missing = validateChainConfigEnv();
+      assert.ok(!missing.includes(ENV_VARS.VRF_ADAPTER_TYPE));
     });
   });
 });

@@ -13,6 +13,7 @@ contract PokerTable {
     // ============ Constants ============
     uint8 public constant MAX_SEATS = 4;
     uint256 public constant ACTION_TIMEOUT = 30 minutes;
+    uint256 public constant VRF_TIMEOUT = 5 minutes;
 
     // ============ Enums ============
     enum GameState {
@@ -126,6 +127,13 @@ contract PokerTable {
         uint8 card2
     );
 
+    event VRFReRequested(
+        uint256 indexed handId,
+        GameState street,
+        uint256 oldRequestId,
+        uint256 newRequestId
+    );
+
     // ============ State Variables ============
     uint256 public tableId;
     uint256 public smallBlind;
@@ -141,8 +149,9 @@ contract PokerTable {
     uint256 public actionDeadline;    // Timestamp after which forceTimeout can be called
     uint256 public lastActionBlock;   // For one-action-per-block enforcement
 
-    address public vrfAdapter;        // Address of VRF adapter contract
+    address public vrfAdapter;           // Address of VRF adapter contract
     uint256 public pendingVRFRequestId;  // Current pending VRF request ID
+    uint256 public vrfRequestTimestamp;  // When VRF was last requested
 
     // Community cards (0-51 card encoding, 255 = not dealt)
     // Index: 0-2 = flop, 3 = turn, 4 = river
@@ -281,6 +290,7 @@ contract PokerTable {
             communityCards[i] = 255;
         }
         pendingVRFRequestId = 0;
+        vrfRequestTimestamp = 0;
 
         // Post blinds
         seats[sbSeat].stack -= smallBlind;
@@ -607,6 +617,7 @@ contract PokerTable {
                     uint8(nextState)
                 );
                 pendingVRFRequestId = requestId;
+                vrfRequestTimestamp = block.timestamp;
             }
 
             emit VRFRequested(currentHandId, nextState, requestId);
@@ -619,7 +630,7 @@ contract PokerTable {
      * @param randomness The random value from VRF
      */
     function fulfillVRF(uint256 requestId, uint256 randomness) external {
-        // In production: require(msg.sender == vrfAdapter, "Only VRF adapter");
+        require(msg.sender == vrfAdapter, "Only VRF adapter");
         require(
             gameState == GameState.WAITING_VRF_FLOP ||
             gameState == GameState.WAITING_VRF_TURN ||
@@ -627,10 +638,7 @@ contract PokerTable {
             "Not waiting for VRF"
         );
 
-        // Verify request ID if adapter is set
-        if (vrfAdapter != address(0)) {
-            require(requestId == pendingVRFRequestId, "Invalid request ID");
-        }
+        require(requestId == pendingVRFRequestId, "Invalid request ID");
 
         // Derive community cards from randomness
         _dealCommunityCards(randomness);
@@ -659,6 +667,33 @@ contract PokerTable {
         gameState = nextBettingState;
         actionDeadline = block.timestamp + ACTION_TIMEOUT;
         pendingVRFRequestId = 0;
+    }
+
+    /**
+     * @notice Re-request VRF when the original fulfillment is delayed.
+     * @dev Anyone can call this after VRF_TIMEOUT has passed since the original request.
+     *      Issues a new request to the adapter and updates the pending request ID.
+     */
+    function reRequestVRF() external {
+        require(
+            gameState == GameState.WAITING_VRF_FLOP ||
+            gameState == GameState.WAITING_VRF_TURN ||
+            gameState == GameState.WAITING_VRF_RIVER,
+            "Not waiting for VRF"
+        );
+        require(vrfAdapter != address(0), "No VRF adapter");
+        require(block.timestamp > vrfRequestTimestamp + VRF_TIMEOUT, "VRF timeout not reached");
+
+        uint256 oldRequestId = pendingVRFRequestId;
+        uint256 newRequestId = IVRFAdapter(vrfAdapter).requestRandomness(
+            tableId,
+            currentHandId,
+            uint8(gameState)
+        );
+        pendingVRFRequestId = newRequestId;
+        vrfRequestTimestamp = block.timestamp;
+
+        emit VRFReRequested(currentHandId, gameState, oldRequestId, newRequestId);
     }
 
     /**

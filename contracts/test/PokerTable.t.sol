@@ -40,6 +40,7 @@ contract PokerTableTest is Test {
     event ForceTimeout(uint256 indexed handId, uint8 indexed seatIndex, PokerTable.ActionType forcedAction);
     event HoleCommitSubmitted(uint256 indexed handId, uint8 indexed seatIndex, bytes32 commitment);
     event HoleCardsRevealed(uint256 indexed handId, uint8 indexed seatIndex, uint8 card1, uint8 card2);
+    event VRFReRequested(uint256 indexed handId, PokerTable.GameState street, uint256 oldRequestId, uint256 newRequestId);
 
     function setUp() public {
         mockVRF = new MockVRFAdapter();
@@ -615,6 +616,127 @@ contract PokerTableTest is Test {
         assertEq(cards1[0], cards2[0], "Same randomness = same flop card 1");
         assertEq(cards1[1], cards2[1], "Same randomness = same flop card 2");
         assertEq(cards1[2], cards2[2], "Same randomness = same flop card 3");
+    }
+
+    // ============ VRF Caller Enforcement + ReRequest Tests (T-0903) ============
+
+    function test_FulfillVRF_RevertIfNotAdapter() public {
+        _setupAllSeats();
+        pokerTable.startHand();
+        _completePreflop();
+
+        // Table is now in WAITING_VRF_FLOP
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.WAITING_VRF_FLOP));
+
+        uint256 reqId = pokerTable.pendingVRFRequestId();
+
+        // Direct call from random address should revert
+        vm.prank(address(0xDEAD));
+        vm.expectRevert("Only VRF adapter");
+        pokerTable.fulfillVRF(reqId, 123);
+    }
+
+    function test_FulfillVRF_SucceedsThroughAdapter() public {
+        _setupAllSeats();
+        pokerTable.startHand();
+        _completePreflop();
+
+        // Fulfill through mock adapter (which is the registered vrfAdapter)
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.BETTING_FLOP));
+    }
+
+    function test_ReRequestVRF_SuccessAfterTimeout() public {
+        _setupAllSeats();
+        pokerTable.startHand();
+        _completePreflop();
+
+        uint256 oldReqId = pokerTable.pendingVRFRequestId();
+        assertTrue(oldReqId > 0);
+
+        // Advance past VRF_TIMEOUT (5 minutes)
+        vm.warp(block.timestamp + 6 minutes);
+
+        pokerTable.reRequestVRF();
+
+        uint256 newReqId = pokerTable.pendingVRFRequestId();
+        assertTrue(newReqId > oldReqId, "New request ID should be larger");
+
+        // Fulfill the new request
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.BETTING_FLOP));
+    }
+
+    function test_ReRequestVRF_RevertBeforeTimeout() public {
+        _setupAllSeats();
+        pokerTable.startHand();
+        _completePreflop();
+
+        // Try to re-request immediately (before timeout)
+        vm.expectRevert("VRF timeout not reached");
+        pokerTable.reRequestVRF();
+    }
+
+    function test_ReRequestVRF_RevertNotInVRFState() public {
+        _setupAllSeats();
+        pokerTable.startHand();
+
+        // Still in BETTING_PRE
+        vm.expectRevert("Not waiting for VRF");
+        pokerTable.reRequestVRF();
+    }
+
+    function test_ReRequestVRF_EmitsEvent() public {
+        _setupAllSeats();
+        pokerTable.startHand();
+        _completePreflop();
+
+        uint256 oldReqId = pokerTable.pendingVRFRequestId();
+
+        vm.warp(block.timestamp + 6 minutes);
+
+        // The VRFReRequested event
+        pokerTable.reRequestVRF();
+
+        uint256 newReqId = pokerTable.pendingVRFRequestId();
+        assertTrue(newReqId > oldReqId);
+    }
+
+    function test_ReRequestVRF_OldRequestRejected() public {
+        _setupAllSeats();
+        pokerTable.startHand();
+        _completePreflop();
+
+        uint256 oldReqId = pokerTable.pendingVRFRequestId();
+
+        vm.warp(block.timestamp + 6 minutes);
+        pokerTable.reRequestVRF();
+
+        // Fulfilling old request should fail (request ID mismatch)
+        vm.expectRevert("Callback failed");
+        mockVRF.fulfillRandomness(oldReqId, TEST_RANDOMNESS);
+    }
+
+    function test_ReRequestVRF_MultipleReRequests() public {
+        _setupAllSeats();
+        pokerTable.startHand();
+        _completePreflop();
+
+        // First re-request
+        vm.warp(block.timestamp + 6 minutes);
+        pokerTable.reRequestVRF();
+        uint256 reqId2 = pokerTable.pendingVRFRequestId();
+
+        // Second re-request
+        vm.warp(block.timestamp + 6 minutes);
+        pokerTable.reRequestVRF();
+        uint256 reqId3 = pokerTable.pendingVRFRequestId();
+
+        assertTrue(reqId3 > reqId2, "Third request should have larger ID");
+
+        // Only latest request should work
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.BETTING_FLOP));
     }
 
     // ============ Settlement Tests (T-0105) ============

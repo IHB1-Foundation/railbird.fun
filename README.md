@@ -53,6 +53,11 @@ pnpm test
 
 Railway monorepo 배포는 `RAILWAY.md`를 참고.
 
+## License
+
+This project is **UNLICENSED** and **All Rights Reserved**.
+Unauthorized use, copying, modification, distribution, or derivative work is prohibited.
+
 ## Local Development Setup
 
 ### 1. Start Local Blockchain (Anvil)

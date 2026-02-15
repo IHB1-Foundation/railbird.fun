@@ -245,6 +245,81 @@ h5 {
   transition: transform 0.2s ease, border-color 0.2s ease;
 }
 
+.featured-live-card {
+  margin-bottom: 1.2rem;
+  border-color: rgba(143, 209, 255, 0.34);
+  background:
+    radial-gradient(1200px 340px at -8% -24%, rgba(56, 118, 255, 0.2), transparent 58%),
+    radial-gradient(900px 360px at 115% -40%, rgba(58, 232, 178, 0.15), transparent 62%),
+    linear-gradient(165deg, rgba(16, 21, 37, 0.92), rgba(10, 15, 30, 0.95));
+}
+
+.featured-live-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.95rem;
+}
+
+.featured-live-title {
+  font-size: clamp(1.35rem, 2vw, 2rem);
+}
+
+.featured-live-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.featured-live-value {
+  font-weight: 700;
+  font-size: 1.02rem;
+}
+
+.featured-live-seats {
+  margin-top: 0.9rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.55rem;
+}
+
+.featured-live-seat {
+  border-radius: 10px;
+  padding: 0.6rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(171, 196, 255, 0.2);
+  font-size: 0.78rem;
+  text-align: center;
+}
+
+.featured-live-actions {
+  margin-top: 0.9rem;
+}
+
+.featured-live-action-list {
+  margin-top: 0.45rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.featured-live-action-item {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 0.75rem;
+  font-size: 0.8rem;
+  border: 1px solid rgba(147, 168, 221, 0.22);
+  border-radius: 8px;
+  padding: 0.4rem 0.5rem;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.featured-live-footer {
+  margin-top: 0.85rem;
+  display: flex;
+  justify-content: flex-end;
+}
+
 .table-card-header {
   display: flex;
   justify-content: space-between;
@@ -1482,6 +1557,10 @@ h5 {
 }
 
 @media (max-width: 1024px) {
+  .featured-live-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .topbar-inner {
     border-radius: 20px;
     min-height: auto;
@@ -1508,6 +1587,21 @@ h5 {
 }
 
 @media (max-width: 840px) {
+  .featured-live-grid {
+    grid-template-columns: 1fr;
+    gap: 0.55rem;
+  }
+
+  .featured-live-action-item {
+    grid-template-columns: 1fr;
+    gap: 0.2rem;
+  }
+
+  .featured-live-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
   .table-meta-grid,
   .players-grid,
   .agent-card-stats {

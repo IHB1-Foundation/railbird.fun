@@ -126,14 +126,13 @@ h5 {
   font-weight: 700;
 }
 
-.brand-mark {
-  width: 1.5rem;
-  height: 1.5rem;
+.brand-logo {
+  width: 2rem;
+  height: 2rem;
   border-radius: 999px;
-  background: linear-gradient(145deg, #5c34ea 18%, #c9a0ff 88%);
   box-shadow:
-    0 0 0 2px rgba(139, 112, 255, 0.22),
-    0 8px 20px rgba(129, 108, 249, 0.5);
+    0 0 0 1px rgba(172, 151, 255, 0.34),
+    0 8px 18px rgba(129, 108, 249, 0.45);
 }
 
 .brand-text {

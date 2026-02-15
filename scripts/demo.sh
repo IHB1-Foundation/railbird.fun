@@ -18,6 +18,14 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
+# Load root .env if present
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+if [ -f "$ROOT_DIR/.env" ]; then
+  set -a
+  . "$ROOT_DIR/.env"
+  set +a
+fi
+
 POKER_TABLE_ADDRESS=${1:-$POKER_TABLE_ADDRESS}
 INDEXER_URL=${INDEXER_URL:-http://localhost:3002}
 OWNERVIEW_URL=${OWNERVIEW_URL:-http://localhost:3001}

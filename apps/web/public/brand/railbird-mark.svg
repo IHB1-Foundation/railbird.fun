@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-label="Railbird Poker">
+  <defs>
+    <linearGradient id="bg" x1="170" y1="88" x2="866" y2="940" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#171a34"/>
+      <stop offset="1" stop-color="#090b15"/>
+    </linearGradient>
+    <linearGradient id="ring" x1="208" y1="112" x2="860" y2="916" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#5c34ea"/>
+      <stop offset="0.55" stop-color="#816cf9"/>
+      <stop offset="1" stop-color="#c9a0ff"/>
+    </linearGradient>
+    <linearGradient id="rail" x1="216" y1="632" x2="800" y2="792" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8b72ff" stop-opacity="0.95"/>
+      <stop offset="1" stop-color="#d8c2ff" stop-opacity="0.95"/>
+    </linearGradient>
+    <linearGradient id="felt" x1="268" y1="298" x2="760" y2="690" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#141934"/>
+      <stop offset="1" stop-color="#0a1022"/>
+    </linearGradient>
+    <linearGradient id="bet" x1="242" y1="252" x2="760" y2="204" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffbe43"/>
+      <stop offset="1" stop-color="#ff8f2b"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="7" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <circle cx="512" cy="512" r="470" fill="url(#bg)"/>
+  <circle cx="512" cy="512" r="470" fill="none" stroke="url(#ring)" stroke-width="34"/>
+  <circle cx="512" cy="512" r="422" fill="none" stroke="#252a4b" stroke-width="3"/>
+
+  <g opacity="0.95">
+    <rect x="496" y="58" width="32" height="86" rx="14" fill="#764cf1"/>
+    <rect x="496" y="880" width="32" height="86" rx="14" fill="#764cf1"/>
+    <rect x="880" y="496" width="86" height="32" rx="14" fill="#764cf1"/>
+    <rect x="58" y="496" width="86" height="32" rx="14" fill="#764cf1"/>
+    <rect x="778" y="122" width="34" height="84" rx="14" transform="rotate(45 795 164)" fill="#764cf1"/>
+    <rect x="216" y="122" width="34" height="84" rx="14" transform="rotate(-45 233 164)" fill="#764cf1"/>
+    <rect x="778" y="818" width="34" height="84" rx="14" transform="rotate(-45 795 860)" fill="#764cf1"/>
+    <rect x="216" y="818" width="34" height="84" rx="14" transform="rotate(45 233 860)" fill="#764cf1"/>
+  </g>
+
+  <path d="M186 606L512 390L838 606L512 804Z" fill="url(#felt)" stroke="#2c3159" stroke-width="4"/>
+
+  <g opacity="0.9" filter="url(#glow)">
+    <path d="M218 672L512 536L806 672L806 708L218 708Z" fill="url(#rail)"/>
+    <path d="M226 736L512 610L798 736L798 770L226 770Z" fill="url(#rail)" opacity="0.92"/>
+    <path d="M236 798L512 684L788 798L788 832L236 832Z" fill="url(#rail)" opacity="0.86"/>
+  </g>
+
+  <path d="M512 268C547 311 612 357 612 428C612 493 569 546 512 571C455 546 412 493 412 428C412 357 477 311 512 268Z" fill="url(#ring)"/>
+  <rect x="490" y="560" width="44" height="94" rx="18" fill="url(#ring)"/>
+  <rect x="452" y="636" width="120" height="40" rx="18" fill="url(#ring)"/>
+
+  <path d="M260 286C350 210 464 193 612 214C677 223 730 244 772 278" fill="none" stroke="url(#bet)" stroke-width="22" stroke-linecap="round"/>
+  <path d="M732 236L790 286L708 304Z" fill="#ff9d2c"/>
+
+  <circle cx="354" cy="226" r="18" fill="#ffcb66"/>
+  <circle cx="448" cy="206" r="14" fill="#ffcb66"/>
+  <circle cx="548" cy="208" r="12" fill="#ffcb66"/>
+</svg>

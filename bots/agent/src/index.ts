@@ -2,6 +2,7 @@
 // Entry point that reads configuration from environment variables
 
 import { AgentBot } from "./bot.js";
+import { SimpleStrategy } from "./strategy/index.js";
 
 const VERSION = "0.0.1";
 
@@ -17,8 +18,17 @@ function optionalEnv(name: string, defaultValue: string): string {
   return process.env[name] || defaultValue;
 }
 
+function parseBoundedFloat(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (!raw) return fallback;
+  const value = Number(raw);
+  if (Number.isNaN(value)) return fallback;
+  return Math.max(0, Math.min(1, value));
+}
+
 async function main() {
   console.log(`Agent bot v${VERSION}`);
+  const aggressionFactor = parseBoundedFloat("AGGRESSION_FACTOR", 0.3);
 
   // Load configuration from environment
   const config = {
@@ -28,6 +38,7 @@ async function main() {
     ownerviewUrl: optionalEnv("OWNERVIEW_URL", "http://localhost:3001"),
     chainId: parseInt(optionalEnv("CHAIN_ID", "31337")),
     pollIntervalMs: parseInt(optionalEnv("POLL_INTERVAL_MS", "1000")),
+    strategy: new SimpleStrategy(aggressionFactor),
   };
 
   const maxHands = parseInt(optionalEnv("MAX_HANDS", "0"));
@@ -38,6 +49,7 @@ async function main() {
   console.log(`  OwnerView: ${config.ownerviewUrl}`);
   console.log(`  Chain ID: ${config.chainId}`);
   console.log(`  Poll interval: ${config.pollIntervalMs}ms`);
+  console.log(`  Aggression: ${aggressionFactor.toFixed(2)}`);
   console.log(`  Max hands: ${maxHands || "unlimited"}`);
 
   // Create and run bot

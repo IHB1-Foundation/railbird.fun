@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import "./interfaces/IVRFAdapter.sol";
+import "./interfaces/IERC20.sol";
 import "./HandEvaluator.sol";
 
 /**
@@ -62,6 +63,28 @@ contract PokerTable {
         address owner,
         address operator,
         uint256 stack
+    );
+
+    event SeatTopUp(
+        uint8 indexed seatIndex,
+        address indexed owner,
+        uint256 amount,
+        uint256 stackAfter
+    );
+
+    event SeatCashOut(
+        uint8 indexed seatIndex,
+        address indexed owner,
+        address indexed recipient,
+        uint256 amount,
+        uint256 stackAfter
+    );
+
+    event SeatClosed(
+        uint8 indexed seatIndex,
+        address indexed owner,
+        address indexed recipient,
+        uint256 amount
     );
 
     event HandStarted(
@@ -138,6 +161,7 @@ contract PokerTable {
     uint256 public tableId;
     uint256 public smallBlind;
     uint256 public bigBlind;
+    address public chipToken;
 
     GameState public gameState;
     uint256 public currentHandId;
@@ -207,13 +231,16 @@ contract PokerTable {
         uint256 _tableId,
         uint256 _smallBlind,
         uint256 _bigBlind,
-        address _vrfAdapter
+        address _vrfAdapter,
+        address _chipToken
     ) {
         require(_bigBlind >= _smallBlind, "Big blind must be >= small blind");
+        require(_chipToken != address(0), "Invalid chip token");
         tableId = _tableId;
         smallBlind = _smallBlind;
         bigBlind = _bigBlind;
         vrfAdapter = _vrfAdapter;
+        chipToken = _chipToken;
         gameState = GameState.WAITING_FOR_SEATS;
     }
 
@@ -237,6 +264,10 @@ contract PokerTable {
         require(seats[seatIndex].owner == address(0), "Seat already taken");
         require(owner != address(0), "Owner cannot be zero");
         require(buyIn >= bigBlind * 10, "Buy-in too small");
+        require(
+            IERC20(chipToken).transferFrom(owner, address(this), buyIn),
+            "Buy-in transfer failed"
+        );
 
         seats[seatIndex] = Seat({
             owner: owner,
@@ -247,6 +278,85 @@ contract PokerTable {
         });
 
         emit SeatUpdated(seatIndex, owner, operator == address(0) ? owner : operator, buyIn);
+    }
+
+    /**
+     * @notice Add more chips to an existing seat.
+     * @dev Allowed only between hands.
+     */
+    function topUpSeat(uint8 seatIndex, uint256 amount) external {
+        require(
+            gameState == GameState.WAITING_FOR_SEATS || gameState == GameState.SETTLED,
+            "Top-up only between hands"
+        );
+        require(seatIndex < MAX_SEATS, "Invalid seat index");
+
+        Seat storage seat = seats[seatIndex];
+        require(seat.owner != address(0), "Seat not occupied");
+        require(msg.sender == seat.owner, "Not seat owner");
+        require(amount > 0, "Top-up amount is zero");
+        require(
+            IERC20(chipToken).transferFrom(msg.sender, address(this), amount),
+            "Top-up transfer failed"
+        );
+
+        seat.stack += amount;
+
+        emit SeatUpdated(seatIndex, seat.owner, seat.operator, seat.stack);
+        emit SeatTopUp(seatIndex, seat.owner, amount, seat.stack);
+    }
+
+    /**
+     * @notice Withdraw chips from an occupied seat.
+     * @dev Allowed only between hands.
+     */
+    function cashOutSeat(uint8 seatIndex, uint256 amount, address recipient) external {
+        require(
+            gameState == GameState.WAITING_FOR_SEATS || gameState == GameState.SETTLED,
+            "Cash-out only between hands"
+        );
+        require(seatIndex < MAX_SEATS, "Invalid seat index");
+        require(amount > 0, "Cash-out amount is zero");
+
+        Seat storage seat = seats[seatIndex];
+        require(seat.owner != address(0), "Seat not occupied");
+        require(msg.sender == seat.owner, "Not seat owner");
+        require(seat.stack >= amount, "Insufficient seat stack");
+
+        seat.stack -= amount;
+        address payoutRecipient = recipient == address(0) ? seat.owner : recipient;
+        require(IERC20(chipToken).transfer(payoutRecipient, amount), "Cash-out transfer failed");
+
+        emit SeatUpdated(seatIndex, seat.owner, seat.operator, seat.stack);
+        emit SeatCashOut(seatIndex, seat.owner, payoutRecipient, amount, seat.stack);
+    }
+
+    /**
+     * @notice Close a seat and withdraw the remaining full stack.
+     * @dev Allowed only between hands.
+     */
+    function leaveSeat(uint8 seatIndex, address recipient) external {
+        require(
+            gameState == GameState.WAITING_FOR_SEATS || gameState == GameState.SETTLED,
+            "Cannot leave during hand"
+        );
+        require(seatIndex < MAX_SEATS, "Invalid seat index");
+
+        Seat memory seat = seats[seatIndex];
+        require(seat.owner != address(0), "Seat not occupied");
+        require(msg.sender == seat.owner, "Not seat owner");
+
+        uint256 payoutAmount = seat.stack;
+        address payoutRecipient = recipient == address(0) ? seat.owner : recipient;
+
+        delete seats[seatIndex];
+
+        if (payoutAmount > 0) {
+            require(IERC20(chipToken).transfer(payoutRecipient, payoutAmount), "Leave transfer failed");
+        }
+
+        emit SeatUpdated(seatIndex, address(0), address(0), 0);
+        emit SeatClosed(seatIndex, seat.owner, payoutRecipient, payoutAmount);
     }
 
     /**

@@ -9,10 +9,12 @@ Minimum env vars for one agent process:
 - `RPC_URL`
 - `OPERATOR_PRIVATE_KEY`
 - `POKER_TABLE_ADDRESS`
+- `RCHIP_TOKEN_ADDRESS` (needed only for seat onboarding: `approve -> registerSeat`)
 - `OWNERVIEW_URL` (default `http://localhost:3001`)
 - `CHAIN_ID` (default `31337`)
 - `POLL_INTERVAL_MS` (default `1000`)
 - `MAX_HANDS` (default `0`, unlimited)
+- `AGGRESSION_FACTOR` (default `0.3`, range `0.0~1.0`)
 
 Reference implementation entrypoint:
 - `bots/agent/src/index.ts`
@@ -144,7 +146,7 @@ Reference:
 
 ## 7. Minimal Integration Checklist
 
-1. Seat is registered for your operator/owner key on `POKER_TABLE_ADDRESS`.
+1. Seat owner approved table spend on `RCHIP_TOKEN_ADDRESS` and seat is registered on `POKER_TABLE_ADDRESS`.
 2. Agent can read table state via RPC.
 3. Agent can authenticate with OwnerView (`nonce -> sign -> verify`).
 4. Agent can fetch `cards` for its seat.

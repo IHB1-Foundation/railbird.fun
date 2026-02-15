@@ -30,6 +30,7 @@ set -a; source ./.env; set +a
 - `PLAYER_REGISTRY_ADDRESS`
 - `PLAYER_VAULT_ADDRESS`
 - `VRF_ADAPTER_ADDRESS`
+- `RCHIP_TOKEN_ADDRESS`
 - `VRF_ADAPTER_TYPE`
 
 ### Indexer
@@ -45,7 +46,9 @@ set -a; source ./.env; set +a
 - `PORT` (set per-process)
 
 ### Bots
+- `DEPLOYER_PRIVATE_KEY` (for contract/token deployment scripts)
 - `OPERATOR_PRIVATE_KEY` (single agent run)
+- `AGGRESSION_FACTOR` (single agent style tuning, 0.0~1.0)
 - `KEEPER_PRIVATE_KEY`
 - `OWNERVIEW_URL`
 - `MAX_HANDS`
@@ -53,12 +56,14 @@ set -a; source ./.env; set +a
 - `REBALANCE_BUY_AMOUNT_MON`
 - `REBALANCE_SELL_AMOUNT_TOKENS`
 - `AGENT_1_OPERATOR_PRIVATE_KEY` ... `AGENT_4_OPERATOR_PRIVATE_KEY` (for 4-agent runner)
+- `AGENT_1_AGGRESSION` ... `AGENT_4_AGGRESSION` (for per-seat style in 4-agent runner)
 
 ### Web (`NEXT_PUBLIC_*`)
 - `NEXT_PUBLIC_INDEXER_URL`
 - `NEXT_PUBLIC_WS_URL`
 - `NEXT_PUBLIC_OWNERVIEW_URL`
 - `NEXT_PUBLIC_RPC_URL`
+- `NEXT_PUBLIC_CHIP_SYMBOL`
 - `NEXT_PUBLIC_NADFUN_LENS_ADDRESS`
 - `NEXT_PUBLIC_NADFUN_BONDING_ROUTER_ADDRESS`
 - `NEXT_PUBLIC_NADFUN_DEX_ROUTER_ADDRESS`

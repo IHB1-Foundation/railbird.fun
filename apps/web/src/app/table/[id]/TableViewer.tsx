@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useWebSocket } from "@/lib/useWebSocket";
 import { useAuth, type HoleCardsResponse } from "@/lib/auth";
 import {
-  formatMon,
+  CHIP_SYMBOL,
+  formatChips,
   shortenAddress,
   formatTime,
   formatTimeRemaining,
@@ -107,7 +108,7 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
         <div className="table-heading">
           <h2>Table #{tableId}</h2>
           <div className="table-heading-meta">
-            Blinds: {formatMon(table.smallBlind)}/{formatMon(table.bigBlind)}
+            Blinds: {formatChips(table.smallBlind)}/{formatChips(table.bigBlind)} {CHIP_SYMBOL}
           </div>
         </div>
         <div className="table-heading-right">
@@ -151,7 +152,7 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
         <div className="table-pot-block">
           {currentHand && (
             <div className="pot-value">
-              Pot: {formatMon(currentHand.pot)}
+              Pot: {formatChips(currentHand.pot)} {CHIP_SYMBOL}
             </div>
           )}
           {table.actionDeadline && (
@@ -183,7 +184,7 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
                 <span>
                   <strong>Seat {action.seatIndex}</strong>{" "}
                   {ACTION_TYPES[action.actionType] || action.actionType}
-                  {action.amount !== "0" && ` ${formatMon(action.amount)}`}
+                  {action.amount !== "0" && ` ${formatChips(action.amount)} ${CHIP_SYMBOL}`}
                 </span>
                 <span className="action-time">
                   {formatTime(action.timestamp)}
@@ -273,9 +274,9 @@ function SeatPanel({
         {isOwner && " - You"}
       </div>
       <div className="seat-address">{shortenAddress(seat.ownerAddress)}</div>
-      <div className="seat-stack">{formatMon(seat.stack)}</div>
+      <div className="seat-stack">{formatChips(seat.stack)} {CHIP_SYMBOL}</div>
       {seat.currentBet !== "0" && (
-        <div className="seat-bet">Bet: {formatMon(seat.currentBet)}</div>
+        <div className="seat-bet">Bet: {formatChips(seat.currentBet)} {CHIP_SYMBOL}</div>
       )}
       {/* Owner's hole cards - only shown to the seat owner */}
       {isOwner && holeCards && (

@@ -2,6 +2,8 @@
 
 import type { CardInfo } from "./types";
 
+export const CHIP_SYMBOL = process.env.NEXT_PUBLIC_CHIP_SYMBOL || "rCHIP";
+
 // Card conversion (0-51 to display)
 const RANKS = ["2", "3", "4", "5", "6", "7", "8", "9", "T", "J", "Q", "K", "A"];
 const SUITS = ["s", "h", "d", "c"]; // spades, hearts, diamonds, clubs
@@ -54,6 +56,10 @@ export function formatMon(wei: string | bigint): string {
     return formatted.toFixed(4);
   }
   return formatted.toFixed(8);
+}
+
+export function formatChips(amount: string | bigint): string {
+  return formatMon(amount);
 }
 
 // Format address for display

@@ -36,6 +36,11 @@ pnpm -r build
 bash scripts/railway/apply-vars.sh
 ```
 
+주의:
+- 로컬 `.env`가 `DB_HOST=localhost`이면, 스크립트는 indexer의 `DB_*` 푸시를 자동으로 건너뛴다.
+- 이 경우 Railway Postgres에서 주입되는 `PG*` 또는 `DATABASE_URL`을 사용하도록 두면 된다.
+- `scripts/railway/start-indexer.sh`가 런타임에 `PG*`/`DATABASE_URL` -> `DB_*`로 자동 매핑한다.
+
 옵션:
 
 ```bash

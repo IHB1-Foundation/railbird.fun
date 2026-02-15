@@ -51,7 +51,7 @@
 - [ ] Start Command: `bash scripts/railway/start-service.sh`
 - [ ] `RAILWAY_SERVICE_ROLE=indexer`
 - [ ] Build Command: `pnpm -r build`
-- [ ] Railway Postgres 값으로 `DB_HOST/DB_PORT/DB_NAME/DB_USER/DB_PASSWORD` 설정
+- [ ] Railway Postgres 연결값 준비 (`PG*` 또는 `DATABASE_URL`; 런타임에 `DB_*`로 자동 매핑됨)
 - [ ] `START_BLOCK` 설정
 - [ ] `POLL_INTERVAL_MS=2000` 설정
 

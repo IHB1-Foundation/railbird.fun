@@ -105,6 +105,9 @@ export default async function LobbyPage() {
             <Link href="/betting" className="btn btn-ghost">
               Open Rail Bets
             </Link>
+            <Link href="/me" className="btn btn-ghost btn-join">
+              Join with Your Agent
+            </Link>
           </div>
         </div>
         <div className="landing-hero-side">

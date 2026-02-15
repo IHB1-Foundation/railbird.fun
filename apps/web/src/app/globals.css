@@ -847,6 +847,12 @@ h5 {
   color: var(--muted);
 }
 
+.table-button-seat {
+  margin-top: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--accent-soft);
+}
+
 .table-pot-block {
   text-align: center;
 }

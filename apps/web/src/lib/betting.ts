@@ -26,7 +26,7 @@ export const AGENT_PROFILES: AgentProfile[] = [
     codename: "The Signal Keeper",
     style: "Tight Control",
     aggression: 0.15,
-    blurb: "핸드 선별이 극단적으로 보수적이고, 리스크가 낮은 구간만 공략합니다.",
+    blurb: "Extremely selective preflop range, focused on low-variance and capital preservation.",
     skill: 0.72,
   },
   {
@@ -34,7 +34,7 @@ export const AGENT_PROFILES: AgentProfile[] = [
     codename: "The Track Reader",
     style: "Balanced Line",
     aggression: 0.35,
-    blurb: "상대 패턴에 따라 콜/레이즈 밸런스를 맞추는 표준형 플레이어입니다.",
+    blurb: "Balanced profile that adapts call/raise frequencies to opponent patterns.",
     skill: 0.7,
   },
   {
@@ -42,7 +42,7 @@ export const AGENT_PROFILES: AgentProfile[] = [
     codename: "The Tunnel Shark",
     style: "Loose Pressure",
     aggression: 0.6,
-    blurb: "진입 빈도가 높고, 미들팟에서 압박을 누적하는 타입입니다.",
+    blurb: "Wider entry ranges and steady pressure in medium-pot situations.",
     skill: 0.66,
   },
   {
@@ -50,7 +50,7 @@ export const AGENT_PROFILES: AgentProfile[] = [
     codename: "Last Train Maniac",
     style: "High Variance",
     aggression: 0.85,
-    blurb: "고변동성 레이즈를 반복해 판을 크게 흔드는 공격형 플레이어입니다.",
+    blurb: "Aggressive high-variance raiser designed to force difficult decisions.",
     skill: 0.63,
   },
 ];
@@ -63,7 +63,7 @@ function fallbackProfile(seatIndex: number): AgentProfile {
       codename: `Rail Scout ${seatIndex}`,
       style: "Measured",
       aggression: 0.3,
-      blurb: "핸드 우위를 기다리며 포지션 기반으로 압박 타이밍을 고릅니다.",
+      blurb: "Waits for edge spots and applies position-based pressure selectively.",
       skill: 0.64,
     };
   }
@@ -73,7 +73,7 @@ function fallbackProfile(seatIndex: number): AgentProfile {
       codename: `Rail Scout ${seatIndex}`,
       style: "Adaptive",
       aggression: 0.45,
-      blurb: "상대 템포에 맞춰 콜/폴드 경계를 민첩하게 조정합니다.",
+      blurb: "Adjusts call/fold thresholds dynamically to match table tempo.",
       skill: 0.62,
     };
   }
@@ -82,7 +82,7 @@ function fallbackProfile(seatIndex: number): AgentProfile {
     codename: `Rail Scout ${seatIndex}`,
     style: "Pressure",
     aggression: 0.7,
-    blurb: "중반 이후 팟 점유율을 높이기 위해 공격 빈도를 끌어올립니다.",
+    blurb: "Increases aggression in later streets to maximize pot control and fold equity.",
     skill: 0.6,
   };
 }

@@ -191,6 +191,10 @@ export default async function LobbyPage() {
                 {formatChips(featuredTable.smallBlind)}/{formatChips(featuredTable.bigBlind)} {CHIP_SYMBOL}
               </p>
             </div>
+            <div>
+              <p className="label">Button</p>
+              <p className="featured-live-value">Seat {featuredTable.buttonSeat}</p>
+            </div>
           </div>
 
           <div className="featured-live-seats">
@@ -262,6 +266,9 @@ export default async function LobbyPage() {
                   <div>
                     <span className="label">Seats:</span>{" "}
                     {activeSeats}/{MAX_SEATS}
+                  </div>
+                  <div>
+                    <span className="label">Button:</span> Seat {table.buttonSeat}
                   </div>
                   {table.currentHand && (
                     <>

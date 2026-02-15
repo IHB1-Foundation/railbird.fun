@@ -67,7 +67,7 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
       if (rawWagers) setWagers(JSON.parse(rawWagers) as Wager[]);
       if (rawSettled) setSettledHands(new Set(JSON.parse(rawSettled) as string[]));
     } catch {
-      setNotice("저장된 베팅 데이터를 읽지 못해 기본값으로 시작합니다.");
+      setNotice("Could not load saved betting data. Starting from defaults.");
     }
   }, []);
 
@@ -131,8 +131,8 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
 
     setNotice(
       realized > 0n
-        ? `핸드 #${handId} 정산 완료: +${formatChips(realized)} ${CHIP_SYMBOL}`
-        : `핸드 #${handId} 정산 완료: 이번 라운드는 적중 베팅이 없습니다.`
+        ? `Hand #${handId} settled: +${formatChips(realized)} ${CHIP_SYMBOL}`
+        : `Hand #${handId} settled: no winning tickets this round.`
     );
   }, [bankrollWei, handId, settledHands, table.tableId, wagers, winnerSeat]);
 
@@ -151,21 +151,21 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
   function placeBet() {
     setNotice("");
     if (!marketOpen || !handId) {
-      setNotice("지금은 베팅이 닫혀 있습니다. 다음 핸드를 기다려주세요.");
+      setNotice("Betting is closed right now. Wait for the next hand.");
       return;
     }
     if (!selectedMarket) {
-      setNotice("먼저 베팅할 에이전트를 선택해주세요.");
+      setNotice("Select an agent before placing a bet.");
       return;
     }
 
     const stakeWei = parseChipInputToWei(stakeInput);
     if (!stakeWei || stakeWei <= 0n) {
-      setNotice("베팅 금액 형식이 올바르지 않습니다.");
+      setNotice("Invalid stake amount format.");
       return;
     }
     if (stakeWei > bankrollWei) {
-      setNotice("잔액이 부족합니다.");
+      setNotice("Insufficient bankroll.");
       return;
     }
 
@@ -185,14 +185,14 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
     const nextWagers = [...wagers, wager];
     persist(nextBankroll, nextWagers);
     setNotice(
-      `베팅 접수: ${selectedMarket.profile.codename} / ${formatChips(stakeWei)} ${CHIP_SYMBOL} @ ${formatOdds(selectedMarket.oddsBps)}x`
+      `Bet accepted: ${selectedMarket.profile.codename} / ${formatChips(stakeWei)} ${CHIP_SYMBOL} @ ${formatOdds(selectedMarket.oddsBps)}x`
     );
   }
 
   function resetBook() {
     const empty: Wager[] = [];
     const settled = new Set<string>();
-    setNotice("베팅 기록을 초기화했습니다.");
+    setNotice("Bet history has been reset.");
     setWagers(empty);
     setSettledHands(settled);
     setBankrollWei(DEFAULT_BANKROLL);
@@ -207,7 +207,7 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
         <div>
           <h2 className="section-title">Rail Bets</h2>
           <p className="bet-subtitle">
-            에이전트 프로필 기반 핸드 승자 베팅 보드입니다. 현재 핸드 승자 기준으로 자동 정산됩니다.
+            Agent-profile winner board. Settlements are processed automatically from the current hand winner.
           </p>
         </div>
         <div className="card bet-bankroll">

@@ -59,7 +59,9 @@ export function formatMon(wei: string | bigint): string {
 }
 
 export function formatChips(amount: string | bigint): string {
-  return formatMon(amount);
+  const value = typeof amount === "string" ? BigInt(amount) : amount;
+  const wholeUnits = value / 10n ** 18n;
+  return wholeUnits.toLocaleString("en-US");
 }
 
 // Format address for display

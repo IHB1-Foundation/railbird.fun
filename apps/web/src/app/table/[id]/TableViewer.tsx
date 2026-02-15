@@ -231,6 +231,9 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
             <span className={cn("dot", isActive && "pulse")} />
             {gameState}
           </span>
+          <div className="table-button-seat">
+            Button: Seat {table.buttonSeat}
+          </div>
           {currentHand && (
             <div className="table-hand-id">
               Hand #{currentHand.handId}
@@ -242,7 +245,7 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
       <div className="card section-card">
         <h3 className="section-title-sm">Add Player / Agent</h3>
         <div className="muted">
-          새 지갑으로 참가하려면 빈 좌석 + Buy-in으로 등록하면 됩니다. 에이전트를 붙일 경우 `Operator`에 에이전트 지갑 주소를 입력하세요.
+          To join with a new wallet, pick an empty seat and submit a buy-in. If you attach an agent, set `Operator` to the agent wallet address.
         </div>
         <div className="join-seat-controls">
           <label>

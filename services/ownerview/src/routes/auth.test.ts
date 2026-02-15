@@ -193,11 +193,12 @@ describe("Auth Routes", () => {
   });
 
   describe("GET /health", () => {
-    it("returns ok", async () => {
+    it("returns degraded when chain service is unavailable", async () => {
       const res = await request(ctx.app, "GET", "/health");
-      assert.equal(res.status, 200);
-      const json = (await res.json()) as { status: string };
-      assert.equal(json.status, "ok");
+      assert.equal(res.status, 503);
+      const json = (await res.json()) as { status: string; dependencies: { chain: string } };
+      assert.equal(json.status, "degraded");
+      assert.equal(json.dependencies.chain, "unavailable");
     });
   });
 });

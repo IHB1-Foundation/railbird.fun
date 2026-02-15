@@ -101,13 +101,18 @@ export function createApp(config: AppConfig): AppContext {
     });
   }
 
-  // Health check
+  // Health check - reports dependency readiness
   app.get("/health", (_req: Request, res: Response) => {
-    res.json({
-      status: "ok",
-      chainServiceEnabled: !!chainService,
-      dealerEnabled: true,
-      eventListenerEnabled: !!eventListener,
+    const chainReady = !!chainService;
+    const allReady = chainReady;
+
+    res.status(allReady ? 200 : 503).json({
+      status: allReady ? "ready" : "degraded",
+      dependencies: {
+        chain: chainReady ? "ready" : "unavailable",
+        dealer: "ready",
+        eventListener: eventListener ? "ready" : "disabled",
+      },
     });
   });
 

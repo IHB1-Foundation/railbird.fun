@@ -15,12 +15,25 @@ export interface DbConfig {
 let pool: pg.Pool | null = null;
 
 export function getDbConfig(): DbConfig {
+  // DB env vars are validated at startup (index.ts).
+  // Defaults are only applied for local dev there; by this point they are set.
+  const host = process.env.DB_HOST;
+  const database = process.env.DB_NAME;
+  const user = process.env.DB_USER;
+  const password = process.env.DB_PASSWORD;
+
+  if (!host || !database || !user || !password) {
+    throw new Error(
+      "Database configuration missing. Required: DB_HOST, DB_NAME, DB_USER, DB_PASSWORD"
+    );
+  }
+
   return {
-    host: process.env.DB_HOST || "localhost",
+    host,
     port: parseInt(process.env.DB_PORT || "5432", 10),
-    database: process.env.DB_NAME || "playerco",
-    user: process.env.DB_USER || "postgres",
-    password: process.env.DB_PASSWORD || "postgres",
+    database,
+    user,
+    password,
     max: parseInt(process.env.DB_POOL_SIZE || "10", 10),
   };
 }

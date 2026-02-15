@@ -11,34 +11,54 @@ import { createServer } from "http";
 console.log(`Indexer service v${VERSION}`);
 
 const PORT = parseInt(process.env.PORT || "3002", 10);
+const CHAIN_ENV = process.env.CHAIN_ENV || "local";
+const isLocal = CHAIN_ENV === "local";
 
 async function main(): Promise<void> {
-  // Validate required environment variables
-  const requiredEnvVars = [
-    "DB_HOST",
-    "POKER_TABLE_ADDRESS",
-    "PLAYER_REGISTRY_ADDRESS",
-    "CHAIN_ENV",
-    "RPC_URL",
-  ];
+  // Database configuration: require explicit values in non-local environments
+  if (isLocal) {
+    // Local dev defaults
+    if (!process.env.DB_HOST) process.env.DB_HOST = "localhost";
+    if (!process.env.DB_PORT) process.env.DB_PORT = "5432";
+    if (!process.env.DB_NAME) process.env.DB_NAME = "playerco";
+    if (!process.env.DB_USER) process.env.DB_USER = "postgres";
+    if (!process.env.DB_PASSWORD) process.env.DB_PASSWORD = "postgres";
+  } else {
+    const requiredDbVars = ["DB_HOST", "DB_NAME", "DB_USER", "DB_PASSWORD"];
+    const missingDb = requiredDbVars.filter((v) => !process.env[v]);
+    if (missingDb.length > 0) {
+      console.error(
+        `Database configuration required for ${CHAIN_ENV} environment.\n` +
+          `Missing: ${missingDb.join(", ")}\n` +
+          `No implicit defaults allowed in non-local environments.`
+      );
+      process.exit(1);
+    }
+  }
 
-  const missingVars = requiredEnvVars.filter((v) => !process.env[v]);
-
-  // For development, use defaults
-  if (!process.env.DB_HOST) process.env.DB_HOST = "localhost";
-  if (!process.env.DB_PORT) process.env.DB_PORT = "5432";
-  if (!process.env.DB_NAME) process.env.DB_NAME = "playerco";
-  if (!process.env.DB_USER) process.env.DB_USER = "postgres";
-  if (!process.env.DB_PASSWORD) process.env.DB_PASSWORD = "postgres";
-
-  // Test database connection
+  // Test database connection - hard failure
   try {
     const pool = getPool();
     await pool.query("SELECT 1");
     console.log("Database connection successful");
   } catch (error) {
     console.error("Database connection failed:", error);
-    console.log("Continuing without database - API will return mock data");
+    throw new Error("Indexer requires a live database connection. Refusing to start.");
+  }
+
+  // Chain configuration: require in non-local environments
+  const hasChainConfig =
+    process.env.POKER_TABLE_ADDRESS &&
+    process.env.PLAYER_REGISTRY_ADDRESS &&
+    process.env.RPC_URL;
+
+  if (!isLocal && !hasChainConfig) {
+    console.error(
+      `Chain configuration required for ${CHAIN_ENV} environment.\n` +
+        `Missing: POKER_TABLE_ADDRESS, PLAYER_REGISTRY_ADDRESS, and/or RPC_URL.\n` +
+        `Indexer cannot function without chain event ingestion in production.`
+    );
+    process.exit(1);
   }
 
   // Start REST API with HTTP server
@@ -53,6 +73,7 @@ async function main(): Promise<void> {
 
   httpServer.listen(PORT, () => {
     console.log(`REST API listening on port ${PORT}`);
+    console.log(`  Environment: ${CHAIN_ENV}`);
     console.log(`Health check: http://localhost:${PORT}/api/health`);
     console.log(`Tables: http://localhost:${PORT}/api/tables`);
     console.log(`Agents: http://localhost:${PORT}/api/agents`);
@@ -61,12 +82,8 @@ async function main(): Promise<void> {
 
   const server = httpServer;
 
-  // Start event listener if chain config is available
-  if (
-    process.env.POKER_TABLE_ADDRESS &&
-    process.env.PLAYER_REGISTRY_ADDRESS &&
-    process.env.RPC_URL
-  ) {
+  // Start event listener
+  if (hasChainConfig) {
     const listener = new EventListener({
       pokerTableAddress: process.env.POKER_TABLE_ADDRESS as Address,
       playerRegistryAddress: process.env.PLAYER_REGISTRY_ADDRESS as Address,
@@ -93,8 +110,19 @@ async function main(): Promise<void> {
     process.on("SIGINT", shutdown);
     process.on("SIGTERM", shutdown);
   } else {
-    console.log("Chain config not available - running in API-only mode");
-    console.log("Set POKER_TABLE_ADDRESS, PLAYER_REGISTRY_ADDRESS, and RPC_URL to enable event listener");
+    // Only reachable in local mode (non-local already exited above)
+    console.log("Chain config not provided - event listener disabled (local dev mode)");
+
+    const shutdown = async () => {
+      console.log("Shutting down...");
+      wss.close();
+      server.close();
+      await closePool();
+      process.exit(0);
+    };
+
+    process.on("SIGINT", shutdown);
+    process.on("SIGTERM", shutdown);
   }
 }
 

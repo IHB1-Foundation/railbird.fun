@@ -199,7 +199,7 @@ VRF_ADAPTER_TYPE=production
 - Re-request invalidates old request IDs (prevents stale fulfillment)
 
 ## T-0904 Remove non-real runtime fallbacks in services (P0)
-- Status: [ ] TODO
+- Status: [x] DONE
 - Depends on: M4
 - Goal: Services should fail fast on missing real dependencies.
 - Tasks:
@@ -211,6 +211,39 @@ VRF_ADAPTER_TYPE=production
     - Service startup fails when required dependencies are unavailable.
     - No runtime path returns fabricated/mock API data.
     - Health endpoints clearly distinguish ready vs degraded states.
+
+### DONE Notes (T-0904)
+**Key files changed:**
+- `services/ownerview/src/index.ts` - Removed insecure JWT_SECRET default (`"dev-secret-change-in-production-min-32-chars"`); JWT_SECRET is now required explicitly with no fallback. Added CHAIN_ENV-aware validation: RPC_URL and POKER_TABLE_ADDRESS required for testnet/mainnet (refuses to start without them).
+- `services/ownerview/src/app.ts` - Health endpoint now returns `"ready"` (200) or `"degraded"` (503) with per-dependency status (`chain`, `dealer`, `eventListener`).
+- `services/ownerview/src/routes/auth.test.ts` - Updated health check test to expect 503/degraded when chain service is unavailable.
+- `services/indexer/src/index.ts` - Added CHAIN_ENV-aware startup validation: DB config vars (DB_HOST, DB_NAME, DB_USER, DB_PASSWORD) required explicitly in non-local environments; chain config (POKER_TABLE_ADDRESS, PLAYER_REGISTRY_ADDRESS, RPC_URL) required in non-local environments. DB connection failure is a hard error. Removed misleading "API-only mode" message; local dev mode message is clearly labeled.
+- `services/indexer/src/db/pool.ts` - Removed hardcoded fallback defaults (`"localhost"`, `"playerco"`, `"postgres"`); throws error if required DB vars are missing (env vars are set at startup in index.ts).
+- `services/indexer/src/api/routes.ts` - Health endpoint now checks DB readiness (live query) and chain config presence; returns `"ready"` (200) or `"degraded"` (503) with per-dependency status (`database`, `chain`, `websocket`).
+
+**How to run/test:**
+```bash
+pnpm build                                    # All packages build successfully
+cd services/ownerview && pnpm test            # 109 tests pass
+cd services/indexer && pnpm test              # 50 tests pass
+```
+
+**Manual verification:**
+1. **OwnerView without JWT_SECRET**: Start without `JWT_SECRET` → exits with error immediately
+2. **OwnerView on testnet without RPC**: Set `CHAIN_ENV=testnet` without `RPC_URL` → exits with error
+3. **Indexer on testnet without DB config**: Set `CHAIN_ENV=testnet` without `DB_HOST` → exits with error
+4. **Indexer on testnet without chain config**: Set `CHAIN_ENV=testnet` without `POKER_TABLE_ADDRESS` → exits with error
+5. **Indexer health check**: `GET /api/health` returns `{"status":"degraded","dependencies":{"database":"unavailable",...}}` when DB is down
+6. **OwnerView health check**: `GET /health` returns `{"status":"degraded","dependencies":{"chain":"unavailable",...}}` when chain is not configured
+7. **Local dev still works**: `CHAIN_ENV=local` (or unset) allows DB defaults and optional chain config
+
+**Fail-fast behavior by environment:**
+| Dependency | local | testnet/mainnet |
+|---|---|---|
+| JWT_SECRET | Required (no default) | Required (no default) |
+| DB config (HOST/NAME/USER/PASS) | Defaults to localhost/playerco/postgres | Required explicitly |
+| RPC_URL + contract addresses | Optional (event listener disabled) | Required (exits if missing) |
+| DB connection | Hard failure (throws) | Hard failure (throws) |
 
 ## T-0905 OwnerView durability + secure dealer endpoints (P1)
 - Status: [ ] TODO

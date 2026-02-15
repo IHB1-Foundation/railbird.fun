@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getTables } from "@/lib/api";
-import { formatMon, shortenAddress } from "@/lib/utils";
+import { CHIP_SYMBOL, formatChips, shortenAddress } from "@/lib/utils";
 import { GAME_STATES } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -69,11 +69,11 @@ export default async function LobbyPage() {
                 <div className="table-meta-grid">
                   <div>
                     <span className="label">Blinds:</span>{" "}
-                    {formatMon(table.smallBlind)}/{formatMon(table.bigBlind)}
+                    {formatChips(table.smallBlind)}/{formatChips(table.bigBlind)} {CHIP_SYMBOL}
                   </div>
                   <div>
                     <span className="label">Seats:</span>{" "}
-                    {activeSeats}/2
+                    {activeSeats}/4
                   </div>
                   {table.currentHand && (
                     <>
@@ -83,7 +83,9 @@ export default async function LobbyPage() {
                       </div>
                       <div>
                         <span className="label">Pot:</span>{" "}
-                        <span className="value-accent">{formatMon(table.currentHand.pot)}</span>
+                        <span className="value-accent">
+                          {formatChips(table.currentHand.pot)} {CHIP_SYMBOL}
+                        </span>
                       </div>
                     </>
                   )}
@@ -96,7 +98,7 @@ export default async function LobbyPage() {
                       {seat.isActive ? (
                         <>
                           <div>{shortenAddress(seat.ownerAddress)}</div>
-                          <div className="value-accent">{formatMon(seat.stack)}</div>
+                          <div className="value-accent">{formatChips(seat.stack)} {CHIP_SYMBOL}</div>
                         </>
                       ) : (
                         <div className="muted">Empty</div>

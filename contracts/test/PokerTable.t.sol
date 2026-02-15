@@ -3,12 +3,14 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 import "../src/PokerTable.sol";
+import "../src/RailwayChip.sol";
 import "../src/HandEvaluator.sol";
 import "../src/mocks/MockVRFAdapter.sol";
 
 contract PokerTableTest is Test {
     PokerTable public pokerTable;
     MockVRFAdapter public mockVRF;
+    RailwayChip public chip;
 
     // 4 players
     address public owner1 = address(0x1);
@@ -44,7 +46,12 @@ contract PokerTableTest is Test {
 
     function setUp() public {
         mockVRF = new MockVRFAdapter();
-        pokerTable = new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(mockVRF));
+        chip = new RailwayChip(address(this));
+        pokerTable = new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(mockVRF), address(chip));
+        _fundAndApprove(owner1);
+        _fundAndApprove(owner2);
+        _fundAndApprove(owner3);
+        _fundAndApprove(owner4);
     }
 
     // ============ Seat Registration Tests ============
@@ -53,7 +60,7 @@ contract PokerTableTest is Test {
         vm.expectEmit(true, false, false, true);
         emit SeatUpdated(0, owner1, operator1, BUY_IN);
 
-        pokerTable.registerSeat(0, owner1, operator1, BUY_IN);
+        _registerSeat(0, owner1, operator1, BUY_IN);
 
         PokerTable.Seat memory seat = pokerTable.getSeat(0);
         assertEq(seat.owner, owner1);
@@ -62,45 +69,45 @@ contract PokerTableTest is Test {
     }
 
     function test_RegisterSeat_OperatorDefaultsToOwner() public {
-        pokerTable.registerSeat(0, owner1, address(0), BUY_IN);
+        _registerSeat(0, owner1, address(0), BUY_IN);
 
         PokerTable.Seat memory seat = pokerTable.getSeat(0);
         assertEq(seat.operator, owner1);
     }
 
     function test_RegisterSeat_RevertIfSeatTaken() public {
-        pokerTable.registerSeat(0, owner1, operator1, BUY_IN);
+        _registerSeat(0, owner1, operator1, BUY_IN);
 
         vm.expectRevert("Seat already taken");
-        pokerTable.registerSeat(0, owner2, operator2, BUY_IN);
+        _registerSeat(0, owner2, operator2, BUY_IN);
     }
 
     function test_RegisterSeat_RevertIfBuyInTooSmall() public {
         vm.expectRevert("Buy-in too small");
-        pokerTable.registerSeat(0, owner1, operator1, BIG_BLIND * 5);
+        _registerSeat(0, owner1, operator1, BIG_BLIND * 5);
     }
 
     function test_RegisterSeat_AllFourSeats() public {
-        pokerTable.registerSeat(0, owner1, operator1, BUY_IN);
-        pokerTable.registerSeat(1, owner2, operator2, BUY_IN);
-        pokerTable.registerSeat(2, owner3, operator3, BUY_IN);
-        pokerTable.registerSeat(3, owner4, operator4, BUY_IN);
+        _registerSeat(0, owner1, operator1, BUY_IN);
+        _registerSeat(1, owner2, operator2, BUY_IN);
+        _registerSeat(2, owner3, operator3, BUY_IN);
+        _registerSeat(3, owner4, operator4, BUY_IN);
         assertTrue(pokerTable.allSeatsFilled());
     }
 
     function test_AllSeatsFilled_FalseWithPartial() public {
         assertFalse(pokerTable.allSeatsFilled());
 
-        pokerTable.registerSeat(0, owner1, operator1, BUY_IN);
+        _registerSeat(0, owner1, operator1, BUY_IN);
         assertFalse(pokerTable.allSeatsFilled());
 
-        pokerTable.registerSeat(1, owner2, operator2, BUY_IN);
+        _registerSeat(1, owner2, operator2, BUY_IN);
         assertFalse(pokerTable.allSeatsFilled());
 
-        pokerTable.registerSeat(2, owner3, operator3, BUY_IN);
+        _registerSeat(2, owner3, operator3, BUY_IN);
         assertFalse(pokerTable.allSeatsFilled());
 
-        pokerTable.registerSeat(3, owner4, operator4, BUY_IN);
+        _registerSeat(3, owner4, operator4, BUY_IN);
         assertTrue(pokerTable.allSeatsFilled());
     }
 
@@ -137,8 +144,8 @@ contract PokerTableTest is Test {
     }
 
     function test_StartHand_RevertIfNotEnoughSeats() public {
-        pokerTable.registerSeat(0, owner1, operator1, BUY_IN);
-        pokerTable.registerSeat(1, owner2, operator2, BUY_IN);
+        _registerSeat(0, owner1, operator1, BUY_IN);
+        _registerSeat(1, owner2, operator2, BUY_IN);
 
         vm.expectRevert("Need all seats filled");
         pokerTable.startHand();
@@ -1998,10 +2005,20 @@ contract PokerTableTest is Test {
     }
 
     function _setupAllSeats() internal {
-        pokerTable.registerSeat(0, owner1, operator1, BUY_IN);
-        pokerTable.registerSeat(1, owner2, operator2, BUY_IN);
-        pokerTable.registerSeat(2, owner3, operator3, BUY_IN);
-        pokerTable.registerSeat(3, owner4, operator4, BUY_IN);
+        _registerSeat(0, owner1, operator1, BUY_IN);
+        _registerSeat(1, owner2, operator2, BUY_IN);
+        _registerSeat(2, owner3, operator3, BUY_IN);
+        _registerSeat(3, owner4, operator4, BUY_IN);
+    }
+
+    function _registerSeat(uint8 seatIndex, address owner, address operator, uint256 buyIn) internal {
+        pokerTable.registerSeat(seatIndex, owner, operator, buyIn);
+    }
+
+    function _fundAndApprove(address seatOwner) internal {
+        chip.mint(seatOwner, BUY_IN * 1000);
+        vm.prank(seatOwner);
+        chip.approve(address(pokerTable), type(uint256).max);
     }
 
     function _operatorFor(uint8 seat) internal view returns (address) {

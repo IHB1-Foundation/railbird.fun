@@ -61,9 +61,23 @@ forge create src/mocks/MockVRFAdapter.sol:MockVRFAdapter \
   --rpc-url http://localhost:8545 \
   --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 
-# Note the deployed address, then deploy PokerTable:
+# Deploy RailwayChip (rCHIP)
+forge create src/RailwayChip.sol:RailwayChip \
+  --constructor-args 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 \
+  --rpc-url http://localhost:8545 \
+  --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+
+# Mint chips to players (1,000,000 rCHIP each)
+cast send <RCHIP_TOKEN_ADDRESS> \
+  "mintBatch(address[],uint256)" \
+  "[0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266,0x70997970C51812dc3A010C7d01b50e0d17dc79C8,0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC,0x90F79bf6EB2c4f870365E785982E1f101E93b906]" \
+  1000000000000000000000000 \
+  --rpc-url http://localhost:8545 \
+  --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+
+# Note the deployed addresses, then deploy PokerTable:
 forge create src/PokerTable.sol:PokerTable \
-  --constructor-args 1 5 10 <VRF_ADAPTER_ADDRESS> \
+  --constructor-args 1 5 10 <VRF_ADAPTER_ADDRESS> <RCHIP_TOKEN_ADDRESS> \
   --rpc-url http://localhost:8545 \
   --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 
@@ -79,6 +93,12 @@ forge create src/PlayerRegistry.sol:PlayerRegistry \
 ### 3. Register 4 Seats on Table
 
 ```bash
+# Approve buy-in first (1 rCHIP)
+cast send <RCHIP_TOKEN_ADDRESS> \
+  "approve(address,uint256)" <POKER_TABLE_ADDRESS> 1000000000000000000 \
+  --rpc-url http://localhost:8545 \
+  --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+
 # Register seat 0 (Account 0)
 cast send <POKER_TABLE_ADDRESS> \
   "registerSeat(uint8,address,address,uint256)" 0 \
@@ -87,6 +107,12 @@ cast send <POKER_TABLE_ADDRESS> \
   1000000000000000000 \
   --rpc-url http://localhost:8545 \
   --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+
+# Approve buy-in for seat 1
+cast send <RCHIP_TOKEN_ADDRESS> \
+  "approve(address,uint256)" <POKER_TABLE_ADDRESS> 1000000000000000000 \
+  --rpc-url http://localhost:8545 \
+  --private-key 0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d
 
 # Register seat 1 (Account 1)
 cast send <POKER_TABLE_ADDRESS> \
@@ -97,6 +123,12 @@ cast send <POKER_TABLE_ADDRESS> \
   --rpc-url http://localhost:8545 \
   --private-key 0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d
 
+# Approve buy-in for seat 2
+cast send <RCHIP_TOKEN_ADDRESS> \
+  "approve(address,uint256)" <POKER_TABLE_ADDRESS> 1000000000000000000 \
+  --rpc-url http://localhost:8545 \
+  --private-key 0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a
+
 # Register seat 2 (Account 2)
 cast send <POKER_TABLE_ADDRESS> \
   "registerSeat(uint8,address,address,uint256)" 2 \
@@ -105,6 +137,12 @@ cast send <POKER_TABLE_ADDRESS> \
   1000000000000000000 \
   --rpc-url http://localhost:8545 \
   --private-key 0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a
+
+# Approve buy-in for seat 3
+cast send <RCHIP_TOKEN_ADDRESS> \
+  "approve(address,uint256)" <POKER_TABLE_ADDRESS> 1000000000000000000 \
+  --rpc-url http://localhost:8545 \
+  --private-key 0x7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6
 
 # Register seat 3 (Account 3)
 cast send <POKER_TABLE_ADDRESS> \
@@ -147,6 +185,7 @@ export POKER_TABLE_ADDRESS=<deployed_address>
 export PLAYER_REGISTRY_ADDRESS=<deployed_address>
 export PLAYER_VAULT_ADDRESS=<deployed_address>
 export VRF_ADAPTER_ADDRESS=<deployed_address>
+export RCHIP_TOKEN_ADDRESS=<deployed_address>
 
 # nad.fun addresses (use zero addresses for local testing)
 export NADFUN_LENS_ADDRESS=0x0000000000000000000000000000000000000000
@@ -197,6 +236,12 @@ pnpm dev
 # From repo root:
 POKER_TABLE_ADDRESS=<address> ./scripts/run-4agents.sh
 ```
+
+Default 4-agent personalities use different aggression values:
+- Seat 0: `0.15` (tight)
+- Seat 1: `0.35` (balanced)
+- Seat 2: `0.60` (loose)
+- Seat 3: `0.85` (aggressive)
 
 **Option B: Individual terminals**
 
@@ -266,6 +311,7 @@ pnpm start
 | `PLAYER_REGISTRY_ADDRESS` | Yes | Deployed PlayerRegistry contract |
 | `PLAYER_VAULT_ADDRESS` | Yes | Deployed PlayerVault contract |
 | `VRF_ADAPTER_ADDRESS` | Yes | Deployed VRF adapter contract |
+| `RCHIP_TOKEN_ADDRESS` | Yes | Deployed RailwayChip (`rCHIP`) token |
 
 ### OwnerView Service
 
@@ -293,6 +339,7 @@ pnpm start
 |----------|----------|---------|-------------|
 | `OPERATOR_PRIVATE_KEY` | Yes | - | Private key for seat operator |
 | `OWNERVIEW_URL` | No | localhost:3001 | OwnerView service URL |
+| `AGGRESSION_FACTOR` | No | 0.3 | Strategy aggression (`0.0~1.0`) |
 | `MAX_HANDS` | No | 0 (unlimited) | Stop after N hands |
 | `POLL_INTERVAL_MS` | No | 1000 | State polling interval |
 
@@ -317,6 +364,7 @@ pnpm start
 | `NEXT_PUBLIC_NADFUN_DEX_ROUTER_ADDRESS` | No | - | nad.fun DEX router |
 | `NEXT_PUBLIC_WMON_ADDRESS` | No | - | Wrapped MON address |
 | `NEXT_PUBLIC_RPC_URL` | No | - | RPC for client-side calls |
+| `NEXT_PUBLIC_CHIP_SYMBOL` | No | `rCHIP` | UI label for poker chips |
 
 ## Running Tests
 

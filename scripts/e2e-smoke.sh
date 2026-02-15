@@ -38,6 +38,7 @@ CHAIN_ID=31337
 
 # Anvil deterministic accounts
 DEPLOYER_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+DEPLOYER_ADDR=0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
 AGENT_KEYS=(
   "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
   "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"
@@ -106,9 +107,32 @@ if [ -z "$VRF_ADDR" ]; then
 fi
 pass "MockVRFAdapter deployed at $VRF_ADDR"
 
-# Deploy PokerTable (tableId=1, smallBlind=5, bigBlind=10, vrfAdapter)
+# Deploy RailwayChip (rCHIP)
+RCHIP_ADDR=$(forge create contracts/src/RailwayChip.sol:RailwayChip \
+  --constructor-args $DEPLOYER_ADDR \
+  --rpc-url $RPC_URL \
+  --private-key $DEPLOYER_KEY \
+  --json 2>/dev/null | node -e "const d=require('fs').readFileSync('/dev/stdin','utf8');console.log(JSON.parse(d).deployedTo)")
+
+if [ -z "$RCHIP_ADDR" ]; then
+  fail "Failed to deploy RailwayChip"
+  exit 1
+fi
+pass "RailwayChip deployed at $RCHIP_ADDR"
+
+# Mint 1,000,000 rCHIP to each agent
+AGENT_CHIP_ALLOCATION=1000000000000000000000000
+for i in 0 1 2 3; do
+  cast send $RCHIP_ADDR \
+    "mint(address,uint256)" ${AGENT_ADDRS[$i]} $AGENT_CHIP_ALLOCATION \
+    --rpc-url $RPC_URL \
+    --private-key $DEPLOYER_KEY > /dev/null 2>&1
+done
+pass "Minted 1,000,000 rCHIP to each agent"
+
+# Deploy PokerTable (tableId=1, smallBlind=5, bigBlind=10, vrfAdapter, chipToken)
 TABLE_ADDR=$(forge create contracts/src/PokerTable.sol:PokerTable \
-  --constructor-args 1 5 10 $VRF_ADDR \
+  --constructor-args 1 5 10 $VRF_ADDR $RCHIP_ADDR \
   --rpc-url $RPC_URL \
   --private-key $DEPLOYER_KEY \
   --json 2>/dev/null | node -e "const d=require('fs').readFileSync('/dev/stdin','utf8');console.log(JSON.parse(d).deployedTo)")
@@ -130,6 +154,11 @@ echo ""
 echo -e "${YELLOW}Step 3: Register 4 seats...${NC}"
 
 for i in 0 1 2 3; do
+  cast send $RCHIP_ADDR \
+    "approve(address,uint256)" $TABLE_ADDR 1000000000000000000 \
+    --rpc-url $RPC_URL \
+    --private-key ${AGENT_KEYS[$i]} > /dev/null 2>&1
+
   cast send $TABLE_ADDR \
     "registerSeat(uint8,address,address,uint256)" $i \
     ${AGENT_ADDRS[$i]} \

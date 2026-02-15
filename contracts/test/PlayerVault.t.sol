@@ -117,7 +117,7 @@ contract PlayerVaultTest is Test {
 
         // Setup poker table for integration tests
         mockVRF = new MockVRFAdapter();
-        pokerTable = new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(mockVRF));
+        pokerTable = new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(mockVRF), address(agentToken));
 
         // Setup mock router for rebalancing tests
         mockRouter = new MockNadfunRouter();

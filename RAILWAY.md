@@ -20,12 +20,13 @@ Railway 서비스 8개를 만든다.
 모든 서비스에 동일하게:
 
 ```bash
-pnpm -r build
+pnpm -r --filter=!@playerco/contracts build
 ```
 
 참고:
 - 루트 `railway.json`에 이미 `buildCommand`/`startCommand` 기본값을 넣어두었다.
 - 서비스 생성 시 Railway가 이 값을 읽으면 별도 입력 없이 동작한다.
+- Railway 런타임 이미지에는 `forge`가 없으므로 contracts 패키지는 빌드 대상에서 제외한다.
 
 ## 2-1) 환경변수 자동 반영 (CLI)
 

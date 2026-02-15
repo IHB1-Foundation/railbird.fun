@@ -84,6 +84,22 @@ function simulateCommitmentsEndpoint(
   };
 }
 
+// Simulate dealer auth middleware
+function simulateDealerAuth(
+  apiKey: string | undefined,
+  authHeader: string | undefined
+): { status: number; body: Record<string, unknown> } | null {
+  if (!apiKey) return null; // No auth required
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return { status: 401, body: { error: "Missing or invalid Authorization header", code: "UNAUTHORIZED" } };
+  }
+  const token = authHeader.slice(7);
+  if (token !== apiKey) {
+    return { status: 403, body: { error: "Invalid dealer API key", code: "FORBIDDEN" } };
+  }
+  return null; // Auth passed
+}
+
 describe("Dealer Routes", () => {
   let holeCardStore: HoleCardStore;
   let dealerService: DealerService;
@@ -94,7 +110,7 @@ describe("Dealer Routes", () => {
   });
 
   describe("POST /dealer/deal", () => {
-    it("should return 201 and commitments on successful deal", () => {
+    it("should return 201 and commitments for all 4 seats on successful deal", () => {
       const result = simulateDealEndpoint(dealerService, {
         tableId: "1",
         handId: "1",
@@ -108,9 +124,11 @@ describe("Dealer Routes", () => {
         seatIndex: number;
         commitment: string;
       }>;
-      assert.equal(commitments.length, 2);
+      assert.equal(commitments.length, 4);
       assert.equal(commitments[0].seatIndex, 0);
       assert.equal(commitments[1].seatIndex, 1);
+      assert.equal(commitments[2].seatIndex, 2);
+      assert.equal(commitments[3].seatIndex, 3);
     });
 
     it("should NOT expose cards in response", () => {
@@ -162,7 +180,7 @@ describe("Dealer Routes", () => {
   });
 
   describe("GET /dealer/commitments", () => {
-    it("should return commitments for dealt hand", () => {
+    it("should return commitments for all 4 seats of a dealt hand", () => {
       dealerService.deal({ tableId: "1", handId: "1" });
       const result = simulateCommitmentsEndpoint(dealerService, {
         tableId: "1",
@@ -177,7 +195,7 @@ describe("Dealer Routes", () => {
         seatIndex: number;
         commitment: string;
       }>;
-      assert.equal(commitments.length, 2);
+      assert.equal(commitments.length, 4);
     });
 
     it("should return 404 for undealt hand", () => {
@@ -219,6 +237,72 @@ describe("Dealer Routes", () => {
       const bodyStr = JSON.stringify(result.body);
       assert.ok(!bodyStr.includes('"cards"'), "No cards field");
       assert.ok(!bodyStr.includes('"salt"'), "No salt field");
+    });
+  });
+
+  describe("Dealer Auth Middleware", () => {
+    const API_KEY = "test-dealer-api-key-secret";
+
+    it("should pass when no API key is configured (local dev)", () => {
+      const result = simulateDealerAuth(undefined, undefined);
+      assert.equal(result, null);
+    });
+
+    it("should return 401 when API key is configured but no auth header", () => {
+      const result = simulateDealerAuth(API_KEY, undefined);
+      assert.notEqual(result, null);
+      assert.equal(result!.status, 401);
+      assert.equal(result!.body.code, "UNAUTHORIZED");
+    });
+
+    it("should return 401 when auth header is not Bearer", () => {
+      const result = simulateDealerAuth(API_KEY, "Basic abc123");
+      assert.notEqual(result, null);
+      assert.equal(result!.status, 401);
+      assert.equal(result!.body.code, "UNAUTHORIZED");
+    });
+
+    it("should return 403 when API key is wrong", () => {
+      const result = simulateDealerAuth(API_KEY, "Bearer wrong-key");
+      assert.notEqual(result, null);
+      assert.equal(result!.status, 403);
+      assert.equal(result!.body.code, "FORBIDDEN");
+    });
+
+    it("should pass when API key matches", () => {
+      const result = simulateDealerAuth(API_KEY, `Bearer ${API_KEY}`);
+      assert.equal(result, null);
+    });
+  });
+
+  describe("4-seat dealing", () => {
+    it("should deal unique cards to all 4 seats", () => {
+      dealerService.deal({ tableId: "1", handId: "1" });
+
+      const allCards: number[] = [];
+      for (let seat = 0; seat < 4; seat++) {
+        const record = holeCardStore.get("1", "1", seat);
+        assert.ok(record, `Seat ${seat} should have cards`);
+        assert.equal(record.cards.length, 2, `Seat ${seat} should have 2 cards`);
+        allCards.push(...record.cards);
+      }
+
+      // All 8 cards should be unique
+      const uniqueCards = new Set(allCards);
+      assert.equal(uniqueCards.size, 8, "All 8 cards should be unique across 4 seats");
+    });
+
+    it("should generate unique commitments for each seat", () => {
+      dealerService.deal({ tableId: "1", handId: "1" });
+
+      const commitments = new Set<string>();
+      for (let seat = 0; seat < 4; seat++) {
+        const record = holeCardStore.get("1", "1", seat);
+        assert.ok(record);
+        commitments.add(record.commitment);
+      }
+
+      assert.equal(commitments.size, 4, "All 4 commitments should be unique");
     });
   });
 });

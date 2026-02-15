@@ -1,14 +1,47 @@
-import { Router, type Request, type Response } from "express";
+import { Router, type Request, type Response, type NextFunction } from "express";
 import { DealerService, DealerError } from "../dealer/index.js";
+
+/**
+ * Middleware that validates DEALER_API_KEY on privileged dealer endpoints.
+ * Expects: Authorization: Bearer <api-key>
+ */
+function createDealerAuthMiddleware(apiKey: string) {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      res.status(401).json({
+        error: "Missing or invalid Authorization header",
+        code: "UNAUTHORIZED",
+      });
+      return;
+    }
+
+    const token = authHeader.slice(7);
+    if (token !== apiKey) {
+      res.status(403).json({
+        error: "Invalid dealer API key",
+        code: "FORBIDDEN",
+      });
+      return;
+    }
+
+    next();
+  };
+}
 
 /**
  * Create dealer routes
  *
- * These routes are for internal/operator use to trigger dealing.
- * In production, consider protecting with API keys or operator auth.
+ * All dealer endpoints are protected with operator auth (API key).
+ * Pass dealerApiKey to enable protection. If undefined, endpoints are unprotected (local dev only).
  */
-export function createDealerRoutes(dealerService: DealerService): Router {
+export function createDealerRoutes(dealerService: DealerService, dealerApiKey?: string): Router {
   const router = Router();
+
+  // Apply auth middleware to all dealer routes if API key is configured
+  if (dealerApiKey) {
+    router.use(createDealerAuthMiddleware(dealerApiKey));
+  }
 
   /**
    * POST /dealer/deal
@@ -107,8 +140,6 @@ export function createDealerRoutes(dealerService: DealerService): Router {
    * Get reveal data for showdown (internal use)
    *
    * Query: tableId, handId, seatIndex
-   *
-   * WARNING: This exposes cards and salt. Should be protected in production.
    */
   router.get("/reveal", (req: Request, res: Response) => {
     const { tableId, handId, seatIndex } = req.query;
@@ -130,9 +161,9 @@ export function createDealerRoutes(dealerService: DealerService): Router {
     }
 
     const seatIdx = Number(seatIndex);
-    if (isNaN(seatIdx) || seatIdx < 0 || seatIdx > 1) {
+    if (isNaN(seatIdx) || seatIdx < 0 || seatIdx > 3) {
       res.status(400).json({
-        error: "Missing or invalid seatIndex (must be 0 or 1)",
+        error: "Missing or invalid seatIndex (must be 0-3)",
         code: "INVALID_SEAT_INDEX",
       });
       return;

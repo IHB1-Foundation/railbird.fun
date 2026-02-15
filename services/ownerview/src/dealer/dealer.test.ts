@@ -208,40 +208,39 @@ describe("DealerService", () => {
   });
 
   describe("deal", () => {
-    it("should deal cards for a new hand", () => {
+    it("should deal cards for a new hand (4 seats)", () => {
       const result = dealerService.deal({ tableId: "1", handId: "1" });
 
       assert.equal(result.tableId, "1");
       assert.equal(result.handId, "1");
-      assert.equal(result.seats.length, 2);
+      assert.equal(result.seats.length, 4);
     });
 
-    it("should store cards in hole card store", () => {
+    it("should store cards in hole card store (all 4 seats)", () => {
       dealerService.deal({ tableId: "1", handId: "1" });
 
-      const seat0 = holeCardStore.get("1", "1", 0);
-      const seat1 = holeCardStore.get("1", "1", 1);
-
-      assert.ok(seat0, "Seat 0 cards should be stored");
-      assert.ok(seat1, "Seat 1 cards should be stored");
+      for (let seat = 0; seat < 4; seat++) {
+        const record = holeCardStore.get("1", "1", seat);
+        assert.ok(record, `Seat ${seat} cards should be stored`);
+      }
     });
 
-    it("should generate unique cards for each seat", () => {
+    it("should generate unique cards for each seat (8 unique cards)", () => {
       const result = dealerService.deal({ tableId: "1", handId: "1" });
 
-      const allCards = [...result.seats[0].cards, ...result.seats[1].cards];
+      const allCards: number[] = [];
+      for (const seat of result.seats) {
+        allCards.push(...seat.cards);
+      }
       const uniqueCards = new Set(allCards);
-      assert.equal(uniqueCards.size, 4, "All 4 cards should be unique");
+      assert.equal(uniqueCards.size, 8, "All 8 cards should be unique across 4 seats");
     });
 
     it("should generate unique commitments for each seat", () => {
       const result = dealerService.deal({ tableId: "1", handId: "1" });
 
-      assert.notEqual(
-        result.seats[0].commitment,
-        result.seats[1].commitment,
-        "Commitments should be different"
-      );
+      const commitments = new Set(result.seats.map((s) => s.commitment));
+      assert.equal(commitments.size, 4, "All 4 commitments should be unique");
     });
 
     it("should throw if already dealt", () => {
@@ -274,14 +273,15 @@ describe("DealerService", () => {
   });
 
   describe("getCommitments", () => {
-    it("should return commitments for dealt hand", () => {
+    it("should return commitments for dealt hand (4 seats)", () => {
       dealerService.deal({ tableId: "1", handId: "1" });
       const commitments = dealerService.getCommitments("1", "1");
 
       assert.ok(commitments);
-      assert.equal(commitments.length, 2);
-      assert.match(commitments[0].commitment, /^0x[0-9a-f]{64}$/);
-      assert.match(commitments[1].commitment, /^0x[0-9a-f]{64}$/);
+      assert.equal(commitments.length, 4);
+      for (const c of commitments) {
+        assert.match(c.commitment, /^0x[0-9a-f]{64}$/);
+      }
     });
 
     it("should return null for undealt hand", () => {
@@ -305,14 +305,21 @@ describe("DealerService", () => {
       assert.equal(revealData, null);
     });
 
-    it("should return different data for different seats", () => {
+    it("should return different data for different seats (all 4)", () => {
       dealerService.deal({ tableId: "1", handId: "1" });
-      const seat0 = dealerService.getRevealData("1", "1", 0);
-      const seat1 = dealerService.getRevealData("1", "1", 1);
+      const allCards: number[][] = [];
+      for (let seat = 0; seat < 4; seat++) {
+        const data = dealerService.getRevealData("1", "1", seat);
+        assert.ok(data, `Seat ${seat} should have reveal data`);
+        allCards.push([...data.cards]);
+      }
 
-      assert.ok(seat0);
-      assert.ok(seat1);
-      assert.notDeepEqual(seat0.cards, seat1.cards);
+      // All seats should have different cards
+      for (let i = 0; i < 4; i++) {
+        for (let j = i + 1; j < 4; j++) {
+          assert.notDeepEqual(allCards[i], allCards[j], `Seat ${i} and ${j} should have different cards`);
+        }
+      }
     });
   });
 
@@ -328,11 +335,11 @@ describe("DealerService", () => {
   });
 
   describe("cleanupHand", () => {
-    it("should remove hole cards for a hand", () => {
+    it("should remove hole cards for a hand (4 seats)", () => {
       dealerService.deal({ tableId: "1", handId: "1" });
       const deleted = dealerService.cleanupHand("1", "1");
 
-      assert.equal(deleted, 2);
+      assert.equal(deleted, 4);
       assert.equal(dealerService.isHandDealt("1", "1"), false);
     });
 
@@ -385,42 +392,46 @@ describe("DealerService", () => {
 });
 
 describe("Dealer Integration", () => {
-  it("should work end-to-end: deal, retrieve via owner, verify commitment", () => {
+  it("should work end-to-end: deal 4 seats, retrieve via owner, verify commitment", () => {
     const holeCardStore = new HoleCardStore();
     const dealerService = new DealerService(holeCardStore, { testSeed: "e2e-test" });
 
-    // 1. Deal cards
+    // 1. Deal cards for 4 seats
     const dealResult = dealerService.deal({ tableId: "100", handId: "50" });
-    assert.equal(dealResult.seats.length, 2);
+    assert.equal(dealResult.seats.length, 4);
 
-    // 2. Simulate owner retrieving their cards
-    const seat0Cards = holeCardStore.get("100", "50", 0);
-    assert.ok(seat0Cards);
-    assert.deepEqual(seat0Cards.cards, dealResult.seats[0].cards);
+    // 2. Simulate each owner retrieving their cards
+    for (let seat = 0; seat < 4; seat++) {
+      const seatCards = holeCardStore.get("100", "50", seat);
+      assert.ok(seatCards, `Seat ${seat} should have cards`);
+      assert.deepEqual(seatCards.cards, dealResult.seats[seat].cards);
+    }
 
-    // 3. Verify commitment can be verified for showdown
-    const revealData = dealerService.getRevealData("100", "50", 0);
-    assert.ok(revealData);
+    // 3. Verify commitment can be verified for showdown (all 4 seats)
+    for (let seat = 0; seat < 4; seat++) {
+      const revealData = dealerService.getRevealData("100", "50", seat);
+      assert.ok(revealData);
 
-    const recomputedCommitment = generateCommitment(
-      "100",
-      "50",
-      0,
-      revealData.cards,
-      revealData.salt
-    );
+      const recomputedCommitment = generateCommitment(
+        "100",
+        "50",
+        seat,
+        revealData.cards,
+        revealData.salt
+      );
 
-    assert.equal(
-      recomputedCommitment,
-      dealResult.seats[0].commitment,
-      "Reveal data should verify against commitment"
-    );
+      assert.equal(
+        recomputedCommitment,
+        dealResult.seats[seat].commitment,
+        `Seat ${seat} reveal data should verify against commitment`
+      );
+    }
 
     // 4. Verify owner cannot access other seat's cards via ACL
     // (This is enforced by routes/owner.ts, tested in owner.test.ts)
 
     // 5. Cleanup
     const deleted = dealerService.cleanupHand("100", "50");
-    assert.equal(deleted, 2);
+    assert.equal(deleted, 4);
   });
 });

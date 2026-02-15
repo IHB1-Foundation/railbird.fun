@@ -1,4 +1,5 @@
 // @playerco/ownerview - Wallet-sign auth + hole card ACL service
+import { join } from "node:path";
 import { VERSION, type Address } from "@playerco/shared";
 import { createApp } from "./app.js";
 
@@ -34,10 +35,26 @@ if (!isLocal && (!RPC_URL || !POKER_TABLE_ADDRESS)) {
   process.exit(1);
 }
 
-const { app, authService, chainService, holeCardStore } = createApp({
+// DEALER_API_KEY: required in non-local environments to protect dealer endpoints
+const DEALER_API_KEY = process.env.DEALER_API_KEY;
+if (!isLocal && !DEALER_API_KEY) {
+  console.error(
+    `DEALER_API_KEY is required for ${CHAIN_ENV} environment.\n` +
+      `Dealer endpoints must be protected with operator auth. Refusing to start.`
+  );
+  process.exit(1);
+}
+
+// HOLECARD_DATA_DIR: persistent storage directory for hole cards
+// Defaults to ./data/holecards in non-local, undefined (in-memory) in local
+const HOLECARD_DATA_DIR = process.env.HOLECARD_DATA_DIR || (!isLocal ? join(process.cwd(), "data", "holecards") : undefined);
+
+const { app, authService, chainService, stopRetention } = createApp({
   jwtSecret: JWT_SECRET,
   rpcUrl: RPC_URL,
   pokerTableAddress: POKER_TABLE_ADDRESS,
+  dataDir: HOLECARD_DATA_DIR,
+  dealerApiKey: DEALER_API_KEY,
 });
 
 // Start cleanup intervals
@@ -47,12 +64,14 @@ authService.start();
 process.on("SIGTERM", () => {
   console.log("Received SIGTERM, shutting down...");
   authService.stop();
+  stopRetention?.();
   process.exit(0);
 });
 
 process.on("SIGINT", () => {
   console.log("Received SIGINT, shutting down...");
   authService.stop();
+  stopRetention?.();
   process.exit(0);
 });
 
@@ -60,6 +79,8 @@ app.listen(PORT, () => {
   console.log(`OwnerView service v${VERSION} listening on port ${PORT}`);
   console.log(`  Environment: ${CHAIN_ENV}`);
   console.log(`  Chain service: ${chainService ? "enabled" : "disabled (local only)"}`);
+  console.log(`  Storage: ${HOLECARD_DATA_DIR ? `persistent (${HOLECARD_DATA_DIR})` : "in-memory"}`);
+  console.log(`  Dealer auth: ${DEALER_API_KEY ? "enabled" : "disabled (local only)"}`);
 });
 
 // Re-export for programmatic use

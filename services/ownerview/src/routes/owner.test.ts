@@ -7,7 +7,7 @@ import type { SeatInfo } from "../chain/index.js";
 // Since Express router internals are hard to test directly,
 // we'll test the core logic: HoleCardStore and ownership verification
 
-// Mock ChainService
+// Mock ChainService (supports 4 seats)
 class MockChainService {
   private seats: Map<number, SeatInfo> = new Map();
 
@@ -96,25 +96,43 @@ describe("Owner Routes - Hole Cards ACL Logic", () => {
   let chainService: MockChainService;
   let holeCardStore: HoleCardStore;
 
-  const ownerAddress = "0x1111111111111111111111111111111111111111" as Address;
-  const otherAddress = "0x2222222222222222222222222222222222222222" as Address;
+  const ownerAddress0 = "0x1111111111111111111111111111111111111111" as Address;
+  const ownerAddress1 = "0x2222222222222222222222222222222222222222" as Address;
+  const ownerAddress2 = "0x3333333333333333333333333333333333333333" as Address;
+  const ownerAddress3 = "0x4444444444444444444444444444444444444444" as Address;
 
   beforeEach(() => {
     chainService = new MockChainService();
     holeCardStore = new HoleCardStore();
 
-    // Setup mock seats
+    // Setup mock seats (4 seats)
     chainService.setSeat(0, {
-      owner: ownerAddress,
-      operator: ownerAddress,
+      owner: ownerAddress0,
+      operator: ownerAddress0,
       stack: 1000n,
       isActive: true,
       currentBet: 0n,
     });
 
     chainService.setSeat(1, {
-      owner: otherAddress,
-      operator: otherAddress,
+      owner: ownerAddress1,
+      operator: ownerAddress1,
+      stack: 1000n,
+      isActive: true,
+      currentBet: 0n,
+    });
+
+    chainService.setSeat(2, {
+      owner: ownerAddress2,
+      operator: ownerAddress2,
+      stack: 1000n,
+      isActive: true,
+      currentBet: 0n,
+    });
+
+    chainService.setSeat(3, {
+      owner: ownerAddress3,
+      operator: ownerAddress3,
       stack: 1000n,
       isActive: true,
       currentBet: 0n,
@@ -124,7 +142,7 @@ describe("Owner Routes - Hole Cards ACL Logic", () => {
   describe("ACL - seat ownership verification", () => {
     it("should return 403 if wallet does not own any seat", async () => {
       const nonOwnerAddress =
-        "0x3333333333333333333333333333333333333333" as Address;
+        "0x5555555555555555555555555555555555555555" as Address;
 
       const result = await getHoleCardsLogic(chainService, holeCardStore, {
         wallet: nonOwnerAddress,
@@ -141,7 +159,7 @@ describe("Owner Routes - Hole Cards ACL Logic", () => {
 
     it("should return 404 if hole cards not found", async () => {
       const result = await getHoleCardsLogic(chainService, holeCardStore, {
-        wallet: ownerAddress,
+        wallet: ownerAddress0,
         tableId: "1",
         handId: "1",
       });
@@ -166,7 +184,7 @@ describe("Owner Routes - Hole Cards ACL Logic", () => {
       });
 
       const result = await getHoleCardsLogic(chainService, holeCardStore, {
-        wallet: ownerAddress,
+        wallet: ownerAddress0,
         tableId: "1",
         handId: "1",
       });
@@ -181,7 +199,7 @@ describe("Owner Routes - Hole Cards ACL Logic", () => {
     });
 
     it("should NOT return hole cards for a different seat (ACL check)", async () => {
-      // Store hole cards for seat 1 (owned by otherAddress)
+      // Store hole cards for seat 1 (owned by ownerAddress1)
       holeCardStore.set({
         tableId: "1",
         handId: "1",
@@ -195,7 +213,7 @@ describe("Owner Routes - Hole Cards ACL Logic", () => {
       // Owner of seat 0 tries to get hole cards
       // Should find seat 0 (which has no cards) and return 404
       const result = await getHoleCardsLogic(chainService, holeCardStore, {
-        wallet: ownerAddress,
+        wallet: ownerAddress0,
         tableId: "1",
         handId: "1",
       });
@@ -204,49 +222,33 @@ describe("Owner Routes - Hole Cards ACL Logic", () => {
       // Key security check: owner of seat 0 cannot see seat 1's cards
     });
 
-    it("should return correct seat's hole cards based on ownership", async () => {
-      // Store hole cards for both seats
-      holeCardStore.set({
-        tableId: "1",
-        handId: "1",
-        seatIndex: 0,
-        cards: [10, 25],
-        salt: "secret-0",
-        commitment: "0xabc",
-        createdAt: Date.now(),
-      });
+    it("should return correct seat's hole cards based on ownership (4 seats)", async () => {
+      // Store hole cards for all 4 seats
+      for (let seat = 0; seat < 4; seat++) {
+        holeCardStore.set({
+          tableId: "1",
+          handId: "1",
+          seatIndex: seat,
+          cards: [seat * 10, seat * 10 + 1] as [number, number],
+          salt: `secret-${seat}`,
+          commitment: `0xcommit${seat}`,
+          createdAt: Date.now(),
+        });
+      }
 
-      holeCardStore.set({
-        tableId: "1",
-        handId: "1",
-        seatIndex: 1,
-        cards: [30, 45],
-        salt: "secret-1",
-        commitment: "0xdef",
-        createdAt: Date.now(),
-      });
+      const owners = [ownerAddress0, ownerAddress1, ownerAddress2, ownerAddress3];
 
-      // Owner of seat 0 should get seat 0's cards
-      const result0 = await getHoleCardsLogic(chainService, holeCardStore, {
-        wallet: ownerAddress,
-        tableId: "1",
-        handId: "1",
-      });
+      for (let seat = 0; seat < 4; seat++) {
+        const result = await getHoleCardsLogic(chainService, holeCardStore, {
+          wallet: owners[seat],
+          tableId: "1",
+          handId: "1",
+        });
 
-      assert.equal(result0.status, 200);
-      assert.equal(result0.body.seatIndex, 0);
-      assert.deepEqual(result0.body.cards, [10, 25]);
-
-      // Owner of seat 1 should get seat 1's cards
-      const result1 = await getHoleCardsLogic(chainService, holeCardStore, {
-        wallet: otherAddress,
-        tableId: "1",
-        handId: "1",
-      });
-
-      assert.equal(result1.status, 200);
-      assert.equal(result1.body.seatIndex, 1);
-      assert.deepEqual(result1.body.cards, [30, 45]);
+        assert.equal(result.status, 200);
+        assert.equal(result.body.seatIndex, seat);
+        assert.deepEqual(result.body.cards, [seat * 10, seat * 10 + 1]);
+      }
     });
 
     it("should NOT return salt or commitment in response", async () => {
@@ -261,7 +263,7 @@ describe("Owner Routes - Hole Cards ACL Logic", () => {
       });
 
       const result = await getHoleCardsLogic(chainService, holeCardStore, {
-        wallet: ownerAddress,
+        wallet: ownerAddress0,
         tableId: "1",
         handId: "1",
       });
@@ -314,62 +316,52 @@ describe("Owner Routes - Hole Cards ACL Logic", () => {
 
   describe("Security - information leakage prevention", () => {
     it("owner cannot access other owner's hole cards even if they know handId", async () => {
-      // Both players have hole cards
-      holeCardStore.set({
-        tableId: "1",
-        handId: "1",
-        seatIndex: 0,
-        cards: [10, 25], // Owner's cards
-        salt: "salt-0",
-        commitment: "0xabc",
-        createdAt: Date.now(),
-      });
+      // All 4 players have hole cards
+      for (let seat = 0; seat < 4; seat++) {
+        holeCardStore.set({
+          tableId: "1",
+          handId: "1",
+          seatIndex: seat,
+          cards: [seat * 10 + 2, seat * 10 + 3] as [number, number],
+          salt: `salt-${seat}`,
+          commitment: `0xcommit${seat}`,
+          createdAt: Date.now(),
+        });
+      }
 
-      holeCardStore.set({
-        tableId: "1",
-        handId: "1",
-        seatIndex: 1,
-        cards: [30, 45], // Other's cards (should be secret)
-        salt: "salt-1",
-        commitment: "0xdef",
-        createdAt: Date.now(),
-      });
-
-      // Owner tries to access - should only see their own cards
+      // Owner of seat 0 should only see their own cards
       const result = await getHoleCardsLogic(chainService, holeCardStore, {
-        wallet: ownerAddress,
+        wallet: ownerAddress0,
         tableId: "1",
         handId: "1",
       });
 
       assert.equal(result.status, 200);
       assert.equal(result.body.seatIndex, 0);
-      // Must NOT contain other's cards
-      assert.deepEqual(result.body.cards, [10, 25]);
-      assert.notDeepEqual(result.body.cards, [30, 45]);
+      assert.deepEqual(result.body.cards, [2, 3]);
     });
 
     it("ownership is determined by on-chain lookup, not request params", async () => {
-      // Store cards for seat 1
+      // Store cards for seat 3
       holeCardStore.set({
         tableId: "1",
         handId: "1",
-        seatIndex: 1,
+        seatIndex: 3,
         cards: [30, 45],
         salt: "salt",
         commitment: "0xabc",
         createdAt: Date.now(),
       });
 
-      // Owner of seat 0 cannot access seat 1's cards
+      // Owner of seat 0 cannot access seat 3's cards
       // The system looks up which seat the wallet owns, not which seat was requested
       const result = await getHoleCardsLogic(chainService, holeCardStore, {
-        wallet: ownerAddress,
+        wallet: ownerAddress0,
         tableId: "1",
         handId: "1",
       });
 
-      // Should return 404 (no cards for seat 0), NOT seat 1's cards
+      // Should return 404 (no cards for seat 0), NOT seat 3's cards
       assert.equal(result.status, 404);
     });
   });

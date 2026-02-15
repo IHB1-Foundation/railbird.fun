@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
+import type { Address } from "viem";
 import { useWebSocket } from "@/lib/useWebSocket";
 import { useAuth, type HoleCardsResponse } from "@/lib/auth";
+import { getPokerTableMaxSeats, registerSeatWithApprove } from "@/lib/pokerTableClient";
 import {
   CHIP_SYMBOL,
   formatChips,
@@ -15,6 +17,9 @@ import {
 import type { TableResponse, WsMessage } from "@/lib/types";
 import { GAME_STATES, ACTION_TYPES } from "@/lib/types";
 
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+const TABLE_MAX_SEATS = Number(process.env.NEXT_PUBLIC_TABLE_MAX_SEATS || "9");
+
 interface TableViewerProps {
   initialData: TableResponse;
   tableId: string;
@@ -22,10 +27,43 @@ interface TableViewerProps {
 
 export function TableViewer({ initialData, tableId }: TableViewerProps) {
   const [table, setTable] = useState(initialData);
+  const [maxSeats, setMaxSeats] = useState<number>(TABLE_MAX_SEATS);
   const [timeRemaining, setTimeRemaining] = useState<string>("--");
   const [holeCards, setHoleCards] = useState<HoleCardsResponse | null>(null);
+  const [joinSeatIndex, setJoinSeatIndex] = useState<number>(0);
+  const [joinBuyIn, setJoinBuyIn] = useState<string>("1000");
+  const [joinOperator, setJoinOperator] = useState<string>("");
+  const [joinLoading, setJoinLoading] = useState<boolean>(false);
+  const [joinStatus, setJoinStatus] = useState<string>("");
 
-  const { isAuthenticated, address, getHoleCards } = useAuth();
+  const { isConnected, isAuthenticated, address, connect, getHoleCards } = useAuth();
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const onchainMaxSeats = await getPokerTableMaxSeats(table.contractAddress as Address);
+        if (onchainMaxSeats > 0) {
+          setMaxSeats(onchainMaxSeats);
+        }
+      } catch {
+        // Keep env fallback value on errors.
+      }
+    })();
+  }, [table.contractAddress]);
+
+  const normalizedSeats = useMemo(() => {
+    const byIndex = new Map(table.seats.map((seat) => [seat.seatIndex, seat]));
+    return Array.from({ length: maxSeats }, (_, seatIndex) => {
+      return byIndex.get(seatIndex) ?? {
+        seatIndex,
+        ownerAddress: ZERO_ADDRESS,
+        operatorAddress: ZERO_ADDRESS,
+        stack: "0",
+        isActive: false,
+        currentBet: "0",
+      };
+    });
+  }, [maxSeats, table.seats]);
 
   // Handle WebSocket messages
   const handleMessage = useCallback((_message: WsMessage) => {
@@ -72,13 +110,75 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
 
   // Determine which seat the current user owns (if any)
   const ownedSeatIndex =
-    (address && table.seats.find(
-      (s) => s.isActive && s.ownerAddress.toLowerCase() === address.toLowerCase()
+    (address && normalizedSeats.find(
+      (s) => s.ownerAddress.toLowerCase() !== ZERO_ADDRESS && s.ownerAddress.toLowerCase() === address.toLowerCase()
     )?.seatIndex) ?? null;
+
+  const availableSeats = normalizedSeats.filter((seat) => seat.ownerAddress.toLowerCase() === ZERO_ADDRESS);
+
+  useEffect(() => {
+    if (availableSeats.length > 0) {
+      setJoinSeatIndex((prev) => (
+        availableSeats.some((seat) => seat.seatIndex === prev)
+          ? prev
+          : availableSeats[0].seatIndex
+      ));
+    }
+  }, [availableSeats]);
 
   const gameState = GAME_STATES[table.gameState] || table.gameState;
   const currentHand = table.currentHand;
   const isActive = gameState !== "Waiting for Seats" && gameState !== "Settled";
+
+  const handleJoinSeat = useCallback(async () => {
+    setJoinStatus("");
+    if (availableSeats.length === 0) {
+      setJoinStatus("No empty seats available.");
+      return;
+    }
+
+    if (!isConnected) {
+      await connect();
+      setJoinStatus("Wallet connected. Click again to submit join transaction.");
+      return;
+    }
+
+    const selectedSeat = normalizedSeats.find((seat) => seat.seatIndex === joinSeatIndex);
+    if (!selectedSeat || selectedSeat.ownerAddress.toLowerCase() !== ZERO_ADDRESS) {
+      setJoinStatus("Selected seat is no longer empty.");
+      return;
+    }
+
+    const operatorInput = joinOperator.trim();
+    const operator = operatorInput.length > 0 ? (operatorInput as Address) : undefined;
+
+    try {
+      setJoinLoading(true);
+      const { registerTxHash } = await registerSeatWithApprove({
+        tableAddress: table.contractAddress as Address,
+        seatIndex: joinSeatIndex,
+        buyInTokens: joinBuyIn,
+        operator,
+      });
+      setJoinStatus(`Seat joined. tx=${registerTxHash}`);
+      handleMessage({ type: "seat_updated", tableId } as WsMessage);
+    } catch (error) {
+      setJoinStatus(error instanceof Error ? error.message : "Failed to join seat");
+    } finally {
+      setJoinLoading(false);
+    }
+  }, [
+    availableSeats,
+    connect,
+    handleMessage,
+    isConnected,
+    joinBuyIn,
+    joinOperator,
+    joinSeatIndex,
+    normalizedSeats,
+    table.contractAddress,
+    tableId,
+  ]);
 
   return (
     <div>
@@ -124,17 +224,74 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
         </div>
       </div>
 
+      <div className="card section-card">
+        <h3 className="section-title-sm">Add Player / Agent</h3>
+        <div className="muted">
+          새 지갑으로 참가하려면 빈 좌석 + Buy-in으로 등록하면 됩니다. 에이전트를 붙일 경우 `Operator`에 에이전트 지갑 주소를 입력하세요.
+        </div>
+        <div className="join-seat-controls">
+          <label>
+            Seat
+            <select
+              className="trade-input"
+              value={joinSeatIndex}
+              onChange={(e) => setJoinSeatIndex(Number(e.target.value))}
+              disabled={joinLoading || availableSeats.length === 0}
+            >
+              {availableSeats.map((seat) => (
+                <option key={seat.seatIndex} value={seat.seatIndex}>
+                  Seat {seat.seatIndex}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Buy-in ({CHIP_SYMBOL})
+            <input
+              className="trade-input"
+              type="number"
+              min="1"
+              step="1"
+              value={joinBuyIn}
+              onChange={(e) => setJoinBuyIn(e.target.value)}
+              disabled={joinLoading}
+            />
+          </label>
+          <label>
+            Operator (optional)
+            <input
+              className="trade-input"
+              type="text"
+              placeholder="0x... (agent wallet)"
+              value={joinOperator}
+              onChange={(e) => setJoinOperator(e.target.value)}
+              disabled={joinLoading}
+            />
+          </label>
+          <button
+            className="wallet-button sign"
+            onClick={handleJoinSeat}
+            disabled={joinLoading || availableSeats.length === 0}
+          >
+            {joinLoading ? "Submitting..." : "Join Seat"}
+          </button>
+        </div>
+        {joinStatus && <div className="muted">{joinStatus}</div>}
+      </div>
+
       {/* Table Layout */}
       <div className="table-layout">
-        {/* Top Seat */}
-        <div className="seats-row">
-          <SeatPanel
-            seat={table.seats[0]}
-            isActor={currentHand?.actorSeat === 0}
-            isButton={table.buttonSeat === 0}
-            isOwner={ownedSeatIndex === 0}
-            holeCards={ownedSeatIndex === 0 ? holeCards : null}
-          />
+        <div className="seats-row seats-wrap">
+          {normalizedSeats.map((seat) => (
+            <SeatPanel
+              key={seat.seatIndex}
+              seat={seat}
+              isActor={currentHand?.actorSeat === seat.seatIndex}
+              isButton={table.buttonSeat === seat.seatIndex}
+              isOwner={ownedSeatIndex === seat.seatIndex}
+              holeCards={ownedSeatIndex === seat.seatIndex ? holeCards : null}
+            />
+          ))}
         </div>
 
         {/* Community Cards */}
@@ -160,17 +317,6 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
               {timeRemaining}
             </div>
           )}
-        </div>
-
-        {/* Bottom Seat */}
-        <div className="seats-row">
-          <SeatPanel
-            seat={table.seats[1]}
-            isActor={currentHand?.actorSeat === 1}
-            isButton={table.buttonSeat === 1}
-            isOwner={ownedSeatIndex === 1}
-            holeCards={ownedSeatIndex === 1 ? holeCards : null}
-          />
         </div>
       </div>
 
@@ -201,7 +347,7 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
       <div className="card section-card">
         <h3 className="section-title-sm">Players</h3>
         <div className="players-grid">
-          {table.seats.map((seat) => (
+          {normalizedSeats.map((seat) => (
             <div key={seat.seatIndex} className="player-cell">
               <div className="player-seat-title">
                 Seat {seat.seatIndex}
@@ -209,7 +355,7 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
                   <span className="you-tag">(You)</span>
                 )}
               </div>
-              {seat.isActive ? (
+              {seat.ownerAddress.toLowerCase() !== ZERO_ADDRESS ? (
                 <>
                   <div className="player-line">
                     Owner:{" "}
@@ -257,7 +403,7 @@ function SeatPanel({
   isOwner: boolean;
   holeCards: HoleCardsResponse | null;
 }) {
-  if (!seat.isActive) {
+  if (seat.ownerAddress.toLowerCase() === ZERO_ADDRESS) {
     return (
       <div className="seat-panel">
         <div className="seat-label">Seat {seat.seatIndex}</div>

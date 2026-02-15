@@ -26,9 +26,18 @@ function parseBoundedFloat(name: string, fallback: number): number {
   return Math.max(0, Math.min(1, value));
 }
 
+function parsePositiveInt(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (!raw) return fallback;
+  const value = Number.parseInt(raw, 10);
+  if (Number.isNaN(value) || value < 0) return fallback;
+  return value;
+}
+
 async function main() {
   console.log(`Agent bot v${VERSION}`);
   const aggressionFactor = parseBoundedFloat("AGGRESSION_FACTOR", 0.3);
+  const turnActionDelayMs = parsePositiveInt("TURN_ACTION_DELAY_MS", 15 * 60 * 1000);
 
   // Load configuration from environment
   const config = {
@@ -38,6 +47,7 @@ async function main() {
     ownerviewUrl: optionalEnv("OWNERVIEW_URL", "http://localhost:3001"),
     chainId: parseInt(optionalEnv("CHAIN_ID", "31337")),
     pollIntervalMs: parseInt(optionalEnv("POLL_INTERVAL_MS", "1000")),
+    turnActionDelayMs,
     strategy: new SimpleStrategy(aggressionFactor),
   };
 
@@ -49,6 +59,7 @@ async function main() {
   console.log(`  OwnerView: ${config.ownerviewUrl}`);
   console.log(`  Chain ID: ${config.chainId}`);
   console.log(`  Poll interval: ${config.pollIntervalMs}ms`);
+  console.log(`  Turn action delay: ${turnActionDelayMs}ms`);
   console.log(`  Aggression: ${aggressionFactor.toFixed(2)}`);
   console.log(`  Max hands: ${maxHands || "unlimited"}`);
 

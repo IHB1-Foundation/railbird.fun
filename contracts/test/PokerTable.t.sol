@@ -92,7 +92,7 @@ contract PokerTableTest is Test {
         _registerSeat(1, owner2, operator2, BUY_IN);
         _registerSeat(2, owner3, operator3, BUY_IN);
         _registerSeat(3, owner4, operator4, BUY_IN);
-        assertTrue(pokerTable.allSeatsFilled());
+        assertFalse(pokerTable.allSeatsFilled());
     }
 
     function test_AllSeatsFilled_FalseWithPartial() public {
@@ -108,7 +108,7 @@ contract PokerTableTest is Test {
         assertFalse(pokerTable.allSeatsFilled());
 
         _registerSeat(3, owner4, operator4, BUY_IN);
-        assertTrue(pokerTable.allSeatsFilled());
+        assertFalse(pokerTable.allSeatsFilled());
     }
 
     // ============ Hand Start Tests ============
@@ -143,12 +143,28 @@ contract PokerTableTest is Test {
         assertEq(pokerTable.getSeat(3).stack, BUY_IN, "UTG stack unchanged");
     }
 
-    function test_StartHand_RevertIfNotEnoughSeats() public {
+    function test_StartHand_AllowsPartialTableWithTwoFundedSeats() public {
         _registerSeat(0, owner1, operator1, BUY_IN);
         _registerSeat(1, owner2, operator2, BUY_IN);
 
-        vm.expectRevert("Need all seats filled");
         pokerTable.startHand();
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.BETTING_PRE));
+    }
+
+    function test_StartHand_EvictsZeroStackSeat() public {
+        _registerSeat(0, owner1, operator1, BUY_IN);
+        _registerSeat(1, owner2, operator2, BUY_IN);
+        _registerSeat(2, owner3, operator3, BUY_IN);
+
+        vm.prank(owner1);
+        pokerTable.cashOutSeat(0, BUY_IN, owner1);
+        assertEq(pokerTable.getSeat(0).stack, 0);
+        assertEq(pokerTable.getSeat(0).owner, owner1);
+
+        pokerTable.startHand();
+
+        assertEq(pokerTable.getSeat(0).owner, address(0), "Zero-stack seat should be evicted");
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.BETTING_PRE));
     }
 
     // ============ Action Tests ============
@@ -1310,7 +1326,7 @@ contract PokerTableTest is Test {
         pokerTable.startHand();
 
         vm.expectRevert("Invalid seat");
-        pokerTable.submitHoleCommit(1, 4, keccak256("test")); // seat 4 is out of range
+        pokerTable.submitHoleCommit(1, 9, keccak256("test")); // seat 9 is out of range (0..8)
     }
 
     function test_SubmitHoleCommit_RevertIfInvalidHandId() public {

@@ -7,6 +7,7 @@
 # - Contracts deployed (see README.md)
 # - All services running (OwnerView, Indexer, Web)
 # - Four agent bots running (seats 0-3), use ./scripts/run-4agents.sh
+# - Additional player/agent can join via web table page "Add Player / Agent" panel
 #
 # Usage:
 #   ./scripts/demo.sh <POKER_TABLE_ADDRESS>
@@ -146,6 +147,6 @@ echo "  2. Open $WEB_URL/table/1 in browser"
 echo "  3. Watch 4-player hands play out in real-time via WebSocket"
 echo ""
 echo "For in-app trading:"
-echo "  1. Deploy nad.fun contracts or connect to testnet"
-echo "  2. Configure NEXT_PUBLIC_NADFUN_* environment variables"
+echo "  1. Use Monad testnet nad.fun addresses (already set in root .env/.env.example)"
+echo "  2. Override NEXT_PUBLIC_NADFUN_* only if nad.fun updates contracts"
 echo "  3. Visit agent page to see trading widget"

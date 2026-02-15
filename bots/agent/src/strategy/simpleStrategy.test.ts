@@ -12,6 +12,7 @@ function createTableState(overrides: Partial<TableState> = {}): TableState {
     tableId: 1n,
     smallBlind: 5n,
     bigBlind: 10n,
+    actionTimeout: 1800n,
     gameState: GameState.BETTING_PRE,
     currentHandId: 1n,
     buttonSeat: 0,

@@ -57,6 +57,7 @@ export interface TableState {
   tableId: bigint;
   smallBlind: bigint;
   bigBlind: bigint;
+  actionTimeout: bigint;
   gameState: GameState;
   currentHandId: bigint;
   buttonSeat: number;
@@ -115,13 +116,13 @@ export class ChainClient {
       tableId,
       smallBlind,
       bigBlind,
+      actionTimeout,
+      maxSeatsRaw,
       gameStateRaw,
       currentHandId,
       buttonSeat,
       actionDeadline,
       lastActionBlock,
-      seat0,
-      seat1,
       handInfo,
       communityCardsRaw,
     ] = await Promise.all([
@@ -139,6 +140,16 @@ export class ChainClient {
         address: this.pokerTableAddress,
         abi: POKER_TABLE_ABI,
         functionName: "bigBlind",
+      }),
+      this.publicClient.readContract({
+        address: this.pokerTableAddress,
+        abi: POKER_TABLE_ABI,
+        functionName: "ACTION_TIMEOUT",
+      }),
+      this.publicClient.readContract({
+        address: this.pokerTableAddress,
+        abi: POKER_TABLE_ABI,
+        functionName: "MAX_SEATS",
       }),
       this.publicClient.readContract({
         address: this.pokerTableAddress,
@@ -168,18 +179,6 @@ export class ChainClient {
       this.publicClient.readContract({
         address: this.pokerTableAddress,
         abi: POKER_TABLE_ABI,
-        functionName: "getSeat",
-        args: [0],
-      }),
-      this.publicClient.readContract({
-        address: this.pokerTableAddress,
-        abi: POKER_TABLE_ABI,
-        functionName: "getSeat",
-        args: [1],
-      }),
-      this.publicClient.readContract({
-        address: this.pokerTableAddress,
-        abi: POKER_TABLE_ABI,
         functionName: "getHandInfo",
       }),
       this.publicClient.readContract({
@@ -200,19 +199,29 @@ export class ChainClient {
       };
     };
 
+    const maxSeats = Number(maxSeatsRaw);
+    const seatResults = await Promise.all(
+      Array.from({ length: maxSeats }, (_, i) =>
+        this.publicClient.readContract({
+          address: this.pokerTableAddress,
+          abi: POKER_TABLE_ABI,
+          functionName: "getSeat",
+          args: [i],
+        })
+      )
+    );
+
     return {
       tableId: tableId as bigint,
       smallBlind: smallBlind as bigint,
       bigBlind: bigBlind as bigint,
+      actionTimeout: actionTimeout as bigint,
       gameState: (gameStateRaw as number) as GameState,
       currentHandId: currentHandId as bigint,
       buttonSeat: buttonSeat as number,
       actionDeadline: actionDeadline as bigint,
       lastActionBlock: lastActionBlock as bigint,
-      seats: [
-        parseSeat(seat0),
-        parseSeat(seat1),
-      ],
+      seats: seatResults.map(parseSeat),
       hand: {
         handId: (handInfo as readonly [bigint, bigint, bigint, number, number])[0],
         pot: (handInfo as readonly [bigint, bigint, bigint, number, number])[1],

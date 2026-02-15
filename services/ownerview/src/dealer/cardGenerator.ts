@@ -33,7 +33,7 @@ export function generateSalt(): string {
  * keccak256(abi.encodePacked(handId, seatIndex, card1, card2, salt))
  *
  * @param handId Numeric hand ID (as string, will be converted to uint256)
- * @param seatIndex Seat index (0 or 1)
+ * @param seatIndex Seat index at the table
  * @param cards Tuple of two card values (0-51)
  * @param salt 32-byte hex salt (with or without 0x prefix)
  * @returns keccak256 hash as 0x-prefixed hex string

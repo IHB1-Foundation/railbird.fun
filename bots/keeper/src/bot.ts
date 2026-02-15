@@ -206,21 +206,15 @@ export class KeeperBot {
    * Check if table is ready for a new hand and start it
    */
   private async checkAndStartHand(state: TableState): Promise<void> {
-    if (state.gameState !== GameState.SETTLED) {
+    if (state.gameState !== GameState.SETTLED && state.gameState !== GameState.WAITING_FOR_SEATS) {
       return;
     }
 
-    if (!state.allSeatsFilled) {
+    if (!state.canStartHand) {
       return;
     }
 
-    // Check all seats have enough for blinds (minimal check)
-    const hasEnoughStack = state.seats.every((s) => s.stack >= 10n);
-    if (!hasEnoughStack) {
-      return;
-    }
-
-    console.log("[KeeperBot] Table is SETTLED with all seats filled, starting new hand...");
+    console.log("[KeeperBot] Table is ready, starting new hand...");
 
     try {
       const hash = await this.chainClient.startHand();

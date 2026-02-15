@@ -2,6 +2,7 @@ import { createPublicClient, http, type PublicClient, type Log, parseAbiItem } f
 import type { Address } from "@playerco/shared";
 import type { DealerService } from "./dealerService.js";
 import type { HandStartedEvent } from "./types.js";
+import { PokerTableABI } from "../chain/pokerTableAbi.js";
 
 /**
  * Configuration for the event listener
@@ -19,6 +20,7 @@ export interface EventListenerConfig {
 const HandStartedEventAbi = parseAbiItem(
   "event HandStarted(uint256 indexed handId, uint256 smallBlind, uint256 bigBlind, uint8 buttonSeat)"
 );
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
 /**
  * Callback type for hand started events
@@ -79,7 +81,7 @@ export class HandStartedEventListener {
       eventName: "HandStarted",
       pollingInterval: this.pollInterval,
       onLogs: (logs) => {
-        this.handleLogs(logs);
+        void this.handleLogs(logs);
       },
       onError: (error) => {
         console.error("[DealerEventListener] Watch error:", error.message);
@@ -106,7 +108,7 @@ export class HandStartedEventListener {
   /**
    * Handle incoming HandStarted logs
    */
-  private handleLogs(logs: Log[]): void {
+  private async handleLogs(logs: Log[]): Promise<void> {
     for (const log of logs) {
       try {
         // Parse event args
@@ -124,7 +126,7 @@ export class HandStartedEventListener {
           buttonSeat: 0,
         };
 
-        this.handleHandStarted(event);
+        await this.handleHandStarted(event);
       } catch (error) {
         console.error(
           "[DealerEventListener] Failed to process log:",
@@ -137,7 +139,7 @@ export class HandStartedEventListener {
   /**
    * Handle a HandStarted event
    */
-  private handleHandStarted(event: HandStartedEvent): void {
+  private async handleHandStarted(event: HandStartedEvent): Promise<void> {
     const handIdStr = event.handId.toString();
 
     // Check if already dealt (idempotency)
@@ -149,14 +151,17 @@ export class HandStartedEventListener {
     }
 
     try {
+      const seatIndexes = await this.getOccupiedSeatIndexes();
+
       // Deal hole cards
       const result = this.dealerService.deal({
         tableId: this.tableId,
         handId: handIdStr,
+        seatIndexes,
       });
 
       console.log(
-        `[DealerEventListener] Dealt cards for hand ${handIdStr}: ${result.seats.length} seats`
+        `[DealerEventListener] Dealt cards for hand ${handIdStr}: ${result.seats.length} occupied seats`
       );
 
       // Invoke callback if set
@@ -175,7 +180,7 @@ export class HandStartedEventListener {
    * Manually trigger dealing for a hand (for testing/recovery)
    */
   dealHand(handId: string): void {
-    this.handleHandStarted({
+    void this.handleHandStarted({
       handId: BigInt(handId),
       smallBlind: 0n,
       bigBlind: 0n,
@@ -188,5 +193,34 @@ export class HandStartedEventListener {
    */
   isListening(): boolean {
     return this.isRunning;
+  }
+
+  private async getOccupiedSeatIndexes(): Promise<number[]> {
+    const maxSeatsRaw = await this.client.readContract({
+      address: this.pokerTableAddress,
+      abi: PokerTableABI,
+      functionName: "MAX_SEATS",
+    });
+    const maxSeats = Number(maxSeatsRaw);
+
+    const seats = await Promise.all(
+      Array.from({ length: maxSeats }, (_, i) =>
+        this.client.readContract({
+          address: this.pokerTableAddress,
+          abi: PokerTableABI,
+          functionName: "getSeat",
+          args: [i],
+        })
+      )
+    );
+
+    const occupied: number[] = [];
+    for (let i = 0; i < seats.length; i++) {
+      const seat = seats[i] as { owner: Address };
+      if (seat.owner.toLowerCase() !== ZERO_ADDRESS) {
+        occupied.push(i);
+      }
+    }
+    return occupied;
   }
 }

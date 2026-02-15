@@ -49,7 +49,7 @@ export interface TableState {
   seats: Seat[];
   actorSeat: number;
   pot: bigint;
-  allSeatsFilled: boolean;
+  canStartHand: boolean;
 }
 
 export interface RebalanceStatus {
@@ -118,23 +118,25 @@ export class ChainClient {
   async getTableState(): Promise<TableState> {
     const [
       tableId,
+      maxSeatsRaw,
       gameStateRaw,
       currentHandId,
       actionDeadline,
       lastActionBlock,
       pendingVRFRequestId,
       vrfRequestTimestamp,
-      seat0,
-      seat1,
-      seat2,
-      seat3,
       handInfo,
-      allSeatsFilled,
+      canStartHand,
     ] = await Promise.all([
       this.publicClient.readContract({
         address: this.pokerTableAddress,
         abi: POKER_TABLE_ABI,
         functionName: "tableId",
+      }),
+      this.publicClient.readContract({
+        address: this.pokerTableAddress,
+        abi: POKER_TABLE_ABI,
+        functionName: "MAX_SEATS",
       }),
       this.publicClient.readContract({
         address: this.pokerTableAddress,
@@ -169,36 +171,12 @@ export class ChainClient {
       this.publicClient.readContract({
         address: this.pokerTableAddress,
         abi: POKER_TABLE_ABI,
-        functionName: "getSeat",
-        args: [0],
-      }),
-      this.publicClient.readContract({
-        address: this.pokerTableAddress,
-        abi: POKER_TABLE_ABI,
-        functionName: "getSeat",
-        args: [1],
-      }),
-      this.publicClient.readContract({
-        address: this.pokerTableAddress,
-        abi: POKER_TABLE_ABI,
-        functionName: "getSeat",
-        args: [2],
-      }),
-      this.publicClient.readContract({
-        address: this.pokerTableAddress,
-        abi: POKER_TABLE_ABI,
-        functionName: "getSeat",
-        args: [3],
-      }),
-      this.publicClient.readContract({
-        address: this.pokerTableAddress,
-        abi: POKER_TABLE_ABI,
         functionName: "getHandInfo",
       }),
       this.publicClient.readContract({
         address: this.pokerTableAddress,
         abi: POKER_TABLE_ABI,
-        functionName: "allSeatsFilled",
+        functionName: "canStartHand",
       }),
     ]);
 
@@ -220,6 +198,17 @@ export class ChainClient {
     };
 
     const handInfoData = handInfo as readonly [bigint, bigint, bigint, number, number];
+    const maxSeats = Number(maxSeatsRaw);
+    const seatResults = await Promise.all(
+      Array.from({ length: maxSeats }, (_, i) =>
+        this.publicClient.readContract({
+          address: this.pokerTableAddress,
+          abi: POKER_TABLE_ABI,
+          functionName: "getSeat",
+          args: [i],
+        })
+      )
+    );
 
     return {
       tableId: tableId as bigint,
@@ -229,10 +218,10 @@ export class ChainClient {
       lastActionBlock: lastActionBlock as bigint,
       pendingVRFRequestId: pendingVRFRequestId as bigint,
       vrfRequestTimestamp: vrfRequestTimestamp as bigint,
-      seats: [parseSeat(seat0), parseSeat(seat1), parseSeat(seat2), parseSeat(seat3)],
+      seats: seatResults.map(parseSeat),
       actorSeat: handInfoData[3],
       pot: handInfoData[1],
-      allSeatsFilled: allSeatsFilled as boolean,
+      canStartHand: canStartHand as boolean,
     };
   }
 

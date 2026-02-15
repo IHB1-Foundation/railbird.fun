@@ -2,7 +2,7 @@
 // Entry point that reads configuration from environment variables
 
 import { AgentBot } from "./bot.js";
-import { SimpleStrategy } from "./strategy/index.js";
+import { GeminiStrategy, SimpleStrategy, type Strategy } from "./strategy/index.js";
 
 const VERSION = "0.0.1";
 
@@ -34,10 +34,54 @@ function parsePositiveInt(name: string, fallback: number): number {
   return value;
 }
 
+type DecisionEngine = "simple" | "gemini";
+
+function parseDecisionEngine(): DecisionEngine {
+  const raw = (process.env.AGENT_DECISION_ENGINE || "simple").trim().toLowerCase();
+  if (raw === "gemini") {
+    return "gemini";
+  }
+  return "simple";
+}
+
+function createStrategy(aggressionFactor: number): {
+  strategy: Strategy;
+  engine: DecisionEngine;
+  geminiModel: string | null;
+} {
+  const fallback = new SimpleStrategy(aggressionFactor);
+  const engine = parseDecisionEngine();
+
+  if (engine !== "gemini") {
+    return { strategy: fallback, engine: "simple", geminiModel: null };
+  }
+
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    console.warn("[AgentBot] AGENT_DECISION_ENGINE=gemini but GEMINI_API_KEY is missing. Using simple strategy.");
+    return { strategy: fallback, engine: "simple", geminiModel: null };
+  }
+
+  const model = process.env.GEMINI_MODEL || "gemini-2.0-flash";
+  const temperature = parseBoundedFloat("GEMINI_TEMPERATURE", 0.2);
+  const timeoutMs = parsePositiveInt("GEMINI_TIMEOUT_MS", 8000);
+
+  const strategy = new GeminiStrategy({
+    apiKey,
+    model,
+    temperature,
+    timeoutMs,
+    fallbackStrategy: fallback,
+  });
+
+  return { strategy, engine: "gemini", geminiModel: model };
+}
+
 async function main() {
   console.log(`Agent bot v${VERSION}`);
   const aggressionFactor = parseBoundedFloat("AGGRESSION_FACTOR", 0.3);
   const turnActionDelayMs = parsePositiveInt("TURN_ACTION_DELAY_MS", 60 * 1000);
+  const { strategy, engine, geminiModel } = createStrategy(aggressionFactor);
 
   // Load configuration from environment
   const config = {
@@ -48,7 +92,7 @@ async function main() {
     chainId: parseInt(optionalEnv("CHAIN_ID", "31337")),
     pollIntervalMs: parseInt(optionalEnv("POLL_INTERVAL_MS", "1000")),
     turnActionDelayMs,
-    strategy: new SimpleStrategy(aggressionFactor),
+    strategy,
   };
 
   const maxHands = parseInt(optionalEnv("MAX_HANDS", "0"));
@@ -61,6 +105,10 @@ async function main() {
   console.log(`  Poll interval: ${config.pollIntervalMs}ms`);
   console.log(`  Turn action delay: ${turnActionDelayMs}ms`);
   console.log(`  Aggression: ${aggressionFactor.toFixed(2)}`);
+  console.log(`  Decision engine: ${engine}`);
+  if (geminiModel) {
+    console.log(`  Gemini model: ${geminiModel}`);
+  }
   console.log(`  Max hands: ${maxHands || "unlimited"}`);
 
   // Create and run bot

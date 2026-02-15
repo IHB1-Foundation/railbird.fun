@@ -117,7 +117,10 @@ export class AgentBot {
     }
 
     console.log("[AgentBot] Bot stopped");
-    console.log(`[AgentBot] Stats: ${JSON.stringify(this.stats)}`);
+    console.log("[AgentBot] Stats:", {
+      ...this.stats,
+      totalProfit: this.stats.totalProfit.toString(),
+    });
   }
 
   /**
@@ -268,7 +271,7 @@ export class AgentBot {
     };
 
     // Get decision from strategy
-    const decision = this.strategy.decide(context);
+    const decision = await this.strategy.decide(context);
     console.log(
       `[AgentBot] Hand ${state.currentHandId}, deciding: ${decision.action}` +
         (decision.raiseAmount ? ` to ${decision.raiseAmount}` : "")

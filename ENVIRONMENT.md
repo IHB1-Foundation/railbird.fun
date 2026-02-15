@@ -50,6 +50,11 @@ set -a; source ./.env; set +a
 - `DEPLOYER_PRIVATE_KEY` (for contract/token deployment scripts)
 - `OPERATOR_PRIVATE_KEY` (single agent run)
 - `AGGRESSION_FACTOR` (single agent style tuning, 0.0~1.0)
+- `AGENT_DECISION_ENGINE` (`simple` | `gemini`)
+- `GEMINI_API_KEY` (required when using Gemini)
+- `GEMINI_MODEL` (default `gemini-2.0-flash`)
+- `GEMINI_TEMPERATURE` (default `0.2`)
+- `GEMINI_TIMEOUT_MS` (default `8000`)
 - `TURN_ACTION_DELAY_MS` (single agent turn-start delay in ms; default 60000)
 - `KEEPER_PRIVATE_KEY`
 - `VRF_OPERATOR_PRIVATE_KEY` (production VRF fulfill worker key)
@@ -65,6 +70,11 @@ set -a; source ./.env; set +a
 - `REBALANCE_SELL_AMOUNT_TOKENS`
 - `AGENT_1_OPERATOR_PRIVATE_KEY` ... `AGENT_4_OPERATOR_PRIVATE_KEY` (for 4-agent runner)
 - `AGENT_1_AGGRESSION` ... `AGENT_4_AGGRESSION` (for per-seat style in 4-agent runner)
+- `AGENT_1_DECISION_ENGINE` ... `AGENT_4_DECISION_ENGINE` (optional per-seat engine override)
+- `AGENT_1_GEMINI_API_KEY` ... `AGENT_4_GEMINI_API_KEY` (optional per-seat Gemini key)
+- `AGENT_1_GEMINI_MODEL` ... `AGENT_4_GEMINI_MODEL` (optional per-seat model override)
+- `AGENT_1_GEMINI_TEMPERATURE` ... `AGENT_4_GEMINI_TEMPERATURE` (optional per-seat sampling override)
+- `AGENT_1_GEMINI_TIMEOUT_MS` ... `AGENT_4_GEMINI_TIMEOUT_MS` (optional per-seat timeout override)
 - `AGENT_SLOT` (Railway multi-service agent launch: `1~4`)
 
 ### Web (`NEXT_PUBLIC_*`)

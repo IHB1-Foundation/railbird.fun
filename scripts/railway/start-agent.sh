@@ -29,6 +29,11 @@ export OWNERVIEW_URL="${OWNERVIEW_URL:-https://ownerview.railbird.fun}"
 key_var="AGENT_${slot}_OPERATOR_PRIVATE_KEY"
 aggr_var="AGENT_${slot}_AGGRESSION"
 delay_var="AGENT_${slot}_TURN_ACTION_DELAY_MS"
+engine_var="AGENT_${slot}_DECISION_ENGINE"
+model_var="AGENT_${slot}_GEMINI_MODEL"
+temp_var="AGENT_${slot}_GEMINI_TEMPERATURE"
+timeout_var="AGENT_${slot}_GEMINI_TIMEOUT_MS"
+api_key_var="AGENT_${slot}_GEMINI_API_KEY"
 
 if [ -z "${!key_var:-}" ]; then
   echo "[railway] missing env: $key_var" >&2
@@ -40,8 +45,22 @@ export AGGRESSION_FACTOR="${!aggr_var:-0.3}"
 export TURN_ACTION_DELAY_MS="${!delay_var:-${TURN_ACTION_DELAY_MS:-60000}}"
 export POLL_INTERVAL_MS="${POLL_INTERVAL_MS:-1000}"
 export MAX_HANDS="${MAX_HANDS:-0}"
+export AGENT_DECISION_ENGINE="${!engine_var:-${AGENT_DECISION_ENGINE:-simple}}"
+
+if [ -n "${!model_var:-}" ]; then
+  export GEMINI_MODEL="${!model_var}"
+fi
+if [ -n "${!temp_var:-}" ]; then
+  export GEMINI_TEMPERATURE="${!temp_var}"
+fi
+if [ -n "${!timeout_var:-}" ]; then
+  export GEMINI_TIMEOUT_MS="${!timeout_var}"
+fi
+if [ -n "${!api_key_var:-}" ]; then
+  export GEMINI_API_KEY="${!api_key_var}"
+fi
 
 echo "[railway] mapped $key_var -> OPERATOR_PRIVATE_KEY"
-echo "[railway] aggression=${AGGRESSION_FACTOR} delay_ms=${TURN_ACTION_DELAY_MS}"
+echo "[railway] aggression=${AGGRESSION_FACTOR} delay_ms=${TURN_ACTION_DELAY_MS} engine=${AGENT_DECISION_ENGINE}"
 
 pnpm --filter @playerco/agent-bot start

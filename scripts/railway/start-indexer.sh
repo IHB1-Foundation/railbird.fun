@@ -54,6 +54,7 @@ require_env DB_PASSWORD
 export PORT="${PORT:-3002}"
 export START_BLOCK="${START_BLOCK:-0}"
 export POLL_INTERVAL_MS="${POLL_INTERVAL_MS:-2000}"
+export LOG_BLOCK_RANGE="${LOG_BLOCK_RANGE:-90}"
 
 # Safe to run repeatedly; schema file uses IF NOT EXISTS.
 pnpm --filter @playerco/indexer db:migrate

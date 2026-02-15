@@ -12,6 +12,7 @@ export interface ListenerConfig {
   playerVaultAddress?: Address;
   startBlock?: bigint;
   pollIntervalMs?: number;
+  logBlockRange?: number;
 }
 
 export class EventListener {
@@ -28,6 +29,7 @@ export class EventListener {
     this.config = {
       ...config,
       pollIntervalMs: config.pollIntervalMs ?? 2000,
+      logBlockRange: Math.max(1, config.logBlockRange ?? 90),
     };
 
     // Default table context - will be updated when we read table info
@@ -44,6 +46,7 @@ export class EventListener {
     this.running = true;
 
     console.log("Starting event listener...");
+    console.log(`Log block range: ${this.config.logBlockRange}`);
 
     // Get last processed block from DB
     const state = await getIndexerState();
@@ -57,19 +60,24 @@ export class EventListener {
     while (this.running) {
       try {
         const latestBlock = await this.client.getBlockNumber();
+        let processedAny = false;
 
-        if (fromBlock < latestBlock) {
-          // Process in chunks to avoid RPC limits
-          const toBlock = fromBlock + 1000n < latestBlock ? fromBlock + 1000n : latestBlock;
+        while (this.running && fromBlock <= latestBlock) {
+          // Process in RPC-safe chunks. Monad testnet RPC rejects large eth_getLogs ranges.
+          const range = BigInt(this.config.logBlockRange! - 1);
+          const toBlock = fromBlock + range < latestBlock ? fromBlock + range : latestBlock;
 
           await this.processBlockRange(fromBlock, toBlock);
 
           fromBlock = toBlock + 1n;
           await updateIndexerState(fromBlock, 0);
+          processedAny = true;
         }
 
-        // Wait before next poll
-        await this.sleep(this.config.pollIntervalMs!);
+        // Wait before next poll only when caught up.
+        if (!processedAny) {
+          await this.sleep(this.config.pollIntervalMs!);
+        }
       } catch (error) {
         console.error("Error in event listener:", error);
         await this.sleep(5000); // Back off on error

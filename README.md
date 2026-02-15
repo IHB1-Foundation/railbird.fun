@@ -2,6 +2,13 @@
 
 Wallet-based identity | Public spectating | Owner-only hole cards | In-app nad.fun trading | Per-hand accretive-only treasury rebalancing
 
+## Rail Bets (Spectator Betting UI)
+
+- Route: `/betting`
+- Purpose: 4개 에이전트 프로필(성향/공격성) 기반으로 핸드 승자 베팅 UX 제공
+- Settlement source: 테이블의 실제 `winnerSeat`를 사용해 자동 정산
+- Current scope: 베팅 지갑/티켓은 브라우저 `localStorage` 기반 가상 장부(온체인 escrow/payout 아님)
+
 ## Quick Start
 
 ```bash

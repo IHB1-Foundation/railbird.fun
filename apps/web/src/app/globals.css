@@ -1214,6 +1214,247 @@ h5 {
   background: linear-gradient(150deg, #816cf9 0%, #6d52ff 100%);
 }
 
+.bet-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 0.9rem;
+}
+
+.bet-subtitle {
+  max-width: 780px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.bet-bankroll {
+  min-width: 240px;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.bet-bankroll-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #e8deff;
+}
+
+.bet-market-state {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.36rem 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.8rem;
+}
+
+.bet-market-state.open {
+  color: #93ffd0;
+  background: rgba(57, 217, 138, 0.16);
+  border: 1px solid rgba(57, 217, 138, 0.45);
+}
+
+.bet-market-state.closed {
+  color: #ffe2ad;
+  background: rgba(255, 191, 77, 0.14);
+  border: 1px solid rgba(255, 191, 77, 0.44);
+}
+
+.bet-notice {
+  margin-bottom: 0.8rem;
+  border-radius: 10px;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid rgba(172, 151, 255, 0.34);
+  background: rgba(129, 108, 249, 0.14);
+  font-size: 0.84rem;
+}
+
+.bet-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 1rem;
+  align-items: start;
+}
+
+.bet-agent-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.bet-agent-card {
+  display: grid;
+  gap: 0.55rem;
+  border-color: rgba(159, 136, 255, 0.26);
+}
+
+.bet-agent-card.selected {
+  border-color: rgba(201, 185, 255, 0.72);
+  box-shadow:
+    0 0 0 1px rgba(201, 185, 255, 0.45),
+    0 22px 38px rgba(2, 4, 12, 0.5);
+}
+
+.bet-agent-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.bet-agent-seat {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.bet-agent-name {
+  font-size: 1rem;
+}
+
+.bet-agent-style {
+  color: #d7cbff;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.bet-agent-odds {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #e8deff;
+}
+
+.bet-agent-blurb {
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.bet-agent-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  font-size: 0.78rem;
+}
+
+.bet-agent-stats span {
+  border: 1px solid rgba(157, 166, 207, 0.3);
+  border-radius: 999px;
+  padding: 0.22rem 0.5rem;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.bet-agent-owner {
+  font-family: var(--text-mono);
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.bet-select-btn,
+.bet-place-btn,
+.ghost-btn {
+  border: none;
+  cursor: pointer;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+.bet-select-btn {
+  padding: 0.52rem 0.8rem;
+  background: rgba(143, 127, 235, 0.24);
+  color: #ece6ff;
+  border: 1px solid rgba(194, 177, 255, 0.34);
+}
+
+.bet-place-btn {
+  width: 100%;
+  padding: 0.68rem 0.9rem;
+  background: linear-gradient(140deg, #816cf9 0%, #6d52ff 100%);
+  color: #fff;
+}
+
+.bet-place-btn:disabled {
+  cursor: not-allowed;
+  background: rgba(130, 136, 172, 0.25);
+  color: rgba(226, 230, 248, 0.7);
+}
+
+.ghost-btn {
+  padding: 0.38rem 0.68rem;
+  border: 1px solid rgba(157, 166, 207, 0.34);
+  background: rgba(255, 255, 255, 0.02);
+  color: #e7e1ff;
+}
+
+.bet-slip {
+  display: grid;
+  gap: 0.62rem;
+}
+
+.bet-slip-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.86rem;
+}
+
+.bet-input-label {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.bet-input {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid rgba(149, 158, 204, 0.3);
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--foreground);
+  padding: 0.62rem 0.7rem;
+}
+
+.bet-input:focus {
+  outline: none;
+  border-color: rgba(197, 180, 255, 0.7);
+}
+
+.bet-quick-row {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.bet-history-grid {
+  margin-top: 1rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.bet-ticket-list {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.bet-ticket {
+  border-radius: 10px;
+  border: 1px solid rgba(148, 156, 197, 0.25);
+  background: rgba(255, 255, 255, 0.02);
+  padding: 0.62rem 0.7rem;
+  display: grid;
+  gap: 0.18rem;
+  font-size: 0.8rem;
+}
+
+.bet-ticket.won {
+  border-color: rgba(57, 217, 138, 0.45);
+  background: rgba(57, 217, 138, 0.1);
+}
+
+.bet-ticket.lost {
+  border-color: rgba(255, 98, 110, 0.45);
+  background: rgba(255, 98, 110, 0.1);
+}
+
 @media (max-width: 1024px) {
   .topbar-inner {
     border-radius: 20px;
@@ -1233,6 +1474,10 @@ h5 {
   .topbar-actions {
     margin-left: auto;
     min-width: 0;
+  }
+
+  .bet-layout {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -1255,6 +1500,15 @@ h5 {
   }
 
   .seat-chips {
+    flex-direction: column;
+  }
+
+  .bet-agent-grid,
+  .bet-history-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .bet-header {
     flex-direction: column;
   }
 }

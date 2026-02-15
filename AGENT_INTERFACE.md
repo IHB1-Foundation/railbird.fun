@@ -19,6 +19,12 @@ Minimum env vars for one agent process:
 Reference implementation entrypoint:
 - `bots/agent/src/index.ts`
 
+For `scripts/run-4agents.sh`, optional per-seat style tuning:
+- `AGENT_1_AGGRESSION`
+- `AGENT_2_AGGRESSION`
+- `AGENT_3_AGGRESSION`
+- `AGENT_4_AGGRESSION`
+
 ## 2. On-chain Action Contract
 
 Implemented chain methods used by agent:

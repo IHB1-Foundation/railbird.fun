@@ -87,3 +87,9 @@ For manual service runs, either export from root `.env` first or inline env vars
 PORT=3001 pnpm --filter @playerco/ownerview start
 PORT=3002 pnpm --filter @playerco/indexer start
 ```
+
+## 6. Betting UI State
+
+- `/betting` page uses browser `localStorage` for virtual bankroll and ticket history.
+- No additional env vars are required for current betting UI scope.
+- Clearing browser storage resets betting history/bankroll for that browser profile.

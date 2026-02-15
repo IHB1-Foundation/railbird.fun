@@ -364,6 +364,51 @@ pnpm test                                 # All workspace tests pass, exits with
 
 ---
 
+# M10 — Spectator Betting Experience
+
+## T-1001 Agent profiles + Rail Bets interface (P1)
+- Status: [x] DONE
+- Depends on: M4, M5, M7, M9
+- Goal: Let spectators understand each of the 4 agents and place per-hand winner bets from the web UI.
+- Tasks:
+    - Add profile metadata for 4 seats (codename/style/aggression blurb).
+    - Add `/betting` page with odds board + bet slip UX.
+    - Add market logic based on seat stack + profile weighting.
+    - Add open/settled bet history and automatic settlement from table winner.
+    - Link betting route from global navigation.
+- Acceptance:
+    - `/betting` renders with 4 profile cards and live table market state.
+    - User can place a bet only when the hand market is open.
+    - Bets are auto-settled when winner is finalized and shown in history.
+    - Web build/type-check passes.
+
+### DONE Notes (T-1001)
+**Key files changed:**
+- `apps/web/src/app/betting/page.tsx` - New Rail Bets page entrypoint using indexer table data.
+- `apps/web/src/components/BettingPanel.tsx` - Profile cards, odds board, bet slip, open/settled ticket lists, auto-settlement logic.
+- `apps/web/src/lib/betting.ts` - Seat profile definitions + odds/implied-probability helper logic.
+- `apps/web/src/app/layout.tsx` - Added `Rail Bets` navigation link.
+- `apps/web/src/app/globals.css` - Added betting UI styles (desktop/mobile responsive).
+- `README.md` - Updated docs for betting route and behavior.
+- `AGENT_INTERFACE.md` - Updated interface notes for per-agent style configuration.
+- `ENVIRONMENT.md` - Added betting state persistence note.
+
+**How to run/test:**
+```bash
+pnpm --filter @playerco/web build
+```
+
+**Manual verification:**
+1. Start web + indexer and open `http://localhost:3000/betting`.
+2. Confirm 4 seat profile cards render with distinct style/aggression labels.
+3. Place a bet during open market; verify open ticket appears and bankroll decreases.
+4. After hand settlement (winner seat available), confirm ticket moves to settled list and bankroll updates automatically.
+5. Refresh page and confirm bankroll/tickets persist via browser local storage.
+
+**Current scope note:**
+- Betting ledger is client-side virtual bankroll (`localStorage`) for UX iteration.
+- On-chain escrow/payout contract integration is intentionally deferred to a follow-up ticket.
+
 # M0 — Scaffolding & Config
 
 ## T-0001 Monorepo scaffolding + basic tooling

@@ -203,8 +203,10 @@ export default async function LobbyPage() {
                 <div className="seat-chip-label">Seat {seat.seatIndex}</div>
                 {seat.ownerAddress.toLowerCase() !== ZERO_ADDRESS ? (
                   <>
-                    <div>{shortenAddress(seat.ownerAddress)}</div>
-                    <div className="value-accent">
+                    <div className="seat-addr text-mono" title={seat.ownerAddress}>
+                      {shortenAddress(seat.ownerAddress)}
+                    </div>
+                    <div className="value-accent seat-stack-line">
                       {formatChips(seat.stack)} {CHIP_SYMBOL}
                     </div>
                   </>
@@ -292,8 +294,12 @@ export default async function LobbyPage() {
                       <div className="seat-chip-label">Seat {seat.seatIndex}</div>
                       {seat.ownerAddress.toLowerCase() !== ZERO_ADDRESS ? (
                         <>
-                          <div>{shortenAddress(seat.ownerAddress)}</div>
-                          <div className="value-accent">{formatChips(seat.stack)} {CHIP_SYMBOL}</div>
+                          <div className="seat-addr text-mono" title={seat.ownerAddress}>
+                            {shortenAddress(seat.ownerAddress)}
+                          </div>
+                          <div className="value-accent seat-stack-line">
+                            {formatChips(seat.stack)} {CHIP_SYMBOL}
+                          </div>
                         </>
                       ) : (
                         <div className="muted">Empty</div>

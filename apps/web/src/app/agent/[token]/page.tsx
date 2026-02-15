@@ -34,7 +34,7 @@ export default async function AgentPage({
     return (
       <div className="empty">
         <p>Unable to load agent</p>
-        <p style={{ fontSize: "0.875rem", marginTop: "0.5rem" }}>{error}</p>
+        <p className="error-detail">{error}</p>
       </div>
     );
   }
@@ -62,18 +62,11 @@ export default async function AgentPage({
   }
 
   return (
-    <div>
+    <section className="page-section">
       {/* Header */}
-      <div style={{ marginBottom: "1.5rem" }}>
+      <div className="agent-header">
         <h2>Agent</h2>
-        <div
-          style={{
-            fontFamily: "monospace",
-            fontSize: "0.875rem",
-            color: "var(--muted)",
-            marginTop: "0.25rem",
-          }}
-        >
+        <div className="agent-token">
           {token}
         </div>
       </div>
@@ -107,7 +100,7 @@ export default async function AgentPage({
       </div>
 
       {/* PnL and ROI */}
-      <div className="stats-grid" style={{ marginTop: "1rem" }}>
+      <div className="stats-grid spaced-top">
         <div className="stat-card">
           <div className="stat-label">Cumulative PnL</div>
           <div
@@ -133,40 +126,34 @@ export default async function AgentPage({
       </div>
 
       {/* Agent Info */}
-      <div className="card" style={{ marginTop: "1.5rem" }}>
-        <h3 style={{ marginBottom: "0.75rem" }}>Agent Info</h3>
-        <div style={{ display: "grid", gap: "0.5rem", fontSize: "0.875rem" }}>
-          <div>
-            <span style={{ color: "var(--muted)" }}>Owner:</span>{" "}
-            <span style={{ fontFamily: "monospace" }}>
-              {shortenAddress(agent.ownerAddress)}
-            </span>
+      <div className="card section-card-lg">
+        <h3 className="section-title-sm">Agent Info</h3>
+        <div className="info-grid">
+          <div className="info-row">
+            <span className="label">Owner:</span>{" "}
+            <span className="text-mono">{shortenAddress(agent.ownerAddress)}</span>
           </div>
-          <div>
-            <span style={{ color: "var(--muted)" }}>Operator:</span>{" "}
-            <span style={{ fontFamily: "monospace" }}>
-              {shortenAddress(agent.operatorAddress)}
-            </span>
+          <div className="info-row">
+            <span className="label">Operator:</span>{" "}
+            <span className="text-mono">{shortenAddress(agent.operatorAddress)}</span>
           </div>
           {agent.vaultAddress && (
-            <div>
-              <span style={{ color: "var(--muted)" }}>Vault:</span>{" "}
-              <span style={{ fontFamily: "monospace" }}>
-                {shortenAddress(agent.vaultAddress)}
-              </span>
+            <div className="info-row">
+              <span className="label">Vault:</span>{" "}
+              <span className="text-mono">{shortenAddress(agent.vaultAddress)}</span>
             </div>
           )}
           {agent.tableAddress && (
-            <div>
-              <span style={{ color: "var(--muted)" }}>Table:</span>{" "}
-              <Link href={`/table/1`} style={{ fontFamily: "monospace" }}>
+            <div className="info-row">
+              <span className="label">Table:</span>{" "}
+              <Link href={`/table/${agent.tableAddress}`} className="text-mono">
                 {shortenAddress(agent.tableAddress)}
               </Link>
             </div>
           )}
           {agent.metaUri && (
-            <div>
-              <span style={{ color: "var(--muted)" }}>Meta URI:</span>{" "}
+            <div className="info-row">
+              <span className="label">Meta URI:</span>{" "}
               {agent.metaUri}
             </div>
           )}
@@ -174,10 +161,10 @@ export default async function AgentPage({
       </div>
 
       {/* Snapshot History */}
-      <div className="card" style={{ marginTop: "1rem" }}>
-        <h3 style={{ marginBottom: "0.75rem" }}>NAV History</h3>
+      <div className="card section-card">
+        <h3 className="section-title-sm">NAV History</h3>
         {snapshots && snapshots.length > 0 ? (
-          <div style={{ overflowX: "auto" }}>
+          <div className="table-scroll">
             <table className="leaderboard-table">
               <thead>
                 <tr>
@@ -194,17 +181,10 @@ export default async function AgentPage({
                     <td>#{snap.handId}</td>
                     <td>{formatMon(snap.externalAssets)}</td>
                     <td>{formatNavPerShare(snap.navPerShare)}</td>
-                    <td
-                      style={{
-                        color:
-                          BigInt(snap.cumulativePnl) >= 0n
-                            ? "var(--accent)"
-                            : "var(--danger)",
-                      }}
-                    >
+                    <td className={BigInt(snap.cumulativePnl) >= 0n ? "value-positive" : "value-negative"}>
                       {formatMon(snap.cumulativePnl)}
                     </td>
-                    <td style={{ color: "var(--muted)" }}>{snap.blockNumber}</td>
+                    <td className="text-muted">{snap.blockNumber}</td>
                   </tr>
                 ))}
               </tbody>
@@ -218,10 +198,10 @@ export default async function AgentPage({
       </div>
 
       {/* Trading Widget */}
-      <div style={{ marginTop: "1rem" }}>
-        <h3 style={{ marginBottom: "0.75rem" }}>Trade Token</h3>
+      <div className="section-card">
+        <h3 className="section-title-sm">Trade Token</h3>
         <TradingWidget tokenAddress={token} />
       </div>
-    </div>
+    </section>
   );
 }

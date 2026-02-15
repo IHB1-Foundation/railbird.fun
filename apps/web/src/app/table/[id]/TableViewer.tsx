@@ -7,7 +7,6 @@ import { useAuth, type HoleCardsResponse } from "@/lib/auth";
 import {
   formatMon,
   shortenAddress,
-  formatCard,
   formatTime,
   formatTimeRemaining,
   cn,
@@ -24,12 +23,11 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
   const [table, setTable] = useState(initialData);
   const [timeRemaining, setTimeRemaining] = useState<string>("--");
   const [holeCards, setHoleCards] = useState<HoleCardsResponse | null>(null);
-  const [holeCardsError, setHoleCardsError] = useState<string | null>(null);
 
   const { isAuthenticated, address, getHoleCards } = useAuth();
 
   // Handle WebSocket messages
-  const handleMessage = useCallback((message: WsMessage) => {
+  const handleMessage = useCallback((_message: WsMessage) => {
     // Refresh table data when we get updates
     // In a production app, we'd update state incrementally
     // For now, we trigger a refetch
@@ -57,19 +55,14 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
     const fetchHoleCards = async () => {
       if (!isAuthenticated || !table.currentHand) {
         setHoleCards(null);
-        setHoleCardsError(null);
         return;
       }
 
       try {
         const cards = await getHoleCards(tableId, table.currentHand.handId);
         setHoleCards(cards);
-        setHoleCardsError(null);
-      } catch (err) {
+      } catch {
         setHoleCards(null);
-        setHoleCardsError(
-          err instanceof Error ? err.message : "Failed to fetch hole cards"
-        );
       }
     };
 
@@ -95,20 +88,9 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
 
       {/* Owner Mode Banner */}
       {isAuthenticated && ownedSeatIndex !== null && (
-        <div
-          style={{
-            background: "rgba(16, 185, 129, 0.1)",
-            border: "1px solid var(--accent)",
-            borderRadius: "0.5rem",
-            padding: "0.75rem 1rem",
-            marginBottom: "1rem",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
+        <div className="owner-banner">
           <span>
-            <strong style={{ color: "var(--accent)" }}>Owner Mode</strong> - You
+            <strong className="owner-banner-title">Owner Mode</strong> - You
             own Seat {ownedSeatIndex}
           </span>
           {holeCards && (
@@ -121,20 +103,20 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
       )}
 
       {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-        <div>
+      <div className="table-header">
+        <div className="table-heading">
           <h2>Table #{tableId}</h2>
-          <div style={{ fontSize: "0.875rem", color: "var(--muted)" }}>
+          <div className="table-heading-meta">
             Blinds: {formatMon(table.smallBlind)}/{formatMon(table.bigBlind)}
           </div>
         </div>
-        <div style={{ textAlign: "right" }}>
+        <div className="table-heading-right">
           <span className={cn("status", isActive ? "live" : "waiting")}>
             <span className={cn("dot", isActive && "pulse")} />
             {gameState}
           </span>
           {currentHand && (
-            <div style={{ marginTop: "0.5rem", fontSize: "0.875rem" }}>
+            <div className="table-hand-id">
               Hand #{currentHand.handId}
             </div>
           )}
@@ -161,14 +143,14 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
               .filter((c) => c !== 255)
               .map((card, i) => <PokerCard key={i} cardIndex={card} />)
           ) : (
-            <span style={{ color: "var(--muted)" }}>No community cards</span>
+            <span className="muted">No community cards</span>
           )}
         </div>
 
         {/* Pot and Timer */}
-        <div style={{ textAlign: "center" }}>
+        <div className="table-pot-block">
           {currentHand && (
-            <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--accent)" }}>
+            <div className="pot-value">
               Pot: {formatMon(currentHand.pot)}
             </div>
           )}
@@ -192,8 +174,8 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
       </div>
 
       {/* Action Log */}
-      <div className="card" style={{ marginTop: "1rem" }}>
-        <h3 style={{ marginBottom: "0.5rem" }}>Action Log</h3>
+      <div className="card section-card">
+        <h3 className="section-title-sm">Action Log</h3>
         <div className="action-log">
           {currentHand && currentHand.actions.length > 0 ? (
             [...currentHand.actions].reverse().map((action, i) => (
@@ -203,64 +185,54 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
                   {ACTION_TYPES[action.actionType] || action.actionType}
                   {action.amount !== "0" && ` ${formatMon(action.amount)}`}
                 </span>
-                <span style={{ color: "var(--muted)", fontSize: "0.75rem" }}>
+                <span className="action-time">
                   {formatTime(action.timestamp)}
                 </span>
               </div>
             ))
           ) : (
-            <div style={{ color: "var(--muted)", padding: "0.5rem" }}>
-              No actions yet
-            </div>
+            <div className="muted">No actions yet</div>
           )}
         </div>
       </div>
 
       {/* Seats with Agent Links */}
-      <div className="card" style={{ marginTop: "1rem" }}>
-        <h3 style={{ marginBottom: "0.5rem" }}>Players</h3>
-        <div style={{ display: "flex", gap: "1rem" }}>
+      <div className="card section-card">
+        <h3 className="section-title-sm">Players</h3>
+        <div className="players-grid">
           {table.seats.map((seat) => (
-            <div key={seat.seatIndex} style={{ flex: 1 }}>
-              <div style={{ fontWeight: 500, marginBottom: "0.25rem" }}>
+            <div key={seat.seatIndex} className="player-cell">
+              <div className="player-seat-title">
                 Seat {seat.seatIndex}
                 {ownedSeatIndex === seat.seatIndex && (
-                  <span
-                    style={{
-                      marginLeft: "0.5rem",
-                      fontSize: "0.75rem",
-                      color: "var(--accent)",
-                    }}
-                  >
-                    (You)
-                  </span>
+                  <span className="you-tag">(You)</span>
                 )}
               </div>
               {seat.isActive ? (
                 <>
-                  <div style={{ fontSize: "0.875rem" }}>
+                  <div className="player-line">
                     Owner:{" "}
-                    <span style={{ fontFamily: "monospace" }}>
+                    <span className="text-mono">
                       {shortenAddress(seat.ownerAddress)}
                     </span>
                   </div>
-                  <div style={{ fontSize: "0.875rem" }}>
+                  <div className="player-line">
                     Operator:{" "}
-                    <span style={{ fontFamily: "monospace" }}>
+                    <span className="text-mono">
                       {shortenAddress(seat.operatorAddress)}
                     </span>
                   </div>
-                  <div style={{ marginTop: "0.5rem" }}>
+                  <div className="player-actions">
                     <Link
                       href={`/agent/${seat.ownerAddress}`}
-                      style={{ fontSize: "0.875rem" }}
+                      className="inline-link"
                     >
                       View Agent
                     </Link>
                   </div>
                 </>
               ) : (
-                <div style={{ color: "var(--muted)" }}>Empty</div>
+                <div className="muted">Empty</div>
               )}
             </div>
           ))}
@@ -288,7 +260,7 @@ function SeatPanel({
     return (
       <div className="seat-panel">
         <div className="seat-label">Seat {seat.seatIndex}</div>
-        <div style={{ color: "var(--muted)" }}>Empty</div>
+        <div className="muted">Empty</div>
       </div>
     );
   }

@@ -35,15 +35,13 @@ export default async function LeaderboardPage({ searchParams }: PageProps) {
   }
 
   return (
-    <div>
-      <h2 style={{ marginBottom: "1rem" }}>Leaderboard</h2>
+    <section className="page-section">
+      <h2 className="section-title">Leaderboard</h2>
 
       {/* Metric Tabs */}
-      <div style={{ marginBottom: "0.5rem" }}>
-        <span style={{ color: "var(--muted)", fontSize: "0.875rem", marginRight: "0.5rem" }}>
-          Metric:
-        </span>
-        <div className="tabs" style={{ display: "inline-flex" }}>
+      <div className="filter-row">
+        <span className="filter-label">Metric:</span>
+        <div className="tabs">
           {VALID_METRICS.map((m) => (
             <a
               key={m}
@@ -57,11 +55,9 @@ export default async function LeaderboardPage({ searchParams }: PageProps) {
       </div>
 
       {/* Period Tabs */}
-      <div style={{ marginBottom: "1rem" }}>
-        <span style={{ color: "var(--muted)", fontSize: "0.875rem", marginRight: "0.5rem" }}>
-          Period:
-        </span>
-        <div className="tabs" style={{ display: "inline-flex" }}>
+      <div className="filter-row filter-row-last">
+        <span className="filter-label">Period:</span>
+        <div className="tabs">
           {VALID_PERIODS.map((p) => (
             <a
               key={p}
@@ -78,7 +74,7 @@ export default async function LeaderboardPage({ searchParams }: PageProps) {
       {error ? (
         <div className="empty">
           <p>Unable to load leaderboard</p>
-          <p style={{ fontSize: "0.875rem", marginTop: "0.5rem" }}>{error}</p>
+          <p className="error-detail">{error}</p>
         </div>
       ) : data && data.entries.length > 0 ? (
         <Suspense fallback={<div className="loading"><span className="spinner" /> Loading...</div>}>
@@ -91,17 +87,10 @@ export default async function LeaderboardPage({ searchParams }: PageProps) {
       )}
 
       {data && (
-        <div
-          style={{
-            marginTop: "1rem",
-            fontSize: "0.75rem",
-            color: "var(--muted)",
-            textAlign: "right",
-          }}
-        >
+        <div className="leaderboard-updated">
           Last updated: {new Date(data.updatedAt).toLocaleString()}
         </div>
       )}
-    </div>
+    </section>
   );
 }

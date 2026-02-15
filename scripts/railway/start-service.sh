@@ -2,7 +2,8 @@
 set -euo pipefail
 
 resolve_role_from_service_name() {
-  local name="${1,,}"
+  local name
+  name="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"
   case "$name" in
     ownerview) echo "ownerview" ;;
     indexer) echo "indexer" ;;
@@ -11,6 +12,9 @@ resolve_role_from_service_name() {
     agent-[1-4]|agent[1-4])
       echo "agent"
       ;;
+    agents|agents-pack|agent-bot|agents-bot)
+      echo "agents-pack"
+      ;;
     *)
       echo ""
       ;;
@@ -18,7 +22,8 @@ resolve_role_from_service_name() {
 }
 
 resolve_agent_slot_from_service_name() {
-  local name="${1,,}"
+  local name
+  name="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"
   if [[ "$name" =~ ^agent-([1-4])$ ]]; then
     echo "${BASH_REMATCH[1]}"
     return
@@ -35,6 +40,15 @@ ROLE="${RAILWAY_SERVICE_ROLE:-}"
 
 if [ -z "$ROLE" ] && [ -n "$SERVICE_NAME" ]; then
   ROLE="$(resolve_role_from_service_name "$SERVICE_NAME")"
+fi
+
+# Safety: if service is named as pack-style but role was manually left as `agent`,
+# force pack mode to avoid accidentally running only one agent.
+if [ "$ROLE" = "agent" ] && [ -n "$SERVICE_NAME" ]; then
+  lowered_service_name="$(printf '%s' "$SERVICE_NAME" | tr '[:upper:]' '[:lower:]')"
+  if [ "$lowered_service_name" = "agent-bot" ] || [ "$lowered_service_name" = "agents-pack" ] || [ "$lowered_service_name" = "agents" ]; then
+    ROLE="agents-pack"
+  fi
 fi
 
 if [ "$ROLE" = "agent" ] && [ -z "${AGENT_SLOT:-}" ] && [ -n "$SERVICE_NAME" ]; then
@@ -64,9 +78,12 @@ case "$ROLE" in
   agent)
     exec bash scripts/railway/start-agent.sh
     ;;
+  agents|agents-pack)
+    exec bash scripts/railway/start-agents-pack.sh
+    ;;
   *)
     echo "[railway] invalid RAILWAY_SERVICE_ROLE: '$ROLE'" >&2
-    echo "[railway] expected one of: ownerview, indexer, keeper, vrf-operator, agent" >&2
+    echo "[railway] expected one of: ownerview, indexer, keeper, vrf-operator, agent, agents-pack" >&2
     exit 1
     ;;
 esac

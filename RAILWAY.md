@@ -27,6 +27,28 @@ pnpm -r build
 - 루트 `railway.json`에 이미 `buildCommand`/`startCommand` 기본값을 넣어두었다.
 - 서비스 생성 시 Railway가 이 값을 읽으면 별도 입력 없이 동작한다.
 
+## 2-1) 환경변수 자동 반영 (CLI)
+
+로컬 `.env`를 Railway 서비스 변수로 자동 반영할 수 있다.
+
+```bash
+# Railway 로그인 + 프로젝트 링크 후 실행
+bash scripts/railway/apply-vars.sh
+```
+
+옵션:
+
+```bash
+# deploy까지 바로 트리거
+RAILWAY_SKIP_DEPLOYS=false bash scripts/railway/apply-vars.sh
+
+# agents를 분리 서비스(4개)로 쓸 때
+AGENT_DEPLOY_MODE=split bash scripts/railway/apply-vars.sh
+
+# environment 이름 지정 (기본 production)
+RAILWAY_ENV=production bash scripts/railway/apply-vars.sh
+```
+
 ## 3) Start Command
 
 권장: 모든 서비스 Start Command를 동일하게 설정한다.
@@ -39,6 +61,7 @@ bash scripts/railway/start-service.sh
 - 서비스명을 아래처럼 만들면(`ownerview`, `indexer`, `keeper`, `vrf-operator`, `agent-1`~`agent-4`)  
   `RAILWAY_SERVICE_ROLE` 없이 자동 분기된다.
 - `agent-1`~`agent-4`는 `AGENT_SLOT`도 서비스명에서 자동 추론된다.
+- 서비스명을 `agent-bot`(또는 `agents-pack`)으로 만들면 4개 에이전트를 한 서비스에서 동시에 실행한다.
 
 수동 분기 방식(원할 때만):
 
@@ -47,6 +70,7 @@ bash scripts/railway/start-service.sh
 - `keeper`: `RAILWAY_SERVICE_ROLE=keeper`
 - `vrf-operator`: `RAILWAY_SERVICE_ROLE=vrf-operator`
 - `agent-1~4`: `RAILWAY_SERVICE_ROLE=agent`
+- `agent-bot` 1개로 4개 동시 실행: `RAILWAY_SERVICE_ROLE=agents-pack`
 
 대안으로, 각 서비스에 전용 start 스크립트를 직접 넣어도 된다.
 

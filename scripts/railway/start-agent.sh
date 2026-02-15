@@ -6,7 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 slot="${AGENT_SLOT:-}"
 if [ -z "$slot" ] && [ -n "${RAILWAY_SERVICE_NAME:-}" ]; then
-  svc="${RAILWAY_SERVICE_NAME,,}"
+  svc="$(printf '%s' "$RAILWAY_SERVICE_NAME" | tr '[:upper:]' '[:lower:]')"
   if [[ "$svc" =~ ^agent-([1-4])$ ]]; then
     slot="${BASH_REMATCH[1]}"
   elif [[ "$svc" =~ ^agent([1-4])$ ]]; then

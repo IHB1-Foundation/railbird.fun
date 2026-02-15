@@ -8,9 +8,11 @@
 - [ ] Railway 프로젝트 생성
 - [ ] PostgreSQL 서비스 1개 생성
 - [ ] 앱 서비스 8개 생성: `ownerview`, `indexer`, `keeper`, `vrf-operator`, `agent-1`, `agent-2`, `agent-3`, `agent-4`
+- [ ] (대안) 에이전트를 하나의 서비스로 묶을 경우 `agent-bot` 1개 + `RAILWAY_SERVICE_ROLE=agents-pack`
 - [ ] 모든 서비스 Node 버전 20으로 고정
 - [ ] `railway.json` 기본값(build/start) 자동 반영 확인
 - [ ] (자동 반영 실패 시) Start Command 수동 지정: `bash scripts/railway/start-service.sh`
+- [ ] 환경변수 자동 주입 스크립트 실행: `bash scripts/railway/apply-vars.sh`
 - [ ] 서비스명 규칙 지키기 (자동 분기용)
   - [ ] `ownerview`, `indexer`, `keeper`, `vrf-operator`, `agent-1`, `agent-2`, `agent-3`, `agent-4`
 - [ ] (선택) 커스텀 이름 쓸 경우 `RAILWAY_SERVICE_ROLE` 수동 지정

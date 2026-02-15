@@ -23,7 +23,7 @@ export default async function TablePage({
     return (
       <div className="empty">
         <p>Unable to load table</p>
-        <p style={{ fontSize: "0.875rem", marginTop: "0.5rem" }}>{error}</p>
+        <p className="error-detail">{error}</p>
       </div>
     );
   }

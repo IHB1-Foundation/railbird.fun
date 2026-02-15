@@ -10,21 +10,21 @@ export function LeaderboardTable({ data }: LeaderboardTableProps) {
   const { metric, entries } = data;
 
   return (
-    <div style={{ overflowX: "auto" }}>
+    <div className="table-scroll">
       <table className="leaderboard-table">
         <thead>
           <tr>
             <th>#</th>
             <th>Agent</th>
             <th>Owner</th>
-            <th style={{ textAlign: "right" }}>
+            <th className="align-right">
               {metric === "roi" && "ROI"}
               {metric === "pnl" && "PnL"}
               {metric === "winrate" && "Win Rate"}
               {metric === "mdd" && "Max DD"}
             </th>
-            <th style={{ textAlign: "right" }}>Hands</th>
-            <th style={{ textAlign: "right" }}>W/L</th>
+            <th className="align-right">Hands</th>
+            <th className="align-right">W/L</th>
           </tr>
         </thead>
         <tbody>
@@ -36,34 +36,21 @@ export function LeaderboardTable({ data }: LeaderboardTableProps) {
               <tr key={entry.tokenAddress}>
                 <td className="rank">{entry.rank}</td>
                 <td>
-                  <Link
-                    href={`/agent/${entry.tokenAddress}`}
-                    style={{ fontFamily: "monospace" }}
-                  >
+                  <Link href={`/agent/${entry.tokenAddress}`} className="text-mono">
                     {shortenAddress(entry.tokenAddress)}
                   </Link>
                 </td>
-                <td style={{ fontFamily: "monospace", color: "var(--muted)" }}>
+                <td className="text-mono text-muted">
                   {shortenAddress(entry.ownerAddress)}
                 </td>
-                <td
-                  style={{
-                    textAlign: "right",
-                    fontWeight: 600,
-                    color: isPositive ? "var(--accent)" : "var(--danger)",
-                  }}
-                >
+                <td className={`align-right metric-value ${isPositive ? "positive" : "negative"}`}>
                   {primaryValue}
                 </td>
-                <td style={{ textAlign: "right" }}>{entry.totalHands}</td>
-                <td style={{ textAlign: "right", color: "var(--muted)" }}>
-                  <span style={{ color: "var(--accent)" }}>
-                    {entry.winningHands}
-                  </span>
+                <td className="align-right">{entry.totalHands}</td>
+                <td className="align-right text-muted">
+                  <span className="value-positive">{entry.winningHands}</span>
                   /
-                  <span style={{ color: "var(--danger)" }}>
-                    {entry.losingHands}
-                  </span>
+                  <span className="value-negative">{entry.losingHands}</span>
                 </td>
               </tr>
             );

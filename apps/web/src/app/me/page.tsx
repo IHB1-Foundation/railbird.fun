@@ -72,9 +72,7 @@ export default function MyAgentsPage() {
         <h2>My Agents</h2>
         <p>
           Connected as{" "}
-          <span style={{ fontFamily: "monospace" }}>
-            {shortenAddress(address || "")}
-          </span>
+          <span className="text-mono">{shortenAddress(address || "")}</span>
         </p>
         <p>Sign in to view your hole cards on tables</p>
         <button onClick={authenticate} className="wallet-button sign">
@@ -85,14 +83,12 @@ export default function MyAgentsPage() {
   }
 
   return (
-    <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+    <section className="page-section">
+      <div className="page-heading-row">
         <h2>My Agents</h2>
-        <span style={{ color: "var(--muted)", fontSize: "0.875rem" }}>
+        <span className="owner-pill">
           Owner:{" "}
-          <span style={{ fontFamily: "monospace" }}>
-            {shortenAddress(address || "")}
-          </span>
+          <span className="text-mono">{shortenAddress(address || "")}</span>
         </span>
       </div>
 
@@ -104,15 +100,13 @@ export default function MyAgentsPage() {
       )}
 
       {error && (
-        <div className="card" style={{ color: "var(--danger)" }}>
-          {error}
-        </div>
+        <div className="card error-card">{error}</div>
       )}
 
       {!isLoading && !error && agents.length === 0 && (
         <div className="empty">
           <p>You don't own any agents yet.</p>
-          <p style={{ marginTop: "0.5rem", fontSize: "0.875rem" }}>
+          <p className="error-detail">
             <Link href="/leaderboard">Browse agents</Link> to find one to invest
             in, or create your own!
           </p>
@@ -126,7 +120,7 @@ export default function MyAgentsPage() {
           ))}
         </div>
       )}
-    </div>
+    </section>
   );
 }
 
@@ -137,15 +131,10 @@ function AgentCard({ agent }: { agent: AgentResponse }) {
     <div className="agent-card">
       <div className="agent-card-header">
         <div className="agent-card-title">
-          <span style={{ fontFamily: "monospace" }}>
-            {shortenAddress(agent.tokenAddress)}
-          </span>
+          <span className="text-mono">{shortenAddress(agent.tokenAddress)}</span>
         </div>
         {agent.tableAddress && (
-          <Link
-            href={`/table/${agent.tableAddress}`}
-            style={{ fontSize: "0.875rem" }}
-          >
+          <Link href={`/table/${agent.tableAddress}`} className="inline-link">
             View Table
           </Link>
         )}
@@ -178,30 +167,22 @@ function AgentCard({ agent }: { agent: AgentResponse }) {
         </div>
       </div>
 
-      <div className="agent-card-stats" style={{ marginTop: "0.75rem" }}>
+      <div className="agent-card-stats agent-card-stats-spaced">
         <div>
           <div className="agent-card-stat-label">Vault</div>
-          <div className="agent-card-stat-value" style={{ fontFamily: "monospace", fontSize: "0.75rem" }}>
+          <div className="agent-card-stat-value text-mono text-sm">
             {agent.vaultAddress ? shortenAddress(agent.vaultAddress) : "-"}
           </div>
         </div>
         <div>
           <div className="agent-card-stat-label">Operator</div>
-          <div className="agent-card-stat-value" style={{ fontFamily: "monospace", fontSize: "0.75rem" }}>
+          <div className="agent-card-stat-value text-mono text-sm">
             {shortenAddress(agent.operatorAddress)}
           </div>
         </div>
         <div>
           <div className="agent-card-stat-label">Cumulative PnL</div>
-          <div
-            className="agent-card-stat-value"
-            style={{
-              color:
-                snapshot && BigInt(snapshot.cumulativePnl) >= 0
-                  ? "var(--accent)"
-                  : "var(--danger)",
-            }}
-          >
+          <div className={`agent-card-stat-value ${snapshot && BigInt(snapshot.cumulativePnl) >= 0 ? "value-positive" : "value-negative"}`}>
             {snapshot ? formatMon(snapshot.cumulativePnl) : "-"}
           </div>
         </div>

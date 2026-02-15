@@ -51,6 +51,7 @@ export default function RootLayout({
                 </Link>
                 <nav className="top-nav">
                   <Link href="/">Terminal</Link>
+                  <Link href="/betting">Rail Bets</Link>
                   <Link href="/leaderboard">Leaderboard</Link>
                   <Link href="/me">My Agents</Link>
                 </nav>

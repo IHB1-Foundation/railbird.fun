@@ -785,6 +785,18 @@ h5 {
   border-bottom: 1px solid rgba(146, 154, 195, 0.2);
 }
 
+.action-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.action-actor {
+  font-family: var(--text-mono);
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+
 .action-item:last-child {
   border-bottom: none;
 }

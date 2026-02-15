@@ -21,6 +21,7 @@ export interface KeeperStats {
   handsStarted: number;
   showdownsSettled: number;
   rebalancesTriggered: number;
+  vrfReRequests: number;
   errors: number;
   lastAction: string;
   lastActionTime: number;
@@ -35,6 +36,7 @@ export class KeeperBot {
     handsStarted: 0,
     showdownsSettled: 0,
     rebalancesTriggered: 0,
+    vrfReRequests: 0,
     errors: 0,
     lastAction: "none",
     lastActionTime: 0,
@@ -111,6 +113,7 @@ export class KeeperBot {
 
     // Check for keeper actions needed
     await this.checkAndHandleTimeout(state, currentTimestamp, currentBlock);
+    await this.checkAndReRequestVRF(state, currentTimestamp);
     await this.checkAndStartHand(state);
     await this.checkAndSettleShowdown(state);
     await this.checkAndRebalance();
@@ -151,6 +154,51 @@ export class KeeperBot {
     } catch (error) {
       console.error("[KeeperBot] Failed to force timeout:", error);
       this.stats.errors++;
+    }
+  }
+
+  /**
+   * Check if VRF fulfillment is delayed and re-request if timeout exceeded.
+   * VRF timeout is 5 minutes (on-chain constant VRF_TIMEOUT).
+   */
+  private async checkAndReRequestVRF(
+    state: TableState,
+    currentTimestamp: bigint
+  ): Promise<void> {
+    if (!this.chainClient.isVRFWaitingState(state.gameState)) {
+      return;
+    }
+
+    // VRF request timestamp of 0 means no request tracked yet
+    if (state.vrfRequestTimestamp === 0n) {
+      return;
+    }
+
+    // VRF_TIMEOUT is 5 minutes = 300 seconds
+    const vrfTimeout = 300n;
+    if (currentTimestamp <= state.vrfRequestTimestamp + vrfTimeout) {
+      return;
+    }
+
+    console.log(
+      `[KeeperBot] VRF fulfillment delayed! Request timestamp: ${state.vrfRequestTimestamp}, ` +
+        `Current: ${currentTimestamp}, Requesting new VRF...`
+    );
+
+    try {
+      const hash = await this.chainClient.reRequestVRF();
+      this.stats.vrfReRequests++;
+      this.recordAction("reRequestVRF");
+      console.log(`[KeeperBot] Re-requested VRF, tx: ${hash}`);
+    } catch (error) {
+      const errorMsg = String(error);
+      if (errorMsg.includes("VRF timeout not reached")) {
+        // Race condition: someone else already re-requested
+        console.log("[KeeperBot] VRF already re-requested by another keeper");
+      } else {
+        console.error("[KeeperBot] Failed to re-request VRF:", error);
+        this.stats.errors++;
+      }
     }
   }
 

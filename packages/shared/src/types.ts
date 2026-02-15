@@ -60,4 +60,7 @@ export const ENV_VARS = {
 
   // Token addresses
   WMON_ADDRESS: "WMON_ADDRESS",
+
+  // VRF adapter type (must be "production" for testnet/mainnet)
+  VRF_ADAPTER_TYPE: "VRF_ADAPTER_TYPE",
 } as const;

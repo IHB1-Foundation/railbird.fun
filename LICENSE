@@ -1,0 +1,14 @@
+Copyright (c) 2026 IHB1 Foundation. All rights reserved.
+
+This repository and all source code, documentation, assets, and related materials
+are proprietary and confidential.
+
+No permission is granted to use, copy, modify, merge, publish, distribute,
+sublicense, sell, or create derivative works from this repository, in whole or
+in part, without prior written permission from IHB1 Foundation.
+
+Any unauthorized use is strictly prohibited.
+
+Third-party components included in this repository may be subject to their own
+licenses (for example, dependencies under `contracts/lib/forge-std`). Those
+licenses apply only to the respective third-party components.

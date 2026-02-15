@@ -2,6 +2,7 @@
   "name": "playerco",
   "version": "0.0.1",
   "private": true,
+  "license": "UNLICENSED",
   "description": "PlayerCo - Poker Agent Company on-chain",
   "scripts": {
     "build": "pnpm -r build",

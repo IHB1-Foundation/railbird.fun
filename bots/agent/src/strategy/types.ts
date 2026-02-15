@@ -27,6 +27,8 @@ export interface ActionDecision {
   raiseAmount?: bigint; // Only for RAISE
 }
 
+export type MaybePromise<T> = T | Promise<T>;
+
 export interface Strategy {
-  decide(context: DecisionContext): ActionDecision;
+  decide(context: DecisionContext): MaybePromise<ActionDecision>;
 }

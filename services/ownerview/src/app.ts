@@ -7,6 +7,21 @@ import { DealerService, HandStartedEventListener } from "./dealer/index.js";
 import { createAuthMiddleware } from "./middleware/index.js";
 import { createAuthRoutes, createOwnerRoutes, createDealerRoutes } from "./routes/index.js";
 
+const DEFAULT_ALLOWED_ORIGINS = [
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+  "https://railbird.fun",
+  "https://www.railbird.fun",
+];
+
+function getAllowedOrigins(): Set<string> {
+  const configured = (process.env.CORS_ALLOWED_ORIGINS || "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+  return new Set([...DEFAULT_ALLOWED_ORIGINS, ...configured]);
+}
+
 export interface AppConfig {
   jwtSecret: string;
   nonceTtlMs?: number;
@@ -50,9 +65,25 @@ const DEFAULT_RETENTION_INTERVAL_MS = 5 * 60 * 1000;
  */
 export function createApp(config: AppConfig): AppContext {
   const app = express();
+  app.set("trust proxy", true);
+  const allowedOrigins = getAllowedOrigins();
 
   // Middleware
   app.use(express.json());
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    const origin = req.headers.origin;
+    if (origin && allowedOrigins.has(origin)) {
+      res.header("Access-Control-Allow-Origin", origin);
+      res.header("Vary", "Origin");
+    }
+    res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    if (req.method === "OPTIONS") {
+      res.status(204).end();
+      return;
+    }
+    next();
+  });
 
   // Create services - only pass defined values to preserve defaults
   const authConfig: { jwtSecret: string; nonceTtlMs?: number; sessionTtlMs?: number } = {

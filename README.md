@@ -43,12 +43,15 @@ pnpm test
 ```
 /contracts        - Solidity contracts (Foundry)
 /apps/web         - Next.js web application
-/services/indexer - Event indexer + REST API + WebSocket
+/services/indexer - Event indexer + REST API (polling-compatible, WS optional)
 /services/ownerview - Wallet-auth + hole card ACL service
 /bots/agent       - Poker-playing agent bot
 /bots/keeper      - Liveness keeper bot
+/bots/vrf-operator - Production VRF fulfillment worker bot
 /packages/shared  - Shared types, config, and utilities
 ```
+
+Railway monorepo 배포는 `RAILWAY.md`를 참고.
 
 ## Local Development Setup
 
@@ -209,10 +212,10 @@ export PLAYER_VAULT_ADDRESS=<deployed_address>
 export VRF_ADAPTER_ADDRESS=<deployed_address>
 export RCHIP_TOKEN_ADDRESS=<deployed_address>
 
-# nad.fun addresses (Monad testnet defaults)
-export NADFUN_LENS_ADDRESS=0xB056d79CA5257589692699a46623F901a3BB76f1
-export NADFUN_BONDING_ROUTER_ADDRESS=0x865054F0F6A288adaAc30261731361EA7E908003
-export NADFUN_DEX_ROUTER_ADDRESS=0x5D4a4f430cA3B1b2dB86B9cFE48a5316800F5fb2
+# nad.fun-compatible addresses (Monad testnet defaults for this repo)
+export NADFUN_LENS_ADDRESS=0xd2F5843b64329D6A296A4e6BB05BA2a9BD3816F8
+export NADFUN_BONDING_ROUTER_ADDRESS=0xa69d9F9B3D64bdD781cB4351E071FBA5DC43018d
+export NADFUN_DEX_ROUTER_ADDRESS=0xa69d9F9B3D64bdD781cB4351E071FBA5DC43018d
 export WMON_ADDRESS=0x5a4E0bFDeF88C9032CB4d24338C5EB3d3870BfDd
 ```
 
@@ -247,9 +250,8 @@ pnpm start
 **Terminal 4: Web App**
 ```bash
 cd apps/web
-NEXT_PUBLIC_INDEXER_URL=http://localhost:3002 \
-NEXT_PUBLIC_OWNERVIEW_URL=http://localhost:3001 \
-NEXT_PUBLIC_WS_URL=ws://localhost:3002 \
+NEXT_PUBLIC_INDEXER_URL=https://indexer.railbird.fun \
+NEXT_PUBLIC_OWNERVIEW_URL=https://ownerview.railbird.fun \
 pnpm dev
 ```
 
@@ -353,14 +355,14 @@ pnpm start
 | `DB_NAME` | Yes | - | Database name |
 | `DB_USER` | Yes | - | Database user |
 | `DB_PASSWORD` | Yes | - | Database password |
-| `PORT` | No | 3002 | HTTP/WebSocket server port |
+| `PORT` | No | 3002 | HTTP server port |
 
 ### Agent Bot
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `OPERATOR_PRIVATE_KEY` | Yes | - | Private key for seat operator |
-| `OWNERVIEW_URL` | No | localhost:3001 | OwnerView service URL |
+| `OWNERVIEW_URL` | No | `https://ownerview.railbird.fun` | OwnerView service URL |
 | `AGGRESSION_FACTOR` | No | 0.3 | Strategy aggression (`0.0~1.0`) |
 | `TURN_ACTION_DELAY_MS` | No | 900000 | Delay from turn start to action (ms) |
 | `MAX_HANDS` | No | 0 (unlimited) | Stop after N hands |
@@ -379,12 +381,11 @@ pnpm start
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `NEXT_PUBLIC_INDEXER_URL` | No | localhost:3002 | Indexer API URL |
-| `NEXT_PUBLIC_OWNERVIEW_URL` | No | localhost:3001 | OwnerView URL |
-| `NEXT_PUBLIC_WS_URL` | No | localhost:3002 | WebSocket URL |
-| `NEXT_PUBLIC_NADFUN_LENS_ADDRESS` | No | `0xB056d79CA5257589692699a46623F901a3BB76f1` | nad.fun Lens contract |
-| `NEXT_PUBLIC_NADFUN_BONDING_ROUTER_ADDRESS` | No | `0x865054F0F6A288adaAc30261731361EA7E908003` | nad.fun bonding router |
-| `NEXT_PUBLIC_NADFUN_DEX_ROUTER_ADDRESS` | No | `0x5D4a4f430cA3B1b2dB86B9cFE48a5316800F5fb2` | nad.fun DEX router |
+| `NEXT_PUBLIC_INDEXER_URL` | No | `https://indexer.railbird.fun` | Indexer API URL |
+| `NEXT_PUBLIC_OWNERVIEW_URL` | No | `https://ownerview.railbird.fun` | OwnerView URL |
+| `NEXT_PUBLIC_NADFUN_LENS_ADDRESS` | No | `0xd2F5843b64329D6A296A4e6BB05BA2a9BD3816F8` | nad.fun-compatible Lens contract |
+| `NEXT_PUBLIC_NADFUN_BONDING_ROUTER_ADDRESS` | No | `0xa69d9F9B3D64bdD781cB4351E071FBA5DC43018d` | nad.fun-compatible bonding router |
+| `NEXT_PUBLIC_NADFUN_DEX_ROUTER_ADDRESS` | No | `0xa69d9F9B3D64bdD781cB4351E071FBA5DC43018d` | nad.fun-compatible DEX router |
 | `NEXT_PUBLIC_WMON_ADDRESS` | No | `0x5a4E0bFDeF88C9032CB4d24338C5EB3d3870BfDd` | Wrapped MON address |
 | `NEXT_PUBLIC_RPC_URL` | No | - | RPC for client-side calls |
 | `NEXT_PUBLIC_CHIP_SYMBOL` | No | `rCHIP` | UI label for poker chips |
@@ -419,10 +420,6 @@ cd bots/keeper && pnpm test
 - `GET /api/agents/:token` - Get agent by token
 - `GET /api/leaderboard?metric=roi&period=7d` - Leaderboard
 
-### Indexer WebSocket (default: ws://localhost:3002)
-
-- `ws://localhost:3002/ws/tables/:id` - Subscribe to table updates
-
 ### OwnerView REST API (default: http://localhost:3001)
 
 - `GET /auth/nonce?address=0x...` - Get nonce for signing
@@ -448,10 +445,10 @@ cd bots/keeper && pnpm test
 - Check operator address matches private key
 - Ensure seats are filled before starting hand
 
-### WebSocket not connecting
-- Check indexer is running with WebSocket enabled
-- Verify CORS settings if using browser
-- Check port is not blocked
+### Table polling lag
+- Check indexer health and response time (`/api/health`)
+- Reduce frontend polling interval only if indexer can handle it
+- Verify CORS settings for `https://railbird.fun`
 
 ### Hole cards not returned
 - Verify JWT is valid and not expired

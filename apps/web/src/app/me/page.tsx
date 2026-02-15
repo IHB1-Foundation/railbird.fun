@@ -7,7 +7,7 @@ import { shortenAddress, formatMon, formatNavPerShare } from "@/lib/utils";
 import type { AgentResponse } from "@/lib/types";
 
 const API_BASE =
-  process.env.NEXT_PUBLIC_INDEXER_URL || "http://localhost:3002";
+  process.env.NEXT_PUBLIC_INDEXER_URL || "https://indexer.railbird.fun";
 
 export default function MyAgentsPage() {
   const { isConnected, isAuthenticated, address, connect, authenticate } =

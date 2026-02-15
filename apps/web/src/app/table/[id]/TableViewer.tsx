@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import type { Address } from "viem";
-import { useWebSocket } from "@/lib/useWebSocket";
 import { useAuth, type HoleCardsResponse } from "@/lib/auth";
 import { getPokerTableMaxSeats, registerSeatWithApprove } from "@/lib/pokerTableClient";
 import {
@@ -14,11 +13,12 @@ import {
   formatTimeRemaining,
   cn,
 } from "@/lib/utils";
-import type { TableResponse, WsMessage } from "@/lib/types";
+import type { TableResponse } from "@/lib/types";
 import { GAME_STATES, ACTION_TYPES } from "@/lib/types";
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 const TABLE_MAX_SEATS = Number(process.env.NEXT_PUBLIC_TABLE_MAX_SEATS || "9");
+const INDEXER_BASE = process.env.NEXT_PUBLIC_INDEXER_URL || "https://indexer.railbird.fun";
 
 interface TableViewerProps {
   initialData: TableResponse;
@@ -35,6 +35,7 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
   const [joinOperator, setJoinOperator] = useState<string>("");
   const [joinLoading, setJoinLoading] = useState<boolean>(false);
   const [joinStatus, setJoinStatus] = useState<string>("");
+  const [pollConnected, setPollConnected] = useState<boolean>(true);
 
   const { isConnected, isAuthenticated, address, connect, getHoleCards } = useAuth();
 
@@ -65,21 +66,31 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
     });
   }, [maxSeats, table.seats]);
 
-  // Handle WebSocket messages
-  const handleMessage = useCallback((_message: WsMessage) => {
-    // Refresh table data when we get updates
-    // In a production app, we'd update state incrementally
-    // For now, we trigger a refetch
-    fetch(`${process.env.NEXT_PUBLIC_INDEXER_URL || "http://localhost:3002"}/api/tables/${tableId}`)
-      .then((res) => res.json())
-      .then((data) => setTable(data))
-      .catch(() => {});
+  // Polling refresh (WebSocket removed)
+  const refreshTable = useCallback(async () => {
+    try {
+      const res = await fetch(`${INDEXER_BASE}/api/tables/${tableId}`, {
+        cache: "no-store",
+      });
+      if (!res.ok) {
+        setPollConnected(false);
+        return;
+      }
+      const data = (await res.json()) as TableResponse;
+      setTable(data);
+      setPollConnected(true);
+    } catch {
+      setPollConnected(false);
+    }
   }, [tableId]);
 
-  const { connected } = useWebSocket({
-    tableId,
-    onMessage: handleMessage,
-  });
+  useEffect(() => {
+    void refreshTable();
+    const interval = setInterval(() => {
+      void refreshTable();
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [refreshTable]);
 
   // Update timer every second
   useEffect(() => {
@@ -161,7 +172,7 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
         operator,
       });
       setJoinStatus(`Seat joined. tx=${registerTxHash}`);
-      handleMessage({ type: "seat_updated", tableId } as WsMessage);
+      await refreshTable();
     } catch (error) {
       setJoinStatus(error instanceof Error ? error.message : "Failed to join seat");
     } finally {
@@ -170,21 +181,20 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
   }, [
     availableSeats,
     connect,
-    handleMessage,
     isConnected,
     joinBuyIn,
     joinOperator,
     joinSeatIndex,
     normalizedSeats,
+    refreshTable,
     table.contractAddress,
-    tableId,
   ]);
 
   return (
     <div>
       {/* Connection Status */}
-      <div className={cn("connection-status", connected ? "connected" : "disconnected")}>
-        {connected ? "Live" : "Disconnected"}
+      <div className={cn("connection-status", pollConnected ? "connected" : "disconnected")}>
+        {pollConnected ? "Polling" : "Disconnected"}
       </div>
 
       {/* Owner Mode Banner */}

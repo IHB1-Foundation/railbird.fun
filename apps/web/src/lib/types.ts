@@ -93,27 +93,6 @@ export interface LeaderboardResponse {
   updatedAt: string;
 }
 
-// WebSocket message types
-
-export type WsMessageType =
-  | "connected"
-  | "action"
-  | "hand_started"
-  | "betting_round_complete"
-  | "vrf_requested"
-  | "community_cards"
-  | "hand_settled"
-  | "seat_updated"
-  | "pot_updated"
-  | "force_timeout";
-
-export interface WsMessage {
-  type: WsMessageType;
-  tableId: string;
-  handId?: string;
-  data?: Record<string, unknown>;
-}
-
 // UI Helper types
 
 export interface CardInfo {

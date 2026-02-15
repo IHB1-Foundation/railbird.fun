@@ -37,6 +37,8 @@ dist/
 # Foundry
 contracts/out/
 contracts/cache/
+contracts/broadcast/
+scripts/nadfun-agents.generated.env
 
 # Persistent data (hole cards, etc.)
 data/

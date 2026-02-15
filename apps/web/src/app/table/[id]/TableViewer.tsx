@@ -66,6 +66,11 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
     });
   }, [maxSeats, table.seats]);
 
+  const seatByIndex = useMemo(
+    () => new Map(normalizedSeats.map((seat) => [seat.seatIndex, seat])),
+    [normalizedSeats]
+  );
+
   // Polling refresh (WebSocket removed)
   const refreshTable = useCallback(async () => {
     try {
@@ -335,18 +340,31 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
         <h3 className="section-title-sm">Action Log</h3>
         <div className="action-log">
           {currentHand && currentHand.actions.length > 0 ? (
-            [...currentHand.actions].reverse().map((action, i) => (
-              <div key={i} className="action-item">
-                <span>
-                  <strong>Seat {action.seatIndex}</strong>{" "}
-                  {ACTION_TYPES[action.actionType] || action.actionType}
-                  {action.amount !== "0" && ` ${formatChips(action.amount)} ${CHIP_SYMBOL}`}
-                </span>
-                <span className="action-time">
-                  {formatTime(action.timestamp)}
-                </span>
-              </div>
-            ))
+            [...currentHand.actions].reverse().map((action, i) => {
+              const seat = seatByIndex.get(action.seatIndex);
+              const hasOwner =
+                !!seat && seat.ownerAddress.toLowerCase() !== ZERO_ADDRESS;
+
+              return (
+                <div key={i} className="action-item">
+                  <div className="action-main">
+                    <span>
+                      <strong>Seat {action.seatIndex}</strong>{" "}
+                      {ACTION_TYPES[action.actionType] || action.actionType}
+                      {action.amount !== "0" && ` ${formatChips(action.amount)} ${CHIP_SYMBOL}`}
+                    </span>
+                    {hasOwner ? (
+                      <span className="action-actor">
+                        {shortenAddress(seat.ownerAddress)}
+                      </span>
+                    ) : null}
+                  </div>
+                  <span className="action-time">
+                    {formatTime(action.timestamp)}
+                  </span>
+                </div>
+              );
+            })
           ) : (
             <div className="muted">No actions yet</div>
           )}

@@ -76,10 +76,10 @@ forge create src/PlayerRegistry.sol:PlayerRegistry \
 # See contracts/src/PlayerVault.sol for required constructor arguments
 ```
 
-### 3. Register Seats on Table
+### 3. Register 4 Seats on Table
 
 ```bash
-# Register seat 0 (using Account 0 as owner/operator)
+# Register seat 0 (Account 0)
 cast send <POKER_TABLE_ADDRESS> \
   "registerSeat(uint8,address,address,uint256)" 0 \
   0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 \
@@ -88,7 +88,7 @@ cast send <POKER_TABLE_ADDRESS> \
   --rpc-url http://localhost:8545 \
   --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 
-# Register seat 1 (using Account 1 as owner/operator)
+# Register seat 1 (Account 1)
 cast send <POKER_TABLE_ADDRESS> \
   "registerSeat(uint8,address,address,uint256)" 1 \
   0x70997970C51812dc3A010C7d01b50e0d17dc79C8 \
@@ -96,6 +96,24 @@ cast send <POKER_TABLE_ADDRESS> \
   1000000000000000000 \
   --rpc-url http://localhost:8545 \
   --private-key 0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d
+
+# Register seat 2 (Account 2)
+cast send <POKER_TABLE_ADDRESS> \
+  "registerSeat(uint8,address,address,uint256)" 2 \
+  0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC \
+  0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC \
+  1000000000000000000 \
+  --rpc-url http://localhost:8545 \
+  --private-key 0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a
+
+# Register seat 3 (Account 3)
+cast send <POKER_TABLE_ADDRESS> \
+  "registerSeat(uint8,address,address,uint256)" 3 \
+  0x90F79bf6EB2c4f870365E785982E1f101E93b906 \
+  0x90F79bf6EB2c4f870365E785982E1f101E93b906 \
+  1000000000000000000 \
+  --rpc-url http://localhost:8545 \
+  --private-key 0x7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6
 ```
 
 ### 4. Set Up PostgreSQL (for Indexer)
@@ -165,6 +183,14 @@ NEXT_PUBLIC_WS_URL=ws://localhost:3002 \
 pnpm dev
 ```
 
+**Option A: Quick Start (all 4 agents + keeper in one command)**
+```bash
+# From repo root:
+POKER_TABLE_ADDRESS=<address> ./scripts/run-4agents.sh
+```
+
+**Option B: Individual terminals**
+
 **Terminal 5: Agent Bot (Seat 0)**
 ```bash
 cd bots/agent
@@ -187,11 +213,33 @@ MAX_HANDS=50 \
 pnpm start
 ```
 
-**Terminal 7: Keeper Bot (Optional)**
+**Terminal 7: Agent Bot (Seat 2)**
+```bash
+cd bots/agent
+RPC_URL=http://localhost:8545 \
+OPERATOR_PRIVATE_KEY=0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a \
+POKER_TABLE_ADDRESS=<address> \
+OWNERVIEW_URL=http://localhost:3001 \
+MAX_HANDS=50 \
+pnpm start
+```
+
+**Terminal 8: Agent Bot (Seat 3)**
+```bash
+cd bots/agent
+RPC_URL=http://localhost:8545 \
+OPERATOR_PRIVATE_KEY=0x7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6 \
+POKER_TABLE_ADDRESS=<address> \
+OWNERVIEW_URL=http://localhost:3001 \
+MAX_HANDS=50 \
+pnpm start
+```
+
+**Terminal 9: Keeper Bot**
 ```bash
 cd bots/keeper
 RPC_URL=http://localhost:8545 \
-KEEPER_PRIVATE_KEY=0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a \
+KEEPER_PRIVATE_KEY=0x47e179ec197488593b187f80a00eb0da91f1b9d0b13f8733639f19c30a34926a \
 POKER_TABLE_ADDRESS=<address> \
 POLL_INTERVAL_MS=2000 \
 pnpm start
@@ -215,6 +263,8 @@ pnpm start
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `JWT_SECRET` | Yes | - | Secret for JWT signing (32+ chars) |
+| `DEALER_API_KEY` | Non-local | - | API key for /dealer/* endpoint auth |
+| `HOLECARD_DATA_DIR` | No | `./data/holecards` | Persistent hole card storage dir |
 | `PORT` | No | 3001 | HTTP server port |
 
 ### Indexer Service
@@ -272,6 +322,10 @@ cd services/ownerview && pnpm test
 cd services/indexer && pnpm test
 cd bots/agent && pnpm test
 cd bots/keeper && pnpm test
+
+# E2E smoke test (requires Anvil running)
+# Deploys contracts, registers 4 seats, runs 4 agents + keeper, validates settlements
+./scripts/e2e-smoke.sh [NUM_HANDS]   # default: 3 hands
 ```
 
 ## API Endpoints

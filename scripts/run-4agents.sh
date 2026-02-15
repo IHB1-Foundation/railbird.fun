@@ -1,0 +1,164 @@
+#!/bin/bash
+# Run 4 agent bots + keeper for the PlayerCo poker table
+#
+# Prerequisites:
+# - Anvil running on localhost:8545 (or configured RPC_URL)
+# - Contracts deployed and 4 seats registered
+# - OwnerView service running on localhost:3001
+#
+# Usage:
+#   ./scripts/run-4agents.sh <POKER_TABLE_ADDRESS>
+#
+# Environment overrides:
+#   RPC_URL              - RPC endpoint (default: http://localhost:8545)
+#   OWNERVIEW_URL        - OwnerView service (default: http://localhost:3001)
+#   MAX_HANDS            - Stop after N hands (default: 50)
+#   POLL_INTERVAL_MS     - Polling interval (default: 500)
+
+set -e
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+NC='\033[0m'
+
+POKER_TABLE_ADDRESS=${1:-$POKER_TABLE_ADDRESS}
+RPC_URL=${RPC_URL:-http://localhost:8545}
+OWNERVIEW_URL=${OWNERVIEW_URL:-http://localhost:3001}
+MAX_HANDS=${MAX_HANDS:-50}
+POLL_INTERVAL_MS=${POLL_INTERVAL_MS:-500}
+
+if [ -z "$POKER_TABLE_ADDRESS" ]; then
+  echo -e "${RED}Error: POKER_TABLE_ADDRESS not provided${NC}"
+  echo "Usage: $0 <POKER_TABLE_ADDRESS>"
+  echo ""
+  echo "Or set POKER_TABLE_ADDRESS env var"
+  exit 1
+fi
+
+# Anvil deterministic accounts (accounts 0-3 for agents, account 4 for keeper)
+AGENT_1_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+AGENT_1_ADDR=0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+
+AGENT_2_KEY=0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d
+AGENT_2_ADDR=0x70997970C51812dc3A010C7d01b50e0d17dc79C8
+
+AGENT_3_KEY=0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a
+AGENT_3_ADDR=0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC
+
+AGENT_4_KEY=0x7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6
+AGENT_4_ADDR=0x90F79bf6EB2c4f870365E785982E1f101E93b906
+
+KEEPER_KEY=0x47e179ec197488593b187f80a00eb0da91f1b9d0b13f8733639f19c30a34926a
+KEEPER_ADDR=0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65
+
+echo -e "${GREEN}=== PlayerCo 4-Agent Runner ===${NC}"
+echo ""
+echo "Configuration:"
+echo "  Table:         $POKER_TABLE_ADDRESS"
+echo "  RPC:           $RPC_URL"
+echo "  OwnerView:     $OWNERVIEW_URL"
+echo "  Max hands:     $MAX_HANDS"
+echo "  Poll interval: ${POLL_INTERVAL_MS}ms"
+echo ""
+echo "Agents:"
+echo "  Seat 0: $AGENT_1_ADDR"
+echo "  Seat 1: $AGENT_2_ADDR"
+echo "  Seat 2: $AGENT_3_ADDR"
+echo "  Seat 3: $AGENT_4_ADDR"
+echo "  Keeper: $KEEPER_ADDR"
+echo ""
+
+# Cleanup function
+PIDS=()
+cleanup() {
+  echo ""
+  echo -e "${YELLOW}Shutting down all bots...${NC}"
+  for pid in "${PIDS[@]}"; do
+    if kill -0 "$pid" 2>/dev/null; then
+      kill "$pid" 2>/dev/null || true
+    fi
+  done
+  wait 2>/dev/null
+  echo -e "${GREEN}All bots stopped.${NC}"
+}
+trap cleanup EXIT INT TERM
+
+# Start Keeper Bot
+echo -e "${CYAN}Starting Keeper Bot...${NC}"
+RPC_URL=$RPC_URL \
+KEEPER_PRIVATE_KEY=$KEEPER_KEY \
+POKER_TABLE_ADDRESS=$POKER_TABLE_ADDRESS \
+CHAIN_ID=31337 \
+POLL_INTERVAL_MS=$POLL_INTERVAL_MS \
+node --import tsx bots/keeper/src/index.ts &
+PIDS+=($!)
+echo "  Keeper PID: ${PIDS[-1]}"
+
+sleep 1
+
+# Start Agent 1 (Seat 0)
+echo -e "${CYAN}Starting Agent 1 (Seat 0)...${NC}"
+RPC_URL=$RPC_URL \
+OPERATOR_PRIVATE_KEY=$AGENT_1_KEY \
+POKER_TABLE_ADDRESS=$POKER_TABLE_ADDRESS \
+OWNERVIEW_URL=$OWNERVIEW_URL \
+CHAIN_ID=31337 \
+POLL_INTERVAL_MS=$POLL_INTERVAL_MS \
+MAX_HANDS=$MAX_HANDS \
+node --import tsx bots/agent/src/index.ts &
+PIDS+=($!)
+echo "  Agent 1 PID: ${PIDS[-1]}"
+
+# Start Agent 2 (Seat 1)
+echo -e "${CYAN}Starting Agent 2 (Seat 1)...${NC}"
+RPC_URL=$RPC_URL \
+OPERATOR_PRIVATE_KEY=$AGENT_2_KEY \
+POKER_TABLE_ADDRESS=$POKER_TABLE_ADDRESS \
+OWNERVIEW_URL=$OWNERVIEW_URL \
+CHAIN_ID=31337 \
+POLL_INTERVAL_MS=$POLL_INTERVAL_MS \
+MAX_HANDS=$MAX_HANDS \
+node --import tsx bots/agent/src/index.ts &
+PIDS+=($!)
+echo "  Agent 2 PID: ${PIDS[-1]}"
+
+# Start Agent 3 (Seat 2)
+echo -e "${CYAN}Starting Agent 3 (Seat 2)...${NC}"
+RPC_URL=$RPC_URL \
+OPERATOR_PRIVATE_KEY=$AGENT_3_KEY \
+POKER_TABLE_ADDRESS=$POKER_TABLE_ADDRESS \
+OWNERVIEW_URL=$OWNERVIEW_URL \
+CHAIN_ID=31337 \
+POLL_INTERVAL_MS=$POLL_INTERVAL_MS \
+MAX_HANDS=$MAX_HANDS \
+node --import tsx bots/agent/src/index.ts &
+PIDS+=($!)
+echo "  Agent 3 PID: ${PIDS[-1]}"
+
+# Start Agent 4 (Seat 3)
+echo -e "${CYAN}Starting Agent 4 (Seat 3)...${NC}"
+RPC_URL=$RPC_URL \
+OPERATOR_PRIVATE_KEY=$AGENT_4_KEY \
+POKER_TABLE_ADDRESS=$POKER_TABLE_ADDRESS \
+OWNERVIEW_URL=$OWNERVIEW_URL \
+CHAIN_ID=31337 \
+POLL_INTERVAL_MS=$POLL_INTERVAL_MS \
+MAX_HANDS=$MAX_HANDS \
+node --import tsx bots/agent/src/index.ts &
+PIDS+=($!)
+echo "  Agent 4 PID: ${PIDS[-1]}"
+
+echo ""
+echo -e "${GREEN}All bots started. Waiting for completion (Ctrl+C to stop)...${NC}"
+echo ""
+
+# Wait for all agent bots to finish (keeper runs forever)
+# We wait for any agent to exit (they all have MAX_HANDS limit)
+for pid in "${PIDS[@]:1}"; do
+  wait "$pid" 2>/dev/null || true
+done
+
+echo ""
+echo -e "${GREEN}=== All agents completed ===${NC}"

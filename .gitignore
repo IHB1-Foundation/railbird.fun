@@ -38,3 +38,8 @@ dist/
 contracts/out/
 contracts/cache/
 
+# Persistent data (hole cards, etc.)
+data/
+
+# Local docs
+LOCAL.md

@@ -19,6 +19,14 @@ export interface AppConfig {
   tableId?: string;
   /** Enable event listener for automatic dealing (default: false) */
   enableEventListener?: boolean;
+  /** Directory for persistent hole card storage. Omit for in-memory (tests). */
+  dataDir?: string;
+  /** API key for dealer endpoint authentication. Omit to disable (local dev). */
+  dealerApiKey?: string;
+  /** Max age in ms for hole card retention cleanup (default: 24h) */
+  retentionMaxAgeMs?: number;
+  /** Interval in ms for retention cleanup (default: 5 min) */
+  retentionIntervalMs?: number;
 }
 
 export interface AppContext {
@@ -28,7 +36,14 @@ export interface AppContext {
   holeCardStore: HoleCardStore;
   dealerService: DealerService;
   eventListener?: HandStartedEventListener;
+  /** Stop the retention cleanup interval */
+  stopRetention?: () => void;
 }
+
+/** Default retention: 24 hours */
+const DEFAULT_RETENTION_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+/** Default cleanup interval: 5 minutes */
+const DEFAULT_RETENTION_INTERVAL_MS = 5 * 60 * 1000;
 
 /**
  * Create the OwnerView Express app
@@ -48,8 +63,8 @@ export function createApp(config: AppConfig): AppContext {
 
   const authService = new AuthService(authConfig);
 
-  // Hole card store (in-memory)
-  const holeCardStore = new HoleCardStore();
+  // Hole card store: file-backed if dataDir provided, in-memory otherwise
+  const holeCardStore = new HoleCardStore(config.dataDir);
 
   // Dealer service (generates and stores hole cards)
   const dealerService = new DealerService(holeCardStore);
@@ -84,8 +99,8 @@ export function createApp(config: AppConfig): AppContext {
   // Auth routes (public)
   app.use("/auth", createAuthRoutes(authService));
 
-  // Dealer routes (for dealing and commitments)
-  app.use("/dealer", createDealerRoutes(dealerService));
+  // Dealer routes (protected with API key when configured)
+  app.use("/dealer", createDealerRoutes(dealerService, config.dealerApiKey));
 
   // Owner routes (authenticated, requires chain service)
   if (chainService) {
@@ -101,6 +116,27 @@ export function createApp(config: AppConfig): AppContext {
     });
   }
 
+  // Retention cleanup interval
+  const retentionMaxAge = config.retentionMaxAgeMs ?? DEFAULT_RETENTION_MAX_AGE_MS;
+  const retentionInterval = config.retentionIntervalMs ?? DEFAULT_RETENTION_INTERVAL_MS;
+  let retentionTimer: ReturnType<typeof setInterval> | null = null;
+
+  if (retentionInterval > 0) {
+    retentionTimer = setInterval(() => {
+      const deleted = holeCardStore.deleteOlderThan(retentionMaxAge);
+      if (deleted > 0) {
+        console.log(`[Retention] Cleaned up ${deleted} expired hole card records`);
+      }
+    }, retentionInterval);
+  }
+
+  const stopRetention = (): void => {
+    if (retentionTimer) {
+      clearInterval(retentionTimer);
+      retentionTimer = null;
+    }
+  };
+
   // Health check - reports dependency readiness
   app.get("/health", (_req: Request, res: Response) => {
     const chainReady = !!chainService;
@@ -112,6 +148,7 @@ export function createApp(config: AppConfig): AppContext {
         chain: chainReady ? "ready" : "unavailable",
         dealer: "ready",
         eventListener: eventListener ? "ready" : "disabled",
+        storage: config.dataDir ? "persistent" : "in-memory",
       },
     });
   });
@@ -125,5 +162,5 @@ export function createApp(config: AppConfig): AppContext {
     });
   });
 
-  return { app, authService, chainService, holeCardStore, dealerService, eventListener };
+  return { app, authService, chainService, holeCardStore, dealerService, eventListener, stopRetention };
 }

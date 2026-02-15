@@ -29,9 +29,9 @@ export class DealerError extends Error {
 }
 
 /**
- * Number of seats at the table (heads-up)
+ * Number of seats at the table
  */
-const SEAT_COUNT = 2;
+const SEAT_COUNT = 4;
 
 /**
  * Dealer service responsible for generating and storing hole cards

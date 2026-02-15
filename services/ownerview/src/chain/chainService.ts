@@ -37,8 +37,8 @@ export class ChainService {
    * Get seat information from PokerTable contract
    */
   async getSeat(seatIndex: number): Promise<SeatInfo> {
-    if (seatIndex < 0 || seatIndex > 1) {
-      throw new ChainError("Invalid seat index (must be 0 or 1)", "INVALID_SEAT");
+    if (seatIndex < 0 || seatIndex > 3) {
+      throw new ChainError("Invalid seat index (must be 0-3)", "INVALID_SEAT");
     }
 
     try {
@@ -90,7 +90,7 @@ export class ChainService {
   async findSeatByOwner(ownerAddress: Address): Promise<number | null> {
     const normalizedOwner = ownerAddress.toLowerCase();
 
-    for (let i = 0; i < 2; i++) {
+    for (let i = 0; i < 4; i++) {
       try {
         const seat = await this.getSeat(i);
         if (seat.owner.toLowerCase() === normalizedOwner) {

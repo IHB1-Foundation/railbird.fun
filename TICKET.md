@@ -246,7 +246,7 @@ cd services/indexer && pnpm test              # 50 tests pass
 | DB connection | Hard failure (throws) | Hard failure (throws) |
 
 ## T-0905 OwnerView durability + secure dealer endpoints (P1)
-- Status: [ ] TODO
+- Status: [x] DONE
 - Depends on: M2, T-0901
 - Goal: Make hole-card and reveal pipeline durable and production-safe.
 - Tasks:
@@ -259,8 +259,33 @@ cd services/indexer && pnpm test              # 50 tests pass
     - Dealer/reveal endpoints reject unauthorized calls.
     - 4-seat hole-card retrieval works with owner ACL.
 
+### DONE Notes (T-0905)
+**Key files changed:**
+- `services/ownerview/src/holecards/holeCardStore.ts` - Already supported file-backed mode via `dataDir` param; now wired from app config
+- `services/ownerview/src/dealer/dealerService.ts` - `SEAT_COUNT` changed from 2 to 4
+- `services/ownerview/src/chain/chainService.ts` - Seat validation updated 0-1 → 0-3, `findSeatByOwner` loop extended to 4 seats
+- `services/ownerview/src/routes/dealer.ts` - Added `createDealerAuthMiddleware` (Bearer API key auth); seatIndex validation 0-1 → 0-3; all endpoints protected when `dealerApiKey` configured
+- `services/ownerview/src/app.ts` - Added `dataDir`, `dealerApiKey`, `retentionMaxAgeMs`, `retentionIntervalMs` to AppConfig; wired file-backed HoleCardStore, dealer auth, and interval-based retention cleanup (24h max age, 5min interval)
+- `services/ownerview/src/index.ts` - Added `DEALER_API_KEY` (required non-local), `HOLECARD_DATA_DIR` (auto ./data/holecards non-local) env vars; graceful retention shutdown
+- `.gitignore` - Added `data/` directory
+- `.env.example` - Documented JWT_SECRET, DEALER_API_KEY, HOLECARD_DATA_DIR
+- Test files updated: 124 tests pass (15 new tests covering file-backed persistence, restart durability, dealer auth middleware, 4-seat dealing/ACL)
+
+**How to run/test:**
+```bash
+pnpm build
+cd services/ownerview && node --import tsx --test --test-force-exit src/**/*.test.ts   # 124 tests pass
+```
+
+**Manual verification:**
+1. **Restart durability**: Start with `HOLECARD_DATA_DIR=/tmp/hc-test`, deal cards, restart service → cards still readable
+2. **Dealer auth**: Set `DEALER_API_KEY=secret`, POST `/dealer/deal` without auth → 401; with wrong key → 403; with correct key → 201
+3. **4-seat dealing**: Deal returns 4 commitments; owner ACL correctly returns cards for seats 0-3
+4. **Retention**: Records older than 24h auto-cleaned every 5 minutes
+5. **Non-local fail-fast**: `CHAIN_ENV=testnet` without `DEALER_API_KEY` → exits with error
+
 ## T-0906 Four-agent orchestration + E2E validation (P0)
-- Status: [ ] TODO
+- Status: [x] DONE
 - Depends on: T-0901, T-0902, T-0903, T-0904, T-0905
 - Goal: Run 4 autonomous agent processes that play real hands continuously.
 - Tasks:
@@ -272,6 +297,37 @@ cd services/indexer && pnpm test              # 50 tests pass
     - One command starts services + 4 agent bots on local/testnet.
     - E2E test confirms multiple hands complete with real settlements and indexer updates.
     - Docs no longer describe 2-agent-only demo as target architecture.
+
+### DONE Notes (T-0906)
+**Key files changed:**
+- `scripts/run-4agents.sh` - One-command launcher for keeper + 4 agents using Anvil accounts 0-3 (agents) and 4 (keeper); configurable MAX_HANDS, POLL_INTERVAL_MS; graceful cleanup on Ctrl+C
+- `scripts/e2e-smoke.sh` - Automated E2E smoke test: deploys contracts, registers 4 seats, starts OwnerView + keeper + 4 agents, waits for N hands (default 3), validates settlements and no fatal errors
+- `README.md` - Updated for 4-seat registration, 4 agent terminals, quick-start one-liner (`./scripts/run-4agents.sh`), E2E test docs, new OwnerView env vars
+- `scripts/demo.sh` - Updated references from 2 to 4 agents
+
+**How to run/test:**
+```bash
+# Quick start (requires Anvil running):
+POKER_TABLE_ADDRESS=<addr> ./scripts/run-4agents.sh
+
+# E2E smoke test (requires Anvil running, pnpm build done):
+./scripts/e2e-smoke.sh 3   # Play 3 hands
+```
+
+**Manual verification:**
+1. Start Anvil: `anvil --host 0.0.0.0`
+2. Run `pnpm build`
+3. Run `./scripts/e2e-smoke.sh 3`
+4. Verify output shows all checks passing: contracts deployed, 4 seats registered, hands played, no fatal errors
+
+**Env layout for 4 agents (Anvil deterministic accounts):**
+| Seat | Address | Private Key |
+|------|---------|-------------|
+| 0 | 0xf39F...2266 | 0xac09...ff80 |
+| 1 | 0x7099...79C8 | 0x59c6...690d |
+| 2 | 0x3C44...93BC | 0x5de4...365a |
+| 3 | 0x90F7...3906 | 0x7c85...07a6 |
+| Keeper | 0x15d3...6A65 | 0x47e1...926a |
 
 ---
 

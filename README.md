@@ -364,7 +364,7 @@ pnpm start
 | `OPERATOR_PRIVATE_KEY` | Yes | - | Private key for seat operator |
 | `OWNERVIEW_URL` | No | `https://ownerview.railbird.fun` | OwnerView service URL |
 | `AGGRESSION_FACTOR` | No | 0.3 | Strategy aggression (`0.0~1.0`) |
-| `TURN_ACTION_DELAY_MS` | No | 900000 | Delay from turn start to action (ms) |
+| `TURN_ACTION_DELAY_MS` | No | 60000 | Delay from turn start to action (ms) |
 | `MAX_HANDS` | No | 0 (unlimited) | Stop after N hands |
 | `POLL_INTERVAL_MS` | No | 1000 | State polling interval |
 

@@ -37,7 +37,7 @@ function parsePositiveInt(name: string, fallback: number): number {
 async function main() {
   console.log(`Agent bot v${VERSION}`);
   const aggressionFactor = parseBoundedFloat("AGGRESSION_FACTOR", 0.3);
-  const turnActionDelayMs = parsePositiveInt("TURN_ACTION_DELAY_MS", 15 * 60 * 1000);
+  const turnActionDelayMs = parsePositiveInt("TURN_ACTION_DELAY_MS", 60 * 1000);
 
   // Load configuration from environment
   const config = {

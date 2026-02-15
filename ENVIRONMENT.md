@@ -50,7 +50,7 @@ set -a; source ./.env; set +a
 - `DEPLOYER_PRIVATE_KEY` (for contract/token deployment scripts)
 - `OPERATOR_PRIVATE_KEY` (single agent run)
 - `AGGRESSION_FACTOR` (single agent style tuning, 0.0~1.0)
-- `TURN_ACTION_DELAY_MS` (single agent turn-start delay in ms; default 900000)
+- `TURN_ACTION_DELAY_MS` (single agent turn-start delay in ms; default 60000)
 - `KEEPER_PRIVATE_KEY`
 - `VRF_OPERATOR_PRIVATE_KEY` (production VRF fulfill worker key)
 - `VRF_OPERATOR_POLL_INTERVAL_MS` (default `1500`)

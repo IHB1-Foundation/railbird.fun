@@ -19,7 +19,7 @@ Minimum env vars for one agent process:
 - `POLL_INTERVAL_MS` (default `1000`)
 - `MAX_HANDS` (default `0`, unlimited)
 - `AGGRESSION_FACTOR` (default `0.3`, range `0.0~1.0`)
-- `TURN_ACTION_DELAY_MS` (default `900000`, acts after this delay from turn start)
+- `TURN_ACTION_DELAY_MS` (default `60000`, acts after this delay from turn start)
 
 Reference implementation entrypoint:
 - `bots/agent/src/index.ts`

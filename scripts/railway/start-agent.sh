@@ -37,7 +37,7 @@ fi
 
 export OPERATOR_PRIVATE_KEY="${!key_var}"
 export AGGRESSION_FACTOR="${!aggr_var:-0.3}"
-export TURN_ACTION_DELAY_MS="${!delay_var:-${TURN_ACTION_DELAY_MS:-900000}}"
+export TURN_ACTION_DELAY_MS="${!delay_var:-${TURN_ACTION_DELAY_MS:-60000}}"
 export POLL_INTERVAL_MS="${POLL_INTERVAL_MS:-1000}"
 export MAX_HANDS="${MAX_HANDS:-0}"
 

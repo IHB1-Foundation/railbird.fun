@@ -14,7 +14,7 @@
 #   OWNERVIEW_URL        - OwnerView service (default: http://localhost:3001)
 #   MAX_HANDS            - Stop after N hands (default: 0, unlimited)
 #   POLL_INTERVAL_MS     - Polling interval (default: 500)
-#   TURN_ACTION_DELAY_MS - Delay from turn start to action (default: 900000 = 15 min)
+#   TURN_ACTION_DELAY_MS - Delay from turn start to action (default: 60000 = 1 min)
 
 set -e
 
@@ -38,7 +38,7 @@ OWNERVIEW_URL=${OWNERVIEW_URL:-http://localhost:3001}
 MAX_HANDS=${MAX_HANDS:-0}
 POLL_INTERVAL_MS=${POLL_INTERVAL_MS:-500}
 CHAIN_ID=${CHAIN_ID:-31337}
-TURN_ACTION_DELAY_MS=${TURN_ACTION_DELAY_MS:-900000}
+TURN_ACTION_DELAY_MS=${TURN_ACTION_DELAY_MS:-60000}
 
 if [ -z "$POKER_TABLE_ADDRESS" ]; then
   echo -e "${RED}Error: POKER_TABLE_ADDRESS not provided${NC}"

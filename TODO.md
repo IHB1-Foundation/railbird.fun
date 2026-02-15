@@ -81,7 +81,7 @@
 - [ ] `AGENT_1_OPERATOR_PRIVATE_KEY` ~ `AGENT_4_OPERATOR_PRIVATE_KEY` 설정
 - [ ] `OWNERVIEW_URL=https://ownerview.railbird.fun`
 - [ ] `AGGRESSION_FACTOR` 값 분리 설정 (`0.15/0.35/0.60/0.85`)
-- [ ] `TURN_ACTION_DELAY_MS` 운영값 확정 (현재 기본 900000ms는 매우 느림)
+- [ ] `TURN_ACTION_DELAY_MS` 운영값 확정 (현재 기본 60000ms (1분))
 
 ## 4. DB 마이그레이션 (필수 1회)
 

@@ -18,6 +18,7 @@ import {
   updateAgentTable,
   updateAgentMetaUri,
   insertVaultSnapshot,
+  getHand,
 } from "../db/index.js";
 import { gameStateToString, actionTypeToString } from "./abis.js";
 import {
@@ -223,10 +224,14 @@ export async function handleCommunityCardsDealt(
 
   if (await isEventProcessed(meta.blockNumber, meta.logIndex)) return;
 
-  // Get current hand and merge community cards
-  // The cards array contains newly dealt cards for this street
+  // cards contains only newly dealt cards for this street (flop=3, turn=1, river=1).
+  // Merge with already revealed community cards.
+  const hand = await getHand(ctx.tableId, args.handId);
+  const existingCards = Array.isArray(hand?.community_cards) ? hand.community_cards : [];
+  const mergedCards = [...existingCards, ...args.cards];
+
   await updateHand(ctx.tableId, args.handId, {
-    communityCards: [...args.cards],
+    communityCards: mergedCards,
   });
 
   await markEventProcessed(meta.blockNumber, meta.logIndex, meta.txHash, "CommunityCardsDealt");

@@ -136,17 +136,29 @@ export async function upsertSeat(
   seatIndex: number,
   ownerAddress: string,
   operatorAddress: string,
-  stack: bigint
+  stack: bigint,
+  isActive = false,
+  currentBet: bigint = 0n
 ): Promise<void> {
   await query(
-    `INSERT INTO seats (table_id, seat_index, owner_address, operator_address, stack)
-     VALUES ($1, $2, $3, $4, $5)
+    `INSERT INTO seats (table_id, seat_index, owner_address, operator_address, stack, is_active, current_bet)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
      ON CONFLICT (table_id, seat_index) DO UPDATE SET
        owner_address = EXCLUDED.owner_address,
        operator_address = EXCLUDED.operator_address,
        stack = EXCLUDED.stack,
+       is_active = EXCLUDED.is_active,
+       current_bet = EXCLUDED.current_bet,
        updated_at = NOW()`,
-    [tableId.toString(), seatIndex, ownerAddress.toLowerCase(), operatorAddress.toLowerCase(), stack.toString()]
+    [
+      tableId.toString(),
+      seatIndex,
+      ownerAddress.toLowerCase(),
+      operatorAddress.toLowerCase(),
+      stack.toString(),
+      isActive,
+      currentBet.toString(),
+    ]
   );
 }
 

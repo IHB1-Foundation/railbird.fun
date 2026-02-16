@@ -1,4 +1,11 @@
-import { createPublicClient, http, type PublicClient, type Log, parseAbiItem } from "viem";
+import {
+  createPublicClient,
+  http,
+  type PublicClient,
+  type Log,
+  parseAbiItem,
+  decodeEventLog,
+} from "viem";
 import type { Address } from "@playerco/shared";
 import type { DealerService } from "./dealerService.js";
 import type { HandStartedEvent } from "./types.js";
@@ -111,19 +118,23 @@ export class HandStartedEventListener {
   private async handleLogs(logs: Log[]): Promise<void> {
     for (const log of logs) {
       try {
-        // Parse event args
-        // topics[1] is indexed handId
-        const handId = log.topics[1]
-          ? BigInt(log.topics[1])
-          : 0n;
+        const decoded = decodeEventLog({
+          abi: [HandStartedEventAbi],
+          data: log.data,
+          topics: log.topics,
+        });
+        const args = decoded.args as {
+          handId: bigint;
+          smallBlind: bigint;
+          bigBlind: bigint;
+          buttonSeat: number;
+        };
 
-        // data contains non-indexed params (smallBlind, bigBlind, buttonSeat)
-        // For simplicity in MVP, we'll just use the handId
         const event: HandStartedEvent = {
-          handId,
-          smallBlind: 0n, // Would parse from data
-          bigBlind: 0n,
-          buttonSeat: 0,
+          handId: args.handId,
+          smallBlind: args.smallBlind,
+          bigBlind: args.bigBlind,
+          buttonSeat: args.buttonSeat,
         };
 
         await this.handleHandStarted(event);

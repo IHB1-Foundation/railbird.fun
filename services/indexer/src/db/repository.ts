@@ -304,7 +304,17 @@ export async function insertAction(
 
 export async function getHandActions(tableId: bigint, handId: bigint): Promise<Action[]> {
   const result = await query<Action>(
-    `SELECT * FROM actions WHERE table_id = $1 AND hand_id = $2 ORDER BY id`,
+    `SELECT
+       a.*,
+       EXISTS(
+         SELECT 1
+         FROM processed_events pe
+         WHERE pe.tx_hash = a.tx_hash
+           AND pe.event_name = 'BettingRoundComplete'
+       ) AS ends_street
+     FROM actions a
+     WHERE a.table_id = $1 AND a.hand_id = $2
+     ORDER BY a.id`,
     [tableId.toString(), handId.toString()]
   );
   return result.rows;

@@ -615,6 +615,7 @@ function formatActionResponse(action: any): ActionResponse {
     potAfter: action.pot_after,
     blockNumber: action.block_number,
     txHash: action.tx_hash,
+    endsStreet: Boolean(action.ends_street),
     timestamp: action.created_at?.toISOString() || new Date().toISOString(),
   };
 }

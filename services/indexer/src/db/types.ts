@@ -51,6 +51,7 @@ export interface Action {
   pot_after: string;
   block_number: string;
   tx_hash: string;
+  ends_street?: boolean;
   created_at: Date;
 }
 
@@ -150,6 +151,7 @@ export interface ActionResponse {
   potAfter: string;
   blockNumber: string;
   txHash: string;
+  endsStreet: boolean;
   timestamp: string;
 }
 

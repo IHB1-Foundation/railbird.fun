@@ -2,11 +2,11 @@
 pragma solidity ^0.8.24;
 
 /**
- * @title RailwayChip (rCHIP)
+ * @title RailbirdChip (rCHIP)
  * @notice Simple ERC20 chip token for Railbird poker tables.
  */
-contract RailwayChip {
-    string public constant name = "Railway Chip";
+contract RailbirdChip {
+    string public constant name = "Railbird Chip";
     string public constant symbol = "rCHIP";
     uint8 public constant decimals = 18;
 

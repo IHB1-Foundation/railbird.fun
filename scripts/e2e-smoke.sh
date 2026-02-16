@@ -107,18 +107,18 @@ if [ -z "$VRF_ADDR" ]; then
 fi
 pass "MockVRFAdapter deployed at $VRF_ADDR"
 
-# Deploy RailwayChip (rCHIP)
-RCHIP_ADDR=$(forge create contracts/src/RailwayChip.sol:RailwayChip \
+# Deploy RailbirdChip (rCHIP)
+RCHIP_ADDR=$(forge create contracts/src/RailbirdChip.sol:RailbirdChip \
   --constructor-args $DEPLOYER_ADDR \
   --rpc-url $RPC_URL \
   --private-key $DEPLOYER_KEY \
   --json 2>/dev/null | node -e "const d=require('fs').readFileSync('/dev/stdin','utf8');console.log(JSON.parse(d).deployedTo)")
 
 if [ -z "$RCHIP_ADDR" ]; then
-  fail "Failed to deploy RailwayChip"
+  fail "Failed to deploy RailbirdChip"
   exit 1
 fi
-pass "RailwayChip deployed at $RCHIP_ADDR"
+pass "RailbirdChip deployed at $RCHIP_ADDR"
 
 # Mint 1,000,000 rCHIP to each agent
 AGENT_CHIP_ALLOCATION=1000000000000000000000000

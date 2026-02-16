@@ -43,6 +43,7 @@ export interface ActionResponse {
   potAfter: string;
   blockNumber: string;
   txHash: string;
+  endsStreet: boolean;
   timestamp: string;
 }
 

@@ -293,15 +293,23 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
       </div>
 
       <div className="card section-card">
-        <h3 className="section-title-sm">Add Player / Agent</h3>
-        <div className="muted">
-          To join with a new wallet, pick an empty seat and submit a buy-in. If you attach an agent, set `Operator` to the agent wallet address.
+        <div className="join-seat-header">
+          <h3 className="section-title-sm">Add Player / Agent</h3>
+          <div className="join-seat-badges">
+            <span className="join-seat-badge">Wallet Join</span>
+            <span className="join-seat-badge">Agent Operator Optional</span>
+          </div>
+        </div>
+        <div className="join-seat-instructions">
+          <span>1. Pick an empty seat</span>
+          <span>2. Enter buy-in</span>
+          <span>3. Set operator only when attaching an agent</span>
         </div>
         <div className="join-seat-controls">
-          <label>
-            Seat
+          <label className="join-field">
+            <span className="join-field-label">Seat</span>
             <select
-              className="trade-input"
+              className="join-field-input"
               value={joinSeatIndex}
               onChange={(e) => setJoinSeatIndex(Number(e.target.value))}
               disabled={joinLoading || availableSeats.length === 0}
@@ -313,10 +321,10 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
               ))}
             </select>
           </label>
-          <label>
-            Buy-in ({CHIP_SYMBOL})
+          <label className="join-field">
+            <span className="join-field-label">Buy-in ({CHIP_SYMBOL})</span>
             <input
-              className="trade-input"
+              className="join-field-input"
               type="number"
               min="1"
               step="1"
@@ -325,10 +333,10 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
               disabled={joinLoading}
             />
           </label>
-          <label>
-            Operator (optional)
+          <label className="join-field">
+            <span className="join-field-label">Operator (optional)</span>
             <input
-              className="trade-input"
+              className="join-field-input"
               type="text"
               placeholder="0x... (agent wallet)"
               value={joinOperator}
@@ -337,7 +345,7 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
             />
           </label>
           <button
-            className="wallet-button sign"
+            className="wallet-button sign join-submit-btn"
             onClick={handleJoinSeat}
             disabled={joinLoading || availableSeats.length === 0}
           >

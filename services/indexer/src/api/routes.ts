@@ -457,29 +457,15 @@ router.get("/leaderboard", async (req, res) => {
       // Get snapshots in period
       const snapshots = await getVaultSnapshotsInPeriod(agent.vault_address, periodStart);
 
-      if (snapshots.length === 0) {
-        // No data for this agent in this period
-        continue;
-      }
-
-      const firstSnapshot = snapshots[0];
-      const lastSnapshot = snapshots[snapshots.length - 1];
-
       // Get win/loss stats
       const { total, wins } = await getAgentSettlementsInPeriod(agent.token_address, periodStart);
 
-      // Calculate metrics
-      const initialNav = BigInt(firstSnapshot.nav_per_share);
-      const currentNav = BigInt(lastSnapshot.nav_per_share);
-      const cumulativePnl = BigInt(lastSnapshot.cumulative_pnl);
-
-      // ROI: (currentNav - initialNav) / initialNav
-      // Scale: 1e18 precision
+      // Defaults keep agents visible even when period has no snapshots yet.
+      let initialNav = 0n;
+      let currentNav = 0n;
+      let cumulativePnl = 0n;
       let roi = "0";
-      if (initialNav > 0n) {
-        const roiNum = ((currentNav - initialNav) * 10000n) / initialNav;
-        roi = (Number(roiNum) / 10000).toString();
-      }
+      let mdd = "0";
 
       // Winrate: wins / total
       let winrate = "0";
@@ -487,23 +473,40 @@ router.get("/leaderboard", async (req, res) => {
         winrate = (wins / total).toFixed(4);
       }
 
-      // MDD: Maximum Drawdown
-      // Track peak and calculate max drawdown
-      let peakNav = 0n;
-      let maxDrawdown = 0n;
-      for (const snap of snapshots) {
-        const nav = BigInt(snap.nav_per_share);
-        if (nav > peakNav) {
-          peakNav = nav;
+      if (snapshots.length > 0) {
+        const firstSnapshot = snapshots[0];
+        const lastSnapshot = snapshots[snapshots.length - 1];
+
+        // Calculate metrics
+        initialNav = BigInt(firstSnapshot.nav_per_share);
+        currentNav = BigInt(lastSnapshot.nav_per_share);
+        cumulativePnl = BigInt(lastSnapshot.cumulative_pnl);
+
+        // ROI: (currentNav - initialNav) / initialNav
+        // Scale: 1e18 precision
+        if (initialNav > 0n) {
+          const roiNum = ((currentNav - initialNav) * 10000n) / initialNav;
+          roi = (Number(roiNum) / 10000).toString();
         }
-        if (peakNav > 0n) {
-          const drawdown = ((peakNav - nav) * 10000n) / peakNav;
-          if (drawdown > maxDrawdown) {
-            maxDrawdown = drawdown;
+
+        // MDD: Maximum Drawdown
+        // Track peak and calculate max drawdown
+        let peakNav = 0n;
+        let maxDrawdown = 0n;
+        for (const snap of snapshots) {
+          const nav = BigInt(snap.nav_per_share);
+          if (nav > peakNav) {
+            peakNav = nav;
+          }
+          if (peakNav > 0n) {
+            const drawdown = ((peakNav - nav) * 10000n) / peakNav;
+            if (drawdown > maxDrawdown) {
+              maxDrawdown = drawdown;
+            }
           }
         }
+        mdd = (Number(maxDrawdown) / 10000).toString();
       }
-      const mdd = (Number(maxDrawdown) / 10000).toString();
 
       entries.push({
         rank: 0, // Will be set after sorting
@@ -528,7 +531,8 @@ router.get("/leaderboard", async (req, res) => {
         case "roi":
           return parseFloat(b.roi) - parseFloat(a.roi);
         case "pnl":
-          return Number(BigInt(b.cumulativePnl) - BigInt(a.cumulativePnl));
+          if (BigInt(b.cumulativePnl) === BigInt(a.cumulativePnl)) return 0;
+          return BigInt(b.cumulativePnl) > BigInt(a.cumulativePnl) ? 1 : -1;
         case "winrate":
           return parseFloat(b.winrate) - parseFloat(a.winrate);
         case "mdd":

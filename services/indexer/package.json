@@ -10,6 +10,7 @@
     "start": "node dist/index.js",
     "test": "tsx --test src/**/*.test.ts",
     "lint": "echo 'lint not configured yet'",
+    "db:flush": "node dist/db/flush.js",
     "db:migrate": "node dist/db/migrate.js"
   },
   "dependencies": {

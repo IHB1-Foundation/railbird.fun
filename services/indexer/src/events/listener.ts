@@ -1,10 +1,10 @@
 // Event listener - subscribes to chain events and dispatches to handlers
 
-import { createPublicClient, http, parseAbiItem, type Log, decodeEventLog, type Address } from "viem";
+import { createPublicClient, http, type Log, decodeEventLog, type Address } from "viem";
 import { getChainConfig } from "@playerco/shared";
 import { pokerTableAbi, playerRegistryAbi, playerVaultAbi } from "./abis.js";
 import * as handlers from "./handlers.js";
-import { getIndexerState, updateIndexerState } from "../db/index.js";
+import { getIndexerState, updateIndexerState, upsertSeat, upsertTable } from "../db/index.js";
 
 export interface ListenerConfig {
   pokerTableAddress: Address;
@@ -48,6 +48,7 @@ export class EventListener {
 
     console.log("Starting event listener...");
     console.log(`Log block range: ${this.config.logBlockRange}`);
+    await this.seedSeatsFromChain();
 
     // Get last processed block from DB
     const state = await getIndexerState();
@@ -300,5 +301,137 @@ export class EventListener {
 
   private sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  private async seedSeatsFromChain(): Promise<void> {
+    const tableReadAbi = [
+      {
+        type: "function",
+        name: "tableId",
+        stateMutability: "view",
+        inputs: [],
+        outputs: [{ type: "uint256" }],
+      },
+      {
+        type: "function",
+        name: "smallBlind",
+        stateMutability: "view",
+        inputs: [],
+        outputs: [{ type: "uint256" }],
+      },
+      {
+        type: "function",
+        name: "bigBlind",
+        stateMutability: "view",
+        inputs: [],
+        outputs: [{ type: "uint256" }],
+      },
+      {
+        type: "function",
+        name: "MAX_SEATS",
+        stateMutability: "view",
+        inputs: [],
+        outputs: [{ type: "uint8" }],
+      },
+      {
+        type: "function",
+        name: "getSeat",
+        stateMutability: "view",
+        inputs: [{ name: "seatIndex", type: "uint8" }],
+        outputs: [
+          {
+            type: "tuple",
+            components: [
+              { name: "owner", type: "address" },
+              { name: "operator", type: "address" },
+              { name: "stack", type: "uint256" },
+              { name: "isActive", type: "bool" },
+              { name: "currentBet", type: "uint256" },
+            ],
+          },
+        ],
+      },
+    ] as const;
+
+    const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+
+    try {
+      const [tableId, smallBlind, bigBlind, maxSeatsRaw] = await Promise.all([
+        this.client.readContract({
+          address: this.config.pokerTableAddress,
+          abi: tableReadAbi,
+          functionName: "tableId",
+        }),
+        this.client.readContract({
+          address: this.config.pokerTableAddress,
+          abi: tableReadAbi,
+          functionName: "smallBlind",
+        }),
+        this.client.readContract({
+          address: this.config.pokerTableAddress,
+          abi: tableReadAbi,
+          functionName: "bigBlind",
+        }),
+        this.client.readContract({
+          address: this.config.pokerTableAddress,
+          abi: tableReadAbi,
+          functionName: "MAX_SEATS",
+        }),
+      ]);
+
+      this.tableContext = {
+        tableId: tableId as bigint,
+        contractAddress: this.config.pokerTableAddress,
+        smallBlind: smallBlind as bigint,
+        bigBlind: bigBlind as bigint,
+      };
+
+      await upsertTable(
+        this.tableContext.tableId,
+        this.tableContext.contractAddress,
+        this.tableContext.smallBlind,
+        this.tableContext.bigBlind
+      );
+
+      const maxSeats = Number(maxSeatsRaw);
+      const seatResults = await Promise.all(
+        Array.from({ length: maxSeats }, (_, seatIndex) =>
+          this.client.readContract({
+            address: this.config.pokerTableAddress,
+            abi: tableReadAbi,
+            functionName: "getSeat",
+            args: [seatIndex],
+          })
+        )
+      );
+
+      let occupiedSeats = 0;
+      for (let seatIndex = 0; seatIndex < seatResults.length; seatIndex++) {
+        const seat = seatResults[seatIndex] as {
+          owner: Address;
+          operator: Address;
+          stack: bigint;
+          isActive: boolean;
+          currentBet: bigint;
+        };
+        if (seat.owner.toLowerCase() === ZERO_ADDRESS) continue;
+        await upsertSeat(
+          this.tableContext.tableId,
+          seatIndex,
+          seat.owner,
+          seat.operator,
+          seat.stack,
+          seat.isActive,
+          seat.currentBet
+        );
+        occupiedSeats += 1;
+      }
+
+      console.log(
+        `Seeded seat snapshot from chain: ${occupiedSeats}/${maxSeats} occupied seats for table ${this.tableContext.tableId}`
+      );
+    } catch (error) {
+      console.error("Failed to seed seat snapshot from chain (continuing with log replay):", error);
+    }
   }
 }

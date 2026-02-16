@@ -134,6 +134,7 @@ DB_NAME=<railway-postgres-db>
 DB_USER=<railway-postgres-user>
 DB_PASSWORD=<railway-postgres-password>
 START_BLOCK=13073695
+INDEXER_REPLAY_ON_START=true
 POLL_INTERVAL_MS=2000
 LOG_BLOCK_RANGE=90
 ```

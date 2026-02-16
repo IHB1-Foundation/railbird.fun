@@ -36,6 +36,7 @@ set -a; source ./.env; set +a
 ### Indexer
 - `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_POOL_SIZE`
 - `START_BLOCK` (optional)
+- `INDEXER_REPLAY_ON_START` (`true`면 부팅 시 DB 커서 무시하고 `START_BLOCK`부터 재수집)
 - `POLL_INTERVAL_MS`
 - `LOG_BLOCK_RANGE` (Monad RPC-safe `eth_getLogs` chunk, recommend `<=100`, default `90`)
 - `PORT` (set per-process when running multiple services)

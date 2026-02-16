@@ -169,8 +169,8 @@ export class SimpleStrategy implements Strategy {
     const myStack = tableState.seats[seatIndex].stack;
     const myCurrentBet = tableState.seats[seatIndex].currentBet;
 
-    // Minimum raise is current bet + big blind
-    const minRaise = currentBet + bigBlind;
+    // Minimum raise target is 2x current table bet (or 2x big blind when unopened)
+    const minRaise = currentBet === 0n ? bigBlind * 2n : currentBet * 2n;
 
     // Raise 2-3x the current bet (pot-sized raise)
     const pot = tableState.hand.pot;

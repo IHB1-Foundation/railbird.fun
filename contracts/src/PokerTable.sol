@@ -558,7 +558,7 @@ contract PokerTable {
         require(raiseToAmount > currentHand.currentBet, "Raise must exceed current bet");
 
         // Minimum raise is the big blind or the last raise amount
-        uint256 minRaise = currentHand.currentBet + bigBlind;
+        uint256 minRaise = currentHand.currentBet == 0 ? bigBlind * 2 : currentHand.currentBet * 2;
         require(raiseToAmount >= minRaise, "Raise too small");
 
         uint256 additional = raiseToAmount - seats[seatIndex].currentBet;

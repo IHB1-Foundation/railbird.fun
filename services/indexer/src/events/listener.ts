@@ -4,7 +4,7 @@ import { createPublicClient, http, type Log, decodeEventLog, type Address } from
 import { getChainConfig } from "@playerco/shared";
 import { pokerTableAbi, playerRegistryAbi, playerVaultAbi } from "./abis.js";
 import * as handlers from "./handlers.js";
-import { getIndexerState, updateIndexerState, upsertSeat, upsertTable } from "../db/index.js";
+import { getAllAgents, getIndexerState, updateIndexerState, upsertSeat, upsertTable } from "../db/index.js";
 
 export interface ListenerConfig {
   pokerTableAddress: Address;
@@ -21,6 +21,8 @@ export class EventListener {
   private config: ListenerConfig;
   private running = false;
   private tableContext: handlers.EventContext;
+  private trackedVaultAddresses = new Set<Address>();
+  private static readonly ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as Address;
 
   constructor(config: ListenerConfig) {
     const chainConfig = getChainConfig();
@@ -32,6 +34,7 @@ export class EventListener {
       pollIntervalMs: config.pollIntervalMs ?? 2000,
       logBlockRange: Math.max(1, config.logBlockRange ?? 90),
     };
+    this.trackVaultAddress(config.playerVaultAddress);
 
     // Default table context - will be updated when we read table info
     this.tableContext = {
@@ -49,6 +52,8 @@ export class EventListener {
     console.log("Starting event listener...");
     console.log(`Log block range: ${this.config.logBlockRange}`);
     await this.seedSeatsFromChain();
+    await this.loadTrackedVaultAddresses();
+    console.log(`Tracking ${this.trackedVaultAddresses.size} vault address(es)`);
 
     // Get last processed block from DB
     const state = await getIndexerState();
@@ -104,14 +109,13 @@ export class EventListener {
   private async processBlockRange(fromBlock: bigint, toBlock: bigint): Promise<void> {
     console.log(`Processing blocks ${fromBlock} to ${toBlock}...`);
 
-    // Fetch all logs in parallel
-    const [tableLogs, registryLogs, vaultLogs] = await Promise.all([
+    // Fetch table/registry first, then derive any new vault addresses before vault log query.
+    const [tableLogs, registryLogs] = await Promise.all([
       this.fetchPokerTableLogs(fromBlock, toBlock),
       this.fetchRegistryLogs(fromBlock, toBlock),
-      this.config.playerVaultAddress
-        ? this.fetchVaultLogs(fromBlock, toBlock)
-        : Promise.resolve([]),
     ]);
+    this.discoverVaultAddressesFromRegistryLogs(registryLogs);
+    const vaultLogs = await this.fetchVaultLogs(fromBlock, toBlock);
 
     // Sort all logs by block number and log index
     const allLogs = [...tableLogs, ...registryLogs, ...vaultLogs].sort((a, b) => {
@@ -143,9 +147,10 @@ export class EventListener {
   }
 
   private async fetchVaultLogs(fromBlock: bigint, toBlock: bigint): Promise<Log[]> {
-    if (!this.config.playerVaultAddress) return [];
+    const vaultAddresses = Array.from(this.trackedVaultAddresses);
+    if (vaultAddresses.length === 0) return [];
     return this.client.getLogs({
-      address: this.config.playerVaultAddress,
+      address: vaultAddresses.length === 1 ? vaultAddresses[0] : vaultAddresses,
       fromBlock,
       toBlock,
     });
@@ -158,10 +163,7 @@ export class EventListener {
       await this.processPokerTableLog(log);
     } else if (address === this.config.playerRegistryAddress.toLowerCase()) {
       await this.processRegistryLog(log);
-    } else if (
-      this.config.playerVaultAddress &&
-      address === this.config.playerVaultAddress.toLowerCase()
-    ) {
+    } else if (this.trackedVaultAddresses.has(address as Address)) {
       await this.processVaultLog(log);
     }
   }
@@ -254,6 +256,7 @@ export class EventListener {
 
       switch (decoded.eventName) {
         case "AgentRegistered":
+          this.trackVaultAddress((decoded.args as any).vault);
           await handlers.handleAgentRegistered(log, decoded.args as any);
           break;
         case "OperatorUpdated":
@@ -263,6 +266,7 @@ export class EventListener {
           await handlers.handleOwnerUpdated(log, decoded.args as any);
           break;
         case "VaultUpdated":
+          this.trackVaultAddress((decoded.args as any).newVault);
           await handlers.handleVaultUpdated(log, decoded.args as any);
           break;
         case "TableUpdated":
@@ -290,7 +294,7 @@ export class EventListener {
           await handlers.handleVaultSnapshot(
             log,
             decoded.args as any,
-            this.config.playerVaultAddress!
+            log.address
           );
           break;
       }
@@ -301,6 +305,40 @@ export class EventListener {
 
   private sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  private trackVaultAddress(address?: string): void {
+    if (!address) return;
+    const normalized = address.toLowerCase() as Address;
+    if (normalized === EventListener.ZERO_ADDRESS) return;
+    this.trackedVaultAddresses.add(normalized);
+  }
+
+  private async loadTrackedVaultAddresses(): Promise<void> {
+    const agents = await getAllAgents();
+    for (const agent of agents) {
+      this.trackVaultAddress(agent.vault_address || undefined);
+    }
+  }
+
+  private discoverVaultAddressesFromRegistryLogs(logs: Log[]): void {
+    for (const log of logs) {
+      try {
+        const decoded = decodeEventLog({
+          abi: playerRegistryAbi,
+          data: log.data,
+          topics: log.topics,
+        });
+
+        if (decoded.eventName === "AgentRegistered") {
+          this.trackVaultAddress((decoded.args as any).vault);
+        } else if (decoded.eventName === "VaultUpdated") {
+          this.trackVaultAddress((decoded.args as any).newVault);
+        }
+      } catch {
+        // Ignore decode failures in discovery pass; processRegistryLog handles reporting.
+      }
+    }
   }
 
   private async seedSeatsFromChain(): Promise<void> {

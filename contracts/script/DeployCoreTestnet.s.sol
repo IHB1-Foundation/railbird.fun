@@ -16,8 +16,8 @@ import "../src/PlayerVault.sol";
  *
  * Optional env vars:
  * - TABLE_ID (default: 1)
- * - SMALL_BLIND (default: 5)
- * - BIG_BLIND (default: 10)
+ * - SMALL_BLIND (default: 1e18 = 1 rCHIP)
+ * - BIG_BLIND (default: 2e18 = 2 rCHIP)
  */
 contract DeployCoreTestnet is Script {
     function run() external {
@@ -25,8 +25,8 @@ contract DeployCoreTestnet is Script {
         address vrfAdapter = vm.envAddress("VRF_ADAPTER_ADDRESS");
 
         uint256 tableId = vm.envOr("TABLE_ID", uint256(1));
-        uint256 smallBlind = vm.envOr("SMALL_BLIND", uint256(5));
-        uint256 bigBlind = vm.envOr("BIG_BLIND", uint256(10));
+        uint256 smallBlind = vm.envOr("SMALL_BLIND", uint256(1e18));
+        uint256 bigBlind = vm.envOr("BIG_BLIND", uint256(2e18));
 
         vm.startBroadcast();
 
@@ -46,4 +46,3 @@ contract DeployCoreTestnet is Script {
         console.log("VRF_ADAPTER_ADDRESS:", vrfAdapter);
     }
 }
-

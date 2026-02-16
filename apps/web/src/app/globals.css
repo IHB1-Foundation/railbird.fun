@@ -816,11 +816,11 @@ h5 {
 }
 
 .seat-panel.active {
-  border-color: rgba(255, 206, 111, 0.92);
+  border-color: rgba(255, 213, 124, 0.98);
   box-shadow:
-    0 0 0 1px rgba(255, 206, 111, 0.5),
-    0 0 20px rgba(255, 174, 77, 0.25),
-    0 12px 24px rgba(0, 0, 0, 0.4);
+    0 0 0 2px rgba(255, 213, 124, 0.5),
+    0 0 24px rgba(255, 179, 74, 0.45),
+    0 12px 24px rgba(0, 0, 0, 0.45);
 }
 
 .seat-panel.owner {
@@ -831,6 +831,8 @@ h5 {
 
 .seat-panel.folded {
   opacity: 0.52;
+  filter: grayscale(0.85) saturate(0.55);
+  border-color: rgba(128, 133, 145, 0.45);
 }
 
 .seat-label {
@@ -869,6 +871,14 @@ h5 {
   font-size: 0.75rem;
   color: var(--warning);
   margin-top: 0.3rem;
+}
+
+.seat-bet.zero {
+  color: #9ba1ba;
+}
+
+.seat-bet.zero .seat-bet-chip {
+  opacity: 0.45;
 }
 
 .seat-bet-chip {
@@ -1117,13 +1127,17 @@ h5 {
 
 .table-turn-indicator {
   margin-top: 0.45rem;
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: #ffe2aa;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #ffe8bc;
   border-radius: 999px;
-  padding: 0.26rem 0.62rem;
-  border: 1px solid rgba(255, 206, 111, 0.58);
-  background: rgba(92, 54, 20, 0.45);
+  padding: 0.34rem 0.78rem;
+  border: 1px solid rgba(255, 217, 140, 0.8);
+  background: linear-gradient(145deg, rgba(120, 63, 19, 0.82), rgba(72, 36, 12, 0.78));
+  box-shadow:
+    0 0 0 1px rgba(255, 222, 159, 0.35),
+    0 0 18px rgba(255, 170, 77, 0.3);
   max-width: min(100%, 340px);
   overflow-wrap: anywhere;
 }
@@ -1152,6 +1166,12 @@ h5 {
   border-radius: 12px;
   padding: 0.7rem;
   background: rgba(255, 255, 255, 0.02);
+}
+
+.player-cell.active-turn {
+  border-color: rgba(255, 213, 124, 0.85);
+  background: linear-gradient(160deg, rgba(102, 61, 24, 0.3), rgba(255, 255, 255, 0.03));
+  box-shadow: 0 0 0 1px rgba(255, 213, 124, 0.28), inset 0 1px 0 rgba(255, 220, 153, 0.15);
 }
 
 .player-seat-title {

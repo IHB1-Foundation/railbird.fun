@@ -268,7 +268,10 @@ export function parseGeminiDecision(rawText: string): GeminiRawDecision | null {
 
 function getRaiseBounds(context: DecisionContext): RaiseBounds {
   const seat = context.tableState.seats[context.mySeatIndex];
-  const minRaiseTarget = context.tableState.hand.currentBet + context.tableState.bigBlind;
+  const minRaiseTarget =
+    context.tableState.hand.currentBet === 0n
+      ? context.tableState.bigBlind * 2n
+      : context.tableState.hand.currentBet * 2n;
   const maxRaiseTarget = seat.currentBet + seat.stack;
   return {
     minRaiseTarget,

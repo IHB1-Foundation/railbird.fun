@@ -286,7 +286,7 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
           )}
           {actorSeat !== null && actorSeatData ? (
             <div className="table-turn-indicator">
-              Turn: Seat {actorSeat} ({shortenAddress(actorSeatData.ownerAddress)})
+              NOW ACTING: Seat {actorSeat} ({shortenAddress(actorSeatData.ownerAddress)})
             </div>
           ) : null}
         </div>
@@ -395,6 +395,7 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
                   isActor={currentHand?.actorSeat === seat.seatIndex}
                   isButton={table.buttonSeat === seat.seatIndex}
                   isOwner={ownedSeatIndex === seat.seatIndex}
+                  isHandActive={isActive && !!currentHand}
                   holeCards={ownedSeatIndex === seat.seatIndex ? holeCards : null}
                   turnTimeRemaining={timeRemaining}
                 />
@@ -452,7 +453,10 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
         <h3 className="section-title-sm">Players</h3>
         <div className="players-grid">
           {normalizedSeats.map((seat) => (
-            <div key={seat.seatIndex} className="player-cell">
+            <div
+              key={seat.seatIndex}
+              className={cn("player-cell", currentHand?.actorSeat === seat.seatIndex && "active-turn")}
+            >
               <div className="player-seat-title">
                 Seat {seat.seatIndex}
                 {ownedSeatIndex === seat.seatIndex && (
@@ -472,6 +476,9 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
                     <span className="text-mono">
                       {shortenAddress(seat.operatorAddress)}
                     </span>
+                  </div>
+                  <div className="player-line">
+                    This Round: {formatChips(seat.currentBet)} {CHIP_SYMBOL}
                   </div>
                   <div className="player-actions">
                     <Link
@@ -499,6 +506,7 @@ function SeatPanel({
   isActor,
   isButton,
   isOwner,
+  isHandActive,
   holeCards,
   turnTimeRemaining,
 }: {
@@ -506,6 +514,7 @@ function SeatPanel({
   isActor: boolean;
   isButton: boolean;
   isOwner: boolean;
+  isHandActive: boolean;
   holeCards: HoleCardsResponse | null;
   turnTimeRemaining: string;
 }) {
@@ -519,7 +528,7 @@ function SeatPanel({
   }
 
   return (
-    <div className={cn("seat-panel", isActor && "active", isOwner && "owner")}>
+    <div className={cn("seat-panel", isActor && "active", isOwner && "owner", isHandActive && !seat.isActive && "folded")}>
       <div className="seat-label">
         <span>Seat {seat.seatIndex}</span>
         {isButton && <span className="dealer-chip">D</span>}
@@ -527,12 +536,10 @@ function SeatPanel({
       </div>
       <div className="seat-address" title={seat.ownerAddress}>{shortenAddress(seat.ownerAddress)}</div>
       <div className="seat-stack">{formatChips(seat.stack)} {CHIP_SYMBOL}</div>
-      {seat.currentBet !== "0" && (
-        <div className="seat-bet">
+      <div className={cn("seat-bet", seat.currentBet === "0" && "zero")}>
           <span className="seat-bet-chip" />
-          Bet: {formatChips(seat.currentBet)} {CHIP_SYMBOL}
-        </div>
-      )}
+          This Round: {formatChips(seat.currentBet)} {CHIP_SYMBOL}
+      </div>
       {isActor && <div className="seat-action-badge">ACTING</div>}
       {isActor && turnTimeRemaining !== "--" && (
         <div className={cn("seat-turn-timer", turnTimeRemaining === "Expired" && "urgent")}>

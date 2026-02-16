@@ -17,17 +17,29 @@ function optionalEnv(name: string, defaultValue: string): string {
   return process.env[name] || defaultValue;
 }
 
+function parsePositiveInt(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (!raw) return fallback;
+  const value = Number.parseInt(raw, 10);
+  if (Number.isNaN(value) || value < 0) return fallback;
+  return value;
+}
+
 async function main() {
   console.log(`Keeper bot v${VERSION}`);
+  const rpcUrl = requireEnv("RPC_URL");
+  const defaultPollIntervalMs = rpcUrl.includes("monad.xyz") ? 3000 : 2000;
 
   // Load configuration from environment
   const config = {
-    rpcUrl: requireEnv("RPC_URL"),
+    rpcUrl,
     privateKey: requireEnv("KEEPER_PRIVATE_KEY") as `0x${string}`,
     pokerTableAddress: requireEnv("POKER_TABLE_ADDRESS") as `0x${string}`,
     playerVaultAddress: process.env.PLAYER_VAULT_ADDRESS as `0x${string}` | undefined,
+    ownerviewUrl: process.env.OWNERVIEW_URL,
+    dealerApiKey: process.env.DEALER_API_KEY,
     chainId: parseInt(optionalEnv("CHAIN_ID", "31337")),
-    pollIntervalMs: parseInt(optionalEnv("POLL_INTERVAL_MS", "2000")),
+    pollIntervalMs: parsePositiveInt("POLL_INTERVAL_MS", defaultPollIntervalMs),
     enableRebalancing: optionalEnv("ENABLE_REBALANCING", "false") === "true",
     rebalanceBuyAmountMon: process.env.REBALANCE_BUY_AMOUNT_MON
       ? BigInt(process.env.REBALANCE_BUY_AMOUNT_MON)
@@ -44,6 +56,7 @@ async function main() {
   console.log(`  Chain ID: ${config.chainId}`);
   console.log(`  Poll interval: ${config.pollIntervalMs}ms`);
   console.log(`  Rebalancing: ${config.enableRebalancing ? "enabled" : "disabled"}`);
+  console.log(`  Dealer integration: ${config.ownerviewUrl && config.dealerApiKey ? "enabled" : "disabled"}`);
 
   // Create and run bot
   const bot = new KeeperBot(config);

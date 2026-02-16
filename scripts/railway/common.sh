@@ -23,3 +23,21 @@ print_runtime_header() {
   echo "[railway] chain_env=${CHAIN_ENV:-unset} chain_id=${CHAIN_ID:-unset}"
   echo "[railway] rpc_url=${RPC_URL:-unset}"
 }
+
+is_public_monad_rpc() {
+  [[ "${RPC_URL:-}" == *"monad.xyz"* ]]
+}
+
+default_poll_interval_ms() {
+  local local_default="$1"
+  local monad_default="$2"
+  if [ -n "${POLL_INTERVAL_MS:-}" ]; then
+    echo "$POLL_INTERVAL_MS"
+    return
+  fi
+  if is_public_monad_rpc; then
+    echo "$monad_default"
+    return
+  fi
+  echo "$local_default"
+}

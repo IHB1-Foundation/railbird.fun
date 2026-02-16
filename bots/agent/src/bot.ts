@@ -43,6 +43,7 @@ export class AgentBot {
   private lastStack: bigint | null = null;
   private mySeatIndex: number | null = null;
   private waitingTurnKey: string | null = null;
+  private currentBackoffMs: number = 0;
 
   constructor(config: AgentBotConfig) {
     this.config = config;
@@ -83,7 +84,8 @@ export class AgentBot {
    */
   async run(maxHands: number = 0): Promise<void> {
     this.running = true;
-    const pollInterval = this.config.pollIntervalMs || 1000;
+    const pollInterval = Math.max(200, this.config.pollIntervalMs || 1000);
+    this.currentBackoffMs = pollInterval;
 
     console.log(`[AgentBot] Starting bot for address: ${this.address}`);
     console.log(`[AgentBot] Table: ${this.config.pokerTableAddress}`);
@@ -102,6 +104,7 @@ export class AgentBot {
     while (this.running) {
       try {
         await this.tick();
+        this.currentBackoffMs = pollInterval;
 
         // Check if we've reached max hands
         if (maxHands > 0 && this.stats.handsPlayed >= maxHands) {
@@ -111,9 +114,13 @@ export class AgentBot {
       } catch (error) {
         console.error("[AgentBot] Error in tick:", error);
         this.stats.errors++;
+        if (this.isRateLimitError(error)) {
+          this.currentBackoffMs = Math.min(this.currentBackoffMs * 2, 15000);
+          console.warn(`[AgentBot] RPC rate-limited. Backing off to ${this.currentBackoffMs}ms`);
+        }
       }
 
-      await this.sleep(pollInterval);
+      await this.sleep(this.currentBackoffMs);
     }
 
     console.log("[AgentBot] Bot stopped");
@@ -135,7 +142,7 @@ export class AgentBot {
    */
   private async tick(): Promise<void> {
     // Get current table state
-    const state = await this.chainClient.getTableState();
+    const state = await this.chainClient.getTableState(this.mySeatIndex);
 
     // Find our seat
     if (this.mySeatIndex === null) {
@@ -314,5 +321,15 @@ export class AgentBot {
 
   private sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  private isRateLimitError(error: unknown): boolean {
+    const message = String(error).toLowerCase();
+    return (
+      message.includes("429") ||
+      message.includes("rate limit") ||
+      message.includes("too many requests") ||
+      message.includes("requests limited")
+    );
   }
 }

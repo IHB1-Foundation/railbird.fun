@@ -136,6 +136,26 @@ export const POKER_TABLE_ABI = [
     outputs: [{ type: "uint256" }],
     stateMutability: "view",
   },
+  {
+    type: "function",
+    name: "holeCommits",
+    inputs: [
+      { type: "uint256", name: "handId" },
+      { type: "uint8", name: "seatIndex" },
+    ],
+    outputs: [{ type: "bytes32" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "isHoleCardsRevealed",
+    inputs: [
+      { type: "uint256", name: "handId" },
+      { type: "uint8", name: "seatIndex" },
+    ],
+    outputs: [{ type: "bool" }],
+    stateMutability: "view",
+  },
 
   // Keeper actions
   {
@@ -163,6 +183,30 @@ export const POKER_TABLE_ABI = [
     type: "function",
     name: "reRequestVRF",
     inputs: [],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "submitHoleCommit",
+    inputs: [
+      { type: "uint256", name: "handId" },
+      { type: "uint8", name: "seatIndex" },
+      { type: "bytes32", name: "commitment" },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "revealHoleCards",
+    inputs: [
+      { type: "uint256", name: "handId" },
+      { type: "uint8", name: "seatIndex" },
+      { type: "uint8", name: "card1" },
+      { type: "uint8", name: "card2" },
+      { type: "bytes32", name: "salt" },
+    ],
     outputs: [],
     stateMutability: "nonpayable",
   },

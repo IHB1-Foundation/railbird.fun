@@ -3,11 +3,15 @@
 
 import { ChainClient, GameState, type TableState, type RebalanceStatus } from "./chain/client.js";
 
+const ZERO_BYTES32 = "0x0000000000000000000000000000000000000000000000000000000000000000";
+
 export interface KeeperBotConfig {
   rpcUrl: string;
   privateKey: `0x${string}`;
   pokerTableAddress: `0x${string}`;
   playerVaultAddress?: `0x${string}`;
+  ownerviewUrl?: string;
+  dealerApiKey?: string;
   chainId?: number;
   pollIntervalMs?: number;
   // Rebalancing config (optional)
@@ -45,6 +49,9 @@ export class KeeperBot {
   // Track last state to detect changes
   private lastHandId: bigint = 0n;
   private lastGameState: GameState = GameState.WAITING_FOR_SEATS;
+  private currentBackoffMs: number = 0;
+  private tableId: bigint | null = null;
+  private commitSyncedHands: Set<bigint> = new Set();
 
   constructor(config: KeeperBotConfig) {
     this.config = config;
@@ -67,7 +74,11 @@ export class KeeperBot {
 
   async run(): Promise<void> {
     this.running = true;
-    const pollInterval = this.config.pollIntervalMs || 2000;
+    const pollInterval = Math.max(200, this.config.pollIntervalMs || 2000);
+    this.currentBackoffMs = pollInterval;
+    if (this.hasDealerIntegration()) {
+      this.tableId = await this.chainClient.getTableId();
+    }
 
     console.log(`[KeeperBot] Starting keeper for address: ${this.address}`);
     console.log(`[KeeperBot] Table: ${this.config.pokerTableAddress}`);
@@ -75,16 +86,22 @@ export class KeeperBot {
       console.log(`[KeeperBot] Vault: ${this.config.playerVaultAddress}`);
     }
     console.log(`[KeeperBot] Poll interval: ${pollInterval}ms`);
+    console.log(`[KeeperBot] Dealer integration: ${this.hasDealerIntegration() ? "enabled" : "disabled"}`);
 
     while (this.running) {
       try {
         await this.tick();
+        this.currentBackoffMs = pollInterval;
       } catch (error) {
         console.error("[KeeperBot] Error in tick:", error);
         this.stats.errors++;
+        if (this.isRateLimitError(error)) {
+          this.currentBackoffMs = Math.min(this.currentBackoffMs * 2, 15000);
+          console.warn(`[KeeperBot] RPC rate-limited. Backing off to ${this.currentBackoffMs}ms`);
+        }
       }
 
-      await this.sleep(pollInterval);
+      await this.sleep(this.currentBackoffMs);
     }
 
     console.log("[KeeperBot] Keeper stopped");
@@ -112,6 +129,7 @@ export class KeeperBot {
     }
 
     // Check for keeper actions needed
+    await this.checkAndSubmitHoleCommits(state);
     await this.checkAndHandleTimeout(state, currentTimestamp, currentBlock);
     await this.checkAndReRequestVRF(state, currentTimestamp);
     await this.checkAndStartHand(state);
@@ -243,6 +261,7 @@ export class KeeperBot {
     console.log("[KeeperBot] Showdown detected, triggering card-based settlement...");
 
     try {
+      await this.checkAndRevealHoleCards(state.currentHandId);
       const hash = await this.chainClient.settleShowdown();
       this.stats.showdownsSettled++;
       this.recordAction("settleShowdown");
@@ -257,6 +276,161 @@ export class KeeperBot {
         this.stats.errors++;
       }
     }
+  }
+
+  private hasDealerIntegration(): boolean {
+    return Boolean(this.config.ownerviewUrl && this.config.dealerApiKey);
+  }
+
+  private async checkAndSubmitHoleCommits(state: TableState): Promise<void> {
+    if (!this.hasDealerIntegration() || this.tableId === null) {
+      return;
+    }
+    if (state.currentHandId === 0n) {
+      return;
+    }
+    if (state.gameState === GameState.WAITING_FOR_SEATS || state.gameState === GameState.SETTLED) {
+      return;
+    }
+    if (this.commitSyncedHands.has(state.currentHandId)) {
+      return;
+    }
+
+    const commitments = await this.getDealerCommitments(state.currentHandId);
+    let submitted = 0;
+    for (const { seatIndex, commitment } of commitments) {
+      const existing = await this.chainClient.getHoleCommit(state.currentHandId, seatIndex);
+      if (existing.toLowerCase() !== ZERO_BYTES32) {
+        continue;
+      }
+
+      try {
+        const hash = await this.chainClient.submitHoleCommit(state.currentHandId, seatIndex, commitment);
+        submitted++;
+        console.log(
+          `[KeeperBot] Submitted hole commit hand=${state.currentHandId} seat=${seatIndex}, tx: ${hash}`
+        );
+      } catch (error) {
+        const errorMsg = String(error);
+        if (!errorMsg.includes("Commitment already exists")) {
+          throw error;
+        }
+      }
+    }
+
+    this.commitSyncedHands.add(state.currentHandId);
+    if (submitted > 0) {
+      this.recordAction("submitHoleCommit");
+    }
+  }
+
+  private async checkAndRevealHoleCards(handId: bigint): Promise<void> {
+    if (!this.hasDealerIntegration() || this.tableId === null) {
+      return;
+    }
+
+    const commitments = await this.getDealerCommitments(handId);
+    let revealedCount = 0;
+    for (const { seatIndex, commitment } of commitments) {
+      const onChainCommit = await this.chainClient.getHoleCommit(handId, seatIndex);
+      if (onChainCommit.toLowerCase() !== commitment.toLowerCase()) {
+        continue;
+      }
+
+      const alreadyRevealed = await this.chainClient.isHoleCardsRevealed(handId, seatIndex);
+      if (alreadyRevealed) {
+        continue;
+      }
+
+      const reveal = await this.getDealerReveal(handId, seatIndex);
+      try {
+        const hash = await this.chainClient.revealHoleCards(
+          handId,
+          seatIndex,
+          reveal.cards[0],
+          reveal.cards[1],
+          reveal.salt
+        );
+        revealedCount++;
+        console.log(
+          `[KeeperBot] Revealed hole cards hand=${handId} seat=${seatIndex}, tx: ${hash}`
+        );
+      } catch (error) {
+        const errorMsg = String(error);
+        if (
+          !errorMsg.includes("Already revealed") &&
+          !errorMsg.includes("No commitment found") &&
+          !errorMsg.includes("Invalid reveal")
+        ) {
+          throw error;
+        }
+      }
+    }
+
+    if (revealedCount > 0) {
+      this.recordAction("revealHoleCards");
+    }
+  }
+
+  private async getDealerCommitments(
+    handId: bigint
+  ): Promise<Array<{ seatIndex: number; commitment: `0x${string}` }>> {
+    const baseUrl = this.config.ownerviewUrl!.replace(/\/$/, "");
+    const tableId = this.tableId!.toString();
+    const handIdStr = handId.toString();
+    const authHeader = { Authorization: `Bearer ${this.config.dealerApiKey!}` };
+
+    const dealRes = await fetch(`${baseUrl}/dealer/deal`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        ...authHeader,
+      },
+      body: JSON.stringify({ tableId, handId: handIdStr }),
+    });
+    if (!dealRes.ok && dealRes.status !== 409) {
+      const body = await dealRes.text().catch(() => "");
+      throw new Error(`dealer/deal failed (${dealRes.status}): ${body}`);
+    }
+
+    const commitmentsRes = await fetch(
+      `${baseUrl}/dealer/commitments?tableId=${encodeURIComponent(tableId)}&handId=${encodeURIComponent(handIdStr)}`,
+      { headers: authHeader }
+    );
+    if (!commitmentsRes.ok) {
+      const body = await commitmentsRes.text().catch(() => "");
+      throw new Error(`dealer/commitments failed (${commitmentsRes.status}): ${body}`);
+    }
+
+    const payload = (await commitmentsRes.json()) as {
+      commitments: Array<{ seatIndex: number; commitment: `0x${string}` }>;
+    };
+    return payload.commitments || [];
+  }
+
+  private async getDealerReveal(
+    handId: bigint,
+    seatIndex: number
+  ): Promise<{ cards: [number, number]; salt: `0x${string}` }> {
+    const baseUrl = this.config.ownerviewUrl!.replace(/\/$/, "");
+    const tableId = this.tableId!.toString();
+    const handIdStr = handId.toString();
+    const authHeader = { Authorization: `Bearer ${this.config.dealerApiKey!}` };
+
+    const res = await fetch(
+      `${baseUrl}/dealer/reveal?tableId=${encodeURIComponent(tableId)}&handId=${encodeURIComponent(handIdStr)}&seatIndex=${seatIndex}`,
+      { headers: authHeader }
+    );
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      throw new Error(`dealer/reveal failed (${res.status}): ${body}`);
+    }
+
+    const payload = (await res.json()) as {
+      cards: [number, number];
+      salt: `0x${string}`;
+    };
+    return payload;
   }
 
   /**
@@ -318,5 +492,15 @@ export class KeeperBot {
 
   private sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  private isRateLimitError(error: unknown): boolean {
+    const message = String(error).toLowerCase();
+    return (
+      message.includes("429") ||
+      message.includes("rate limit") ||
+      message.includes("too many requests") ||
+      message.includes("requests limited")
+    );
   }
 }

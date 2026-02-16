@@ -14,6 +14,9 @@ import {
 import { privateKeyToAccount } from "viem/accounts";
 import { POKER_TABLE_ABI } from "./pokerTableAbi.js";
 
+const MAX_SEATS = 9;
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as Address;
+
 // Game state enum matching contract
 export enum GameState {
   WAITING_FOR_SEATS = 0,
@@ -81,6 +84,10 @@ export class ChainClient {
   private account: Account;
   private pokerTableAddress: Address;
   private chain: Chain;
+  private tableIdCache: bigint | null = null;
+  private smallBlindCache: bigint | null = null;
+  private bigBlindCache: bigint | null = null;
+  private actionTimeoutCache: bigint | null = null;
 
   constructor(config: ChainClientConfig) {
     this.chain = {
@@ -111,21 +118,44 @@ export class ChainClient {
     return this.account.address;
   }
 
-  async getTableState(): Promise<TableState> {
-    const [
-      tableId,
-      smallBlind,
-      bigBlind,
-      actionTimeout,
-      maxSeatsRaw,
-      gameStateRaw,
-      currentHandId,
-      buttonSeat,
-      actionDeadline,
-      lastActionBlock,
-      handInfo,
-      communityCardsRaw,
-    ] = await Promise.all([
+  private parseSeat(raw: unknown): Seat {
+    const seatData = raw as {
+      owner: Address;
+      operator: Address;
+      stack: bigint;
+      isActive: boolean;
+      currentBet: bigint;
+    };
+    return {
+      owner: seatData.owner,
+      operator: seatData.operator,
+      stack: seatData.stack,
+      isActive: seatData.isActive,
+      currentBet: seatData.currentBet,
+    };
+  }
+
+  private createEmptySeat(): Seat {
+    return {
+      owner: ZERO_ADDRESS,
+      operator: ZERO_ADDRESS,
+      stack: 0n,
+      isActive: false,
+      currentBet: 0n,
+    };
+  }
+
+  private async ensureStaticState(): Promise<void> {
+    if (
+      this.tableIdCache !== null &&
+      this.smallBlindCache !== null &&
+      this.bigBlindCache !== null &&
+      this.actionTimeoutCache !== null
+    ) {
+      return;
+    }
+
+    const [tableId, smallBlind, bigBlind, actionTimeout] = await Promise.all([
       this.publicClient.readContract({
         address: this.pokerTableAddress,
         abi: POKER_TABLE_ABI,
@@ -146,11 +176,24 @@ export class ChainClient {
         abi: POKER_TABLE_ABI,
         functionName: "ACTION_TIMEOUT",
       }),
-      this.publicClient.readContract({
-        address: this.pokerTableAddress,
-        abi: POKER_TABLE_ABI,
-        functionName: "MAX_SEATS",
-      }),
+    ]);
+
+    this.tableIdCache = tableId as bigint;
+    this.smallBlindCache = smallBlind as bigint;
+    this.bigBlindCache = bigBlind as bigint;
+    this.actionTimeoutCache = actionTimeout as bigint;
+  }
+
+  async getTableState(mySeatIndex: number | null = null): Promise<TableState> {
+    await this.ensureStaticState();
+
+    const [
+      gameStateRaw,
+      currentHandId,
+      actionDeadline,
+      lastActionBlock,
+      handInfo,
+    ] = await Promise.all([
       this.publicClient.readContract({
         address: this.pokerTableAddress,
         abi: POKER_TABLE_ABI,
@@ -160,11 +203,6 @@ export class ChainClient {
         address: this.pokerTableAddress,
         abi: POKER_TABLE_ABI,
         functionName: "currentHandId",
-      }),
-      this.publicClient.readContract({
-        address: this.pokerTableAddress,
-        abi: POKER_TABLE_ABI,
-        functionName: "buttonSeat",
       }),
       this.publicClient.readContract({
         address: this.pokerTableAddress,
@@ -181,47 +219,43 @@ export class ChainClient {
         abi: POKER_TABLE_ABI,
         functionName: "getHandInfo",
       }),
-      this.publicClient.readContract({
-        address: this.pokerTableAddress,
-        abi: POKER_TABLE_ABI,
-        functionName: "getCommunityCards",
-      }),
     ]);
 
-    const parseSeat = (raw: unknown): Seat => {
-      const seatData = raw as { owner: Address; operator: Address; stack: bigint; isActive: boolean; currentBet: bigint };
-      return {
-        owner: seatData.owner,
-        operator: seatData.operator,
-        stack: seatData.stack,
-        isActive: seatData.isActive,
-        currentBet: seatData.currentBet,
-      };
-    };
-
-    const maxSeats = Number(maxSeatsRaw);
-    const seatResults = await Promise.all(
-      Array.from({ length: maxSeats }, (_, i) =>
-        this.publicClient.readContract({
-          address: this.pokerTableAddress,
-          abi: POKER_TABLE_ABI,
-          functionName: "getSeat",
-          args: [i],
-        })
-      )
-    );
+    let seats: Seat[];
+    if (mySeatIndex === null || mySeatIndex < 0 || mySeatIndex >= MAX_SEATS) {
+      const seatResults = await Promise.all(
+        Array.from({ length: MAX_SEATS }, (_, i) =>
+          this.publicClient.readContract({
+            address: this.pokerTableAddress,
+            abi: POKER_TABLE_ABI,
+            functionName: "getSeat",
+            args: [i],
+          })
+        )
+      );
+      seats = seatResults.map((raw) => this.parseSeat(raw));
+    } else {
+      const mySeat = await this.publicClient.readContract({
+        address: this.pokerTableAddress,
+        abi: POKER_TABLE_ABI,
+        functionName: "getSeat",
+        args: [mySeatIndex],
+      });
+      seats = Array.from({ length: MAX_SEATS }, () => this.createEmptySeat());
+      seats[mySeatIndex] = this.parseSeat(mySeat);
+    }
 
     return {
-      tableId: tableId as bigint,
-      smallBlind: smallBlind as bigint,
-      bigBlind: bigBlind as bigint,
-      actionTimeout: actionTimeout as bigint,
+      tableId: this.tableIdCache!,
+      smallBlind: this.smallBlindCache!,
+      bigBlind: this.bigBlindCache!,
+      actionTimeout: this.actionTimeoutCache!,
       gameState: (gameStateRaw as number) as GameState,
       currentHandId: currentHandId as bigint,
-      buttonSeat: buttonSeat as number,
+      buttonSeat: 0,
       actionDeadline: actionDeadline as bigint,
       lastActionBlock: lastActionBlock as bigint,
-      seats: seatResults.map(parseSeat),
+      seats,
       hand: {
         handId: (handInfo as readonly [bigint, bigint, bigint, number, number])[0],
         pot: (handInfo as readonly [bigint, bigint, bigint, number, number])[1],
@@ -229,7 +263,7 @@ export class ChainClient {
         actorSeat: (handInfo as readonly [bigint, bigint, bigint, number, number])[3],
         state: (handInfo as readonly [bigint, bigint, bigint, number, number])[4] as GameState,
       },
-      communityCards: (communityCardsRaw as readonly number[]).map(Number),
+      communityCards: [],
     };
   }
 

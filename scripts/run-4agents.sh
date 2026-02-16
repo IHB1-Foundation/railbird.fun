@@ -13,8 +13,8 @@
 #   RPC_URL              - RPC endpoint (default: http://localhost:8545)
 #   OWNERVIEW_URL        - OwnerView service (default: http://localhost:3001)
 #   MAX_HANDS            - Stop after N hands (default: 0, unlimited)
-#   POLL_INTERVAL_MS     - Polling interval (default: 500)
-#   TURN_ACTION_DELAY_MS - Delay from turn start to action (default: 60000 = 1 min)
+#   POLL_INTERVAL_MS     - Polling interval (default: 500 local, 3000 on monad.xyz)
+#   TURN_ACTION_DELAY_MS - Delay from turn start to action (default: 0)
 
 set -e
 
@@ -36,13 +36,20 @@ POKER_TABLE_ADDRESS=${1:-$POKER_TABLE_ADDRESS}
 RPC_URL=${RPC_URL:-http://localhost:8545}
 OWNERVIEW_URL=${OWNERVIEW_URL:-http://localhost:3001}
 MAX_HANDS=${MAX_HANDS:-0}
-POLL_INTERVAL_MS=${POLL_INTERVAL_MS:-500}
 CHAIN_ID=${CHAIN_ID:-31337}
-TURN_ACTION_DELAY_MS=${TURN_ACTION_DELAY_MS:-60000}
+TURN_ACTION_DELAY_MS=${TURN_ACTION_DELAY_MS:-0}
 AGENT_DECISION_ENGINE=${AGENT_DECISION_ENGINE:-simple}
 GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.0-flash}
 GEMINI_TEMPERATURE=${GEMINI_TEMPERATURE:-0.2}
 GEMINI_TIMEOUT_MS=${GEMINI_TIMEOUT_MS:-8000}
+
+if [ -z "${POLL_INTERVAL_MS:-}" ]; then
+  if [[ "$RPC_URL" == *"monad.xyz"* ]]; then
+    POLL_INTERVAL_MS=3000
+  else
+    POLL_INTERVAL_MS=500
+  fi
+fi
 
 if [ -z "$POKER_TABLE_ADDRESS" ]; then
   echo -e "${RED}Error: POKER_TABLE_ADDRESS not provided${NC}"
@@ -126,7 +133,7 @@ CHAIN_ID=$CHAIN_ID \
 POLL_INTERVAL_MS=$POLL_INTERVAL_MS \
 node --import tsx bots/keeper/src/index.ts &
 PIDS+=($!)
-echo "  Keeper PID: ${PIDS[-1]}"
+echo "  Keeper PID: ${PIDS[${#PIDS[@]}-1]}"
 
 sleep 1
 
@@ -148,7 +155,7 @@ GEMINI_TEMPERATURE=${AGENT_1_GEMINI_TEMPERATURE:-$GEMINI_TEMPERATURE} \
 GEMINI_TIMEOUT_MS=${AGENT_1_GEMINI_TIMEOUT_MS:-$GEMINI_TIMEOUT_MS} \
 node --import tsx bots/agent/src/index.ts &
 PIDS+=($!)
-echo "  Agent 1 PID: ${PIDS[-1]}"
+echo "  Agent 1 PID: ${PIDS[${#PIDS[@]}-1]}"
 
 # Start Agent 2 (Seat 1)
 echo -e "${CYAN}Starting Agent 2 (Seat 1)...${NC}"
@@ -168,7 +175,7 @@ GEMINI_TEMPERATURE=${AGENT_2_GEMINI_TEMPERATURE:-$GEMINI_TEMPERATURE} \
 GEMINI_TIMEOUT_MS=${AGENT_2_GEMINI_TIMEOUT_MS:-$GEMINI_TIMEOUT_MS} \
 node --import tsx bots/agent/src/index.ts &
 PIDS+=($!)
-echo "  Agent 2 PID: ${PIDS[-1]}"
+echo "  Agent 2 PID: ${PIDS[${#PIDS[@]}-1]}"
 
 # Start Agent 3 (Seat 2)
 echo -e "${CYAN}Starting Agent 3 (Seat 2)...${NC}"
@@ -188,7 +195,7 @@ GEMINI_TEMPERATURE=${AGENT_3_GEMINI_TEMPERATURE:-$GEMINI_TEMPERATURE} \
 GEMINI_TIMEOUT_MS=${AGENT_3_GEMINI_TIMEOUT_MS:-$GEMINI_TIMEOUT_MS} \
 node --import tsx bots/agent/src/index.ts &
 PIDS+=($!)
-echo "  Agent 3 PID: ${PIDS[-1]}"
+echo "  Agent 3 PID: ${PIDS[${#PIDS[@]}-1]}"
 
 # Start Agent 4 (Seat 3)
 echo -e "${CYAN}Starting Agent 4 (Seat 3)...${NC}"
@@ -208,7 +215,7 @@ GEMINI_TEMPERATURE=${AGENT_4_GEMINI_TEMPERATURE:-$GEMINI_TEMPERATURE} \
 GEMINI_TIMEOUT_MS=${AGENT_4_GEMINI_TIMEOUT_MS:-$GEMINI_TIMEOUT_MS} \
 node --import tsx bots/agent/src/index.ts &
 PIDS+=($!)
-echo "  Agent 4 PID: ${PIDS[-1]}"
+echo "  Agent 4 PID: ${PIDS[${#PIDS[@]}-1]}"
 
 echo ""
 echo -e "${GREEN}All bots started. Waiting for completion (Ctrl+C to stop)...${NC}"

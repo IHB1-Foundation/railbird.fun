@@ -79,18 +79,21 @@ function createStrategy(aggressionFactor: number): {
 
 async function main() {
   console.log(`Agent bot v${VERSION}`);
+  const rpcUrl = requireEnv("RPC_URL");
+  const defaultTurnActionDelayMs = 0;
+  const defaultPollIntervalMs = rpcUrl.includes("monad.xyz") ? 3000 : 1000;
   const aggressionFactor = parseBoundedFloat("AGGRESSION_FACTOR", 0.3);
-  const turnActionDelayMs = parsePositiveInt("TURN_ACTION_DELAY_MS", 60 * 1000);
+  const turnActionDelayMs = parsePositiveInt("TURN_ACTION_DELAY_MS", defaultTurnActionDelayMs);
   const { strategy, engine, geminiModel } = createStrategy(aggressionFactor);
 
   // Load configuration from environment
   const config = {
-    rpcUrl: requireEnv("RPC_URL"),
+    rpcUrl,
     privateKey: requireEnv("OPERATOR_PRIVATE_KEY") as `0x${string}`,
     pokerTableAddress: requireEnv("POKER_TABLE_ADDRESS") as `0x${string}`,
     ownerviewUrl: optionalEnv("OWNERVIEW_URL", "http://localhost:3001"),
     chainId: parseInt(optionalEnv("CHAIN_ID", "31337")),
-    pollIntervalMs: parseInt(optionalEnv("POLL_INTERVAL_MS", "1000")),
+    pollIntervalMs: parsePositiveInt("POLL_INTERVAL_MS", defaultPollIntervalMs),
     turnActionDelayMs,
     strategy,
   };

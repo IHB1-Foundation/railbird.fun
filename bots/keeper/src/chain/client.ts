@@ -39,16 +39,12 @@ export interface Seat {
 }
 
 export interface TableState {
-  tableId: bigint;
   gameState: GameState;
   currentHandId: bigint;
   actionDeadline: bigint;
   lastActionBlock: bigint;
   pendingVRFRequestId: bigint;
   vrfRequestTimestamp: bigint;
-  seats: Seat[];
-  actorSeat: number;
-  pot: bigint;
   canStartHand: boolean;
 }
 
@@ -75,6 +71,7 @@ export class ChainClient {
   private pokerTableAddress: Address;
   private playerVaultAddress: Address | null;
   private chain: Chain;
+  private tableIdCache: bigint | null = null;
 
   constructor(config: ChainClientConfig) {
     this.chain = {
@@ -106,6 +103,19 @@ export class ChainClient {
     return this.account.address;
   }
 
+  async getTableId(): Promise<bigint> {
+    if (this.tableIdCache !== null) {
+      return this.tableIdCache;
+    }
+    const tableId = await this.publicClient.readContract({
+      address: this.pokerTableAddress,
+      abi: POKER_TABLE_ABI,
+      functionName: "tableId",
+    });
+    this.tableIdCache = tableId as bigint;
+    return this.tableIdCache;
+  }
+
   async getBlockNumber(): Promise<bigint> {
     return this.publicClient.getBlockNumber();
   }
@@ -117,27 +127,14 @@ export class ChainClient {
 
   async getTableState(): Promise<TableState> {
     const [
-      tableId,
-      maxSeatsRaw,
       gameStateRaw,
       currentHandId,
       actionDeadline,
       lastActionBlock,
       pendingVRFRequestId,
       vrfRequestTimestamp,
-      handInfo,
       canStartHand,
     ] = await Promise.all([
-      this.publicClient.readContract({
-        address: this.pokerTableAddress,
-        abi: POKER_TABLE_ABI,
-        functionName: "tableId",
-      }),
-      this.publicClient.readContract({
-        address: this.pokerTableAddress,
-        abi: POKER_TABLE_ABI,
-        functionName: "MAX_SEATS",
-      }),
       this.publicClient.readContract({
         address: this.pokerTableAddress,
         abi: POKER_TABLE_ABI,
@@ -171,58 +168,39 @@ export class ChainClient {
       this.publicClient.readContract({
         address: this.pokerTableAddress,
         abi: POKER_TABLE_ABI,
-        functionName: "getHandInfo",
-      }),
-      this.publicClient.readContract({
-        address: this.pokerTableAddress,
-        abi: POKER_TABLE_ABI,
         functionName: "canStartHand",
       }),
     ]);
 
-    const parseSeat = (raw: unknown): Seat => {
-      const seatData = raw as {
-        owner: Address;
-        operator: Address;
-        stack: bigint;
-        isActive: boolean;
-        currentBet: bigint;
-      };
-      return {
-        owner: seatData.owner,
-        operator: seatData.operator,
-        stack: seatData.stack,
-        isActive: seatData.isActive,
-        currentBet: seatData.currentBet,
-      };
-    };
-
-    const handInfoData = handInfo as readonly [bigint, bigint, bigint, number, number];
-    const maxSeats = Number(maxSeatsRaw);
-    const seatResults = await Promise.all(
-      Array.from({ length: maxSeats }, (_, i) =>
-        this.publicClient.readContract({
-          address: this.pokerTableAddress,
-          abi: POKER_TABLE_ABI,
-          functionName: "getSeat",
-          args: [i],
-        })
-      )
-    );
-
     return {
-      tableId: tableId as bigint,
       gameState: (gameStateRaw as number) as GameState,
       currentHandId: currentHandId as bigint,
       actionDeadline: actionDeadline as bigint,
       lastActionBlock: lastActionBlock as bigint,
       pendingVRFRequestId: pendingVRFRequestId as bigint,
       vrfRequestTimestamp: vrfRequestTimestamp as bigint,
-      seats: seatResults.map(parseSeat),
-      actorSeat: handInfoData[3],
-      pot: handInfoData[1],
       canStartHand: canStartHand as boolean,
     };
+  }
+
+  async getHoleCommit(handId: bigint, seatIndex: number): Promise<`0x${string}`> {
+    const result = await this.publicClient.readContract({
+      address: this.pokerTableAddress,
+      abi: POKER_TABLE_ABI,
+      functionName: "holeCommits",
+      args: [handId, seatIndex],
+    });
+    return result as `0x${string}`;
+  }
+
+  async isHoleCardsRevealed(handId: bigint, seatIndex: number): Promise<boolean> {
+    const result = await this.publicClient.readContract({
+      address: this.pokerTableAddress,
+      abi: POKER_TABLE_ABI,
+      functionName: "isHoleCardsRevealed",
+      args: [handId, seatIndex],
+    });
+    return result as boolean;
   }
 
   // Keeper actions on PokerTable
@@ -273,6 +251,38 @@ export class ChainClient {
       abi: POKER_TABLE_ABI,
       functionName: "reRequestVRF",
       args: [],
+    });
+    await this.publicClient.waitForTransactionReceipt({ hash });
+    return hash;
+  }
+
+  async submitHoleCommit(handId: bigint, seatIndex: number, commitment: `0x${string}`): Promise<Hash> {
+    const hash = await this.walletClient.writeContract({
+      chain: this.chain,
+      account: this.account,
+      address: this.pokerTableAddress,
+      abi: POKER_TABLE_ABI,
+      functionName: "submitHoleCommit",
+      args: [handId, seatIndex, commitment],
+    });
+    await this.publicClient.waitForTransactionReceipt({ hash });
+    return hash;
+  }
+
+  async revealHoleCards(
+    handId: bigint,
+    seatIndex: number,
+    card1: number,
+    card2: number,
+    salt: `0x${string}`
+  ): Promise<Hash> {
+    const hash = await this.walletClient.writeContract({
+      chain: this.chain,
+      account: this.account,
+      address: this.pokerTableAddress,
+      abi: POKER_TABLE_ABI,
+      functionName: "revealHoleCards",
+      args: [handId, seatIndex, card1, card2, salt],
     });
     await this.publicClient.waitForTransactionReceipt({ hash });
     return hash;

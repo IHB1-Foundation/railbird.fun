@@ -215,7 +215,7 @@ CHAIN_ID=$CHAIN_ID \
 POLL_INTERVAL_MS=200 \
 node --import tsx bots/keeper/src/index.ts > /tmp/playerco-keeper.log 2>&1 &
 PIDS+=($!)
-pass "Keeper started (PID: ${PIDS[-1]})"
+pass "Keeper started (PID: ${PIDS[${#PIDS[@]}-1]})"
 
 sleep 1
 
@@ -231,7 +231,7 @@ for i in 0 1 2 3; do
   TURN_ACTION_DELAY_MS=0 \
   node --import tsx bots/agent/src/index.ts > /tmp/playerco-agent$i.log 2>&1 &
   PIDS+=($!)
-  pass "Agent $((i+1)) started (Seat $i, PID: ${PIDS[-1]})"
+  pass "Agent $((i+1)) started (Seat $i, PID: ${PIDS[${#PIDS[@]}-1]})"
 done
 echo ""
 

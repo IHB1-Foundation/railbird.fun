@@ -130,9 +130,11 @@ for i in 0 1 2 3; do
 done
 pass "Minted 1,000,000 rCHIP to each agent"
 
-# Deploy PokerTable (tableId=1, smallBlind=5, bigBlind=10, vrfAdapter, chipToken)
+# Deploy PokerTable (tableId=1, smallBlind=1 rCHIP, bigBlind=2 rCHIP, vrfAdapter, chipToken)
+SMALL_BLIND_WEI=1000000000000000000
+BIG_BLIND_WEI=2000000000000000000
 TABLE_ADDR=$(forge create contracts/src/PokerTable.sol:PokerTable \
-  --constructor-args 1 5 10 $VRF_ADDR $RCHIP_ADDR \
+  --constructor-args 1 $SMALL_BLIND_WEI $BIG_BLIND_WEI $VRF_ADDR $RCHIP_ADDR \
   --rpc-url $RPC_URL \
   --private-key $DEPLOYER_KEY \
   --json 2>/dev/null | node -e "const d=require('fs').readFileSync('/dev/stdin','utf8');console.log(JSON.parse(d).deployedTo)")
@@ -153,9 +155,10 @@ echo ""
 # Step 3: Register 4 seats
 echo -e "${YELLOW}Step 3: Register 4 seats...${NC}"
 
+SEAT_BUY_IN_WEI=100000000000000000000
 for i in 0 1 2 3; do
   cast send $RCHIP_ADDR \
-    "approve(address,uint256)" $TABLE_ADDR 1000000000000000000 \
+    "approve(address,uint256)" $TABLE_ADDR $SEAT_BUY_IN_WEI \
     --rpc-url $RPC_URL \
     --private-key ${AGENT_KEYS[$i]} > /dev/null 2>&1
 
@@ -163,7 +166,7 @@ for i in 0 1 2 3; do
     "registerSeat(uint8,address,address,uint256)" $i \
     ${AGENT_ADDRS[$i]} \
     ${AGENT_ADDRS[$i]} \
-    1000000000000000000 \
+    $SEAT_BUY_IN_WEI \
     --rpc-url $RPC_URL \
     --private-key ${AGENT_KEYS[$i]} > /dev/null 2>&1
 

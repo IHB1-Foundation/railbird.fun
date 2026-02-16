@@ -53,8 +53,15 @@ require_env DB_PASSWORD
 
 export PORT="${PORT:-3002}"
 export START_BLOCK="${START_BLOCK:-0}"
+export INDEXER_FLUSH_ON_START="${INDEXER_FLUSH_ON_START:-true}"
 export POLL_INTERVAL_MS="${POLL_INTERVAL_MS:-2000}"
 export LOG_BLOCK_RANGE="${LOG_BLOCK_RANGE:-90}"
+
+flush_on_start="$(printf '%s' "$INDEXER_FLUSH_ON_START" | tr '[:upper:]' '[:lower:]')"
+if [ "$flush_on_start" = "1" ] || [ "$flush_on_start" = "true" ] || [ "$flush_on_start" = "yes" ] || [ "$flush_on_start" = "on" ]; then
+  echo "[railway] indexer flush enabled, clearing database tables before startup"
+  pnpm --filter @playerco/indexer db:flush
+fi
 
 # Safe to run repeatedly; schema file uses IF NOT EXISTS.
 pnpm --filter @playerco/indexer db:migrate

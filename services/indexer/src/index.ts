@@ -14,6 +14,12 @@ const PORT = parseInt(process.env.PORT || "3002", 10);
 const CHAIN_ENV = process.env.CHAIN_ENV || "local";
 const isLocal = CHAIN_ENV === "local";
 
+function parseBooleanEnv(value: string | undefined, defaultValue = false): boolean {
+  if (!value) return defaultValue;
+  const normalized = value.trim().toLowerCase();
+  return normalized === "1" || normalized === "true" || normalized === "yes" || normalized === "on";
+}
+
 async function main(): Promise<void> {
   // Database configuration: require explicit values in non-local environments
   if (isLocal) {
@@ -89,6 +95,7 @@ async function main(): Promise<void> {
       playerRegistryAddress: process.env.PLAYER_REGISTRY_ADDRESS as Address,
       playerVaultAddress: process.env.PLAYER_VAULT_ADDRESS as Address | undefined,
       startBlock: process.env.START_BLOCK ? BigInt(process.env.START_BLOCK) : undefined,
+      replayOnStart: parseBooleanEnv(process.env.INDEXER_REPLAY_ON_START, false),
       pollIntervalMs: parseInt(process.env.POLL_INTERVAL_MS || "2000", 10),
       logBlockRange: parseInt(process.env.LOG_BLOCK_RANGE || "90", 10),
     });

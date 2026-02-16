@@ -11,6 +11,7 @@ export interface ListenerConfig {
   playerRegistryAddress: Address;
   playerVaultAddress?: Address;
   startBlock?: bigint;
+  replayOnStart?: boolean;
   pollIntervalMs?: number;
   logBlockRange?: number;
 }
@@ -50,9 +51,19 @@ export class EventListener {
 
     // Get last processed block from DB
     const state = await getIndexerState();
-    let fromBlock = this.config.startBlock ?? 0n;
-    if (state && BigInt(state.last_processed_block) > fromBlock) {
-      fromBlock = BigInt(state.last_processed_block);
+    const configuredStartBlock = this.config.startBlock ?? 0n;
+    let fromBlock = configuredStartBlock;
+
+    if (state) {
+      const stateBlock = BigInt(state.last_processed_block);
+      if (this.config.replayOnStart) {
+        fromBlock = configuredStartBlock;
+        console.log(
+          `Replay mode enabled: starting from configured START_BLOCK ${configuredStartBlock} (cursor was ${stateBlock})`
+        );
+      } else if (stateBlock > fromBlock) {
+        fromBlock = stateBlock;
+      }
     }
 
     console.log(`Resuming from block ${fromBlock}`);

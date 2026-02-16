@@ -58,6 +58,18 @@ function getStageColor(stage: TokenStage): string {
   }
 }
 
+function getExecutionVenue(stage: TokenStage): string {
+  switch (stage) {
+    case "graduated":
+      return "DEX Router";
+    case "bonding":
+    case "locked":
+      return "Bonding Router";
+    default:
+      return "Router Unknown";
+  }
+}
+
 export default function TradingWidget({ tokenAddress }: TradingWidgetProps) {
   const { isConnected, address } = useAuth();
 
@@ -316,32 +328,37 @@ export default function TradingWidget({ tokenAddress }: TradingWidgetProps) {
     mode === "buy"
       ? quote && quote.amountIn > monBalance
       : quote && quote.amountIn > tokenBalance;
+  const inputSymbol = mode === "buy" ? "MON" : tokenSymbol;
+  const outputSymbol = mode === "buy" ? tokenSymbol : "MON";
 
   return (
-    <div className="trading-widget">
-      {/* Stage Indicator */}
-      <div className="stage-indicator">
-        <span className="stage-label">Stage:</span>
-        <span className="stage-value" style={{ color: getStageColor(tokenInfo.stage) }}>
+    <div className="trading-widget nadfun-widget">
+      <div className="nadfun-header">
+        <div className="nadfun-title-wrap">
+          <span className="nadfun-brand">nad.fun</span>
+          <span className="nadfun-compatible">compatible</span>
+        </div>
+        <a
+          href={`https://nad.fun/token/${tokenAddress}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="nadfun-open-link"
+        >
+          Open
+        </a>
+      </div>
+
+      <div className="nadfun-meta-row">
+        <span className="nadfun-meta-pill" style={{ color: getStageColor(tokenInfo.stage) }}>
           {getStageLabel(tokenInfo.stage)}
         </span>
-        {tokenInfo.stage === "bonding" && (
-          <span className="bonding-progress">
-            ({tokenInfo.bondingProgress.toFixed(1)}% to graduation)
-          </span>
+        <span className="nadfun-meta-pill">{getExecutionVenue(tokenInfo.stage)}</span>
+        {tokenInfo.currentPrice > 0n && (
+          <span className="nadfun-meta-pill">{formatMon(tokenInfo.currentPrice, 8)} MON</span>
         )}
       </div>
 
-      {/* Token Price */}
-      {tokenInfo.currentPrice > 0n && (
-        <div className="token-price">
-          <span className="price-label">Price:</span>
-          <span className="price-value">{formatMon(tokenInfo.currentPrice, 8)} MON</span>
-        </div>
-      )}
-
-      {/* Mode Toggle */}
-      <div className="mode-toggle">
+      <div className="mode-toggle nadfun-mode-toggle">
         <button
           className={`mode-btn ${mode === "buy" ? "active" : ""}`}
           onClick={() => {
@@ -364,106 +381,108 @@ export default function TradingWidget({ tokenAddress }: TradingWidgetProps) {
         </button>
       </div>
 
-      {/* Amount Input */}
-      <div className="amount-input-container">
-        <label className="amount-label">
-          {mode === "buy" ? "You pay (MON)" : `You sell (${tokenSymbol})`}
-        </label>
-        <div className="amount-input-row">
-          <input
-            type="text"
-            className="amount-input"
-            placeholder="0.0"
-            value={amountIn}
-            onChange={(e) => setAmountIn(e.target.value)}
-            disabled={!tokenInfo.tradeable}
-          />
-          <button className="max-btn" onClick={setMaxAmount} disabled={!isConnected}>
-            MAX
-          </button>
+      <div className="nadfun-swap-panel">
+        <div className="nadfun-input-card">
+          <div className="nadfun-input-top">
+            <label className="amount-label">You pay</label>
+            <button className="max-btn nadfun-max-btn" onClick={setMaxAmount} disabled={!isConnected}>
+              MAX
+            </button>
+          </div>
+          <div className="nadfun-input-row">
+            <input
+              type="text"
+              className="amount-input"
+              placeholder="0.0"
+              value={amountIn}
+              onChange={(e) => setAmountIn(e.target.value)}
+              disabled={!tokenInfo.tradeable}
+            />
+            <span className="nadfun-token-pill">{inputSymbol}</span>
+          </div>
+          {isConnected && (
+            <div className="balance-display">
+              Balance:{" "}
+              {mode === "buy"
+                ? `${formatMon(monBalance, 4)} MON`
+                : `${formatToken(tokenBalance, 4)} ${tokenSymbol}`}
+            </div>
+          )}
         </div>
-        {isConnected && (
-          <div className="balance-display">
-            Balance:{" "}
-            {mode === "buy"
-              ? `${formatMon(monBalance, 4)} MON`
-              : `${formatToken(tokenBalance, 4)} ${tokenSymbol}`}
-          </div>
-        )}
-      </div>
 
-      {/* Quote Display */}
-      {quote && quote.amountOut > 0n && (
-        <div className="quote-display">
+        <div className="nadfun-swap-arrow" aria-hidden="true">↓</div>
+
+        <div className="nadfun-output-card">
           <div className="quote-row">
-            <span>You receive:</span>
+            <span>You receive</span>
             <span>
-              {mode === "buy"
-                ? `${formatToken(quote.amountOut, 4)} ${tokenSymbol}`
-                : `${formatMon(quote.amountOut, 4)} MON`}
+              {quote && quote.amountOut > 0n
+                ? `${mode === "buy" ? formatToken(quote.amountOut, 4) : formatMon(quote.amountOut, 4)} ${outputSymbol}`
+                : `0 ${outputSymbol}`}
             </span>
           </div>
-          <div className="quote-row">
-            <span>Min. received:</span>
-            <span>
-              {mode === "buy"
-                ? `${formatToken(quote.minAmountOut, 4)} ${tokenSymbol}`
-                : `${formatMon(quote.minAmountOut, 4)} MON`}
-            </span>
-          </div>
-          {quote.priceImpact > 0 && (
+          {quote && quote.amountOut > 0n && (
             <div className="quote-row">
-              <span>Price Impact:</span>
+              <span>Min. received</span>
+              <span>
+                {mode === "buy"
+                  ? `${formatToken(quote.minAmountOut, 4)} ${tokenSymbol}`
+                  : `${formatMon(quote.minAmountOut, 4)} MON`}
+              </span>
+            </div>
+          )}
+          {quote && quote.priceImpact > 0 && (
+            <div className="quote-row">
+              <span>Price Impact</span>
               <span className={quote.priceImpact > 5 ? "high-impact" : ""}>
                 {quote.priceImpact.toFixed(2)}%
               </span>
             </div>
           )}
         </div>
-      )}
+      </div>
 
       {quoteLoading && <div className="quote-loading">Getting quote...</div>}
 
-      {/* Slippage Settings */}
-      <div className="slippage-settings">
-        <label className="slippage-label">Slippage Tolerance</label>
-        <div className="slippage-options">
-          {SLIPPAGE_OPTIONS.map((opt) => (
-            <button
-              key={opt}
-              className={`slippage-btn ${slippageBps === opt * 100 ? "active" : ""}`}
-              onClick={() => handleSlippageChange(opt * 100)}
-            >
-              {opt}%
-            </button>
-          ))}
-          <input
-            type="text"
-            className="slippage-custom"
-            placeholder="Custom"
-            value={customSlippage}
-            onChange={(e) => handleCustomSlippageChange(e.target.value)}
-          />
+      <div className="nadfun-settings-grid">
+        <div className="slippage-settings">
+          <label className="slippage-label">Slippage</label>
+          <div className="slippage-options">
+            {SLIPPAGE_OPTIONS.map((opt) => (
+              <button
+                key={opt}
+                className={`slippage-btn ${slippageBps === opt * 100 ? "active" : ""}`}
+                onClick={() => handleSlippageChange(opt * 100)}
+              >
+                {opt}%
+              </button>
+            ))}
+            <input
+              type="text"
+              className="slippage-custom"
+              placeholder="Custom"
+              value={customSlippage}
+              onChange={(e) => handleCustomSlippageChange(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="deadline-settings">
+          <label className="deadline-label">Deadline</label>
+          <div className="deadline-input-row">
+            <input
+              type="number"
+              className="deadline-input"
+              value={deadlineMinutes}
+              onChange={(e) => setDeadlineMinutes(parseInt(e.target.value) || DEFAULT_DEADLINE_MINUTES)}
+              min={1}
+              max={60}
+            />
+            <span className="deadline-unit">min</span>
+          </div>
         </div>
       </div>
 
-      {/* Deadline Settings */}
-      <div className="deadline-settings">
-        <label className="deadline-label">Transaction Deadline</label>
-        <div className="deadline-input-row">
-          <input
-            type="number"
-            className="deadline-input"
-            value={deadlineMinutes}
-            onChange={(e) => setDeadlineMinutes(parseInt(e.target.value) || DEFAULT_DEADLINE_MINUTES)}
-            min={1}
-            max={60}
-          />
-          <span className="deadline-unit">minutes</span>
-        </div>
-      </div>
-
-      {/* Action Button */}
       <div className="action-container">
         {!isConnected ? (
           <button className="trade-btn disabled" disabled>
@@ -514,7 +533,6 @@ export default function TradingWidget({ tokenAddress }: TradingWidgetProps) {
         <div className="tx-error">{txError}</div>
       )}
 
-      {/* Fallback Link */}
       <div className="fallback-container">
         <a
           href={`https://nad.fun/token/${tokenAddress}`}

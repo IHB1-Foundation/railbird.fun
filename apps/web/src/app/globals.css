@@ -1561,6 +1561,153 @@ h5 {
   padding: 1.15rem;
 }
 
+.nadfun-widget {
+  border-radius: 16px;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  background: linear-gradient(160deg, rgba(13, 13, 14, 0.98), rgba(18, 17, 15, 0.96));
+}
+
+.nadfun-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.nadfun-title-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.nadfun-brand {
+  color: #fff8eb;
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.nadfun-compatible {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #f3c57a;
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  border-radius: 999px;
+  padding: 0.14rem 0.45rem;
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.nadfun-open-link {
+  color: #ffdba7;
+  font-size: 0.78rem;
+}
+
+.nadfun-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+}
+
+.nadfun-meta-pill {
+  border-radius: 999px;
+  border: 1px solid rgba(201, 161, 96, 0.35);
+  padding: 0.2rem 0.55rem;
+  font-size: 0.72rem;
+  color: #e6d1b1;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.nadfun-mode-toggle .mode-btn.active,
+.nadfun-widget .slippage-btn.active {
+  background: linear-gradient(150deg, rgba(245, 158, 11, 0.92), rgba(249, 115, 22, 0.9));
+  color: #1d1204;
+}
+
+.nadfun-mode-toggle .mode-btn:hover,
+.nadfun-widget .slippage-btn:hover,
+.nadfun-widget .max-btn:hover:not(:disabled) {
+  border-color: rgba(245, 158, 11, 0.55);
+}
+
+.nadfun-swap-panel {
+  display: grid;
+  gap: 0.55rem;
+  margin-bottom: 0.9rem;
+}
+
+.nadfun-input-card,
+.nadfun-output-card {
+  border: 1px solid rgba(184, 141, 79, 0.28);
+  border-radius: 11px;
+  padding: 0.7rem;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.nadfun-input-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.4rem;
+}
+
+.nadfun-input-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.nadfun-token-pill {
+  min-width: 68px;
+  text-align: center;
+  border: 1px solid rgba(184, 141, 79, 0.35);
+  border-radius: 9px;
+  padding: 0.45rem 0.6rem;
+  font-size: 0.8rem;
+  color: #f6e2bf;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.nadfun-max-btn {
+  padding: 0.2rem 0.6rem;
+}
+
+.nadfun-swap-arrow {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  margin: 0 auto;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(184, 141, 79, 0.38);
+  color: #f5c785;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.nadfun-settings-grid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: 0.7rem;
+}
+
+.nadfun-widget .trade-btn {
+  background: linear-gradient(150deg, #f59e0b 0%, #f97316 100%);
+  color: #1b1000;
+}
+
+.nadfun-widget .trade-btn.loading {
+  background: linear-gradient(150deg, #fde68a 0%, #f59e0b 100%);
+  color: #2d1800;
+}
+
+@media (max-width: 680px) {
+  .nadfun-settings-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .trading-widget .loading-spinner,
 .trading-widget .trading-error {
   text-align: center;

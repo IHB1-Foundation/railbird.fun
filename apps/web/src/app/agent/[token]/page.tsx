@@ -199,7 +199,7 @@ export default async function AgentPage({
 
       {/* Trading Widget */}
       <div className="section-card">
-        <h3 className="section-title-sm">Trade Token</h3>
+        <h3 className="section-title-sm">Invest in Agent (nad.fun UI)</h3>
         <TradingWidget tokenAddress={token} />
       </div>
     </section>

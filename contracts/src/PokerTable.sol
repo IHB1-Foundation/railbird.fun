@@ -238,7 +238,10 @@ contract PokerTable {
         address _vrfAdapter,
         address _chipToken
     ) {
+        require(_tableId > 0, "Table ID must be > 0");
+        require(_smallBlind > 0, "Small blind must be > 0");
         require(_bigBlind >= _smallBlind, "Big blind must be >= small blind");
+        require(_vrfAdapter != address(0), "Invalid VRF adapter");
         require(_chipToken != address(0), "Invalid chip token");
         tableId = _tableId;
         smallBlind = _smallBlind;

@@ -3,14 +3,14 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 import "../src/PokerTable.sol";
-import "../src/RailwayChip.sol";
+import "../src/RailbirdChip.sol";
 import "../src/HandEvaluator.sol";
 import "../src/mocks/MockVRFAdapter.sol";
 
 contract PokerTableTest is Test {
     PokerTable public pokerTable;
     MockVRFAdapter public mockVRF;
-    RailwayChip public chip;
+    RailbirdChip public chip;
 
     // 4 players
     address public owner1 = address(0x1);
@@ -46,12 +46,27 @@ contract PokerTableTest is Test {
 
     function setUp() public {
         mockVRF = new MockVRFAdapter();
-        chip = new RailwayChip(address(this));
+        chip = new RailbirdChip(address(this));
         pokerTable = new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(mockVRF), address(chip));
         _fundAndApprove(owner1);
         _fundAndApprove(owner2);
         _fundAndApprove(owner3);
         _fundAndApprove(owner4);
+    }
+
+    function test_Constructor_RevertIfTableIdIsZero() public {
+        vm.expectRevert("Table ID must be > 0");
+        new PokerTable(0, SMALL_BLIND, BIG_BLIND, address(mockVRF), address(chip));
+    }
+
+    function test_Constructor_RevertIfSmallBlindIsZero() public {
+        vm.expectRevert("Small blind must be > 0");
+        new PokerTable(1, 0, BIG_BLIND, address(mockVRF), address(chip));
+    }
+
+    function test_Constructor_RevertIfVrfAdapterIsZero() public {
+        vm.expectRevert("Invalid VRF adapter");
+        new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(0), address(chip));
     }
 
     // ============ Seat Registration Tests ============

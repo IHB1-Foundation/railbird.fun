@@ -4,12 +4,12 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 import "../src/ProductionVRFAdapter.sol";
 import "../src/PokerTable.sol";
-import "../src/RailwayChip.sol";
+import "../src/RailbirdChip.sol";
 
 contract ProductionVRFAdapterTest is Test {
     ProductionVRFAdapter public adapter;
     PokerTable public pokerTable;
-    RailwayChip public chip;
+    RailbirdChip public chip;
 
     address public deployerOwner = address(this);
     address public vrfOperator = address(0xBEEF);
@@ -47,7 +47,7 @@ contract ProductionVRFAdapterTest is Test {
 
     function setUp() public {
         adapter = new ProductionVRFAdapter(vrfOperator);
-        chip = new RailwayChip(address(this));
+        chip = new RailbirdChip(address(this));
         _fundOwners();
     }
 

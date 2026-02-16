@@ -188,12 +188,14 @@ describe("API Routes", () => {
         potAfter: action.pot_after,
         blockNumber: action.block_number,
         txHash: action.tx_hash,
+        endsStreet: false,
         timestamp: action.created_at?.toISOString() || new Date().toISOString(),
       };
 
       assert.strictEqual(formatted.seatIndex, 0);
       assert.strictEqual(formatted.actionType, "CALL");
       assert.strictEqual(formatted.amount, "10");
+      assert.strictEqual(formatted.endsStreet, false);
       assert.strictEqual(formatted.timestamp, "2024-01-01T00:00:00.000Z");
     });
   });

@@ -12,6 +12,16 @@ import {
 import { privateKeyToAccount } from "viem/accounts";
 import { PRODUCTION_VRF_ADAPTER_ABI } from "./productionVrfAbi.js";
 
+const POKER_TABLE_MIN_ABI = [
+  {
+    type: "function",
+    name: "vrfAdapter",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "address" }],
+  },
+] as const;
+
 export interface VrfRequest {
   table: Address;
   tableId: bigint;
@@ -99,6 +109,14 @@ export class ChainClient {
       requestedBlock: data[5],
       fulfilled: data[6],
     };
+  }
+
+  async getTableVrfAdapter(tableAddress: Address): Promise<Address> {
+    return this.publicClient.readContract({
+      address: tableAddress,
+      abi: POKER_TABLE_MIN_ABI,
+      functionName: "vrfAdapter",
+    }) as Promise<Address>;
   }
 
   async getBlockNumber(): Promise<bigint> {

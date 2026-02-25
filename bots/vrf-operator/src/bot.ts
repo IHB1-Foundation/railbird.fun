@@ -5,12 +5,14 @@ export interface VrfOperatorBotConfig {
   rpcUrl: string;
   privateKey: `0x${string}`;
   vrfAdapterAddress: `0x${string}`;
+  pokerTableAddress?: `0x${string}`;
   chainId?: number;
   pollIntervalMs?: number;
   minConfirmations?: number;
   rescanWindow?: number;
   rescanFromRequestId?: bigint;
   randomSalt?: string;
+  fixedRandomness?: bigint;
 }
 
 export interface VrfOperatorStats {
@@ -77,6 +79,16 @@ export class VrfOperatorBot {
       );
     }
 
+    if (this.config.pokerTableAddress) {
+      const tableAdapter = await this.chainClient.getTableVrfAdapter(this.config.pokerTableAddress);
+      if (tableAdapter.toLowerCase() !== this.config.vrfAdapterAddress.toLowerCase()) {
+        throw new Error(
+          `VRF adapter mismatch. table=${this.config.pokerTableAddress} uses ${tableAdapter}, ` +
+            `but bot is configured with VRF_ADAPTER_ADDRESS=${this.config.vrfAdapterAddress}`
+        );
+      }
+    }
+
     this.lastSeenRequestId =
       this.config.rescanFromRequestId ??
       (nextRequestId > rescanWindow ? nextRequestId - rescanWindow : 1n);
@@ -86,6 +98,12 @@ export class VrfOperatorBot {
     console.log(`[VRFOperator] pollIntervalMs=${pollInterval}`);
     console.log(`[VRFOperator] minConfirmations=${minConfirmations}`);
     console.log(`[VRFOperator] initialScanFrom=${this.lastSeenRequestId}`);
+    if (this.config.pokerTableAddress) {
+      console.log(`[VRFOperator] table=${this.config.pokerTableAddress}`);
+    }
+    if (this.config.fixedRandomness !== undefined) {
+      console.warn(`[VRFOperator] fixed randomness mode enabled: ${this.config.fixedRandomness}`);
+    }
 
     while (this.running) {
       try {
@@ -130,7 +148,9 @@ export class VrfOperatorBot {
         continue;
       }
 
-      const randomness = this.buildRandomness(requestId, request, latestBlock.number, latestBlock.hash);
+      const randomness =
+        this.config.fixedRandomness ??
+        this.buildRandomness(requestId, request, latestBlock.number, latestBlock.hash);
 
       try {
         const hash = await this.chainClient.fulfillRandomness(requestId, randomness);

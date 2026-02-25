@@ -18,6 +18,16 @@ function parsePositiveInt(name: string, fallback: number): number {
   return value;
 }
 
+function parseOptionalBigInt(name: string): bigint | undefined {
+  const raw = process.env[name];
+  if (!raw) return undefined;
+  try {
+    return BigInt(raw);
+  } catch {
+    throw new Error(`Invalid bigint environment variable: ${name}=${raw}`);
+  }
+}
+
 async function main(): Promise<void> {
   console.log(`VRF operator bot v${VERSION}`);
 
@@ -25,6 +35,7 @@ async function main(): Promise<void> {
     rpcUrl: requireEnv("RPC_URL"),
     privateKey: requireEnv("VRF_OPERATOR_PRIVATE_KEY") as `0x${string}`,
     vrfAdapterAddress: requireEnv("VRF_ADAPTER_ADDRESS") as `0x${string}`,
+    pokerTableAddress: process.env.POKER_TABLE_ADDRESS as `0x${string}` | undefined,
     chainId: parsePositiveInt("CHAIN_ID", 10143),
     pollIntervalMs: parsePositiveInt("VRF_OPERATOR_POLL_INTERVAL_MS", 1500),
     minConfirmations: parsePositiveInt("VRF_OPERATOR_MIN_CONFIRMATIONS", 1),
@@ -33,6 +44,7 @@ async function main(): Promise<void> {
       ? BigInt(process.env.VRF_OPERATOR_RESCAN_FROM_REQUEST_ID)
       : undefined,
     randomSalt: process.env.VRF_OPERATOR_RANDOM_SALT || "railbird-vrf-operator",
+    fixedRandomness: parseOptionalBigInt("VRF_OPERATOR_FIXED_RANDOMNESS"),
   };
 
   const bot = new VrfOperatorBot(config);

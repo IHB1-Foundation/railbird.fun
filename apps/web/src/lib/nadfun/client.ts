@@ -27,11 +27,11 @@ const CHAIN: Chain = monadTestnet;
 function getConfig() {
   return {
     lensAddress: (process.env.NEXT_PUBLIC_NADFUN_LENS_ADDRESS ||
-      "0xB056d79CA5257589692699a46623F901a3BB76f1") as Address,
+      "0xff457F28decB5c7B9fC9BB5Bc6d6c0da50BA902D") as Address,
     bondingRouterAddress: (process.env.NEXT_PUBLIC_NADFUN_BONDING_ROUTER_ADDRESS ||
-      "0x865054F0F6A288adaAc30261731361EA7E908003") as Address,
+      "0xd8ab63E839b81306e05D70F63ca07c1C5233805B") as Address,
     dexRouterAddress: (process.env.NEXT_PUBLIC_NADFUN_DEX_ROUTER_ADDRESS ||
-      "0x5D4a4f430cA3B1b2dB86B9cFE48a5316800F5fb2") as Address,
+      "0xd8ab63E839b81306e05D70F63ca07c1C5233805B") as Address,
     wmonAddress: (process.env.NEXT_PUBLIC_WMON_ADDRESS ||
       "0x5a4E0bFDeF88C9032CB4d24338C5EB3d3870BfDd") as Address,
     rpcUrl: process.env.NEXT_PUBLIC_RPC_URL || "https://testnet-rpc.monad.xyz",

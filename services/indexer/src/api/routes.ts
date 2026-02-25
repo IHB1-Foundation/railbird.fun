@@ -31,6 +31,7 @@ import type {
 } from "../db/types.js";
 
 export const router: RouterType = Router();
+const CONFIGURED_TABLE_ADDRESS = process.env.POKER_TABLE_ADDRESS?.toLowerCase();
 
 type PlayerKey = "a" | "b" | "c" | "d";
 
@@ -256,7 +257,12 @@ router.get("/token-assets/:player", (req, res) => {
 
 router.get("/tables", async (_req, res) => {
   try {
-    const tables = await getAllTables();
+    const allTables = await getAllTables();
+    const tables = CONFIGURED_TABLE_ADDRESS
+      ? allTables.filter(
+          (table) => String(table.contract_address).toLowerCase() === CONFIGURED_TABLE_ADDRESS
+        )
+      : allTables;
 
     const response = await Promise.all(
       tables.map(async (table) => {
@@ -284,6 +290,12 @@ router.get("/tables/:id", async (req, res) => {
     if (!table) {
       return res.status(404).json({ error: "Table not found" });
     }
+    if (
+      CONFIGURED_TABLE_ADDRESS &&
+      String(table.contract_address).toLowerCase() !== CONFIGURED_TABLE_ADDRESS
+    ) {
+      return res.status(404).json({ error: "Table not found" });
+    }
 
     const seats = await getSeats(tableId);
     const hand = table.current_hand_id
@@ -307,6 +319,15 @@ router.get("/tables/:id", async (req, res) => {
 router.get("/tables/:id/hands", async (req, res) => {
   try {
     const tableId = BigInt(req.params.id);
+    const table = await getTable(tableId);
+    if (
+      !table ||
+      (CONFIGURED_TABLE_ADDRESS &&
+        String(table.contract_address).toLowerCase() !== CONFIGURED_TABLE_ADDRESS)
+    ) {
+      return res.status(404).json({ error: "Table not found" });
+    }
+
     const limit = Math.min(parseInt(req.query.limit as string) || 10, 100);
 
     const hands = await getTableHands(tableId, limit);
@@ -328,6 +349,15 @@ router.get("/tables/:id/hands", async (req, res) => {
 router.get("/tables/:tableId/hands/:handId", async (req, res) => {
   try {
     const tableId = BigInt(req.params.tableId);
+    const table = await getTable(tableId);
+    if (
+      !table ||
+      (CONFIGURED_TABLE_ADDRESS &&
+        String(table.contract_address).toLowerCase() !== CONFIGURED_TABLE_ADDRESS)
+    ) {
+      return res.status(404).json({ error: "Table not found" });
+    }
+
     const handId = BigInt(req.params.handId);
 
     const hand = await getHand(tableId, handId);

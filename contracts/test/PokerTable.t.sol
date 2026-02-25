@@ -110,6 +110,34 @@ contract PokerTableTest is Test {
         assertFalse(pokerTable.allSeatsFilled());
     }
 
+    function test_RegisterSeat_AllowedDuringActiveHand_JoinsNextHand() public {
+        _registerSeat(0, owner1, operator1, BUY_IN);
+        _registerSeat(1, owner2, operator2, BUY_IN);
+
+        pokerTable.startHand();
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.BETTING_PRE));
+
+        _registerSeat(2, owner3, operator3, BUY_IN);
+        PokerTable.Seat memory midHandSeat = pokerTable.getSeat(2);
+        assertEq(midHandSeat.owner, owner3);
+        assertEq(midHandSeat.operator, operator3);
+        assertEq(midHandSeat.stack, BUY_IN);
+        assertFalse(midHandSeat.isActive, "New seat must wait for next hand");
+
+        // With two active seats in pre-flop (button=0), seat1 acts first.
+        vm.prank(operator2);
+        vm.roll(block.number + 1);
+        pokerTable.fold(1);
+
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.SETTLED));
+
+        pokerTable.startHand();
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.BETTING_PRE));
+
+        PokerTable.Seat memory nextHandSeat = pokerTable.getSeat(2);
+        assertTrue(nextHandSeat.isActive, "New seat should be active from next hand");
+    }
+
     function test_AllSeatsFilled_FalseWithPartial() public {
         assertFalse(pokerTable.allSeatsFilled());
 

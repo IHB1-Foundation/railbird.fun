@@ -266,7 +266,6 @@ contract PokerTable {
         address operator,
         uint256 buyIn
     ) external {
-        require(gameState == GameState.WAITING_FOR_SEATS, "Game already started");
         require(seatIndex < MAX_SEATS, "Invalid seat index");
         require(seats[seatIndex].owner == address(0), "Seat already taken");
         require(owner != address(0), "Owner cannot be zero");
@@ -279,6 +278,7 @@ contract PokerTable {
         seats[seatIndex] = Seat({
             owner: owner,
             operator: operator == address(0) ? owner : operator,
+            // Mid-hand registrations are queued for the next hand.
             stack: buyIn,
             isActive: false,
             currentBet: 0

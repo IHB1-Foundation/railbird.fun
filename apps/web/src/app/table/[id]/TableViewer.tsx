@@ -270,6 +270,12 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
           <div className="table-heading-meta">
             Blinds: {formatChips(table.smallBlind)}/{formatChips(table.bigBlind)} {CHIP_SYMBOL}
           </div>
+          <div
+            className="table-heading-meta table-heading-meta-mono"
+            title={table.contractAddress}
+          >
+            Contract: {table.contractAddress}
+          </div>
         </div>
         <div className="table-heading-right">
           <span className={cn("status", isActive ? "live" : "waiting")}>

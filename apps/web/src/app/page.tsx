@@ -195,6 +195,15 @@ export default async function LobbyPage() {
               <p className="label">Button</p>
               <p className="featured-live-value">Seat {featuredTable.buttonSeat}</p>
             </div>
+            <div className="table-meta-full">
+              <span className="label">Contract:</span>{" "}
+              <span
+                className="text-mono table-contract-value"
+                title={featuredTable.contractAddress}
+              >
+                {shortenAddress(featuredTable.contractAddress)}
+              </span>
+            </div>
           </div>
 
           <div className="featured-live-seats">
@@ -271,6 +280,12 @@ export default async function LobbyPage() {
                   </div>
                   <div>
                     <span className="label">Button:</span> Seat {table.buttonSeat}
+                  </div>
+                  <div className="table-meta-full">
+                    <span className="label">Contract:</span>{" "}
+                    <span className="text-mono table-contract-value" title={table.contractAddress}>
+                      {shortenAddress(table.contractAddress)}
+                    </span>
                   </div>
                   {table.currentHand && (
                     <>

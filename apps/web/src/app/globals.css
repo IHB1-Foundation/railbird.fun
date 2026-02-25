@@ -516,6 +516,20 @@ h5 {
   font-size: 0.875rem;
 }
 
+.table-meta-full {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+.table-contract-value {
+  display: inline-block;
+  max-width: 100%;
+  vertical-align: bottom;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .label {
   color: var(--muted);
   font-size: 0.8rem;
@@ -1109,6 +1123,12 @@ h5 {
   margin-top: 0.25rem;
   color: var(--muted);
   font-size: 0.875rem;
+}
+
+.table-heading-meta-mono {
+  font-family: var(--text-mono);
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
 }
 
 .table-heading-right {

@@ -46,3 +46,7 @@ data/
 # Local docs
 LOCAL.md
 DEPLOY.md
+
+# Keep markdown docs local-only (except root README)
+*.md
+!README.md

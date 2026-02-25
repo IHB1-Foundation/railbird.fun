@@ -2,9 +2,18 @@
 
 import { createPublicClient, http, type Log, decodeEventLog, type Address } from "viem";
 import { getChainConfig } from "@playerco/shared";
-import { pokerTableAbi, playerRegistryAbi, playerVaultAbi } from "./abis.js";
+import { pokerTableAbi, playerRegistryAbi, playerVaultAbi, gameStateToString } from "./abis.js";
 import * as handlers from "./handlers.js";
-import { getAllAgents, getIndexerState, updateIndexerState, upsertSeat, upsertTable } from "../db/index.js";
+import {
+  getAllAgents,
+  getIndexerState,
+  updateIndexerState,
+  upsertSeat,
+  upsertTable,
+  updateTableState,
+  insertHand,
+  updateHand,
+} from "../db/index.js";
 
 export interface ListenerConfig {
   pokerTableAddress: Address;
@@ -51,7 +60,7 @@ export class EventListener {
 
     console.log("Starting event listener...");
     console.log(`Log block range: ${this.config.logBlockRange}`);
-    await this.seedSeatsFromChain();
+    await this.seedTableStateFromChain();
     await this.loadTrackedVaultAddresses();
     console.log(`Tracking ${this.trackedVaultAddresses.size} vault address(es)`);
 
@@ -341,7 +350,7 @@ export class EventListener {
     }
   }
 
-  private async seedSeatsFromChain(): Promise<void> {
+  private async seedTableStateFromChain(): Promise<void> {
     const tableReadAbi = [
       {
         type: "function",
@@ -360,6 +369,34 @@ export class EventListener {
       {
         type: "function",
         name: "bigBlind",
+        stateMutability: "view",
+        inputs: [],
+        outputs: [{ type: "uint256" }],
+      },
+      {
+        type: "function",
+        name: "gameState",
+        stateMutability: "view",
+        inputs: [],
+        outputs: [{ type: "uint8" }],
+      },
+      {
+        type: "function",
+        name: "currentHandId",
+        stateMutability: "view",
+        inputs: [],
+        outputs: [{ type: "uint256" }],
+      },
+      {
+        type: "function",
+        name: "buttonSeat",
+        stateMutability: "view",
+        inputs: [],
+        outputs: [{ type: "uint8" }],
+      },
+      {
+        type: "function",
+        name: "actionDeadline",
         stateMutability: "view",
         inputs: [],
         outputs: [{ type: "uint256" }],
@@ -389,12 +426,43 @@ export class EventListener {
           },
         ],
       },
+      {
+        type: "function",
+        name: "getHandInfo",
+        stateMutability: "view",
+        inputs: [],
+        outputs: [
+          { name: "handId", type: "uint256" },
+          { name: "pot", type: "uint256" },
+          { name: "currentBetAmount", type: "uint256" },
+          { name: "actorSeat", type: "uint8" },
+          { name: "state", type: "uint8" },
+        ],
+      },
+      {
+        type: "function",
+        name: "getCommunityCards",
+        stateMutability: "view",
+        inputs: [],
+        outputs: [{ type: "uint8[5]" }],
+      },
     ] as const;
 
     const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
     try {
-      const [tableId, smallBlind, bigBlind, maxSeatsRaw] = await Promise.all([
+      const [
+        tableId,
+        smallBlind,
+        bigBlind,
+        gameStateRaw,
+        currentHandId,
+        buttonSeatRaw,
+        actionDeadlineRaw,
+        maxSeatsRaw,
+        handInfoRaw,
+        communityCardsRaw,
+      ] = await Promise.all([
         this.client.readContract({
           address: this.config.pokerTableAddress,
           abi: tableReadAbi,
@@ -413,7 +481,37 @@ export class EventListener {
         this.client.readContract({
           address: this.config.pokerTableAddress,
           abi: tableReadAbi,
+          functionName: "gameState",
+        }),
+        this.client.readContract({
+          address: this.config.pokerTableAddress,
+          abi: tableReadAbi,
+          functionName: "currentHandId",
+        }),
+        this.client.readContract({
+          address: this.config.pokerTableAddress,
+          abi: tableReadAbi,
+          functionName: "buttonSeat",
+        }),
+        this.client.readContract({
+          address: this.config.pokerTableAddress,
+          abi: tableReadAbi,
+          functionName: "actionDeadline",
+        }),
+        this.client.readContract({
+          address: this.config.pokerTableAddress,
+          abi: tableReadAbi,
           functionName: "MAX_SEATS",
+        }),
+        this.client.readContract({
+          address: this.config.pokerTableAddress,
+          abi: tableReadAbi,
+          functionName: "getHandInfo",
+        }),
+        this.client.readContract({
+          address: this.config.pokerTableAddress,
+          abi: tableReadAbi,
+          functionName: "getCommunityCards",
         }),
       ]);
 
@@ -430,6 +528,49 @@ export class EventListener {
         this.tableContext.smallBlind,
         this.tableContext.bigBlind
       );
+
+      const gameState = Number(gameStateRaw);
+      const currentHandIdValue = currentHandId as bigint;
+      const buttonSeat = Number(buttonSeatRaw);
+      const actionDeadline = actionDeadlineRaw as bigint;
+      const gameStateString = gameStateToString(gameState);
+      const actionDeadlineDate = actionDeadline > 0n ? new Date(Number(actionDeadline) * 1000) : null;
+
+      await updateTableState(
+        this.tableContext.tableId,
+        gameStateString,
+        currentHandIdValue,
+        buttonSeat,
+        actionDeadlineDate
+      );
+
+      const handInfo = handInfoRaw as readonly [bigint, bigint, bigint, number, number];
+      const handId = handInfo[0];
+      const pot = handInfo[1];
+      const currentBet = handInfo[2];
+      const actorSeat = Number(handInfo[3]);
+      const handStateString = gameStateToString(Number(handInfo[4]));
+      const communityCards = (communityCardsRaw as readonly number[]).filter((card) => card !== 255);
+
+      if (handId > 0n || currentHandIdValue > 0n) {
+        const effectiveHandId = currentHandIdValue > 0n ? currentHandIdValue : handId;
+        await insertHand(
+          this.tableContext.tableId,
+          effectiveHandId,
+          pot,
+          buttonSeat,
+          this.tableContext.smallBlind,
+          this.tableContext.bigBlind,
+          handStateString
+        );
+        await updateHand(this.tableContext.tableId, effectiveHandId, {
+          pot,
+          currentBet,
+          actorSeat,
+          gameState: handStateString,
+          communityCards,
+        });
+      }
 
       const maxSeats = Number(maxSeatsRaw);
       const seatResults = await Promise.all(
@@ -452,7 +593,6 @@ export class EventListener {
           isActive: boolean;
           currentBet: bigint;
         };
-        if (seat.owner.toLowerCase() === ZERO_ADDRESS) continue;
         await upsertSeat(
           this.tableContext.tableId,
           seatIndex,
@@ -462,14 +602,14 @@ export class EventListener {
           seat.isActive,
           seat.currentBet
         );
-        occupiedSeats += 1;
+        if (seat.owner.toLowerCase() !== ZERO_ADDRESS) occupiedSeats += 1;
       }
 
       console.log(
-        `Seeded seat snapshot from chain: ${occupiedSeats}/${maxSeats} occupied seats for table ${this.tableContext.tableId}`
+        `Seeded table snapshot from chain: table=${this.tableContext.tableId} state=${gameStateString} hand=${currentHandIdValue} seats=${occupiedSeats}/${maxSeats}`
       );
     } catch (error) {
-      console.error("Failed to seed seat snapshot from chain (continuing with log replay):", error);
+      console.error("Failed to seed table snapshot from chain (continuing with log replay):", error);
     }
   }
 }

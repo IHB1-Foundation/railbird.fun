@@ -2607,6 +2607,124 @@ contract PokerTableTest is Test {
         assertEq(seat1After + seat2After, seat1StackBefore + seat2StackBefore + 400);
     }
 
+    // ============ T-1103: Unmatched Excess Bet Return Tests ============
+
+    function test_UnmatchedBet_ReturnToRaiser() public {
+        // seat1 (SB) has 300, seat2 (BB) has 1000.
+        // seat1 raises all-in to 300 (total commitment = 300).
+        // seat2 calls... but seat2 wants to call 300. seat2 totalHandBet = 300.
+        // Both commit 300. Side pot: 600, eligible=[seat1,seat2]. No unmatched.
+        // For real unmatched: seat2 raises all-in to 1000, seat1 calls all-in 300.
+        // seat2 totalHandBet=1000, seat1 totalHandBet=300.
+        // Pot0 (level 300): 300*2=600, eligible=[seat1,seat2]
+        // Pot1 (level 1000): seat2 contributed 700 more, seat1 contributed 0.
+        //   → potAmount=700, eligible=[seat2] (only seat2 has totalHandBet>=1000)
+        //   → seat2 wins this back (unmatched)
+
+        _registerSeat(1, owner2, operator2, BUY_IN);
+        _registerSeat(2, owner3, operator3, BUY_IN);
+        _setSeatStack(1, 300); // seat1 (SB) short stack
+
+        pokerTable.startHand();
+        // seat1 SB posts 10, stack=290. seat2 BB posts 20, stack=980.
+        // seat1 acts first (2-player, heads-up). seat1 calls all-in (goes all-in via raise)
+        (,,, uint8 actor,) = pokerTable.getHandInfo();
+        assertEq(actor, 1);
+
+        // seat1 calls all-in (stack=290, toCall=10 from SB→BB). Actually toCall=20-10=10.
+        // Let's have seat2 raise big first. Actually with 2 players, seat1 acts first preflop.
+        // seat2 (BB) has 1000. seat1 raises all-in to 300. seat2 calls 300.
+        // Simpler: have seat1 all-in call → seat2 has leftover NOT in main pot.
+        // Actually: seat1 goes all-in to 300, seat2 calls 300 — no unmatched.
+
+        // Better setup for unmatched: seat1 calls, seat2 raises to 1000 (all-in).
+        // But seat2 only has BUY_IN=1000 and totalHandBet after BB=20 is 20.
+        // seat2 raises to 1000 total (all-in), seat1 calls all-in (stack=290).
+        // seat1.totalHandBet = 300, seat2.totalHandBet = 1000.
+        // Side pots:
+        //   Pot0 (level 300): 300*2 = 600, eligible=[seat1,seat2]
+        //   Pot1 (level 1000): (1000-300)*1 = 700, eligible=[seat2] → returned to seat2
+
+        // Preflop: seat1 acts (is actor), seat1 calls (just 10 more to match BB=20)
+        vm.prank(operator2);
+        vm.roll(block.number + 1);
+        pokerTable.call(1); // seat1 calls BB=20 (toCall=10, stack goes from 290 to 280)
+
+        // seat2 raises all-in to 1000
+        vm.prank(operator3);
+        vm.roll(block.number + 1);
+        pokerTable.raise(2, 1000); // seat2 all-in
+
+        // seat1 calls all-in (stack=280, toCall=1000-20=980, actualCall=280)
+        vm.prank(operator2);
+        vm.roll(block.number + 2);
+        pokerTable.call(1); // seat1 all-in call
+
+        assertTrue(pokerTable.getSeat(1).isAllIn, "Seat1 all-in");
+
+        // VRFs to showdown
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS + 1);
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS + 2);
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.SHOWDOWN));
+
+        // Verify side pots
+        assertEq(pokerTable.getSidePotCount(), 2, "Should have 2 side pots");
+        (uint256 pot0,) = pokerTable.getSidePot(0);
+        (uint256 pot1, bool[9] memory eligible1) = pokerTable.getSidePot(1);
+
+        // seat1 committed 300 total, seat2 committed 1000 total
+        assertEq(pot0, 600, "Main pot = 300*2");
+        assertEq(pot1, 700, "Side pot (returned to seat2) = 700");
+        assertTrue(eligible1[2], "Only seat2 eligible for pot1");
+        assertFalse(eligible1[1], "Seat1 NOT eligible for pot1");
+
+        // Settle with hole cards
+        uint256 handId = pokerTable.currentHandId();
+        uint8[5] memory comm = pokerTable.getCommunityCards();
+        uint8[4] memory freeCards;
+        uint8 fi = 0;
+        for (uint8 c = 0; c < 52 && fi < 4; c++) {
+            bool inC = false;
+            for (uint8 j = 0; j < 5; j++) if (comm[j] == c) { inC = true; break; }
+            if (!inC) freeCards[fi++] = c;
+        }
+        bytes32 s1 = bytes32("s1"); bytes32 s2 = bytes32("s2");
+        pokerTable.submitHoleCommit(handId, 1, keccak256(abi.encodePacked(handId, uint8(1), freeCards[0], freeCards[1], s1)));
+        pokerTable.submitHoleCommit(handId, 2, keccak256(abi.encodePacked(handId, uint8(2), freeCards[2], freeCards[3], s2)));
+        pokerTable.revealHoleCards(handId, 1, freeCards[0], freeCards[1], s1);
+        pokerTable.revealHoleCards(handId, 2, freeCards[2], freeCards[3], s2);
+
+        uint256 s2StackBefore = pokerTable.getSeat(2).stack;
+        pokerTable.settleShowdown();
+
+        uint256 s1After = pokerTable.getSeat(1).stack;
+        uint256 s2After = pokerTable.getSeat(2).stack;
+
+        // seat2 ALWAYS gets 700 back (unmatched excess)
+        // Plus either the main pot (if seat2 wins) or not
+        uint8[5] memory commArr; for (uint8 i=0;i<5;i++) commArr[i]=comm[i];
+        uint256 sc1 = HandEvaluator.evaluate(commArr, freeCards[0], freeCards[1]);
+        uint256 sc2 = HandEvaluator.evaluate(commArr, freeCards[2], freeCards[3]);
+
+        if (sc1 > sc2) {
+            // seat1 wins main pot (600), seat2 gets back unmatched (700)
+            assertEq(s1After, 600, "seat1 wins main pot");
+            assertEq(s2After - s2StackBefore, 700, "seat2 gets back unmatched");
+        } else if (sc2 > sc1) {
+            // seat2 wins main pot (600) + gets back unmatched (700) = 1300
+            assertEq(s2After - s2StackBefore, 600 + 700, "seat2 wins all pots");
+        } else {
+            // Tie: both get 300 from main pot; seat2 gets 700 unmatched back
+            assertEq(s1After, 300, "seat1 gets 300 on tie");
+            assertEq(s2After - s2StackBefore, 300 + 700, "seat2 gets 300+700 on tie");
+        }
+
+        // Total chips = initial pot (1000 + 300 = 1300 total committed)
+        // After settle: seat1 + seat2 stacks = 1300
+        assertEq(s1After + s2After, 1300, "Total chips conserved");
+    }
+
     function test_AutoSkip_OneNonAllIn_SkipsPostFlopBetting() public {
         // 2 seats: seat1 all-in preflop, seat2 calls normally
         // seat1 (SB stack=5, all-in), seat2 (BB, normal)

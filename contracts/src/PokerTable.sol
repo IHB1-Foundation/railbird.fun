@@ -413,14 +413,18 @@ contract PokerTable {
         vrfRequestTimestamp = 0;
         showdownStartTimestamp = 0;
 
-        // Post blinds
-        seats[sbSeat].stack -= smallBlind;
-        seats[sbSeat].currentBet = smallBlind;
+        // Post blinds (all-in if stack < blind amount)
+        uint256 sbPost = smallBlind < seats[sbSeat].stack ? smallBlind : seats[sbSeat].stack;
+        seats[sbSeat].stack -= sbPost;
+        seats[sbSeat].currentBet = sbPost;
+        if (seats[sbSeat].stack == 0) seats[sbSeat].isAllIn = true;
 
-        seats[bbSeat].stack -= bigBlind;
-        seats[bbSeat].currentBet = bigBlind;
+        uint256 bbPost = bigBlind < seats[bbSeat].stack ? bigBlind : seats[bbSeat].stack;
+        seats[bbSeat].stack -= bbPost;
+        seats[bbSeat].currentBet = bbPost;
+        if (seats[bbSeat].stack == 0) seats[bbSeat].isAllIn = true;
 
-        uint256 initialPot = smallBlind + bigBlind;
+        uint256 initialPot = sbPost + bbPost;
 
         // Pre-flop: first active seat after BB acts first.
         uint8 firstActor = _nextActiveSeat(bbSeat);
@@ -1238,7 +1242,7 @@ contract PokerTable {
     }
 
     function _isSeatPlayable(uint8 seatIndex) internal view returns (bool) {
-        return _isSeatOccupied(seatIndex) && seats[seatIndex].stack >= bigBlind;
+        return _isSeatOccupied(seatIndex) && seats[seatIndex].stack > 0;
     }
 
     function _countPlayableSeats() internal view returns (uint8 count) {

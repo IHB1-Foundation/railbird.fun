@@ -2158,4 +2158,53 @@ contract PokerTableTest is Test {
 
         assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.SHOWDOWN));
     }
+
+    // ============ T-1002: All-in Blind Posting Tests ============
+    // seats array base slot = 6; each Seat = 6 slots; seats[i].stack = slot (8 + i*6)
+
+    function _setSeatStack(uint8 seatIndex, uint256 newStack) internal {
+        uint256 stackSlot = 8 + uint256(seatIndex) * 6;
+        vm.store(address(pokerTable), bytes32(stackSlot), bytes32(newStack));
+    }
+
+    function test_AllInBlind_SBStackLessThanSmallBlind() public {
+        // button=0 → SB=seat1, BB=seat2
+        // Register normally, then reduce SB stack to 5 (< smallBlind=10)
+        _registerSeat(1, owner2, operator2, BUY_IN);
+        _registerSeat(2, owner3, operator3, BUY_IN);
+        _setSeatStack(1, 5);
+
+        pokerTable.startHand();
+
+        PokerTable.Seat memory sbSeat = pokerTable.getSeat(1);
+        assertEq(sbSeat.currentBet, 5, "SB should post all 5 as blind");
+        assertEq(sbSeat.stack, 0, "SB stack should be 0");
+        assertTrue(sbSeat.isAllIn, "SB should be all-in");
+    }
+
+    function test_AllInBlind_BBStackLessThanBigBlind() public {
+        // button=0 → SB=seat1, BB=seat2
+        // Reduce BB stack to 15 (< bigBlind=20)
+        _registerSeat(1, owner2, operator2, BUY_IN);
+        _registerSeat(2, owner3, operator3, BUY_IN);
+        _setSeatStack(2, 15);
+
+        pokerTable.startHand();
+
+        PokerTable.Seat memory bbSeat = pokerTable.getSeat(2);
+        assertEq(bbSeat.currentBet, 15, "BB should post all 15 as blind");
+        assertEq(bbSeat.stack, 0, "BB stack should be 0");
+        assertTrue(bbSeat.isAllIn, "BB should be all-in");
+    }
+
+    function test_AllInBlind_SeatWithStackOneIsPlayable() public {
+        // stack=1 seat should participate (stack > 0)
+        _registerSeat(1, owner2, operator2, BUY_IN);
+        _registerSeat(2, owner3, operator3, BUY_IN);
+        _setSeatStack(1, 1);
+
+        // Should not revert — seat with stack=1 is playable
+        pokerTable.startHand();
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.BETTING_PRE));
+    }
 }

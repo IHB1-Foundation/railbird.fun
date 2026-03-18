@@ -30,7 +30,7 @@ contract DeployCoreTestnet is Script {
 
         PokerTable pokerTable = new PokerTable(tableId, smallBlind, bigBlind, vrfAdapter);
         PlayerRegistry playerRegistry = new PlayerRegistry();
-        PlayerVault playerVault = new PlayerVault(address(0), msg.sender);
+        PlayerVault playerVault = new PlayerVault(msg.sender);
 
         playerVault.authorizeTable(address(pokerTable));
         playerVault.initialize();

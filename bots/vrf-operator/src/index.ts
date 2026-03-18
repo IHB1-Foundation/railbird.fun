@@ -31,12 +31,23 @@ function parseOptionalBigInt(name: string): bigint | undefined {
 async function main(): Promise<void> {
   console.log(`VRF operator bot v${VERSION}`);
 
+  // Support POKER_TABLE_ADDRESSES (comma-separated, preferred) or POKER_TABLE_ADDRESS (single)
+  // The VRF operator processes all requests on the adapter regardless of source table.
+  // Table addresses are used only for startup adapter-address validation.
+  const tableAddressesRaw = process.env.POKER_TABLE_ADDRESSES || process.env.POKER_TABLE_ADDRESS;
+  const pokerTableAddresses = tableAddressesRaw
+    ? (tableAddressesRaw
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean) as `0x${string}`[])
+    : [];
+
   const config = {
     rpcUrl: requireEnv("RPC_URL"),
     privateKey: requireEnv("VRF_OPERATOR_PRIVATE_KEY") as `0x${string}`,
     vrfAdapterAddress: requireEnv("VRF_ADAPTER_ADDRESS") as `0x${string}`,
-    pokerTableAddress: process.env.POKER_TABLE_ADDRESS as `0x${string}` | undefined,
-    chainId: parsePositiveInt("CHAIN_ID", 10143),
+    pokerTableAddresses,
+    chainId: parsePositiveInt("CHAIN_ID", 1001),
     pollIntervalMs: parsePositiveInt("VRF_OPERATOR_POLL_INTERVAL_MS", 1500),
     minConfirmations: parsePositiveInt("VRF_OPERATOR_MIN_CONFIRMATIONS", 1),
     rescanWindow: parsePositiveInt("VRF_OPERATOR_RESCAN_WINDOW", 256),

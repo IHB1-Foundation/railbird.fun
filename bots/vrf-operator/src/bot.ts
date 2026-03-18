@@ -6,6 +6,7 @@ export interface VrfOperatorBotConfig {
   privateKey: `0x${string}`;
   vrfAdapterAddress: `0x${string}`;
   pokerTableAddress?: `0x${string}`;
+  pokerTableAddresses?: `0x${string}`[];
   chainId?: number;
   pollIntervalMs?: number;
   minConfirmations?: number;
@@ -79,14 +80,22 @@ export class VrfOperatorBot {
       );
     }
 
-    if (this.config.pokerTableAddress) {
-      const tableAdapter = await this.chainClient.getTableVrfAdapter(this.config.pokerTableAddress);
+    // Validate all configured table addresses use this VRF adapter
+    const tablesToValidate = this.config.pokerTableAddresses?.length
+      ? this.config.pokerTableAddresses
+      : this.config.pokerTableAddress
+        ? [this.config.pokerTableAddress]
+        : [];
+
+    for (const tableAddress of tablesToValidate) {
+      const tableAdapter = await this.chainClient.getTableVrfAdapter(tableAddress);
       if (tableAdapter.toLowerCase() !== this.config.vrfAdapterAddress.toLowerCase()) {
         throw new Error(
-          `VRF adapter mismatch. table=${this.config.pokerTableAddress} uses ${tableAdapter}, ` +
+          `VRF adapter mismatch. table=${tableAddress} uses ${tableAdapter}, ` +
             `but bot is configured with VRF_ADAPTER_ADDRESS=${this.config.vrfAdapterAddress}`
         );
       }
+      console.log(`[VRFOperator] verified table=${tableAddress} uses adapter=${tableAdapter}`);
     }
 
     this.lastSeenRequestId =
@@ -98,8 +107,8 @@ export class VrfOperatorBot {
     console.log(`[VRFOperator] pollIntervalMs=${pollInterval}`);
     console.log(`[VRFOperator] minConfirmations=${minConfirmations}`);
     console.log(`[VRFOperator] initialScanFrom=${this.lastSeenRequestId}`);
-    if (this.config.pokerTableAddress) {
-      console.log(`[VRFOperator] table=${this.config.pokerTableAddress}`);
+    if (tablesToValidate.length > 0) {
+      console.log(`[VRFOperator] tables=${tablesToValidate.join(", ")}`);
     }
     if (this.config.fixedRandomness !== undefined) {
       console.warn(`[VRFOperator] fixed randomness mode enabled: ${this.config.fixedRandomness}`);

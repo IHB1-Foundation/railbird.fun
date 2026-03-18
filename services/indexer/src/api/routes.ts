@@ -399,9 +399,9 @@ router.get("/agents", async (_req, res) => {
   }
 });
 
-router.get("/agents/:token", async (req, res) => {
+router.get("/agents/:address", async (req, res) => {
   try {
-    const tokenAddress = req.params.token.toLowerCase();
+    const tokenAddress = req.params.address.toLowerCase();
     const agent = await getAgent(tokenAddress);
 
     if (!agent) {
@@ -419,9 +419,9 @@ router.get("/agents/:token", async (req, res) => {
   }
 });
 
-router.get("/agents/:token/snapshots", async (req, res) => {
+router.get("/agents/:address/snapshots", async (req, res) => {
   try {
-    const tokenAddress = req.params.token.toLowerCase();
+    const tokenAddress = req.params.address.toLowerCase();
     const limit = Math.min(parseInt(req.query.limit as string) || 100, 1000);
 
     const agent = await getAgent(tokenAddress);

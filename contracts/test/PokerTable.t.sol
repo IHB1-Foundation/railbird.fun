@@ -2359,4 +2359,100 @@ contract PokerTableTest is Test {
             "Should advance to VRF flop after seat2 checks"
         );
     }
+
+    // ============ T-1006: Auto-skip Betting When All Players All-In ============
+
+    function test_AutoSkip_AllPlayersAllIn_SkipsToShowdown() public {
+        // 2 seats: both all-in → preflop completes → VRF×3 → SHOWDOWN without any betting actions
+        _registerSeat(1, owner2, operator2, BUY_IN);
+        _registerSeat(2, owner3, operator3, BUY_IN);
+        // Both go all-in: seat1 (SB, stack=5), seat2 (BB, stack=15)
+        _setSeatStack(1, 5);
+        _setSeatStack(2, 15);
+
+        pokerTable.startHand();
+
+        // Both are all-in from blind posting
+        assertTrue(pokerTable.getSeat(1).isAllIn, "Seat1 all-in");
+        assertTrue(pokerTable.getSeat(2).isAllIn, "Seat2 all-in");
+
+        // Pre-flop: no actors → _isBettingRoundComplete()=true → VRF_FLOP
+        assertEq(
+            uint256(pokerTable.gameState()),
+            uint256(PokerTable.GameState.WAITING_VRF_FLOP),
+            "Should auto-advance to VRF flop"
+        );
+
+        // VRF flop → cards dealt → ≤1 actionable → auto WAITING_VRF_TURN
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
+        assertEq(
+            uint256(pokerTable.gameState()),
+            uint256(PokerTable.GameState.WAITING_VRF_TURN),
+            "Should auto-advance to VRF turn"
+        );
+
+        // VRF turn → WAITING_VRF_RIVER
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS + 1);
+        assertEq(
+            uint256(pokerTable.gameState()),
+            uint256(PokerTable.GameState.WAITING_VRF_RIVER),
+            "Should auto-advance to VRF river"
+        );
+
+        // VRF river → SHOWDOWN
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS + 2);
+        assertEq(
+            uint256(pokerTable.gameState()),
+            uint256(PokerTable.GameState.SHOWDOWN),
+            "Should reach showdown after 3 VRFs"
+        );
+
+        // Verify all 5 community cards dealt
+        uint8[5] memory cards = pokerTable.getCommunityCards();
+        for (uint8 i = 0; i < 5; i++) {
+            assertNotEq(cards[i], 255, "Community card should be dealt");
+        }
+    }
+
+    function test_AutoSkip_OneNonAllIn_SkipsPostFlopBetting() public {
+        // 2 seats: seat1 all-in preflop, seat2 calls normally
+        // seat1 (SB stack=5, all-in), seat2 (BB, normal)
+        _registerSeat(1, owner2, operator2, BUY_IN);
+        _registerSeat(2, owner3, operator3, BUY_IN);
+        _setSeatStack(1, 5);
+
+        pokerTable.startHand();
+        // seat1 all-in, seat2 is the only actor (1 non-all-in player)
+
+        // seat2 checks preflop
+        vm.prank(operator3);
+        vm.roll(block.number + 1);
+        pokerTable.check(2);
+
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.WAITING_VRF_FLOP));
+
+        // VRF flop → only 1 non-all-in player (seat2) → auto-skip flop betting → VRF_TURN
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
+        assertEq(
+            uint256(pokerTable.gameState()),
+            uint256(PokerTable.GameState.WAITING_VRF_TURN),
+            "Flop betting auto-skipped"
+        );
+
+        // VRF turn → auto-skip → VRF_RIVER
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS + 1);
+        assertEq(
+            uint256(pokerTable.gameState()),
+            uint256(PokerTable.GameState.WAITING_VRF_RIVER),
+            "Turn betting auto-skipped"
+        );
+
+        // VRF river → auto-skip → SHOWDOWN
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS + 2);
+        assertEq(
+            uint256(pokerTable.gameState()),
+            uint256(PokerTable.GameState.SHOWDOWN),
+            "River betting auto-skipped to showdown"
+        );
+    }
 }

@@ -450,6 +450,11 @@ contract PokerTable {
         emit SeatUpdated(sbSeat, seats[sbSeat].owner, seats[sbSeat].operator, seats[sbSeat].stack);
         emit SeatUpdated(bbSeat, seats[bbSeat].owner, seats[bbSeat].operator, seats[bbSeat].stack);
         emit PotUpdated(currentHandId, initialPot);
+
+        // If all players are all-in from blind posting, auto-skip pre-flop betting
+        if (_countNonAllInActivePlayers() == 0) {
+            _completeBettingRound();
+        }
     }
 
     // ============ Actions ============
@@ -742,6 +747,15 @@ contract PokerTable {
         }
     }
 
+    /**
+     * @notice Count active players who can still act (not all-in).
+     */
+    function _countNonAllInActivePlayers() internal view returns (uint8 count) {
+        for (uint8 i = 0; i < MAX_SEATS; i++) {
+            if (seats[i].isActive && !seats[i].isAllIn) count++;
+        }
+    }
+
     function _completeBettingRound() internal {
         GameState currentState = gameState;
         GameState nextState;
@@ -829,8 +843,8 @@ contract PokerTable {
         pendingVRFRequestId = 0;
         showdownStartTimestamp = 0;
 
-        // If all active players are all-in, skip this betting round immediately
-        if (firstActor == MAX_SEATS) {
+        // If ≤1 non-all-in active players remain, skip betting (community cards still dealt)
+        if (_countNonAllInActivePlayers() <= 1) {
             _completeBettingRound();
         }
     }

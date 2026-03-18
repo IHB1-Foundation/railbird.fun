@@ -1,7 +1,7 @@
 // KeeperBot - Ensures liveness of poker table by handling timeouts,
 // starting hands, settling showdowns, and triggering rebalancing
 
-import { ChainClient, GameState, type TableState, type RebalanceStatus } from "./chain/client.js";
+import { ChainClient, GameState, type TableState } from "./chain/client.js";
 
 const ZERO_BYTES32 = "0x0000000000000000000000000000000000000000000000000000000000000000";
 
@@ -9,22 +9,16 @@ export interface KeeperBotConfig {
   rpcUrl: string;
   privateKey: `0x${string}`;
   pokerTableAddress: `0x${string}`;
-  playerVaultAddress?: `0x${string}`;
   ownerviewUrl?: string;
   dealerApiKey?: string;
   chainId?: number;
   pollIntervalMs?: number;
-  // Rebalancing config (optional)
-  enableRebalancing?: boolean;
-  rebalanceBuyAmountMon?: bigint;
-  rebalanceSellAmountTokens?: bigint;
 }
 
 export interface KeeperStats {
   timeoutsForced: number;
   handsStarted: number;
   showdownsSettled: number;
-  rebalancesTriggered: number;
   vrfReRequests: number;
   errors: number;
   lastAction: string;
@@ -39,7 +33,6 @@ export class KeeperBot {
     timeoutsForced: 0,
     handsStarted: 0,
     showdownsSettled: 0,
-    rebalancesTriggered: 0,
     vrfReRequests: 0,
     errors: 0,
     lastAction: "none",
@@ -59,7 +52,6 @@ export class KeeperBot {
       rpcUrl: config.rpcUrl,
       privateKey: config.privateKey,
       pokerTableAddress: config.pokerTableAddress,
-      playerVaultAddress: config.playerVaultAddress,
       chainId: config.chainId,
     });
   }
@@ -82,9 +74,6 @@ export class KeeperBot {
 
     console.log(`[KeeperBot] Starting keeper for address: ${this.address}`);
     console.log(`[KeeperBot] Table: ${this.config.pokerTableAddress}`);
-    if (this.config.playerVaultAddress) {
-      console.log(`[KeeperBot] Vault: ${this.config.playerVaultAddress}`);
-    }
     console.log(`[KeeperBot] Poll interval: ${pollInterval}ms`);
     console.log(`[KeeperBot] Dealer integration: ${this.hasDealerIntegration() ? "enabled" : "disabled"}`);
 
@@ -134,7 +123,6 @@ export class KeeperBot {
     await this.checkAndReRequestVRF(state, currentTimestamp);
     await this.checkAndStartHand(state);
     await this.checkAndSettleShowdown(state);
-    await this.checkAndRebalance();
   }
 
   /**
@@ -268,8 +256,11 @@ export class KeeperBot {
       console.log(`[KeeperBot] Settled showdown (winner determined by card evaluation), tx: ${hash}`);
     } catch (error) {
       const errorMsg = String(error);
-      // "No revealed hole cards" means reveals haven't been submitted yet; retry later
-      if (errorMsg.includes("No revealed hole cards")) {
+      // Reveal window still open or no reveals yet: retry later.
+      if (
+        errorMsg.includes("No revealed hole cards") ||
+        errorMsg.includes("Showdown reveal window open")
+      ) {
         console.log("[KeeperBot] Waiting for hole card reveals before settlement...");
       } else {
         console.error("[KeeperBot] Failed to settle showdown:", error);
@@ -431,58 +422,6 @@ export class KeeperBot {
       salt: `0x${string}`;
     };
     return payload;
-  }
-
-  /**
-   * Check if rebalancing is eligible and trigger it
-   */
-  private async checkAndRebalance(): Promise<void> {
-    if (!this.config.enableRebalancing || !this.config.playerVaultAddress) {
-      return;
-    }
-
-    const status = await this.chainClient.getRebalanceStatus();
-    if (!status || !status.canRebalance) {
-      return;
-    }
-
-    console.log(`[KeeperBot] Rebalance eligible for hand ${status.currentHandId}`);
-
-    // Get vault stats to decide buy or sell
-    const vaultStats = await this.chainClient.getVaultStats();
-    if (!vaultStats) return;
-
-    // Simple rebalancing logic:
-    // If external assets > treasury shares value, buy tokens
-    // If treasury shares > some threshold, sell tokens
-    // For MVP, we'll just do a small buy if enabled
-
-    const buyAmount = this.config.rebalanceBuyAmountMon || 0n;
-    const sellAmount = this.config.rebalanceSellAmountTokens || 0n;
-
-    if (buyAmount > 0n) {
-      try {
-        // Set minTokenOut to 0 for MVP (no slippage protection)
-        // In production, would calculate based on NAV
-        const hash = await this.chainClient.rebalanceBuy(buyAmount, 0n);
-        this.stats.rebalancesTriggered++;
-        this.recordAction("rebalanceBuy");
-        console.log(`[KeeperBot] Executed rebalance buy: ${buyAmount}, tx: ${hash}`);
-      } catch (error) {
-        console.error("[KeeperBot] Failed to rebalance buy:", error);
-        this.stats.errors++;
-      }
-    } else if (sellAmount > 0n) {
-      try {
-        const hash = await this.chainClient.rebalanceSell(sellAmount, 0n);
-        this.stats.rebalancesTriggered++;
-        this.recordAction("rebalanceSell");
-        console.log(`[KeeperBot] Executed rebalance sell: ${sellAmount}, tx: ${hash}`);
-      } catch (error) {
-        console.error("[KeeperBot] Failed to rebalance sell:", error);
-        this.stats.errors++;
-      }
-    }
   }
 
   private recordAction(action: string): void {

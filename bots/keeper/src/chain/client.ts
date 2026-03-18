@@ -13,7 +13,6 @@ import {
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { POKER_TABLE_ABI } from "./pokerTableAbi.js";
-import { PLAYER_VAULT_ABI } from "./playerVaultAbi.js";
 
 // Game state enum matching contract
 export enum GameState {
@@ -48,19 +47,10 @@ export interface TableState {
   canStartHand: boolean;
 }
 
-export interface RebalanceStatus {
-  canRebalance: boolean;
-  currentHandId: bigint;
-  lastRebalancedHandId: bigint;
-  rebalanceEligibleBlock: bigint;
-  blocksRemaining: bigint;
-}
-
 export interface ChainClientConfig {
   rpcUrl: string;
   privateKey: `0x${string}`;
   pokerTableAddress: Address;
-  playerVaultAddress?: Address;
   chainId?: number;
 }
 
@@ -69,15 +59,14 @@ export class ChainClient {
   private walletClient: WalletClient;
   private account: Account;
   private pokerTableAddress: Address;
-  private playerVaultAddress: Address | null;
   private chain: Chain;
   private tableIdCache: bigint | null = null;
 
   constructor(config: ChainClientConfig) {
     this.chain = {
       id: config.chainId || 31337,
-      name: "Local",
-      nativeCurrency: { name: "MON", symbol: "MON", decimals: 18 },
+      name: "KAIA",
+      nativeCurrency: { name: "KAIA", symbol: "KAIA", decimals: 18 },
       rpcUrls: {
         default: { http: [config.rpcUrl] },
       },
@@ -85,7 +74,6 @@ export class ChainClient {
 
     this.account = privateKeyToAccount(config.privateKey);
     this.pokerTableAddress = config.pokerTableAddress;
-    this.playerVaultAddress = config.playerVaultAddress || null;
 
     this.publicClient = createPublicClient({
       chain: this.chain,
@@ -283,88 +271,6 @@ export class ChainClient {
       abi: POKER_TABLE_ABI,
       functionName: "revealHoleCards",
       args: [handId, seatIndex, card1, card2, salt],
-    });
-    await this.publicClient.waitForTransactionReceipt({ hash });
-    return hash;
-  }
-
-  // Vault operations
-  async getRebalanceStatus(): Promise<RebalanceStatus | null> {
-    if (!this.playerVaultAddress) return null;
-
-    const result = await this.publicClient.readContract({
-      address: this.playerVaultAddress,
-      abi: PLAYER_VAULT_ABI,
-      functionName: "getRebalanceStatus",
-    });
-
-    const data = result as readonly [boolean, bigint, bigint, bigint, bigint];
-    return {
-      canRebalance: data[0],
-      currentHandId: data[1],
-      lastRebalancedHandId: data[2],
-      rebalanceEligibleBlock: data[3],
-      blocksRemaining: data[4],
-    };
-  }
-
-  async getVaultStats(): Promise<{ navPerShare: bigint; externalAssets: bigint; treasuryShares: bigint } | null> {
-    if (!this.playerVaultAddress) return null;
-
-    const [navPerShare, externalAssets, treasuryShares] = await Promise.all([
-      this.publicClient.readContract({
-        address: this.playerVaultAddress,
-        abi: PLAYER_VAULT_ABI,
-        functionName: "getNavPerShare",
-      }),
-      this.publicClient.readContract({
-        address: this.playerVaultAddress,
-        abi: PLAYER_VAULT_ABI,
-        functionName: "getExternalAssets",
-      }),
-      this.publicClient.readContract({
-        address: this.playerVaultAddress,
-        abi: PLAYER_VAULT_ABI,
-        functionName: "getTreasuryShares",
-      }),
-    ]);
-
-    return {
-      navPerShare: navPerShare as bigint,
-      externalAssets: externalAssets as bigint,
-      treasuryShares: treasuryShares as bigint,
-    };
-  }
-
-  async rebalanceBuy(monAmount: bigint, minTokenOut: bigint): Promise<Hash> {
-    if (!this.playerVaultAddress) {
-      throw new Error("PlayerVault address not configured");
-    }
-
-    const hash = await this.walletClient.writeContract({
-      chain: this.chain,
-      account: this.account,
-      address: this.playerVaultAddress,
-      abi: PLAYER_VAULT_ABI,
-      functionName: "rebalanceBuy",
-      args: [monAmount, minTokenOut],
-    });
-    await this.publicClient.waitForTransactionReceipt({ hash });
-    return hash;
-  }
-
-  async rebalanceSell(tokenAmount: bigint, minMonOut: bigint): Promise<Hash> {
-    if (!this.playerVaultAddress) {
-      throw new Error("PlayerVault address not configured");
-    }
-
-    const hash = await this.walletClient.writeContract({
-      chain: this.chain,
-      account: this.account,
-      address: this.playerVaultAddress,
-      abi: PLAYER_VAULT_ABI,
-      functionName: "rebalanceSell",
-      args: [tokenAmount, minMonOut],
     });
     await this.publicClient.waitForTransactionReceipt({ hash });
     return hash;

@@ -25,41 +25,52 @@ function parsePositiveInt(name: string, fallback: number): number {
   return value;
 }
 
+function parseTableAddresses(): `0x${string}`[] {
+  // Support both POKER_TABLE_ADDRESSES (comma-separated, preferred) and POKER_TABLE_ADDRESS (single)
+  const multi = process.env.POKER_TABLE_ADDRESSES;
+  if (multi) {
+    const addresses = multi
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean) as `0x${string}`[];
+    if (addresses.length === 0) {
+      throw new Error("POKER_TABLE_ADDRESSES is set but contains no valid addresses");
+    }
+    return addresses;
+  }
+  const single = process.env.POKER_TABLE_ADDRESS;
+  if (single) {
+    return [single as `0x${string}`];
+  }
+  throw new Error("Missing required environment variable: POKER_TABLE_ADDRESSES (or POKER_TABLE_ADDRESS)");
+}
+
 async function main() {
   console.log(`Keeper bot v${VERSION}`);
   const rpcUrl = requireEnv("RPC_URL");
-  const defaultPollIntervalMs = rpcUrl.includes("monad.xyz") ? 3000 : 2000;
+  const defaultPollIntervalMs = 2000;
 
-  // Load configuration from environment
-  const config = {
+  const tableAddresses = parseTableAddresses();
+  const baseConfig = {
     rpcUrl,
     privateKey: requireEnv("KEEPER_PRIVATE_KEY") as `0x${string}`,
-    pokerTableAddress: requireEnv("POKER_TABLE_ADDRESS") as `0x${string}`,
-    playerVaultAddress: process.env.PLAYER_VAULT_ADDRESS as `0x${string}` | undefined,
     ownerviewUrl: process.env.OWNERVIEW_URL,
     dealerApiKey: process.env.DEALER_API_KEY,
-    chainId: parseInt(optionalEnv("CHAIN_ID", "31337")),
+    chainId: parseInt(optionalEnv("CHAIN_ID", "1001")),
     pollIntervalMs: parsePositiveInt("POLL_INTERVAL_MS", defaultPollIntervalMs),
-    enableRebalancing: optionalEnv("ENABLE_REBALANCING", "false") === "true",
-    rebalanceBuyAmountMon: process.env.REBALANCE_BUY_AMOUNT_MON
-      ? BigInt(process.env.REBALANCE_BUY_AMOUNT_MON)
-      : 0n,
-    rebalanceSellAmountTokens: process.env.REBALANCE_SELL_AMOUNT_TOKENS
-      ? BigInt(process.env.REBALANCE_SELL_AMOUNT_TOKENS)
-      : 0n,
   };
 
   console.log("Configuration:");
-  console.log(`  RPC URL: ${config.rpcUrl}`);
-  console.log(`  Table: ${config.pokerTableAddress}`);
-  console.log(`  Vault: ${config.playerVaultAddress || "not configured"}`);
-  console.log(`  Chain ID: ${config.chainId}`);
-  console.log(`  Poll interval: ${config.pollIntervalMs}ms`);
-  console.log(`  Rebalancing: ${config.enableRebalancing ? "enabled" : "disabled"}`);
-  console.log(`  Dealer integration: ${config.ownerviewUrl && config.dealerApiKey ? "enabled" : "disabled"}`);
+  console.log(`  RPC URL: ${baseConfig.rpcUrl}`);
+  console.log(`  Tables: ${tableAddresses.join(", ")}`);
+  console.log(`  Chain ID: ${baseConfig.chainId}`);
+  console.log(`  Poll interval: ${baseConfig.pollIntervalMs}ms`);
+  console.log(`  Dealer integration: ${baseConfig.ownerviewUrl && baseConfig.dealerApiKey ? "enabled" : "disabled"}`);
 
-  // Create and run bot
-  const bot = new KeeperBot(config);
+  // Create one KeeperBot per table
+  const bots = tableAddresses.map(
+    (pokerTableAddress) => new KeeperBot({ ...baseConfig, pokerTableAddress })
+  );
 
   // Handle shutdown
   let shutdownRequested = false;
@@ -69,25 +80,28 @@ async function main() {
       process.exit(1);
     }
     shutdownRequested = true;
-    console.log("\nShutdown requested, stopping keeper...");
-    bot.stop();
+    console.log("\nShutdown requested, stopping keeper(s)...");
+    for (const bot of bots) {
+      bot.stop();
+    }
   };
 
   process.on("SIGINT", shutdown);
   process.on("SIGTERM", shutdown);
 
-  // Run the keeper
-  await bot.run();
+  // Run all bots concurrently
+  await Promise.all(bots.map((bot) => bot.run()));
 
-  // Print final stats
-  const stats = bot.getStats();
-  console.log("\nFinal Statistics:");
-  console.log(`  Timeouts forced: ${stats.timeoutsForced}`);
-  console.log(`  Hands started: ${stats.handsStarted}`);
-  console.log(`  Showdowns settled: ${stats.showdownsSettled}`);
-  console.log(`  Rebalances triggered: ${stats.rebalancesTriggered}`);
-  console.log(`  Errors: ${stats.errors}`);
-  console.log(`  Last action: ${stats.lastAction} at ${new Date(stats.lastActionTime).toISOString()}`);
+  // Print final stats for each bot
+  for (let i = 0; i < bots.length; i++) {
+    const stats = bots[i].getStats();
+    console.log(`\nFinal Statistics (Table ${tableAddresses[i]}):`);
+    console.log(`  Timeouts forced: ${stats.timeoutsForced}`);
+    console.log(`  Hands started: ${stats.handsStarted}`);
+    console.log(`  Showdowns settled: ${stats.showdownsSettled}`);
+    console.log(`  Errors: ${stats.errors}`);
+    console.log(`  Last action: ${stats.lastAction} at ${new Date(stats.lastActionTime).toISOString()}`);
+  }
 }
 
 main().catch((error) => {

@@ -2163,7 +2163,8 @@ contract PokerTableTest is Test {
     // seats array base slot = 6; each Seat = 6 slots; seats[i].stack = slot (8 + i*6)
 
     function _setSeatStack(uint8 seatIndex, uint256 newStack) internal {
-        uint256 stackSlot = 8 + uint256(seatIndex) * 6;
+        // seats array starts at slot 6; each Seat = 7 slots; stack field at offset +2
+        uint256 stackSlot = 8 + uint256(seatIndex) * 7;
         vm.store(address(pokerTable), bytes32(stackSlot), bytes32(newStack));
     }
 
@@ -2412,6 +2413,106 @@ contract PokerTableTest is Test {
         for (uint8 i = 0; i < 5; i++) {
             assertNotEq(cards[i], 255, "Community card should be dealt");
         }
+    }
+
+    // ============ T-1101: Side Pot Build Logic Tests ============
+
+    event SeatAllIn(uint256 indexed handId, uint8 indexed seatIndex, uint256 totalBet);
+
+    function test_SidePot_TwoPlayerOneAllIn() public {
+        // seat1 (SB) has 200 total. seat2 (BB) has 1000.
+        // seat1 goes all-in pre-flop (200 total). seat2 calls 200.
+        // → 1 side pot: 400, eligible=[seat1, seat2]
+        _registerSeat(1, owner2, operator2, BUY_IN);
+        _registerSeat(2, owner3, operator3, BUY_IN);
+        _setSeatStack(1, 200);
+
+        pokerTable.startHand();
+
+        vm.prank(operator2);
+        vm.roll(block.number + 1);
+        pokerTable.raise(1, 200); // seat1 all-in
+        assertTrue(pokerTable.getSeat(1).isAllIn);
+
+        vm.prank(operator3);
+        vm.roll(block.number + 1);
+        pokerTable.call(2);
+
+        // Auto-skip post-flop (≤1 non-all-in). 3 VRFs → SHOWDOWN
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS + 1);
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS + 2);
+
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.SHOWDOWN));
+
+        assertEq(pokerTable.getSidePotCount(), 1, "1 side pot");
+        (uint256 potAmt, bool[9] memory eligible) = pokerTable.getSidePot(0);
+        assertEq(potAmt, 400, "Main pot = 200*2 = 400");
+        assertTrue(eligible[1], "seat1 eligible");
+        assertTrue(eligible[2], "seat2 eligible");
+    }
+
+    function test_SidePot_ThreePlayerDifferentAllInLevels() public {
+        // 3 seats: button=0, SB=seat1(200), BB=seat2(500), UTG=seat3(1000)
+        // seat1 all-in for 200, seat2 all-in for 500, seat3 calls 500.
+        // Pots:
+        //   Pot 0 (level 200): 200*3 = 600, eligible=[1,2,3]
+        //   Pot 1 (level 500): (500-200)*2 = 600, eligible=[2,3]
+        //   Pot 2 (level 500, seat3 excess): seat3 committed 500, but max all-in is 500 so no extra pot
+        // Wait: seat3 calls 500 (exact). seat2 all-in for 500.
+        // Actually seat1 totalHandBet=200, seat2 totalHandBet=500, seat3 totalHandBet=500
+        // All-in levels: 200, 500. maxBet=500.
+        // uniqueLevels: [200, 500]
+        // Pot0 (prev=0, cur=200): min(200,200)-0 + min(500,200)-0 + min(500,200)-0 = 200+200+200=600, eligible: seats with bet>=200 → all 3
+        // Pot1 (prev=200, cur=500): min(200,500)-200 + min(500,500)-200 + min(500,500)-200 = 0+300+300=600, eligible: seats with bet>=500 → seat2, seat3
+        // Total: 600+600=1200 ✓ (200+500+500=1200)
+        _registerSeat(1, owner2, operator2, BUY_IN);
+        _registerSeat(2, owner3, operator3, BUY_IN);
+        _registerSeat(3, owner4, operator4, BUY_IN);
+        _setSeatStack(1, 200);
+        _setSeatStack(2, 500);
+
+        pokerTable.startHand();
+        // button=0, SB=seat1, BB=seat2, UTG=seat3 acts first
+
+        // seat3 calls (matches BB=20)
+        (,,, uint8 actor,) = pokerTable.getHandInfo();
+        assertEq(actor, 3, "UTG acts first");
+        vm.prank(operator4);
+        vm.roll(block.number + 1);
+        pokerTable.call(3);
+
+        // seat1 (SB) all-in raise to 200
+        vm.prank(operator2);
+        vm.roll(block.number + 1);
+        pokerTable.raise(1, 200);
+        assertTrue(pokerTable.getSeat(1).isAllIn);
+
+        // seat2 (BB) all-in raise to 500
+        vm.prank(operator3);
+        vm.roll(block.number + 1);
+        pokerTable.raise(2, 500);
+        assertTrue(pokerTable.getSeat(2).isAllIn);
+
+        // seat3 calls 500
+        vm.prank(operator4);
+        vm.roll(block.number + 2);
+        pokerTable.call(3);
+
+        // VRFs → SHOWDOWN
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS + 1);
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS + 2);
+
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.SHOWDOWN));
+
+        assertEq(pokerTable.getSidePotCount(), 2, "2 side pots");
+
+        (uint256 pot0,) = pokerTable.getSidePot(0);
+        (uint256 pot1,) = pokerTable.getSidePot(1);
+        assertEq(pot0, 600, "Pot0 = 200*3");
+        assertEq(pot1, 600, "Pot1 = 300*2");
+        assertEq(pot0 + pot1, 1200, "Total matches committed chips");
     }
 
     function test_AutoSkip_OneNonAllIn_SkipsPostFlopBetting() public {

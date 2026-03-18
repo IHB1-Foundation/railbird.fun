@@ -40,12 +40,13 @@ contract PokerTable {
 
     // ============ Structs ============
     struct Seat {
-        address owner;       // Wallet that owns this seat (receives hole cards)
-        address operator;    // Wallet that submits actions (can be same as owner)
-        uint256 stack;       // Current chip stack
-        bool isActive;       // Still in the current hand (not folded)
-        uint256 currentBet;  // Amount committed in current betting round
-        bool isAllIn;        // True when player has committed their entire stack
+        address owner;          // Wallet that owns this seat (receives hole cards)
+        address operator;       // Wallet that submits actions (can be same as owner)
+        uint256 stack;          // Current chip stack
+        bool isActive;          // Still in the current hand (not folded)
+        uint256 currentBet;     // Amount committed in current betting round
+        bool isAllIn;           // True when player has committed their entire stack
+        uint256 totalHandBet;   // Cumulative chips committed this hand (all streets)
     }
 
     struct Hand {
@@ -55,7 +56,13 @@ contract PokerTable {
         uint8 actorSeat;             // Seat index that must act next
         uint8 lastAggressor;         // Last seat that raised (for betting round logic)
         uint8 actionsInRound;        // Number of actions in current betting round
+        uint8 sidePotCount;          // Number of active side pots
         bool[MAX_SEATS] hasActed;    // Whether each seat has acted in this round
+    }
+
+    struct SidePot {
+        uint256 amount;
+        bool[MAX_SEATS] eligible;    // Which seats are eligible for this pot
     }
 
     // ============ Events ============
@@ -184,6 +191,7 @@ contract PokerTable {
 
     Seat[MAX_SEATS] public seats;
     Hand public currentHand;
+    SidePot[MAX_SEATS] public sidePots;   // At most MAX_SEATS side pots
 
     uint256 public actionDeadline;    // Timestamp after which forceTimeout can be called
     uint256 public lastActionBlock;   // For one-action-per-block enforcement
@@ -285,7 +293,8 @@ contract PokerTable {
             stack: msg.value,
             isActive: false,
             currentBet: 0,
-            isAllIn: false
+            isAllIn: false,
+            totalHandBet: 0
         });
 
         emit SeatUpdated(seatIndex, owner, operator == address(0) ? owner : operator, msg.value);
@@ -403,6 +412,7 @@ contract PokerTable {
             seats[i].isActive = _isSeatPlayable(i);
             seats[i].currentBet = 0;
             seats[i].isAllIn = false;
+            seats[i].totalHandBet = 0;
         }
 
         // Reset community cards (255 = not dealt)
@@ -417,11 +427,13 @@ contract PokerTable {
         uint256 sbPost = smallBlind < seats[sbSeat].stack ? smallBlind : seats[sbSeat].stack;
         seats[sbSeat].stack -= sbPost;
         seats[sbSeat].currentBet = sbPost;
+        seats[sbSeat].totalHandBet += sbPost;
         if (seats[sbSeat].stack == 0) seats[sbSeat].isAllIn = true;
 
         uint256 bbPost = bigBlind < seats[bbSeat].stack ? bigBlind : seats[bbSeat].stack;
         seats[bbSeat].stack -= bbPost;
         seats[bbSeat].currentBet = bbPost;
+        seats[bbSeat].totalHandBet += bbPost;
         if (seats[bbSeat].stack == 0) seats[bbSeat].isAllIn = true;
 
         uint256 initialPot = sbPost + bbPost;
@@ -439,6 +451,7 @@ contract PokerTable {
             actorSeat: firstActor,
             lastAggressor: bbSeat, // BB is considered the aggressor (posted blind)
             actionsInRound: 0,
+            sidePotCount: 0,
             hasActed: initialHasActed
         });
 
@@ -542,6 +555,7 @@ contract PokerTable {
 
         seats[seatIndex].stack -= actualCall;
         seats[seatIndex].currentBet += actualCall;
+        seats[seatIndex].totalHandBet += actualCall;
         currentHand.pot += actualCall;
         currentHand.hasActed[seatIndex] = true;
 
@@ -598,6 +612,7 @@ contract PokerTable {
 
         seats[seatIndex].stack -= additional;
         seats[seatIndex].currentBet = raiseToAmount;
+        seats[seatIndex].totalHandBet += additional;
         currentHand.pot += additional;
         currentHand.currentBet = raiseToAmount;
         currentHand.lastAggressor = seatIndex;
@@ -756,6 +771,84 @@ contract PokerTable {
         }
     }
 
+    /**
+     * @notice Build side pots based on each player's total hand commitment.
+     * @dev Called when transitioning to SHOWDOWN. Uses all seats' totalHandBet
+     *      (including folded players) to compute pots, but only active seats are eligible.
+     *      Side pot levels correspond to each unique all-in amount, plus the max bet.
+     */
+    function _buildSidePots() internal {
+        // Collect all-in levels from active players
+        uint256[MAX_SEATS] memory levels;
+        uint8 levelCount = 0;
+
+        for (uint8 i = 0; i < MAX_SEATS; i++) {
+            if (seats[i].isActive && seats[i].isAllIn && seats[i].totalHandBet > 0) {
+                levels[levelCount++] = seats[i].totalHandBet;
+            }
+        }
+
+        // Insertion sort ascending
+        for (uint8 i = 1; i < levelCount; i++) {
+            uint256 key = levels[i];
+            uint8 j = i;
+            while (j > 0 && levels[j - 1] > key) {
+                levels[j] = levels[j - 1];
+                j--;
+            }
+            levels[j] = key;
+        }
+
+        // Deduplicate
+        uint256[MAX_SEATS] memory uniqueLevels;
+        uint8 uniqueCount = 0;
+        for (uint8 i = 0; i < levelCount; i++) {
+            if (uniqueCount == 0 || uniqueLevels[uniqueCount - 1] != levels[i]) {
+                uniqueLevels[uniqueCount++] = levels[i];
+            }
+        }
+
+        // Add the maximum totalHandBet as the final level (captures non-all-in bets)
+        uint256 maxBet = 0;
+        for (uint8 i = 0; i < MAX_SEATS; i++) {
+            if (seats[i].totalHandBet > maxBet) maxBet = seats[i].totalHandBet;
+        }
+        if (maxBet > 0 && (uniqueCount == 0 || uniqueLevels[uniqueCount - 1] < maxBet)) {
+            uniqueLevels[uniqueCount++] = maxBet;
+        }
+
+        // Build side pots
+        uint256 prevLevel = 0;
+        uint8 potCount = 0;
+
+        for (uint8 j = 0; j < uniqueCount; j++) {
+            uint256 curLevel = uniqueLevels[j];
+            uint256 potAmount = 0;
+            bool[MAX_SEATS] memory eligible;
+
+            for (uint8 i = 0; i < MAX_SEATS; i++) {
+                uint256 bet = seats[i].totalHandBet;
+                if (bet > prevLevel) {
+                    uint256 cap = bet < curLevel ? bet : curLevel;
+                    potAmount += cap - prevLevel;
+                }
+                // Eligible: seat is active AND committed at least curLevel
+                if (seats[i].isActive && bet >= curLevel) {
+                    eligible[i] = true;
+                }
+            }
+
+            if (potAmount > 0) {
+                sidePots[potCount].amount = potAmount;
+                sidePots[potCount].eligible = eligible;
+                potCount++;
+            }
+            prevLevel = curLevel;
+        }
+
+        currentHand.sidePotCount = potCount;
+    }
+
     function _completeBettingRound() internal {
         GameState currentState = gameState;
         GameState nextState;
@@ -775,6 +868,7 @@ contract PokerTable {
         emit BettingRoundComplete(currentHandId, currentState, nextState);
 
         if (nextState == GameState.SHOWDOWN) {
+            _buildSidePots();
             gameState = GameState.SHOWDOWN;
             showdownStartTimestamp = block.timestamp;
         } else {
@@ -937,10 +1031,12 @@ contract PokerTable {
 
         // Reset hand state
         currentHand.pot = 0;
+        currentHand.sidePotCount = 0;
         for (uint8 i = 0; i < MAX_SEATS; i++) {
             seats[i].currentBet = 0;
             seats[i].isActive = false;
             seats[i].isAllIn = false;
+            seats[i].totalHandBet = 0;
         }
         _evictBustedSeats();
     }
@@ -1063,10 +1159,12 @@ contract PokerTable {
         showdownStartTimestamp = 0;
         _advanceButton();
         currentHand.pot = 0;
+        currentHand.sidePotCount = 0;
         for (uint8 i = 0; i < MAX_SEATS; i++) {
             seats[i].currentBet = 0;
             seats[i].isActive = false;
             seats[i].isAllIn = false;
+            seats[i].totalHandBet = 0;
         }
         _evictBustedSeats();
     }
@@ -1132,10 +1230,12 @@ contract PokerTable {
         showdownStartTimestamp = 0;
         _advanceButton();
         currentHand.pot = 0;
+        currentHand.sidePotCount = 0;
         for (uint8 i = 0; i < MAX_SEATS; i++) {
             seats[i].currentBet = 0;
             seats[i].isActive = false;
             seats[i].isAllIn = false;
+            seats[i].totalHandBet = 0;
         }
         _evictBustedSeats();
     }
@@ -1241,6 +1341,15 @@ contract PokerTable {
     }
 
     // ============ View Functions ============
+
+    function getSidePotCount() external view returns (uint8) {
+        return currentHand.sidePotCount;
+    }
+
+    function getSidePot(uint8 potIndex) external view returns (uint256 amount, bool[MAX_SEATS] memory eligible) {
+        require(potIndex < currentHand.sidePotCount, "Invalid pot index");
+        return (sidePots[potIndex].amount, sidePots[potIndex].eligible);
+    }
 
     function getSeat(uint8 seatIndex) external view returns (Seat memory) {
         require(seatIndex < MAX_SEATS, "Invalid seat");

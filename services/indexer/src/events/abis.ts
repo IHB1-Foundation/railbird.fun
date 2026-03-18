@@ -78,6 +78,15 @@ export const pokerTableAbi = [
   },
   {
     type: "event",
+    name: "ShowdownTimedOut",
+    inputs: [
+      { indexed: true, name: "handId", type: "uint256" },
+      { indexed: false, name: "activePlayers", type: "uint8" },
+      { indexed: false, name: "potAmount", type: "uint256" },
+    ],
+  },
+  {
+    type: "event",
     name: "ForceTimeout",
     inputs: [
       { indexed: true, name: "handId", type: "uint256" },
@@ -111,7 +120,7 @@ export const playerRegistryAbi = [
     type: "event",
     name: "AgentRegistered",
     inputs: [
-      { indexed: true, name: "token", type: "address" },
+      { indexed: true, name: "agent", type: "address" },
       { indexed: true, name: "owner", type: "address" },
       { indexed: false, name: "vault", type: "address" },
       { indexed: false, name: "table", type: "address" },
@@ -123,7 +132,7 @@ export const playerRegistryAbi = [
     type: "event",
     name: "OperatorUpdated",
     inputs: [
-      { indexed: true, name: "token", type: "address" },
+      { indexed: true, name: "agent", type: "address" },
       { indexed: true, name: "oldOperator", type: "address" },
       { indexed: true, name: "newOperator", type: "address" },
     ],
@@ -132,7 +141,7 @@ export const playerRegistryAbi = [
     type: "event",
     name: "OwnerUpdated",
     inputs: [
-      { indexed: true, name: "token", type: "address" },
+      { indexed: true, name: "agent", type: "address" },
       { indexed: true, name: "oldOwner", type: "address" },
       { indexed: true, name: "newOwner", type: "address" },
     ],
@@ -141,7 +150,7 @@ export const playerRegistryAbi = [
     type: "event",
     name: "MetaURIUpdated",
     inputs: [
-      { indexed: true, name: "token", type: "address" },
+      { indexed: true, name: "agent", type: "address" },
       { indexed: false, name: "oldMetaURI", type: "string" },
       { indexed: false, name: "newMetaURI", type: "string" },
     ],
@@ -150,7 +159,7 @@ export const playerRegistryAbi = [
     type: "event",
     name: "VaultUpdated",
     inputs: [
-      { indexed: true, name: "token", type: "address" },
+      { indexed: true, name: "agent", type: "address" },
       { indexed: true, name: "oldVault", type: "address" },
       { indexed: true, name: "newVault", type: "address" },
     ],
@@ -159,7 +168,7 @@ export const playerRegistryAbi = [
     type: "event",
     name: "TableUpdated",
     inputs: [
-      { indexed: true, name: "token", type: "address" },
+      { indexed: true, name: "agent", type: "address" },
       { indexed: true, name: "oldTable", type: "address" },
       { indexed: true, name: "newTable", type: "address" },
     ],
@@ -171,11 +180,8 @@ export const playerVaultAbi = [
     type: "event",
     name: "VaultSnapshot",
     inputs: [
-      { indexed: false, name: "handId", type: "uint256" },
-      { indexed: false, name: "A", type: "uint256" },
-      { indexed: false, name: "B", type: "uint256" },
-      { indexed: false, name: "N", type: "uint256" },
-      { indexed: false, name: "P", type: "uint256" },
+      { indexed: true, name: "handId", type: "uint256" },
+      { indexed: false, name: "externalAssets", type: "uint256" },
       { indexed: false, name: "cumulativePnl", type: "int256" },
     ],
   },
@@ -183,10 +189,8 @@ export const playerVaultAbi = [
     type: "event",
     name: "VaultInitialized",
     inputs: [
-      { indexed: true, name: "agentToken", type: "address" },
       { indexed: true, name: "owner", type: "address" },
       { indexed: false, name: "initialAssets", type: "uint256" },
-      { indexed: false, name: "initialNavPerShare", type: "uint256" },
     ],
   },
   {

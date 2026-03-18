@@ -31,7 +31,9 @@ import type {
 } from "../db/types.js";
 
 export const router: RouterType = Router();
-const CONFIGURED_TABLE_ADDRESS = process.env.POKER_TABLE_ADDRESS?.toLowerCase();
+const CONFIGURED_TABLE_ADDRESSES = new Set(
+  (process.env.POKER_TABLE_ADDRESSES || "").split(",").map(s => s.trim().toLowerCase()).filter(Boolean)
+);
 
 type PlayerKey = "a" | "b" | "c" | "d";
 
@@ -211,7 +213,7 @@ router.get("/health", async (_req, res) => {
 
   // Check chain config readiness
   const chainReady = !!(
-    process.env.POKER_TABLE_ADDRESS &&
+    process.env.POKER_TABLE_ADDRESSES &&
     process.env.PLAYER_REGISTRY_ADDRESS &&
     process.env.RPC_URL
   );
@@ -258,9 +260,9 @@ router.get("/token-assets/:player", (req, res) => {
 router.get("/tables", async (_req, res) => {
   try {
     const allTables = await getAllTables();
-    const tables = CONFIGURED_TABLE_ADDRESS
+    const tables = CONFIGURED_TABLE_ADDRESSES.size > 0
       ? allTables.filter(
-          (table) => String(table.contract_address).toLowerCase() === CONFIGURED_TABLE_ADDRESS
+          (table) => CONFIGURED_TABLE_ADDRESSES.has(String(table.contract_address).toLowerCase())
         )
       : allTables;
 
@@ -291,8 +293,8 @@ router.get("/tables/:id", async (req, res) => {
       return res.status(404).json({ error: "Table not found" });
     }
     if (
-      CONFIGURED_TABLE_ADDRESS &&
-      String(table.contract_address).toLowerCase() !== CONFIGURED_TABLE_ADDRESS
+      CONFIGURED_TABLE_ADDRESSES.size > 0 &&
+      !CONFIGURED_TABLE_ADDRESSES.has(String(table.contract_address).toLowerCase())
     ) {
       return res.status(404).json({ error: "Table not found" });
     }
@@ -322,8 +324,8 @@ router.get("/tables/:id/hands", async (req, res) => {
     const table = await getTable(tableId);
     if (
       !table ||
-      (CONFIGURED_TABLE_ADDRESS &&
-        String(table.contract_address).toLowerCase() !== CONFIGURED_TABLE_ADDRESS)
+      (CONFIGURED_TABLE_ADDRESSES.size > 0 &&
+        !CONFIGURED_TABLE_ADDRESSES.has(String(table.contract_address).toLowerCase()))
     ) {
       return res.status(404).json({ error: "Table not found" });
     }
@@ -352,8 +354,8 @@ router.get("/tables/:tableId/hands/:handId", async (req, res) => {
     const table = await getTable(tableId);
     if (
       !table ||
-      (CONFIGURED_TABLE_ADDRESS &&
-        String(table.contract_address).toLowerCase() !== CONFIGURED_TABLE_ADDRESS)
+      (CONFIGURED_TABLE_ADDRESSES.size > 0 &&
+        !CONFIGURED_TABLE_ADDRESSES.has(String(table.contract_address).toLowerCase()))
     ) {
       return res.status(404).json({ error: "Table not found" });
     }

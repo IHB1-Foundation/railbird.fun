@@ -279,6 +279,21 @@ export async function handleHandSettled(
   broadcastHandSettled(ctx.tableId, args.handId, args.winnerSeat, args.potAmount);
 }
 
+export async function handleShowdownTimedOut(
+  log: Log,
+  args: { handId: bigint; activePlayers: number; potAmount: bigint }
+): Promise<void> {
+  const meta = getLogMeta(log);
+  if (!meta) return;
+
+  if (await isEventProcessed(meta.blockNumber, meta.logIndex)) return;
+
+  await markEventProcessed(meta.blockNumber, meta.logIndex, meta.txHash, "ShowdownTimedOut");
+  console.log(
+    `[ShowdownTimedOut] hand=${args.handId} activePlayers=${args.activePlayers} pot=${args.potAmount}`
+  );
+}
+
 export async function handleForceTimeout(
   log: Log,
   args: { handId: bigint; seatIndex: number; forcedAction: number },

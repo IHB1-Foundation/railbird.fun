@@ -16,7 +16,7 @@ import {
 } from "../db/index.js";
 
 export interface ListenerConfig {
-  pokerTableAddress: Address;
+  pokerTableAddresses: Address[];
   playerRegistryAddress: Address;
   playerVaultAddress?: Address;
   startBlock?: bigint;
@@ -29,7 +29,7 @@ export class EventListener {
   private client;
   private config: ListenerConfig;
   private running = false;
-  private tableContext: handlers.EventContext;
+  private tableContextMap = new Map<string, handlers.EventContext>();
   private trackedVaultAddresses = new Set<Address>();
   private static readonly ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as Address;
 
@@ -45,13 +45,23 @@ export class EventListener {
     };
     this.trackVaultAddress(config.playerVaultAddress);
 
-    // Default table context - will be updated when we read table info
-    this.tableContext = {
-      tableId: 1n,
-      contractAddress: config.pokerTableAddress,
-      smallBlind: 10n,
-      bigBlind: 20n,
-    };
+    // Default table contexts - will be updated when we read table info
+    for (const addr of config.pokerTableAddresses) {
+      this.tableContextMap.set(addr.toLowerCase(), {
+        tableId: 0n,
+        contractAddress: addr,
+        smallBlind: 0n,
+        bigBlind: 0n,
+      });
+    }
+  }
+
+  private getTableContext(address: string): handlers.EventContext | undefined {
+    return this.tableContextMap.get(address.toLowerCase());
+  }
+
+  private isTableAddress(address: string): boolean {
+    return this.tableContextMap.has(address.toLowerCase());
   }
 
   async start(): Promise<void> {
@@ -60,7 +70,10 @@ export class EventListener {
 
     console.log("Starting event listener...");
     console.log(`Log block range: ${this.config.logBlockRange}`);
-    await this.seedTableStateFromChain();
+    console.log(`Monitoring ${this.config.pokerTableAddresses.length} table(s)`);
+    for (const addr of this.config.pokerTableAddresses) {
+      await this.seedTableStateFromChain(addr);
+    }
     await this.loadTrackedVaultAddresses();
     console.log(`Tracking ${this.trackedVaultAddresses.size} vault address(es)`);
 
@@ -140,8 +153,9 @@ export class EventListener {
   }
 
   private async fetchPokerTableLogs(fromBlock: bigint, toBlock: bigint): Promise<Log[]> {
+    const addrs = this.config.pokerTableAddresses;
     return this.client.getLogs({
-      address: this.config.pokerTableAddress,
+      address: addrs.length === 1 ? addrs[0] : addrs,
       fromBlock,
       toBlock,
     });
@@ -168,7 +182,7 @@ export class EventListener {
   private async processLog(log: Log): Promise<void> {
     const address = log.address.toLowerCase();
 
-    if (address === this.config.pokerTableAddress.toLowerCase()) {
+    if (this.isTableAddress(address)) {
       await this.processPokerTableLog(log);
     } else if (address === this.config.playerRegistryAddress.toLowerCase()) {
       await this.processRegistryLog(log);
@@ -178,6 +192,9 @@ export class EventListener {
   }
 
   private async processPokerTableLog(log: Log): Promise<void> {
+    const tableContext = this.getTableContext(log.address);
+    if (!tableContext) return;
+
     try {
       const decoded = decodeEventLog({
         abi: pokerTableAbi,
@@ -190,63 +207,69 @@ export class EventListener {
           await handlers.handleSeatUpdated(
             log,
             decoded.args as any,
-            this.tableContext
+            tableContext
           );
           break;
         case "HandStarted":
           await handlers.handleHandStarted(
             log,
             decoded.args as any,
-            this.tableContext
+            tableContext
           );
           break;
         case "ActionTaken":
           await handlers.handleActionTaken(
             log,
             decoded.args as any,
-            this.tableContext
+            tableContext
           );
           break;
         case "PotUpdated":
           await handlers.handlePotUpdated(
             log,
             decoded.args as any,
-            this.tableContext
+            tableContext
           );
           break;
         case "BettingRoundComplete":
           await handlers.handleBettingRoundComplete(
             log,
             decoded.args as any,
-            this.tableContext
+            tableContext
           );
           break;
         case "VRFRequested":
           await handlers.handleVRFRequested(
             log,
             decoded.args as any,
-            this.tableContext
+            tableContext
           );
           break;
         case "CommunityCardsDealt":
           await handlers.handleCommunityCardsDealt(
             log,
             decoded.args as any,
-            this.tableContext
+            tableContext
           );
           break;
         case "HandSettled":
           await handlers.handleHandSettled(
             log,
             decoded.args as any,
-            this.tableContext
+            tableContext
+          );
+          break;
+        case "ShowdownTimedOut":
+          await handlers.handleShowdownTimedOut(
+            log,
+            decoded.args as any
           );
           break;
         case "ForceTimeout":
           await handlers.handleForceTimeout(
             log,
             decoded.args as any,
-            this.tableContext
+            tableContext
           );
           break;
       }
@@ -350,7 +373,7 @@ export class EventListener {
     }
   }
 
-  private async seedTableStateFromChain(): Promise<void> {
+  private async seedTableStateFromChain(tableAddress: Address): Promise<void> {
     const tableReadAbi = [
       {
         type: "function",
@@ -464,69 +487,70 @@ export class EventListener {
         communityCardsRaw,
       ] = await Promise.all([
         this.client.readContract({
-          address: this.config.pokerTableAddress,
+          address: tableAddress,
           abi: tableReadAbi,
           functionName: "tableId",
         }),
         this.client.readContract({
-          address: this.config.pokerTableAddress,
+          address: tableAddress,
           abi: tableReadAbi,
           functionName: "smallBlind",
         }),
         this.client.readContract({
-          address: this.config.pokerTableAddress,
+          address: tableAddress,
           abi: tableReadAbi,
           functionName: "bigBlind",
         }),
         this.client.readContract({
-          address: this.config.pokerTableAddress,
+          address: tableAddress,
           abi: tableReadAbi,
           functionName: "gameState",
         }),
         this.client.readContract({
-          address: this.config.pokerTableAddress,
+          address: tableAddress,
           abi: tableReadAbi,
           functionName: "currentHandId",
         }),
         this.client.readContract({
-          address: this.config.pokerTableAddress,
+          address: tableAddress,
           abi: tableReadAbi,
           functionName: "buttonSeat",
         }),
         this.client.readContract({
-          address: this.config.pokerTableAddress,
+          address: tableAddress,
           abi: tableReadAbi,
           functionName: "actionDeadline",
         }),
         this.client.readContract({
-          address: this.config.pokerTableAddress,
+          address: tableAddress,
           abi: tableReadAbi,
           functionName: "MAX_SEATS",
         }),
         this.client.readContract({
-          address: this.config.pokerTableAddress,
+          address: tableAddress,
           abi: tableReadAbi,
           functionName: "getHandInfo",
         }),
         this.client.readContract({
-          address: this.config.pokerTableAddress,
+          address: tableAddress,
           abi: tableReadAbi,
           functionName: "getCommunityCards",
         }),
       ]);
 
-      this.tableContext = {
+      const ctx: handlers.EventContext = {
         tableId: tableId as bigint,
-        contractAddress: this.config.pokerTableAddress,
+        contractAddress: tableAddress,
         smallBlind: smallBlind as bigint,
         bigBlind: bigBlind as bigint,
       };
+      this.tableContextMap.set(tableAddress.toLowerCase(), ctx);
 
       await upsertTable(
-        this.tableContext.tableId,
-        this.tableContext.contractAddress,
-        this.tableContext.smallBlind,
-        this.tableContext.bigBlind
+        ctx.tableId,
+        ctx.contractAddress,
+        ctx.smallBlind,
+        ctx.bigBlind
       );
 
       const gameState = Number(gameStateRaw);
@@ -537,7 +561,7 @@ export class EventListener {
       const actionDeadlineDate = actionDeadline > 0n ? new Date(Number(actionDeadline) * 1000) : null;
 
       await updateTableState(
-        this.tableContext.tableId,
+        ctx.tableId,
         gameStateString,
         currentHandIdValue,
         buttonSeat,
@@ -555,15 +579,15 @@ export class EventListener {
       if (handId > 0n || currentHandIdValue > 0n) {
         const effectiveHandId = currentHandIdValue > 0n ? currentHandIdValue : handId;
         await insertHand(
-          this.tableContext.tableId,
+          ctx.tableId,
           effectiveHandId,
           pot,
           buttonSeat,
-          this.tableContext.smallBlind,
-          this.tableContext.bigBlind,
+          ctx.smallBlind,
+          ctx.bigBlind,
           handStateString
         );
-        await updateHand(this.tableContext.tableId, effectiveHandId, {
+        await updateHand(ctx.tableId, effectiveHandId, {
           pot,
           currentBet,
           actorSeat,
@@ -576,7 +600,7 @@ export class EventListener {
       const seatResults = await Promise.all(
         Array.from({ length: maxSeats }, (_, seatIndex) =>
           this.client.readContract({
-            address: this.config.pokerTableAddress,
+            address: tableAddress,
             abi: tableReadAbi,
             functionName: "getSeat",
             args: [seatIndex],
@@ -594,7 +618,7 @@ export class EventListener {
           currentBet: bigint;
         };
         await upsertSeat(
-          this.tableContext.tableId,
+          ctx.tableId,
           seatIndex,
           seat.owner,
           seat.operator,
@@ -606,7 +630,7 @@ export class EventListener {
       }
 
       console.log(
-        `Seeded table snapshot from chain: table=${this.tableContext.tableId} state=${gameStateString} hand=${currentHandIdValue} seats=${occupiedSeats}/${maxSeats}`
+        `Seeded table snapshot from chain: table=${ctx.tableId} state=${gameStateString} hand=${currentHandIdValue} seats=${occupiedSeats}/${maxSeats}`
       );
     } catch (error) {
       console.error("Failed to seed table snapshot from chain (continuing with log replay):", error);

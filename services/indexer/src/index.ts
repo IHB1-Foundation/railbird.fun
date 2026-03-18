@@ -54,14 +54,14 @@ async function main(): Promise<void> {
 
   // Chain configuration: require in non-local environments
   const hasChainConfig =
-    process.env.POKER_TABLE_ADDRESS &&
+    process.env.POKER_TABLE_ADDRESSES &&
     process.env.PLAYER_REGISTRY_ADDRESS &&
     process.env.RPC_URL;
 
   if (!isLocal && !hasChainConfig) {
     console.error(
       `Chain configuration required for ${CHAIN_ENV} environment.\n` +
-        `Missing: POKER_TABLE_ADDRESS, PLAYER_REGISTRY_ADDRESS, and/or RPC_URL.\n` +
+        `Missing: POKER_TABLE_ADDRESSES, PLAYER_REGISTRY_ADDRESS, and/or RPC_URL.\n` +
         `Indexer cannot function without chain event ingestion in production.`
     );
     process.exit(1);
@@ -90,8 +90,9 @@ async function main(): Promise<void> {
 
   // Start event listener
   if (hasChainConfig) {
+    const tableAddrs = (process.env.POKER_TABLE_ADDRESSES || "").split(",").map(s => s.trim()).filter(Boolean) as Address[];
     const listener = new EventListener({
-      pokerTableAddress: process.env.POKER_TABLE_ADDRESS as Address,
+      pokerTableAddresses: tableAddrs,
       playerRegistryAddress: process.env.PLAYER_REGISTRY_ADDRESS as Address,
       playerVaultAddress: process.env.PLAYER_VAULT_ADDRESS as Address | undefined,
       startBlock: process.env.START_BLOCK ? BigInt(process.env.START_BLOCK) : undefined,

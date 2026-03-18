@@ -218,6 +218,25 @@ export const playerVaultAbi = [
       { indexed: false, name: "amount", type: "uint256" },
     ],
   },
+  {
+    type: "event",
+    name: "TournamentWinner",
+    inputs: [
+      { indexed: true,  name: "winner",     type: "address" },
+      { indexed: true,  name: "seatIndex",  type: "uint8" },
+      { indexed: false, name: "finalStack", type: "uint256" },
+    ],
+  },
+  {
+    type: "event",
+    name: "CardIntegrityViolation",
+    inputs: [
+      { indexed: true,  name: "handId",         type: "uint256" },
+      { indexed: true,  name: "seatIndex",      type: "uint8" },
+      { indexed: false, name: "card",           type: "uint8" },
+      { indexed: false, name: "communityIndex", type: "uint8" },
+    ],
+  },
 ] as const;
 
 // Game state enum mapping
@@ -233,6 +252,7 @@ export const GAME_STATES = [
   "BETTING_RIVER",
   "SHOWDOWN",
   "SETTLED",
+  "TOURNAMENT_OVER",
 ] as const;
 
 export function gameStateToString(state: number): string {

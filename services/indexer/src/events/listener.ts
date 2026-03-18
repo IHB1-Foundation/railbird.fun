@@ -202,7 +202,7 @@ export class EventListener {
         topics: log.topics,
       });
 
-      switch (decoded.eventName) {
+      switch (decoded.eventName as string) {
         case "SeatUpdated":
           await handlers.handleSeatUpdated(
             log,
@@ -267,6 +267,20 @@ export class EventListener {
           break;
         case "ForceTimeout":
           await handlers.handleForceTimeout(
+            log,
+            decoded.args as any,
+            tableContext
+          );
+          break;
+        case "TournamentWinner":
+          await handlers.handleTournamentWinner(
+            log,
+            decoded.args as any,
+            tableContext
+          );
+          break;
+        case "CardIntegrityViolation":
+          await handlers.handleCardIntegrityViolation(
             log,
             decoded.args as any,
             tableContext

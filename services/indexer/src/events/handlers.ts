@@ -451,3 +451,31 @@ export async function handleVaultSnapshot(
   await markEventProcessed(meta.blockNumber, meta.logIndex, meta.txHash, "VaultSnapshot");
   console.log(`[VaultSnapshot] vault=${vaultAddress} hand=${args.handId} A=${args.A} P=${args.P}`);
 }
+
+export async function handleTournamentWinner(
+  log: Log,
+  args: { winner: `0x${string}`; seatIndex: number; finalStack: bigint },
+  ctx: EventContext
+): Promise<void> {
+  const meta = getLogMeta(log);
+  if (!meta) return;
+  if (await isEventProcessed(meta.blockNumber, meta.logIndex)) return;
+  await markEventProcessed(meta.blockNumber, meta.logIndex, meta.txHash, "TournamentWinner");
+  console.log(
+    `[TournamentWinner] table=${ctx.tableId} winner=${args.winner} seat=${args.seatIndex} finalStack=${args.finalStack}`
+  );
+}
+
+export async function handleCardIntegrityViolation(
+  log: Log,
+  args: { handId: bigint; seatIndex: number; card: number; communityIndex: number },
+  ctx: EventContext
+): Promise<void> {
+  const meta = getLogMeta(log);
+  if (!meta) return;
+  if (await isEventProcessed(meta.blockNumber, meta.logIndex)) return;
+  await markEventProcessed(meta.blockNumber, meta.logIndex, meta.txHash, "CardIntegrityViolation");
+  console.error(
+    `[CardIntegrityViolation] INTEGRITY ALERT table=${ctx.tableId} hand=${args.handId} seat=${args.seatIndex} card=${args.card} communityIndex=${args.communityIndex}`
+  );
+}

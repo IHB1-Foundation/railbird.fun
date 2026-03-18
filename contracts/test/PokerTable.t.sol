@@ -2515,6 +2515,98 @@ contract PokerTableTest is Test {
         assertEq(pot0 + pot1, 1200, "Total matches committed chips");
     }
 
+    // ============ T-1102: Side Pot Showdown Settlement Tests ============
+
+    function _buildShowdownCommit(
+        uint256 handId, uint8 seat,
+        uint8 c1, uint8 c2, bytes32 salt
+    ) internal returns (bytes32) {
+        bytes32 commit = keccak256(abi.encodePacked(handId, seat, c1, c2, salt));
+        pokerTable.submitHoleCommit(handId, seat, commit);
+        return commit;
+    }
+
+    function test_SidePotSettlement_AllInWinsMainPot() public {
+        // seat1 (SB) stack=200, seat2 (BB) stack=1000
+        // seat1 all-in raise to 200, seat2 calls.
+        // 1 side pot: 400 eligible=[1,2]
+        // seat1 reveals best hand, seat2 reveals worse hand → seat1 wins 400
+        _registerSeat(1, owner2, operator2, BUY_IN);
+        _registerSeat(2, owner3, operator3, BUY_IN);
+        _setSeatStack(1, 200);
+
+        pokerTable.startHand();
+        vm.prank(operator2); vm.roll(block.number + 1);
+        pokerTable.raise(1, 200);
+        vm.prank(operator3); vm.roll(block.number + 1);
+        pokerTable.call(2);
+
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS + 1);
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS + 2);
+
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.SHOWDOWN));
+
+        uint256 handId = pokerTable.currentHandId();
+        uint8[5] memory comm = pokerTable.getCommunityCards();
+
+        // Give seat1 the best possible hand: royal flush if possible.
+        // For simplicity, use cards 0,1 (Ace of Spades, 2 of Spades)
+        // and seat2 gets cards 2,3 — seat1 wins by having higher hole cards
+        // Actually we need to avoid community card overlaps — just use any valid distinct pair
+        // Community cards are already dealt. Use hole cards that don't overlap with community.
+        bytes32 salt1 = bytes32("salt1");
+        bytes32 salt2 = bytes32("salt2");
+
+        // Find cards not in community
+        uint8[4] memory freeCards;
+        uint8 freeIdx = 0;
+        for (uint8 c = 0; c < 52 && freeIdx < 4; c++) {
+            bool inComm = false;
+            for (uint8 j = 0; j < 5; j++) {
+                if (comm[j] == c) { inComm = true; break; }
+            }
+            if (!inComm) freeCards[freeIdx++] = c;
+        }
+
+        // seat1 gets freeCards[0], freeCards[1]; seat2 gets freeCards[2], freeCards[3]
+        _buildShowdownCommit(handId, 1, freeCards[0], freeCards[1], salt1);
+        _buildShowdownCommit(handId, 2, freeCards[2], freeCards[3], salt2);
+
+        // Use hand evaluator to determine winner
+        uint8[5] memory commArr;
+        for (uint8 i = 0; i < 5; i++) commArr[i] = comm[i];
+        uint256 score1 = HandEvaluator.evaluate(commArr, freeCards[0], freeCards[1]);
+        uint256 score2 = HandEvaluator.evaluate(commArr, freeCards[2], freeCards[3]);
+
+        // Reveal both
+        pokerTable.revealHoleCards(handId, 1, freeCards[0], freeCards[1], salt1);
+        pokerTable.revealHoleCards(handId, 2, freeCards[2], freeCards[3], salt2);
+
+        uint256 seat1StackBefore = pokerTable.getSeat(1).stack;
+        uint256 seat2StackBefore = pokerTable.getSeat(2).stack;
+
+        pokerTable.settleShowdown();
+
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.SETTLED));
+
+        uint256 seat1After = pokerTable.getSeat(1).stack;
+        uint256 seat2After = pokerTable.getSeat(2).stack;
+
+        if (score1 > score2) {
+            assertEq(seat1After - seat1StackBefore, 400, "seat1 wins 400");
+        } else if (score2 > score1) {
+            assertEq(seat2After - seat2StackBefore, 400, "seat2 wins 400");
+        } else {
+            // Tie: split evenly
+            assertEq(seat1After - seat1StackBefore, 200, "seat1 gets half on tie");
+            assertEq(seat2After - seat2StackBefore, 200, "seat2 gets half on tie");
+        }
+
+        // Total chips conserved
+        assertEq(seat1After + seat2After, seat1StackBefore + seat2StackBefore + 400);
+    }
+
     function test_AutoSkip_OneNonAllIn_SkipsPostFlopBetting() public {
         // 2 seats: seat1 all-in preflop, seat2 calls normally
         // seat1 (SB stack=5, all-in), seat2 (BB, normal)

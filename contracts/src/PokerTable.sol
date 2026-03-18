@@ -1052,16 +1052,18 @@ contract PokerTable {
 
         uint256 handId = currentHandId;
 
-        // Evaluate revealed active seats
+        // Build score map indexed by seatIndex
+        uint256[MAX_SEATS] memory scoresBySeat;
+        bool[MAX_SEATS] memory revealedBySeat;
         uint8 revealedCount;
-        uint8[MAX_SEATS] memory revSeats;
-        uint256[MAX_SEATS] memory scores;
+        uint8[MAX_SEATS] memory revSeats; // sequential list
 
         for (uint8 i = 0; i < MAX_SEATS; i++) {
             if (seats[i].isActive && isHoleCardsRevealed[handId][i]) {
                 uint8 c1 = _revealedHoleCards[handId][i][0];
                 uint8 c2 = _revealedHoleCards[handId][i][1];
-                scores[revealedCount] = HandEvaluator.evaluate(communityCards, c1, c2);
+                scoresBySeat[i] = HandEvaluator.evaluate(communityCards, c1, c2);
+                revealedBySeat[i] = true;
                 revSeats[revealedCount] = i;
                 revealedCount++;
             }
@@ -1077,36 +1079,121 @@ contract PokerTable {
             return;
         }
 
-        // Single revealed seat wins by default
+        // Use side pot settlement if any side pots were built
+        if (currentHand.sidePotCount > 0) {
+            _settleShowdownWithSidePots(scoresBySeat, revealedBySeat, revSeats[0]);
+            return;
+        }
+
+        // ── Single-pot settlement (no side pots) ──
+        // Build sequential scores for backward-compat with _settleHandSplit
+        uint256[MAX_SEATS] memory seqScores;
+        for (uint8 i = 0; i < revealedCount; i++) {
+            seqScores[i] = scoresBySeat[revSeats[i]];
+        }
+
         if (revealedCount == 1) {
             _settleHand(revSeats[0]);
             return;
         }
 
-        // Find best score
         uint256 bestScore;
         for (uint8 i = 0; i < revealedCount; i++) {
-            if (scores[i] > bestScore) bestScore = scores[i];
+            if (seqScores[i] > bestScore) bestScore = seqScores[i];
         }
 
-        // Count winners
         uint8 winnerCount;
         for (uint8 i = 0; i < revealedCount; i++) {
-            if (scores[i] == bestScore) winnerCount++;
+            if (seqScores[i] == bestScore) winnerCount++;
         }
 
-        // Single winner
         if (winnerCount == 1) {
             for (uint8 i = 0; i < revealedCount; i++) {
-                if (scores[i] == bestScore) {
+                if (seqScores[i] == bestScore) {
                     _settleHand(revSeats[i]);
                     return;
                 }
             }
         }
 
-        // Tie: split pot
-        _settleHandSplit(revSeats, scores, revealedCount, bestScore, winnerCount);
+        _settleHandSplit(revSeats, seqScores, revealedCount, bestScore, winnerCount);
+    }
+
+    /**
+     * @notice Settle showdown with side pots.
+     * @dev Each pot is awarded to the eligible revealed seat with the best hand.
+     *      If only 1 eligible seat → that seat wins that pot (handles unmatched bet return).
+     */
+    function _settleShowdownWithSidePots(
+        uint256[MAX_SEATS] memory scoresBySeat,
+        bool[MAX_SEATS] memory revealedBySeat,
+        uint8 fallbackWinner
+    ) internal {
+        uint8 potCount = currentHand.sidePotCount;
+        uint8 firstWinner = MAX_SEATS;
+
+        for (uint8 p = 0; p < potCount; p++) {
+            uint256 potAmount = sidePots[p].amount;
+            bool[MAX_SEATS] memory eligible = sidePots[p].eligible;
+
+            // Find eligible AND revealed seats for this pot
+            uint8 eligCount = 0;
+            uint256 bestScore = 0;
+
+            for (uint8 i = 0; i < MAX_SEATS; i++) {
+                if (eligible[i] && revealedBySeat[i]) {
+                    eligCount++;
+                    if (scoresBySeat[i] > bestScore) bestScore = scoresBySeat[i];
+                }
+            }
+
+            if (eligCount == 0) continue; // skip unwinnable pot (edge case)
+
+            // Count tied winners
+            uint8 winnerCount = 0;
+            for (uint8 i = 0; i < MAX_SEATS; i++) {
+                if (eligible[i] && revealedBySeat[i] && scoresBySeat[i] == bestScore) winnerCount++;
+            }
+
+            uint256 share = potAmount / winnerCount;
+            uint256 remainder = potAmount % winnerCount;
+
+            // Primary winner for remainder: first clockwise from button
+            uint8 primaryWinner = MAX_SEATS;
+            for (uint8 i = 1; i <= MAX_SEATS; i++) {
+                uint8 seat = (buttonSeat + i) % MAX_SEATS;
+                if (eligible[seat] && revealedBySeat[seat] && scoresBySeat[seat] == bestScore) {
+                    primaryWinner = seat;
+                    break;
+                }
+            }
+
+            for (uint8 i = 0; i < MAX_SEATS; i++) {
+                if (eligible[i] && revealedBySeat[i] && scoresBySeat[i] == bestScore) {
+                    uint256 amount = share + (i == primaryWinner ? remainder : 0);
+                    seats[i].stack += amount;
+                    if (firstWinner == MAX_SEATS) firstWinner = i;
+                    emit SeatUpdated(i, seats[i].owner, seats[i].operator, seats[i].stack);
+                }
+            }
+        }
+
+        if (firstWinner == MAX_SEATS) firstWinner = fallbackWinner;
+
+        emit HandSettled(currentHandId, firstWinner, currentHand.pot);
+
+        gameState = GameState.SETTLED;
+        showdownStartTimestamp = 0;
+        _advanceButton();
+        currentHand.pot = 0;
+        currentHand.sidePotCount = 0;
+        for (uint8 i = 0; i < MAX_SEATS; i++) {
+            seats[i].currentBet = 0;
+            seats[i].isActive = false;
+            seats[i].isAllIn = false;
+            seats[i].totalHandBet = 0;
+        }
+        _evictBustedSeats();
     }
 
     /**

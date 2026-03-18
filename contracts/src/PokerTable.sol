@@ -570,14 +570,24 @@ contract PokerTable {
         withinDeadline
         oneActionPerBlock
     {
-        require(raiseToAmount > currentHand.currentBet, "Raise must exceed current bet");
-
-        // Minimum raise is the big blind or the last raise amount
-        uint256 minRaise = currentHand.currentBet == 0 ? bigBlind * 2 : currentHand.currentBet * 2;
-        require(raiseToAmount >= minRaise, "Raise too small");
-
+        uint256 stack = seats[seatIndex].stack;
         uint256 additional = raiseToAmount - seats[seatIndex].currentBet;
-        require(seats[seatIndex].stack >= additional, "Insufficient stack");
+
+        // All-in: if stack <= additional, commit entire stack regardless of minRaise
+        bool isAllInRaise = stack <= additional;
+
+        if (!isAllInRaise) {
+            require(raiseToAmount > currentHand.currentBet, "Raise must exceed current bet");
+            // Minimum raise is the big blind or the last raise amount
+            uint256 minRaise = currentHand.currentBet == 0 ? bigBlind * 2 : currentHand.currentBet * 2;
+            require(raiseToAmount >= minRaise, "Raise too small");
+            require(stack >= additional, "Insufficient stack");
+        } else {
+            // All-in raise: raiseToAmount is capped at currentBet + stack
+            additional = stack;
+            raiseToAmount = seats[seatIndex].currentBet + stack;
+            require(raiseToAmount > currentHand.currentBet, "Raise must exceed current bet");
+        }
 
         _recordAction();
 
@@ -587,6 +597,11 @@ contract PokerTable {
         currentHand.currentBet = raiseToAmount;
         currentHand.lastAggressor = seatIndex;
         currentHand.hasActed[seatIndex] = true;
+
+        if (seats[seatIndex].stack == 0) {
+            seats[seatIndex].isAllIn = true;
+            emit SeatAllIn(currentHandId, seatIndex, seats[seatIndex].currentBet);
+        }
 
         // Reset all other active players' hasActed since they need to respond
         for (uint8 i = 0; i < MAX_SEATS; i++) {

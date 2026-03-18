@@ -2252,4 +2252,56 @@ contract PokerTableTest is Test {
         pokerTable.call(1);
         assertTrue(pokerTable.getSeat(1).isAllIn);
     }
+
+    // ============ T-1004: All-in Raise Tests ============
+
+    function test_AllInRaise_ShortStackBelowMinRaise() public {
+        // 2-seat: button=0 → SB=seat1, BB=seat2
+        // seat1 has 80 chips total. Posts SB=10, stack=70.
+        // minRaise would be 40 (BB*2). With 70 remaining, raise to 80 = currentBet(10)+70.
+        // 80 > minRaise(40), so this is valid.
+        // But test below minRaise: seat1 has 25 total, posts SB=10, stack=15.
+        // minRaise=40, but stack=15 → all-in raise to 10+15=25 (< minRaise) → should succeed.
+        _registerSeat(1, owner2, operator2, BUY_IN);
+        _registerSeat(2, owner3, operator3, BUY_IN);
+        _setSeatStack(1, 25); // posts SB=10, left with 15
+
+        pokerTable.startHand();
+
+        (,,, uint8 actor,) = pokerTable.getHandInfo();
+        assertEq(actor, 1, "Seat1 acts first");
+
+        // All-in raise: seat1 has stack=15, additional = any value >= 15
+        // raiseToAmount passed as 100 (doesn't matter, gets capped to currentBet+stack=10+15=25)
+        vm.prank(operator2);
+        vm.roll(block.number + 1);
+        pokerTable.raise(1, 100); // will be capped to 25
+
+        PokerTable.Seat memory seat1 = pokerTable.getSeat(1);
+        assertEq(seat1.stack, 0, "Stack 0 after all-in raise");
+        assertEq(seat1.currentBet, 25, "currentBet = 10 (SB) + 15 (all-in) = 25");
+        assertTrue(seat1.isAllIn, "Must be all-in");
+
+        (,, uint256 newCurrentBet,,) = pokerTable.getHandInfo();
+        assertEq(newCurrentBet, 25, "Table currentBet updated to all-in amount");
+    }
+
+    function test_AllInRaise_ExactAllIn() public {
+        // Raise exactly to current stack amount (all-in)
+        _registerSeat(1, owner2, operator2, BUY_IN);
+        _registerSeat(2, owner3, operator3, BUY_IN);
+        // seat1 SB, 80 total → posts 10 → stack=70. Raise to 80 (all-in).
+        _setSeatStack(1, 80);
+
+        pokerTable.startHand();
+
+        vm.prank(operator2);
+        vm.roll(block.number + 1);
+        pokerTable.raise(1, 80);
+
+        PokerTable.Seat memory seat1 = pokerTable.getSeat(1);
+        assertEq(seat1.stack, 0);
+        assertEq(seat1.currentBet, 80);
+        assertTrue(seat1.isAllIn);
+    }
 }

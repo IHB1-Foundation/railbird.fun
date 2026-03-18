@@ -27,6 +27,7 @@ export enum GameState {
   BETTING_RIVER = 8,
   SHOWDOWN = 9,
   SETTLED = 10,
+  TOURNAMENT_OVER = 11,
 }
 
 export interface Seat {
@@ -35,6 +36,8 @@ export interface Seat {
   stack: bigint;
   isActive: boolean;
   currentBet: bigint;
+  isAllIn: boolean;
+  totalHandBet: bigint;
 }
 
 export interface TableState {

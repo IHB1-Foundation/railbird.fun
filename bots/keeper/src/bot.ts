@@ -117,6 +117,13 @@ export class KeeperBot {
       this.lastGameState = state.gameState;
     }
 
+    // Tournament over: log and stop looping
+    if (state.gameState === GameState.TOURNAMENT_OVER) {
+      console.log(`[KeeperBot] TOURNAMENT_OVER — tournament has ended. Keeper stopping.`);
+      this.running = false;
+      return;
+    }
+
     // Check for keeper actions needed
     await this.checkAndSubmitHoleCommits(state);
     await this.checkAndHandleTimeout(state, currentTimestamp, currentBlock);

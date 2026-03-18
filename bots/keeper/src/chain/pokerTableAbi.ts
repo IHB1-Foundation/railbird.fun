@@ -89,6 +89,8 @@ export const POKER_TABLE_ABI = [
           { type: "uint256", name: "stack" },
           { type: "bool", name: "isActive" },
           { type: "uint256", name: "currentBet" },
+          { type: "bool", name: "isAllIn" },
+          { type: "uint256", name: "totalHandBet" },
         ],
       },
     ],
@@ -238,6 +240,25 @@ export const POKER_TABLE_ABI = [
       { type: "uint256", name: "handId", indexed: true },
       { type: "uint8", name: "seatIndex", indexed: true },
       { type: "uint8", name: "forcedAction" },
+    ],
+  },
+  {
+    type: "event",
+    name: "TournamentWinner",
+    inputs: [
+      { type: "address", name: "winner",     indexed: true },
+      { type: "uint8",   name: "seatIndex",  indexed: true },
+      { type: "uint256", name: "finalStack", indexed: false },
+    ],
+  },
+  {
+    type: "event",
+    name: "CardIntegrityViolation",
+    inputs: [
+      { type: "uint256", name: "handId",         indexed: true },
+      { type: "uint8",   name: "seatIndex",      indexed: true },
+      { type: "uint8",   name: "card",           indexed: false },
+      { type: "uint8",   name: "communityIndex", indexed: false },
     ],
   },
 ] as const;

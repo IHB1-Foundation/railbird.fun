@@ -45,6 +45,7 @@ contract PokerTable {
         uint256 stack;       // Current chip stack
         bool isActive;       // Still in the current hand (not folded)
         uint256 currentBet;  // Amount committed in current betting round
+        bool isAllIn;        // True when player has committed their entire stack
     }
 
     struct Hand {
@@ -89,6 +90,12 @@ contract PokerTable {
     event SeatEvicted(
         uint8 indexed seatIndex,
         address indexed owner
+    );
+
+    event SeatAllIn(
+        uint256 indexed handId,
+        uint8 indexed seatIndex,
+        uint256 totalBet
     );
 
     event HandStarted(
@@ -277,7 +284,8 @@ contract PokerTable {
             // Mid-hand registrations are queued for the next hand.
             stack: msg.value,
             isActive: false,
-            currentBet: 0
+            currentBet: 0,
+            isAllIn: false
         });
 
         emit SeatUpdated(seatIndex, owner, operator == address(0) ? owner : operator, msg.value);
@@ -394,6 +402,7 @@ contract PokerTable {
         for (uint8 i = 0; i < MAX_SEATS; i++) {
             seats[i].isActive = _isSeatPlayable(i);
             seats[i].currentBet = 0;
+            seats[i].isAllIn = false;
         }
 
         // Reset community cards (255 = not dealt)
@@ -877,6 +886,7 @@ contract PokerTable {
         for (uint8 i = 0; i < MAX_SEATS; i++) {
             seats[i].currentBet = 0;
             seats[i].isActive = false;
+            seats[i].isAllIn = false;
         }
         _evictBustedSeats();
     }
@@ -1002,6 +1012,7 @@ contract PokerTable {
         for (uint8 i = 0; i < MAX_SEATS; i++) {
             seats[i].currentBet = 0;
             seats[i].isActive = false;
+            seats[i].isAllIn = false;
         }
         _evictBustedSeats();
     }
@@ -1070,6 +1081,7 @@ contract PokerTable {
         for (uint8 i = 0; i < MAX_SEATS; i++) {
             seats[i].currentBet = 0;
             seats[i].isActive = false;
+            seats[i].isAllIn = false;
         }
         _evictBustedSeats();
     }

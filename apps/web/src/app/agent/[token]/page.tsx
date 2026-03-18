@@ -6,8 +6,6 @@ import {
   formatPercent,
   formatNavPerShare,
 } from "@/lib/utils";
-import TradingWidget from "@/components/TradingWidget";
-
 export const dynamic = "force-dynamic";
 
 export default async function AgentPage({
@@ -197,11 +195,6 @@ export default async function AgentPage({
         )}
       </div>
 
-      {/* Trading Widget */}
-      <div className="section-card">
-        <h3 className="section-title-sm">Invest in Agent (nad.fun UI)</h3>
-        <TradingWidget tokenAddress={token} />
-      </div>
     </section>
   );
 }

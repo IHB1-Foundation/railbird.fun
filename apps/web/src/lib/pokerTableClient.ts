@@ -8,20 +8,24 @@ import {
   type Chain,
   type Hash,
 } from "viem";
-import { monadTestnet } from "viem/chains";
-import { ERC20_ABI } from "./nadfun/types";
 
-const CHAIN: Chain = monadTestnet;
+// KAIA Kairos testnet (chain ID 1001)
+const KAIA_KAIROS: Chain = {
+  id: 1001,
+  name: "KAIA Kairos",
+  nativeCurrency: { name: "KAIA", symbol: "KAIA", decimals: 18 },
+  rpcUrls: {
+    default: { http: ["https://public-en-kairos.node.real.io"] },
+  },
+  blockExplorers: {
+    default: { name: "Kaiascan", url: "https://kairos.kaiascan.io" },
+  },
+};
+
+const CHAIN: Chain = KAIA_KAIROS;
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as Address;
 
 const POKER_TABLE_ABI = [
-  {
-    name: "chipToken",
-    type: "function",
-    stateMutability: "view",
-    inputs: [],
-    outputs: [{ type: "address" }],
-  },
   {
     name: "MAX_SEATS",
     type: "function",
@@ -32,19 +36,18 @@ const POKER_TABLE_ABI = [
   {
     name: "registerSeat",
     type: "function",
-    stateMutability: "nonpayable",
+    stateMutability: "payable",
     inputs: [
       { name: "seatIndex", type: "uint8" },
       { name: "owner", type: "address" },
       { name: "operator", type: "address" },
-      { name: "buyIn", type: "uint256" },
     ],
     outputs: [],
   },
 ] as const;
 
 function getRpcUrl(): string {
-  return process.env.NEXT_PUBLIC_RPC_URL || "https://testnet-rpc.monad.xyz";
+  return process.env.NEXT_PUBLIC_RPC_URL || "https://public-en-kairos.node.real.io";
 }
 
 function getPublicClient() {
@@ -67,12 +70,11 @@ function getWalletClient() {
 export interface RegisterSeatParams {
   tableAddress: Address;
   seatIndex: number;
-  buyInTokens: string;
+  buyInKaia: string;
   operator?: Address;
 }
 
 export interface RegisterSeatResult {
-  approveTxHash: Hash | null;
   registerTxHash: Hash;
 }
 
@@ -86,7 +88,7 @@ export async function getPokerTableMaxSeats(tableAddress: Address): Promise<numb
   return Number(result);
 }
 
-export async function registerSeatWithApprove(params: RegisterSeatParams): Promise<RegisterSeatResult> {
+export async function registerSeat(params: RegisterSeatParams): Promise<RegisterSeatResult> {
   const walletClient = getWalletClient();
   if (!walletClient) {
     throw new Error("No wallet connected");
@@ -97,35 +99,9 @@ export async function registerSeatWithApprove(params: RegisterSeatParams): Promi
   }
 
   const publicClient = getPublicClient();
-  const buyIn = parseUnits(params.buyInTokens, 18);
+  const buyIn = parseUnits(params.buyInKaia, 18);
   if (buyIn <= 0n) {
     throw new Error("Buy-in must be greater than 0");
-  }
-
-  const chipToken = (await publicClient.readContract({
-    address: params.tableAddress,
-    abi: POKER_TABLE_ABI,
-    functionName: "chipToken",
-  })) as Address;
-
-  const allowance = (await publicClient.readContract({
-    address: chipToken,
-    abi: ERC20_ABI,
-    functionName: "allowance",
-    args: [account, params.tableAddress],
-  })) as bigint;
-
-  let approveTxHash: Hash | null = null;
-  if (allowance < buyIn) {
-    approveTxHash = await walletClient.writeContract({
-      address: chipToken,
-      abi: ERC20_ABI,
-      functionName: "approve",
-      args: [params.tableAddress, buyIn],
-      account,
-      chain: CHAIN,
-    });
-    await publicClient.waitForTransactionReceipt({ hash: approveTxHash });
   }
 
   const operator = params.operator || ZERO_ADDRESS;
@@ -133,14 +109,12 @@ export async function registerSeatWithApprove(params: RegisterSeatParams): Promi
     address: params.tableAddress,
     abi: POKER_TABLE_ABI,
     functionName: "registerSeat",
-    args: [params.seatIndex, account, operator, buyIn],
+    args: [params.seatIndex, account, operator],
+    value: buyIn,
     account,
     chain: CHAIN,
   });
   await publicClient.waitForTransactionReceipt({ hash: registerTxHash });
 
-  return {
-    approveTxHash,
-    registerTxHash,
-  };
+  return { registerTxHash };
 }

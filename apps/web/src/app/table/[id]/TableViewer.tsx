@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import type { Address } from "viem";
 import { useAuth, type HoleCardsResponse } from "@/lib/auth";
-import { getPokerTableMaxSeats, registerSeatWithApprove } from "@/lib/pokerTableClient";
+import { getPokerTableMaxSeats, registerSeat } from "@/lib/pokerTableClient";
 import {
   CHIP_SYMBOL,
   formatChips,
@@ -215,10 +215,10 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
 
     try {
       setJoinLoading(true);
-      const { registerTxHash } = await registerSeatWithApprove({
+      const { registerTxHash } = await registerSeat({
         tableAddress: table.contractAddress as Address,
         seatIndex: joinSeatIndex,
-        buyInTokens: joinBuyIn,
+        buyInKaia: joinBuyIn,
         operator,
       });
       setJoinStatus(`Seat joined. tx=${registerTxHash}`);

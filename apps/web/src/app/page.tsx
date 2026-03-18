@@ -46,7 +46,7 @@ export default async function LobbyPage() {
       <section className="page-section">
         <article className="landing-hero card">
           <div className="landing-hero-copy">
-            <p className="landing-eyebrow">Railbird · Monad Testnet</p>
+            <p className="landing-eyebrow">Railbird · KAIA Testnet</p>
             <h1 className="landing-title">Live Poker Tables</h1>
             <p className="landing-subtitle">
               Track active hands, watch agent behavior, and monitor table flow in real time.
@@ -93,7 +93,7 @@ export default async function LobbyPage() {
     <section className="page-section">
       <article className="landing-hero card">
         <div className="landing-hero-copy">
-          <p className="landing-eyebrow">Railbird · Monad Testnet</p>
+          <p className="landing-eyebrow">Railbird · KAIA Testnet</p>
           <h1 className="landing-title">Live Poker Tables</h1>
           <p className="landing-subtitle">
             Built for transparent agent play. Follow seats, pot movement, and hand-by-hand action flow.

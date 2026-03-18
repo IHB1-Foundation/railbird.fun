@@ -3,8 +3,8 @@ pragma solidity ^0.8.24;
 
 /**
  * @title PlayerRegistry
- * @notice Canonical mapping from agent token to vault/table/owner/operator.
- * @dev Used by services and web apps to resolve agent ownership and authorization.
+ * @notice Canonical mapping from agent wallet address to vault/table/owner/operator.
+ * @dev Wallet-based identity: msg.sender registers itself as an agent.
  */
 contract PlayerRegistry {
     // ============ Structs ============
@@ -19,7 +19,7 @@ contract PlayerRegistry {
 
     // ============ Events ============
     event AgentRegistered(
-        address indexed token,
+        address indexed agent,
         address indexed owner,
         address vault,
         address table,
@@ -28,90 +28,84 @@ contract PlayerRegistry {
     );
 
     event OperatorUpdated(
-        address indexed token,
+        address indexed agent,
         address indexed oldOperator,
         address indexed newOperator
     );
 
     event OwnerUpdated(
-        address indexed token,
+        address indexed agent,
         address indexed oldOwner,
         address indexed newOwner
     );
 
     event MetaURIUpdated(
-        address indexed token,
+        address indexed agent,
         string oldMetaURI,
         string newMetaURI
     );
 
     event VaultUpdated(
-        address indexed token,
+        address indexed agent,
         address indexed oldVault,
         address indexed newVault
     );
 
     event TableUpdated(
-        address indexed token,
+        address indexed agent,
         address indexed oldTable,
         address indexed newTable
     );
 
     // ============ State Variables ============
 
-    // agentToken => AgentInfo
+    // agent wallet address => AgentInfo
     mapping(address => AgentInfo) public agents;
 
-    // Array of all registered agent tokens for enumeration
-    address[] public registeredTokens;
+    // Array of all registered agent addresses for enumeration
+    address[] public registeredAgents;
 
     // ============ Modifiers ============
 
-    modifier onlyAgentOwner(address token) {
-        require(agents[token].isRegistered, "Agent not registered");
-        require(msg.sender == agents[token].owner, "Not agent owner");
+    modifier onlyAgentOwner(address agent) {
+        require(agents[agent].isRegistered, "Agent not registered");
+        require(msg.sender == agents[agent].owner, "Not agent owner");
         _;
     }
 
     // ============ External Functions ============
 
     /**
-     * @notice Register a new agent with the registry
-     * @param token The agent token address (unique identifier)
+     * @notice Register msg.sender as an agent
      * @param vault The PlayerVault contract address
      * @param table The PokerTable contract address
-     * @param owner The wallet that owns this agent
-     * @param operator The wallet that can submit actions (0x0 defaults to owner)
+     * @param operator The wallet that can submit actions (0x0 defaults to msg.sender)
      * @param metaURI Metadata URI for agent profile
      */
     function registerAgent(
-        address token,
         address vault,
         address table,
-        address owner,
         address operator,
         string calldata metaURI
     ) external {
-        require(token != address(0), "Invalid token address");
-        require(owner != address(0), "Invalid owner address");
-        require(!agents[token].isRegistered, "Agent already registered");
+        require(!agents[msg.sender].isRegistered, "Agent already registered");
 
-        address effectiveOperator = operator == address(0) ? owner : operator;
+        address effectiveOperator = operator == address(0) ? msg.sender : operator;
 
-        agents[token] = AgentInfo({
+        agents[msg.sender] = AgentInfo({
             vault: vault,
             table: table,
-            owner: owner,
+            owner: msg.sender,
             operator: effectiveOperator,
             metaURI: metaURI,
             isRegistered: true
         });
 
-        registeredTokens.push(token);
+        registeredAgents.push(msg.sender);
 
         emit AgentRegistered(
-            token,
-            owner,
+            msg.sender,
+            msg.sender,
             vault,
             table,
             effectiveOperator,
@@ -119,189 +113,91 @@ contract PlayerRegistry {
         );
     }
 
-    /**
-     * @notice Update the operator for an agent
-     * @param token The agent token address
-     * @param newOperator The new operator address (0x0 defaults to owner)
-     */
-    function updateOperator(address token, address newOperator) external onlyAgentOwner(token) {
-        address oldOperator = agents[token].operator;
-        address effectiveOperator = newOperator == address(0) ? agents[token].owner : newOperator;
-
+    function updateOperator(address agent, address newOperator) external onlyAgentOwner(agent) {
+        address oldOperator = agents[agent].operator;
+        address effectiveOperator = newOperator == address(0) ? agents[agent].owner : newOperator;
         require(effectiveOperator != oldOperator, "Operator unchanged");
-
-        agents[token].operator = effectiveOperator;
-
-        emit OperatorUpdated(token, oldOperator, effectiveOperator);
+        agents[agent].operator = effectiveOperator;
+        emit OperatorUpdated(agent, oldOperator, effectiveOperator);
     }
 
-    /**
-     * @notice Transfer ownership of an agent
-     * @param token The agent token address
-     * @param newOwner The new owner address
-     */
-    function transferOwnership(address token, address newOwner) external onlyAgentOwner(token) {
+    function transferOwnership(address agent, address newOwner) external onlyAgentOwner(agent) {
         require(newOwner != address(0), "Invalid new owner");
-
-        address oldOwner = agents[token].owner;
+        address oldOwner = agents[agent].owner;
         require(newOwner != oldOwner, "Owner unchanged");
-
-        agents[token].owner = newOwner;
-
-        emit OwnerUpdated(token, oldOwner, newOwner);
+        agents[agent].owner = newOwner;
+        emit OwnerUpdated(agent, oldOwner, newOwner);
     }
 
-    /**
-     * @notice Update the metadata URI for an agent
-     * @param token The agent token address
-     * @param newMetaURI The new metadata URI
-     */
-    function updateMetaURI(address token, string calldata newMetaURI) external onlyAgentOwner(token) {
-        string memory oldMetaURI = agents[token].metaURI;
-        agents[token].metaURI = newMetaURI;
-
-        emit MetaURIUpdated(token, oldMetaURI, newMetaURI);
+    function updateMetaURI(address agent, string calldata newMetaURI) external onlyAgentOwner(agent) {
+        string memory oldMetaURI = agents[agent].metaURI;
+        agents[agent].metaURI = newMetaURI;
+        emit MetaURIUpdated(agent, oldMetaURI, newMetaURI);
     }
 
-    /**
-     * @notice Update the vault address for an agent
-     * @param token The agent token address
-     * @param newVault The new vault address
-     */
-    function updateVault(address token, address newVault) external onlyAgentOwner(token) {
-        address oldVault = agents[token].vault;
+    function updateVault(address agent, address newVault) external onlyAgentOwner(agent) {
+        address oldVault = agents[agent].vault;
         require(newVault != oldVault, "Vault unchanged");
-
-        agents[token].vault = newVault;
-
-        emit VaultUpdated(token, oldVault, newVault);
+        agents[agent].vault = newVault;
+        emit VaultUpdated(agent, oldVault, newVault);
     }
 
-    /**
-     * @notice Update the table address for an agent
-     * @param token The agent token address
-     * @param newTable The new table address
-     */
-    function updateTable(address token, address newTable) external onlyAgentOwner(token) {
-        address oldTable = agents[token].table;
+    function updateTable(address agent, address newTable) external onlyAgentOwner(agent) {
+        address oldTable = agents[agent].table;
         require(newTable != oldTable, "Table unchanged");
-
-        agents[token].table = newTable;
-
-        emit TableUpdated(token, oldTable, newTable);
+        agents[agent].table = newTable;
+        emit TableUpdated(agent, oldTable, newTable);
     }
 
     // ============ View Functions ============
 
-    /**
-     * @notice Get complete agent info
-     * @param token The agent token address
-     * @return info The AgentInfo struct
-     */
-    function getAgent(address token) external view returns (AgentInfo memory info) {
-        return agents[token];
+    function getAgent(address agent) external view returns (AgentInfo memory) {
+        return agents[agent];
     }
 
-    /**
-     * @notice Get the owner of an agent
-     * @param token The agent token address
-     * @return The owner address (0x0 if not registered)
-     */
-    function getOwner(address token) external view returns (address) {
-        return agents[token].owner;
+    function getOwner(address agent) external view returns (address) {
+        return agents[agent].owner;
     }
 
-    /**
-     * @notice Get the operator of an agent
-     * @param token The agent token address
-     * @return The operator address (0x0 if not registered)
-     */
-    function getOperator(address token) external view returns (address) {
-        return agents[token].operator;
+    function getOperator(address agent) external view returns (address) {
+        return agents[agent].operator;
     }
 
-    /**
-     * @notice Get the vault of an agent
-     * @param token The agent token address
-     * @return The vault address (0x0 if not registered)
-     */
-    function getVault(address token) external view returns (address) {
-        return agents[token].vault;
+    function getVault(address agent) external view returns (address) {
+        return agents[agent].vault;
     }
 
-    /**
-     * @notice Get the table of an agent
-     * @param token The agent token address
-     * @return The table address (0x0 if not registered)
-     */
-    function getTable(address token) external view returns (address) {
-        return agents[token].table;
+    function getTable(address agent) external view returns (address) {
+        return agents[agent].table;
     }
 
-    /**
-     * @notice Get the metadata URI of an agent
-     * @param token The agent token address
-     * @return The metadata URI (empty string if not registered)
-     */
-    function getMetaURI(address token) external view returns (string memory) {
-        return agents[token].metaURI;
+    function getMetaURI(address agent) external view returns (string memory) {
+        return agents[agent].metaURI;
     }
 
-    /**
-     * @notice Check if an agent is registered
-     * @param token The agent token address
-     * @return True if registered, false otherwise
-     */
-    function isRegistered(address token) external view returns (bool) {
-        return agents[token].isRegistered;
+    function isRegistered(address agent) external view returns (bool) {
+        return agents[agent].isRegistered;
     }
 
-    /**
-     * @notice Check if an address is the owner of an agent
-     * @param token The agent token address
-     * @param account The address to check
-     * @return True if account is the owner
-     */
-    function isOwner(address token, address account) external view returns (bool) {
-        return agents[token].isRegistered && agents[token].owner == account;
+    function isOwner(address agent, address account) external view returns (bool) {
+        return agents[agent].isRegistered && agents[agent].owner == account;
     }
 
-    /**
-     * @notice Check if an address is the operator of an agent
-     * @param token The agent token address
-     * @param account The address to check
-     * @return True if account is the operator
-     */
-    function isOperator(address token, address account) external view returns (bool) {
-        return agents[token].isRegistered && agents[token].operator == account;
+    function isOperator(address agent, address account) external view returns (bool) {
+        return agents[agent].isRegistered && agents[agent].operator == account;
     }
 
-    /**
-     * @notice Check if an address is authorized (owner or operator) for an agent
-     * @param token The agent token address
-     * @param account The address to check
-     * @return True if account is owner or operator
-     */
-    function isAuthorized(address token, address account) external view returns (bool) {
-        if (!agents[token].isRegistered) return false;
-        return agents[token].owner == account || agents[token].operator == account;
+    function isAuthorized(address agent, address account) external view returns (bool) {
+        if (!agents[agent].isRegistered) return false;
+        return agents[agent].owner == account || agents[agent].operator == account;
     }
 
-    /**
-     * @notice Get the total number of registered agents
-     * @return The count of registered agents
-     */
     function getRegisteredCount() external view returns (uint256) {
-        return registeredTokens.length;
+        return registeredAgents.length;
     }
 
-    /**
-     * @notice Get a registered token by index
-     * @param index The index in the registeredTokens array
-     * @return The token address at that index
-     */
-    function getRegisteredTokenAt(uint256 index) external view returns (address) {
-        require(index < registeredTokens.length, "Index out of bounds");
-        return registeredTokens[index];
+    function getRegisteredAgentAt(uint256 index) external view returns (address) {
+        require(index < registeredAgents.length, "Index out of bounds");
+        return registeredAgents[index];
     }
 }

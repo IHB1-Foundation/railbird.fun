@@ -2207,4 +2207,49 @@ contract PokerTableTest is Test {
         pokerTable.startHand();
         assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.BETTING_PRE));
     }
+
+    // ============ T-1003: All-in Call Tests ============
+
+    function test_AllInCall_ShortStackAllIn() public {
+        // 2-seat: button=0 → SB=seat1, BB=seat2
+        // seat1 starts with stack=12. Posts SB=10 → remaining=2.
+        // currentHand.currentBet=20. toCall=10. stack=2 → actualCall=2 (all-in).
+        _registerSeat(1, owner2, operator2, BUY_IN);
+        _registerSeat(2, owner3, operator3, BUY_IN);
+        _setSeatStack(1, 12);
+
+        pokerTable.startHand();
+
+        // firstActor preflop = _nextActiveSeat(bbSeat=2) = seat1
+        (,,, uint8 actor,) = pokerTable.getHandInfo();
+        assertEq(actor, 1, "Seat1 acts first");
+
+        vm.prank(operator2);
+        vm.roll(block.number + 1);
+        pokerTable.call(1);
+
+        PokerTable.Seat memory seat1 = pokerTable.getSeat(1);
+        assertEq(seat1.stack, 0, "Stack 0 after all-in call");
+        assertEq(seat1.currentBet, 12, "currentBet = 10 (SB) + 2 (all-in)");
+        assertTrue(seat1.isAllIn, "Must be all-in");
+
+        (,uint256 pot,,,) = pokerTable.getHandInfo();
+        assertEq(pot, 12 + BIG_BLIND, "Pot = 12 + 20");
+    }
+
+    function test_AllInCall_DoesNotRevertWhenStackInsufficient() public {
+        // Previously reverted with "Insufficient stack" — now should succeed
+        _registerSeat(1, owner2, operator2, BUY_IN);
+        _registerSeat(2, owner3, operator3, BUY_IN);
+        // seat1 SB stack=12, after posting SB=10, stack=2, toCall=10 → should NOT revert
+        _setSeatStack(1, 12);
+
+        pokerTable.startHand();
+
+        vm.prank(operator2);
+        vm.roll(block.number + 1);
+        // Must not revert
+        pokerTable.call(1);
+        assertTrue(pokerTable.getSeat(1).isAllIn);
+    }
 }

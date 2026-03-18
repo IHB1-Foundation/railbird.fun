@@ -529,14 +529,21 @@ contract PokerTable {
     {
         uint256 toCall = currentHand.currentBet - seats[seatIndex].currentBet;
         require(toCall > 0, "Nothing to call, use check");
-        require(seats[seatIndex].stack >= toCall, "Insufficient stack");
+
+        // All-in call: if stack < toCall, commit remaining stack
+        uint256 actualCall = toCall < seats[seatIndex].stack ? toCall : seats[seatIndex].stack;
 
         _recordAction();
 
-        seats[seatIndex].stack -= toCall;
-        seats[seatIndex].currentBet = currentHand.currentBet;
-        currentHand.pot += toCall;
+        seats[seatIndex].stack -= actualCall;
+        seats[seatIndex].currentBet += actualCall;
+        currentHand.pot += actualCall;
         currentHand.hasActed[seatIndex] = true;
+
+        if (seats[seatIndex].stack == 0) {
+            seats[seatIndex].isAllIn = true;
+            emit SeatAllIn(currentHandId, seatIndex, seats[seatIndex].currentBet);
+        }
 
         emit ActionTaken(
             currentHandId,

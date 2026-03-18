@@ -690,18 +690,25 @@ contract PokerTable {
         if (_isBettingRoundComplete()) {
             _completeBettingRound();
         } else {
-            // Pass action to next active player
-            currentHand.actorSeat = _nextActiveSeat(actorSeat);
+            // Pass action to next active, non-all-in player
+            uint8 next = _nextActiveSeat(actorSeat);
+            if (next == MAX_SEATS) {
+                // All remaining active players are all-in → round is complete
+                _completeBettingRound();
+            } else {
+                currentHand.actorSeat = next;
+            }
         }
     }
 
     /**
      * @notice Check if the betting round is complete.
-     * @dev All active players must have acted and matched the current bet.
+     * @dev All-in players are excluded from the check (they cannot act further).
+     *      Round is complete when all non-all-in active players have acted and matched currentBet.
      */
     function _isBettingRoundComplete() internal view returns (bool) {
         for (uint8 i = 0; i < MAX_SEATS; i++) {
-            if (seats[i].isActive) {
+            if (seats[i].isActive && !seats[i].isAllIn) {
                 if (!currentHand.hasActed[i]) return false;
                 if (seats[i].currentBet != currentHand.currentBet) return false;
             }
@@ -710,16 +717,17 @@ contract PokerTable {
     }
 
     /**
-     * @notice Find the next active seat clockwise from the given seat.
+     * @notice Find the next active, non-all-in seat clockwise from the given seat.
+     * @dev Returns MAX_SEATS (invalid) if no such seat exists (all remaining are all-in).
      */
     function _nextActiveSeat(uint8 fromSeat) internal view returns (uint8) {
         for (uint8 i = 1; i <= MAX_SEATS; i++) {
             uint8 next = (fromSeat + i) % MAX_SEATS;
-            if (seats[next].isActive) {
+            if (seats[next].isActive && !seats[next].isAllIn) {
                 return next;
             }
         }
-        revert("No active seat found");
+        return MAX_SEATS; // sentinel: no eligible actor
     }
 
     /**
@@ -802,8 +810,9 @@ contract PokerTable {
         currentHand.currentBet = 0;
         currentHand.actionsInRound = 0;
 
-        // Post-flop: first active player after button acts first
-        currentHand.actorSeat = _firstActiveAfterButton();
+        // Post-flop: first active, non-all-in player after button acts first
+        uint8 firstActor = _firstActiveAfterButton();
+        currentHand.actorSeat = firstActor;
 
         // Determine next betting state based on current VRF state
         GameState nextBettingState;
@@ -819,6 +828,11 @@ contract PokerTable {
         actionDeadline = block.timestamp + ACTION_TIMEOUT;
         pendingVRFRequestId = 0;
         showdownStartTimestamp = 0;
+
+        // If all active players are all-in, skip this betting round immediately
+        if (firstActor == MAX_SEATS) {
+            _completeBettingRound();
+        }
     }
 
     /**
@@ -849,17 +863,17 @@ contract PokerTable {
     }
 
     /**
-     * @notice Find first active player after the button (clockwise).
-     * @dev Used for post-flop action order.
+     * @notice Find first active, non-all-in player after the button (clockwise).
+     * @dev Used for post-flop action order. Returns MAX_SEATS if everyone is all-in.
      */
     function _firstActiveAfterButton() internal view returns (uint8) {
         for (uint8 i = 1; i <= MAX_SEATS; i++) {
             uint8 seat = (buttonSeat + i) % MAX_SEATS;
-            if (seats[seat].isActive) {
+            if (seats[seat].isActive && !seats[seat].isAllIn) {
                 return seat;
             }
         }
-        revert("No active player");
+        return MAX_SEATS; // sentinel: all players are all-in
     }
 
     /**

@@ -2304,4 +2304,59 @@ contract PokerTableTest is Test {
         assertEq(seat1.currentBet, 80);
         assertTrue(seat1.isAllIn);
     }
+
+    // ============ T-1005: Skip All-in Players in Betting Rounds ============
+
+    function test_AllInSkip_AllInPlayerDoesNotGetTurn() public {
+        // 3 seats: button=0, SB=seat1 (all-in blind), BB=seat2, UTG=seat3 acts first preflop
+        _registerSeat(1, owner2, operator2, BUY_IN);
+        _registerSeat(2, owner3, operator3, BUY_IN);
+        _registerSeat(3, owner4, operator4, BUY_IN);
+        // seat1 goes all-in posting blind (stack=5 < SB=10)
+        _setSeatStack(1, 5);
+
+        pokerTable.startHand();
+        assertTrue(pokerTable.getSeat(1).isAllIn, "Seat1 should be all-in");
+
+        // Pre-flop actor: firstActive after BB(seat2) that is not all-in
+        (,,, uint8 actor,) = pokerTable.getHandInfo();
+        assertNotEq(actor, 1, "All-in seat1 should not be the actor");
+
+        // seat3 calls
+        vm.prank(operator4);
+        vm.roll(block.number + 1);
+        pokerTable.call(3);
+
+        // Button = seat0 doesn't exist, so next after seat3 should skip to seat2 (BB)
+        // Actually button=0 is not registered here, so active seats are 1,2,3
+        // After seat3 calls, next non-all-in after seat3 = seat2 (BB)
+        (,,, uint8 nextActor,) = pokerTable.getHandInfo();
+        assertNotEq(nextActor, 1, "All-in seat1 should still be skipped");
+    }
+
+    function test_AllInSkip_RoundCompleteWhenOnlyAllInLeft() public {
+        // 2 seats: seat1 (SB, all-in), seat2 (BB, normal)
+        // After seat2 acts, betting round should complete (seat1 is all-in, can't act)
+        _registerSeat(1, owner2, operator2, BUY_IN);
+        _registerSeat(2, owner3, operator3, BUY_IN);
+        _setSeatStack(1, 5); // all-in blind
+
+        pokerTable.startHand();
+        // seat1 is all-in. seat2 is BB. Pre-flop: only seat2 can act.
+        (,,, uint8 actor,) = pokerTable.getHandInfo();
+        assertEq(actor, 2, "seat2 (BB) is the only non-all-in actor");
+
+        // seat2 checks (or calls depending on currentBet)
+        // seat2 currentBet=20 (BB), currentHand.currentBet=20 → can check
+        vm.prank(operator3);
+        vm.roll(block.number + 1);
+        pokerTable.check(2);
+
+        // Betting round should be complete → VRF requested for flop
+        assertEq(
+            uint256(pokerTable.gameState()),
+            uint256(PokerTable.GameState.WAITING_VRF_FLOP),
+            "Should advance to VRF flop after seat2 checks"
+        );
+    }
 }

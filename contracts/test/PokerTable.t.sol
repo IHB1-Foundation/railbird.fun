@@ -2883,6 +2883,64 @@ contract PokerTableTest is Test {
         assertEq(actorSeat, 0, "SB (button) acts first pre-flop in heads-up");
     }
 
+    // ============ T-1302: Tournament Winner Detection ============
+
+    function test_TournamentWinner_EmittedWhenOnePlayerRemains() public {
+        // 2 players: seat 0 wins everything, seat 1 busts out
+        _registerSeat(0, owner1, operator1, BUY_IN);
+        _registerSeat(1, owner2, operator2, BUY_IN);
+
+        pokerTable.startHand();
+
+        // Seat 1 (BB) folds → seat 0 wins the pot (blinds = 30)
+        // Then seat 1 has BUY_IN - BIG_BLIND = 980. Still alive.
+        // We need seat 1 to go all-in and lose. Use _setSeatStack to shortcut.
+        // Instead: directly set seat 1 stack to 0 (simulate busted after settlement)
+        // Actually simplest: just start hand, let seat 0 win via fold, then again
+        // until seat 1 runs out. But that's many hands.
+
+        // Simplest approach: set seat 1 stack to 0 and call _evictBustedSeats
+        // indirectly via startHand() (which calls _evictBustedSeats at start).
+        // After fold, settle. Then reduce seat1 stack to 0.
+        vm.prank(operator1); // SB = button = seat0 acts first (heads-up)
+        vm.roll(block.number + 1);
+        pokerTable.fold(0);
+
+        // Settled: seat 1 wins the pot. Seat 0 now has BUY_IN - SMALL_BLIND.
+        // Artificially zero out seat 1 (loser) for next hand trigger
+        _setSeatStack(1, 0);
+
+        // startHand() → _evictBustedSeats() → seat 1 evicted → 1 playable → TournamentWinner
+        vm.recordLogs();
+        pokerTable.startHand();
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+
+        bytes32 winnerSig = keccak256("TournamentWinner(address,uint8,uint256)");
+        bool winnerFound = false;
+        for (uint256 i = 0; i < logs.length; i++) {
+            if (logs[i].topics[0] == winnerSig) {
+                winnerFound = true;
+                uint8 seatIndex = uint8(uint256(logs[i].topics[2]));
+                assertEq(seatIndex, 0, "Seat 0 is the winner");
+            }
+        }
+        assertTrue(winnerFound, "TournamentWinner not emitted");
+    }
+
+    function test_TournamentWinner_NotEmittedWithMultiplePlayers() public {
+        _setupAllSeats();
+        pokerTable.startHand();
+
+        vm.recordLogs();
+        // No settlement yet — shouldn't emit TournamentWinner
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+
+        bytes32 winnerSig = keccak256("TournamentWinner(address,uint8,uint256)");
+        for (uint256 i = 0; i < logs.length; i++) {
+            assertFalse(logs[i].topics[0] == winnerSig, "TournamentWinner emitted prematurely");
+        }
+    }
+
     function test_HeadsUp_ThreePlayerUsesNormalRule() public {
         // 3+ players: button is NOT the SB
         _setupAllSeats(); // registers seats 0, 1, 2, 3

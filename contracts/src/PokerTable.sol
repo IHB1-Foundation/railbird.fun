@@ -28,7 +28,8 @@ contract PokerTable {
         WAITING_VRF_RIVER,  // Waiting for VRF to deal river
         BETTING_RIVER,      // River betting
         SHOWDOWN,           // Waiting for hole card reveals
-        SETTLED             // Hand complete, ready for next hand
+        SETTLED,            // Hand complete, ready for next hand
+        TOURNAMENT_OVER     // Only one player with chips remains — tournament ended
     }
 
     enum ActionType {
@@ -178,6 +179,15 @@ contract PokerTable {
         GameState street,
         uint256 oldRequestId,
         uint256 newRequestId
+    );
+
+    /**
+     * @notice Emitted when only one player remains with chips — tournament winner.
+     */
+    event TournamentWinner(
+        address indexed winner,
+        uint8 indexed seatIndex,
+        uint256 finalStack
     );
 
     /**
@@ -410,6 +420,7 @@ contract PokerTable {
             "Cannot start hand now"
         );
         _evictBustedSeats();
+        if (gameState == GameState.TOURNAMENT_OVER) return; // winner already declared
         require(_countPlayableSeats() >= 2, "Need at least 2 funded seats");
 
         // Positions:
@@ -1545,6 +1556,7 @@ contract PokerTable {
     }
 
     function canStartHand() external view returns (bool) {
+        if (gameState == GameState.TOURNAMENT_OVER) return false;
         if (!(gameState == GameState.WAITING_FOR_SEATS || gameState == GameState.SETTLED)) return false;
         return _countPlayableSeats() >= 2;
     }
@@ -1590,6 +1602,18 @@ contract PokerTable {
                 delete seats[i];
                 emit SeatUpdated(i, address(0), address(0), 0);
                 emit SeatEvicted(i, owner);
+            }
+        }
+
+        // Tournament winner check: exactly 1 player with chips remains
+        uint8 playableCount = _countPlayableSeats();
+        if (playableCount == 1) {
+            for (uint8 i = 0; i < MAX_SEATS; i++) {
+                if (_isSeatPlayable(i)) {
+                    gameState = GameState.TOURNAMENT_OVER;
+                    emit TournamentWinner(seats[i].owner, i, seats[i].stack);
+                    break;
+                }
             }
         }
     }

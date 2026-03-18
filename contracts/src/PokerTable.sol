@@ -985,31 +985,61 @@ contract PokerTable {
     }
 
     /**
-     * @notice Derive and store community cards from VRF randomness.
-     * @dev Cards are 0-51. We use simple mod-based derivation for MVP.
-     *      In production, would need more sophisticated shuffle to avoid duplicates
-     *      with hole cards and previously dealt community cards.
+     * @notice Derive and store community cards from VRF randomness using Fisher-Yates partial shuffle.
+     * @dev Guarantees no duplicate community cards across all streets.
+     *      Previously dealt cards are excluded from the shuffle by placing them at the front of the deck.
      */
     function _dealCommunityCards(uint256 randomness) internal {
-        uint8[] memory newCards;
+        // Build deck of 52 cards
+        uint8[52] memory deck;
+        for (uint8 i = 0; i < 52; i++) deck[i] = i;
 
-        if (gameState == GameState.WAITING_VRF_FLOP) {
-            // Deal 3 flop cards
-            newCards = new uint8[](3);
-            for (uint8 i = 0; i < 3; i++) {
-                communityCards[i] = uint8(uint256(keccak256(abi.encodePacked(randomness, i))) % 52);
-                newCards[i] = communityCards[i];
+        // Move already-dealt community cards to the front (indices 0..alreadyDealt-1)
+        uint8 alreadyDealt = 0;
+        for (uint8 i = 0; i < 5; i++) {
+            if (communityCards[i] != 255) {
+                // Swap communityCards[i] to deck[alreadyDealt]
+                uint8 cardVal = communityCards[i];
+                // Find cardVal in deck (it's still at its natural position since we only swap forward)
+                for (uint8 j = alreadyDealt; j < 52; j++) {
+                    if (deck[j] == cardVal) {
+                        deck[j] = deck[alreadyDealt];
+                        deck[alreadyDealt] = cardVal;
+                        break;
+                    }
+                }
+                alreadyDealt++;
             }
+        }
+
+        // Determine how many new cards to deal
+        uint8 newCount;
+        uint8 startIndex;
+        if (gameState == GameState.WAITING_VRF_FLOP) {
+            newCount = 3;
+            startIndex = 0;
         } else if (gameState == GameState.WAITING_VRF_TURN) {
-            // Deal turn card
-            newCards = new uint8[](1);
-            communityCards[3] = uint8(uint256(keccak256(abi.encodePacked(randomness, uint8(3)))) % 52);
-            newCards[0] = communityCards[3];
-        } else if (gameState == GameState.WAITING_VRF_RIVER) {
-            // Deal river card
-            newCards = new uint8[](1);
-            communityCards[4] = uint8(uint256(keccak256(abi.encodePacked(randomness, uint8(4)))) % 52);
-            newCards[0] = communityCards[4];
+            newCount = 1;
+            startIndex = 3;
+        } else { // WAITING_VRF_RIVER
+            newCount = 1;
+            startIndex = 4;
+        }
+
+        // Fisher-Yates partial shuffle for the new cards
+        uint8 deckStart = alreadyDealt; // available cards start here
+        uint8[] memory newCards = new uint8[](newCount);
+        for (uint8 i = 0; i < newCount; i++) {
+            uint256 hash = uint256(keccak256(abi.encodePacked(randomness, i)));
+            uint8 available = 52 - deckStart - i;
+            uint8 pick = uint8(hash % available);
+            uint8 j = deckStart + i + pick;
+            // Swap deck[deckStart+i] with deck[j]
+            uint8 tmp = deck[deckStart + i];
+            deck[deckStart + i] = deck[j];
+            deck[j] = tmp;
+            communityCards[startIndex + i] = deck[deckStart + i];
+            newCards[i] = deck[deckStart + i];
         }
 
         emit CommunityCardsDealt(currentHandId, gameState, newCards);

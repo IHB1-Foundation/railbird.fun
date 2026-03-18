@@ -1948,21 +1948,23 @@ contract PokerTableTest is Test {
         _setupAllSeats();
         pokerTable.startHand();
 
-        // Both seat 0 and seat 1 have Aces (different suits, same rank)
-        // Seat 0: A♣ K♣ (12, 11) - high cards A K
-        // Seat 1: A♦ K♦ (25, 24) - high cards A K (same ranks)
-        // With 5 shared community cards, these produce the exact same hand
-        _commitCards(1, 0, 12, 11, bytes32("s0"));
-        _commitCards(1, 1, 25, 24, bytes32("s1"));
+        // Fisher-Yates board (TEST_RANDOMNESS): 5♣(3), 5♠(42), 5♥(29), 7♥(31), K♦(24)
+        // Board has three 5s + K♦. Players with a K pair with the board K → full house 5-5-5-K-K.
+        // Seat 0: K♣(11) A♣(12) → full house (5s full of Ks)
+        // Seat 1: K♥(37) A♥(38) → full house (5s full of Ks) — SAME RANK → TIE
+        // Seat 2: 2♣(0)  3♦(14) → only trips of 5s — loses
+        // Seat 3: 4♣(2)  9♦(20) → only trips of 5s — loses (no 5 in hole → no quads)
+        _commitCards(1, 0, 11, 12, bytes32("s0"));
+        _commitCards(1, 1, 37, 38, bytes32("s1"));
         _commitCards(1, 2, 0, 14, bytes32("s2"));
-        _commitCards(1, 3, 2, 16, bytes32("s3"));
+        _commitCards(1, 3, 2, 20, bytes32("s3"));
 
         _playToShowdown();
 
-        pokerTable.revealHoleCards(1, 0, 12, 11, bytes32("s0"));
-        pokerTable.revealHoleCards(1, 1, 25, 24, bytes32("s1"));
+        pokerTable.revealHoleCards(1, 0, 11, 12, bytes32("s0"));
+        pokerTable.revealHoleCards(1, 1, 37, 38, bytes32("s1"));
         pokerTable.revealHoleCards(1, 2, 0, 14, bytes32("s2"));
-        pokerTable.revealHoleCards(1, 3, 2, 16, bytes32("s3"));
+        pokerTable.revealHoleCards(1, 3, 2, 20, bytes32("s3"));
 
         uint256 stack0Before = pokerTable.getSeat(0).stack;
         uint256 stack1Before = pokerTable.getSeat(1).stack;

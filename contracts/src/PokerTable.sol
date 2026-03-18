@@ -2,7 +2,6 @@
 pragma solidity ^0.8.24;
 
 import "./interfaces/IVRFAdapter.sol";
-import "./interfaces/IERC20.sol";
 import "./HandEvaluator.sol";
 
 /**
@@ -15,6 +14,7 @@ contract PokerTable {
     uint8 public constant MAX_SEATS = 9;
     uint256 public constant ACTION_TIMEOUT = 30 minutes;
     uint256 public constant VRF_TIMEOUT = 5 minutes;
+    uint256 public constant SHOWDOWN_TIMEOUT = 10 minutes;
 
     // ============ Enums ============
     enum GameState {
@@ -134,6 +134,11 @@ contract PokerTable {
         uint8 winnerSeat,
         uint256 potAmount
     );
+    event ShowdownTimedOut(
+        uint256 indexed handId,
+        uint8 activePlayers,
+        uint256 potAmount
+    );
 
     event ForceTimeout(
         uint256 indexed handId,
@@ -165,7 +170,6 @@ contract PokerTable {
     uint256 public tableId;
     uint256 public smallBlind;
     uint256 public bigBlind;
-    address public chipToken;
 
     GameState public gameState;
     uint256 public currentHandId;
@@ -180,6 +184,7 @@ contract PokerTable {
     address public vrfAdapter;           // Address of VRF adapter contract
     uint256 public pendingVRFRequestId;  // Current pending VRF request ID
     uint256 public vrfRequestTimestamp;  // When VRF was last requested
+    uint256 public showdownStartTimestamp; // When showdown started (for liveness timeout)
 
     // Community cards (0-51 card encoding, 255 = not dealt)
     // Index: 0-2 = flop, 3 = turn, 4 = river
@@ -235,19 +240,16 @@ contract PokerTable {
         uint256 _tableId,
         uint256 _smallBlind,
         uint256 _bigBlind,
-        address _vrfAdapter,
-        address _chipToken
+        address _vrfAdapter
     ) {
         require(_tableId > 0, "Table ID must be > 0");
         require(_smallBlind > 0, "Small blind must be > 0");
         require(_bigBlind >= _smallBlind, "Big blind must be >= small blind");
         require(_vrfAdapter != address(0), "Invalid VRF adapter");
-        require(_chipToken != address(0), "Invalid chip token");
         tableId = _tableId;
         smallBlind = _smallBlind;
         bigBlind = _bigBlind;
         vrfAdapter = _vrfAdapter;
-        chipToken = _chipToken;
         gameState = GameState.WAITING_FOR_SEATS;
     }
 
@@ -258,40 +260,34 @@ contract PokerTable {
      * @param seatIndex 0..MAX_SEATS-1
      * @param owner Address that owns this seat
      * @param operator Address that can submit actions
-     * @param buyIn Initial chip stack
      */
     function registerSeat(
         uint8 seatIndex,
         address owner,
-        address operator,
-        uint256 buyIn
-    ) external {
+        address operator
+    ) external payable {
         require(seatIndex < MAX_SEATS, "Invalid seat index");
         require(seats[seatIndex].owner == address(0), "Seat already taken");
         require(owner != address(0), "Owner cannot be zero");
-        require(buyIn >= bigBlind * 10, "Buy-in too small");
-        require(
-            IERC20(chipToken).transferFrom(owner, address(this), buyIn),
-            "Buy-in transfer failed"
-        );
+        require(msg.value >= bigBlind * 10, "Buy-in too small");
 
         seats[seatIndex] = Seat({
             owner: owner,
             operator: operator == address(0) ? owner : operator,
             // Mid-hand registrations are queued for the next hand.
-            stack: buyIn,
+            stack: msg.value,
             isActive: false,
             currentBet: 0
         });
 
-        emit SeatUpdated(seatIndex, owner, operator == address(0) ? owner : operator, buyIn);
+        emit SeatUpdated(seatIndex, owner, operator == address(0) ? owner : operator, msg.value);
     }
 
     /**
      * @notice Add more chips to an existing seat.
      * @dev Allowed only between hands.
      */
-    function topUpSeat(uint8 seatIndex, uint256 amount) external {
+    function topUpSeat(uint8 seatIndex) external payable {
         require(
             gameState == GameState.WAITING_FOR_SEATS || gameState == GameState.SETTLED,
             "Top-up only between hands"
@@ -301,16 +297,12 @@ contract PokerTable {
         Seat storage seat = seats[seatIndex];
         require(seat.owner != address(0), "Seat not occupied");
         require(msg.sender == seat.owner, "Not seat owner");
-        require(amount > 0, "Top-up amount is zero");
-        require(
-            IERC20(chipToken).transferFrom(msg.sender, address(this), amount),
-            "Top-up transfer failed"
-        );
+        require(msg.value > 0, "Top-up amount is zero");
 
-        seat.stack += amount;
+        seat.stack += msg.value;
 
         emit SeatUpdated(seatIndex, seat.owner, seat.operator, seat.stack);
-        emit SeatTopUp(seatIndex, seat.owner, amount, seat.stack);
+        emit SeatTopUp(seatIndex, seat.owner, msg.value, seat.stack);
     }
 
     /**
@@ -332,7 +324,8 @@ contract PokerTable {
 
         seat.stack -= amount;
         address payoutRecipient = recipient == address(0) ? seat.owner : recipient;
-        require(IERC20(chipToken).transfer(payoutRecipient, amount), "Cash-out transfer failed");
+        (bool success, ) = payable(payoutRecipient).call{value: amount}("");
+        require(success, "Cash-out transfer failed");
 
         emit SeatUpdated(seatIndex, seat.owner, seat.operator, seat.stack);
         emit SeatCashOut(seatIndex, seat.owner, payoutRecipient, amount, seat.stack);
@@ -359,7 +352,8 @@ contract PokerTable {
         delete seats[seatIndex];
 
         if (payoutAmount > 0) {
-            require(IERC20(chipToken).transfer(payoutRecipient, payoutAmount), "Leave transfer failed");
+            (bool success, ) = payable(payoutRecipient).call{value: payoutAmount}("");
+            require(success, "Leave transfer failed");
         }
 
         emit SeatUpdated(seatIndex, address(0), address(0), 0);
@@ -408,6 +402,7 @@ contract PokerTable {
         }
         pendingVRFRequestId = 0;
         vrfRequestTimestamp = 0;
+        showdownStartTimestamp = 0;
 
         // Post blinds
         seats[sbSeat].stack -= smallBlind;
@@ -724,8 +719,10 @@ contract PokerTable {
 
         if (nextState == GameState.SHOWDOWN) {
             gameState = GameState.SHOWDOWN;
+            showdownStartTimestamp = block.timestamp;
         } else {
             gameState = nextState;
+            showdownStartTimestamp = 0;
 
             // Request VRF for next street's community cards
             uint256 requestId = 0;
@@ -786,6 +783,7 @@ contract PokerTable {
         gameState = nextBettingState;
         actionDeadline = block.timestamp + ACTION_TIMEOUT;
         pendingVRFRequestId = 0;
+        showdownStartTimestamp = 0;
     }
 
     /**
@@ -871,6 +869,7 @@ contract PokerTable {
 
         // Prepare for next hand
         gameState = GameState.SETTLED;
+        showdownStartTimestamp = 0;
         _advanceButton(); // Move button clockwise to next occupied seat
 
         // Reset hand state
@@ -908,7 +907,15 @@ contract PokerTable {
             }
         }
 
-        require(revealedCount > 0, "No revealed hole cards");
+        if (revealedCount == 0) {
+            require(
+                showdownStartTimestamp != 0 &&
+                block.timestamp > showdownStartTimestamp + SHOWDOWN_TIMEOUT,
+                "Showdown reveal window open"
+            );
+            _settleUnrevealedShowdown();
+            return;
+        }
 
         // Single revealed seat wins by default
         if (revealedCount == 1) {
@@ -989,6 +996,75 @@ contract PokerTable {
 
         // Prepare for next hand
         gameState = GameState.SETTLED;
+        showdownStartTimestamp = 0;
+        _advanceButton();
+        currentHand.pot = 0;
+        for (uint8 i = 0; i < MAX_SEATS; i++) {
+            seats[i].currentBet = 0;
+            seats[i].isActive = false;
+        }
+        _evictBustedSeats();
+    }
+
+    /**
+     * @notice Liveness fallback when no hole cards are revealed during showdown.
+     * @dev After SHOWDOWN_TIMEOUT, split pot equally among active seats.
+     *      Remainder goes to the first active seat clockwise from button.
+     */
+    function _settleUnrevealedShowdown() internal {
+        uint8 activeCount;
+        uint8[MAX_SEATS] memory activeSeats;
+        for (uint8 i = 0; i < MAX_SEATS; i++) {
+            if (seats[i].isActive) {
+                activeSeats[activeCount] = i;
+                activeCount++;
+            }
+        }
+
+        require(activeCount > 0, "No active players");
+
+        if (activeCount == 1) {
+            _settleHand(activeSeats[0]);
+            return;
+        }
+
+        uint256 potAmount = currentHand.pot;
+        uint256 share = potAmount / uint256(activeCount);
+        uint256 remainder = potAmount % uint256(activeCount);
+
+        uint8 primaryWinner = 255;
+        for (uint8 i = 1; i <= MAX_SEATS; i++) {
+            uint8 seat = (buttonSeat + i) % MAX_SEATS;
+            for (uint8 j = 0; j < activeCount; j++) {
+                if (activeSeats[j] == seat) {
+                    primaryWinner = seat;
+                    break;
+                }
+            }
+            if (primaryWinner != 255) break;
+        }
+        require(primaryWinner != 255, "No active players");
+
+        for (uint8 i = 0; i < activeCount; i++) {
+            uint8 seatIndex = activeSeats[i];
+            uint256 payout = share;
+            if (seatIndex == primaryWinner) {
+                payout += remainder;
+            }
+            seats[seatIndex].stack += payout;
+            emit SeatUpdated(
+                seatIndex,
+                seats[seatIndex].owner,
+                seats[seatIndex].operator,
+                seats[seatIndex].stack
+            );
+        }
+
+        emit ShowdownTimedOut(currentHandId, activeCount, potAmount);
+        emit HandSettled(currentHandId, primaryWinner, potAmount);
+
+        gameState = GameState.SETTLED;
+        showdownStartTimestamp = 0;
         _advanceButton();
         currentHand.pot = 0;
         for (uint8 i = 0; i < MAX_SEATS; i++) {

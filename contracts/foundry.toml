@@ -4,6 +4,15 @@ out = "out"
 libs = ["lib"]
 solc = "0.8.24"
 
+[rpc_endpoints]
+kaia-testnet = "https://public-en-kairos.node.real.io"
+kaia-mainnet = "https://public-en-kaia.node.real.io"
+localhost = "http://localhost:8545"
+
+[etherscan]
+# Kaiascan verification (set KAIASCAN_API_KEY in env when verifying)
+kaia-testnet = { key = "${KAIASCAN_API_KEY}", url = "https://api-kairos.kaiascan.io" }
+
 [fmt]
 line_length = 120
 tab_width = 4

@@ -22,7 +22,16 @@ print_runtime_header "agent-$slot"
 
 require_env RPC_URL
 require_env CHAIN_ID
-require_env POKER_TABLE_ADDRESS
+
+# AGENT_TABLE_ADDRESS (per-agent) takes precedence over POKER_TABLE_ADDRESS
+if [ -n "${AGENT_TABLE_ADDRESS:-}" ]; then
+  export AGENT_TABLE_ADDRESS
+elif [ -n "${POKER_TABLE_ADDRESS:-}" ]; then
+  export POKER_TABLE_ADDRESS
+else
+  echo "[railway] missing env: AGENT_TABLE_ADDRESS (or POKER_TABLE_ADDRESS)" >&2
+  exit 1
+fi
 
 export OWNERVIEW_URL="${OWNERVIEW_URL:-https://ownerview.railbird.fun}"
 

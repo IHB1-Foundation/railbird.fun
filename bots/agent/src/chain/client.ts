@@ -46,6 +46,8 @@ export interface Seat {
   stack: bigint;
   isActive: boolean;
   currentBet: bigint;
+  isAllIn: boolean;
+  totalHandBet: bigint;
 }
 
 export interface HandInfo {
@@ -125,6 +127,8 @@ export class ChainClient {
       stack: bigint;
       isActive: boolean;
       currentBet: bigint;
+      isAllIn: boolean;
+      totalHandBet: bigint;
     };
     return {
       owner: seatData.owner,
@@ -132,6 +136,8 @@ export class ChainClient {
       stack: seatData.stack,
       isActive: seatData.isActive,
       currentBet: seatData.currentBet,
+      isAllIn: seatData.isAllIn,
+      totalHandBet: seatData.totalHandBet,
     };
   }
 
@@ -142,6 +148,8 @@ export class ChainClient {
       stack: 0n,
       isActive: false,
       currentBet: 0n,
+      isAllIn: false,
+      totalHandBet: 0n,
     };
   }
 

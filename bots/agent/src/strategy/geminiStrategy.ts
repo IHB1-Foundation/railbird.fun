@@ -172,6 +172,7 @@ export class GeminiStrategy implements Strategy {
   private buildPrompt(context: DecisionContext): string {
     const seat = context.tableState.seats[context.mySeatIndex];
     const raiseBounds = getRaiseBounds(context);
+    const isAllInCall = context.amountToCall > seat.stack && seat.stack > 0n;
     const summary = {
       stage: gameStateToLabel(context.tableState.gameState),
       handId: context.tableState.currentHandId.toString(),
@@ -184,9 +185,15 @@ export class GeminiStrategy implements Strategy {
       pot: context.tableState.hand.pot.toString(),
       bigBlind: context.tableState.bigBlind.toString(),
       holeCards: formatHoleCards(context.holeCards),
+      allInSituation: {
+        isAllInCall,
+        // If calling would put you all-in, this is the amount you'd actually put in
+        effectiveCallAmount: isAllInCall ? seat.stack.toString() : context.amountToCall.toString(),
+      },
       raise: {
         canRaise: raiseBounds.canRaise,
         minRaiseTarget: raiseBounds.minRaiseTarget.toString(),
+        // Capped at stack (all-in raise)
         maxRaiseTarget: raiseBounds.maxRaiseTarget.toString(),
       },
     };
@@ -196,6 +203,8 @@ export class GeminiStrategy implements Strategy {
       "Return exactly one compact JSON object and no extra text.",
       'Format: {"action":"fold|check|call|raise","raiseTarget":"<integer in chip units>"}',
       "Rules: never output an illegal action; if unsure choose check or call.",
+      "All-in rules: if amountToCall > stack, calling commits only your remaining stack (all-in).",
+      "All-in rules: if raising, raiseTarget is capped at your stack (maxRaiseTarget).",
       `Game context: ${JSON.stringify(summary)}`,
     ].join("\n");
   }

@@ -22,6 +22,8 @@ function createTableState(overrides: Partial<TableState> = {}): TableState {
         stack: 1000n,
         isActive: true,
         currentBet: 5n,
+        isAllIn: false,
+        totalHandBet: 5n,
       },
       {
         owner: "0x2222222222222222222222222222222222222222",
@@ -29,6 +31,8 @@ function createTableState(overrides: Partial<TableState> = {}): TableState {
         stack: 1000n,
         isActive: true,
         currentBet: 10n,
+        isAllIn: false,
+        totalHandBet: 10n,
       },
     ],
     hand: {

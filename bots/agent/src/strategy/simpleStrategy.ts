@@ -103,10 +103,19 @@ export class SimpleStrategy implements Strategy {
     const pot = tableState.hand.pot;
     const bigBlind = tableState.bigBlind;
 
+    // All-in scenario: if amountToCall > myStack, calling means going all-in.
+    // Contract handles the actual all-in; we just need to decide call vs fold.
+    const isAllInCall = amountToCall > myStack && myStack > 0n;
+
     // If we don't have hole cards, play very conservatively
     if (!holeCards) {
       if (canCheck) {
         return { action: Decision.CHECK };
+      }
+      // All-in call: only commit remaining stack if bet is small relative to stack
+      if (isAllInCall) {
+        // Fold if all-in call is a large fraction of stack (desperate)
+        return { action: Decision.FOLD };
       }
       // Call small bets, fold large ones
       if (amountToCall <= bigBlind) {
@@ -117,6 +126,16 @@ export class SimpleStrategy implements Strategy {
 
     const handScore = scoreHoleCards(holeCards);
     const potOdds = amountToCall > 0n ? Number(pot) / Number(amountToCall) : 999;
+
+    // All-in call: use a higher threshold (commit entire stack only with strong hands)
+    if (isAllInCall) {
+      if (handScore >= 70) {
+        // Strong hand: go all-in call
+        return { action: Decision.CALL };
+      }
+      // Weak/medium hand: fold rather than commit all chips
+      return { action: Decision.FOLD };
+    }
 
     // Can check - never fold when free
     if (canCheck) {

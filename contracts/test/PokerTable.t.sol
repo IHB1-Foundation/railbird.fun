@@ -122,10 +122,10 @@ contract PokerTableTest is Test {
         assertEq(midHandSeat.stack, BUY_IN);
         assertFalse(midHandSeat.isActive, "New seat must wait for next hand");
 
-        // With two active seats in pre-flop (button=0), seat1 acts first.
-        vm.prank(operator2);
+        // Heads-up (2 players, button=0): SB=seat0 acts first pre-flop.
+        vm.prank(operator1);
         vm.roll(block.number + 1);
-        pokerTable.fold(1);
+        pokerTable.fold(0);
 
         assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.SETTLED));
 
@@ -2858,5 +2858,47 @@ contract PokerTableTest is Test {
             }
         }
         assertTrue(violationFound, "CardIntegrityViolation not emitted");
+    }
+
+    // ============ T-1301: Heads-Up Blind Rule (button=SB) ============
+
+    function test_HeadsUp_ButtonIsSB() public {
+        // Register only 2 seats: seat 0 (button) and seat 1
+        _registerSeat(0, owner1, operator1, BUY_IN);
+        _registerSeat(1, owner2, operator2, BUY_IN);
+
+        pokerTable.startHand();
+
+        // Button = 0: in heads-up, seat 0 should be SB and seat 1 should be BB
+        PokerTable.Seat memory seat0 = pokerTable.getSeat(0);
+        PokerTable.Seat memory seat1 = pokerTable.getSeat(1);
+
+        assertEq(seat0.currentBet, SMALL_BLIND, "Seat 0 (button) is SB");
+        assertEq(seat1.currentBet, BIG_BLIND,   "Seat 1 is BB");
+        assertEq(seat0.stack, BUY_IN - SMALL_BLIND, "SB stack reduced");
+        assertEq(seat1.stack, BUY_IN - BIG_BLIND,   "BB stack reduced");
+
+        // Pre-flop: SB (seat 0, button) acts first in heads-up
+        (, , , uint8 actorSeat,) = pokerTable.getHandInfo();
+        assertEq(actorSeat, 0, "SB (button) acts first pre-flop in heads-up");
+    }
+
+    function test_HeadsUp_ThreePlayerUsesNormalRule() public {
+        // 3+ players: button is NOT the SB
+        _setupAllSeats(); // registers seats 0, 1, 2, 3
+        pokerTable.startHand();
+
+        // Button=0: SB = seat 1, BB = seat 2
+        PokerTable.Seat memory seat0 = pokerTable.getSeat(0);
+        PokerTable.Seat memory seat1 = pokerTable.getSeat(1);
+        PokerTable.Seat memory seat2 = pokerTable.getSeat(2);
+
+        assertEq(seat0.currentBet, 0,           "Button (seat 0) not SB");
+        assertEq(seat1.currentBet, SMALL_BLIND, "Seat 1 is SB");
+        assertEq(seat2.currentBet, BIG_BLIND,   "Seat 2 is BB");
+
+        // Pre-flop first actor = UTG = seat 3
+        (, , , uint8 actorSeat,) = pokerTable.getHandInfo();
+        assertEq(actorSeat, 3, "UTG (seat 3) acts first pre-flop with 4 players");
     }
 }

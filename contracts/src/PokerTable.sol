@@ -412,9 +412,20 @@ contract PokerTable {
         _evictBustedSeats();
         require(_countPlayableSeats() >= 2, "Need at least 2 funded seats");
 
-        // Positions: SB = first playable seat clockwise from button, BB = next playable seat.
-        uint8 sbSeat = _nextPlayableSeat(buttonSeat);
-        uint8 bbSeat = _nextPlayableSeat(sbSeat);
+        // Positions:
+        //   Heads-up (2 players): button = SB, opponent = BB (standard heads-up rule).
+        //     If buttonSeat is not playable (evicted), advance to first playable seat.
+        //   3+ players: SB = first playable seat clockwise from button, BB = next.
+        uint8 sbSeat;
+        uint8 bbSeat;
+        if (_countPlayableSeats() == 2 && _isSeatPlayable(buttonSeat)) {
+            // Heads-up: button IS the SB
+            sbSeat = buttonSeat;
+            bbSeat = _nextPlayableSeat(buttonSeat);
+        } else {
+            sbSeat = _nextPlayableSeat(buttonSeat);
+            bbSeat = _nextPlayableSeat(sbSeat);
+        }
         require(sbSeat != bbSeat, "Need at least 2 funded seats");
 
         currentHandId++;

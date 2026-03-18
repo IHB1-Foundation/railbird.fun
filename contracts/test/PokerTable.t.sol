@@ -3,14 +3,12 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 import "../src/PokerTable.sol";
-import "../src/RailbirdChip.sol";
 import "../src/HandEvaluator.sol";
 import "../src/mocks/MockVRFAdapter.sol";
 
 contract PokerTableTest is Test {
     PokerTable public pokerTable;
     MockVRFAdapter public mockVRF;
-    RailbirdChip public chip;
 
     // 4 players
     address public owner1 = address(0x1);
@@ -46,27 +44,27 @@ contract PokerTableTest is Test {
 
     function setUp() public {
         mockVRF = new MockVRFAdapter();
-        chip = new RailbirdChip(address(this));
-        pokerTable = new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(mockVRF), address(chip));
-        _fundAndApprove(owner1);
-        _fundAndApprove(owner2);
-        _fundAndApprove(owner3);
-        _fundAndApprove(owner4);
+        pokerTable = new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(mockVRF));
+        // Fund player wallets with native KAIA
+        vm.deal(owner1, BUY_IN * 1000);
+        vm.deal(owner2, BUY_IN * 1000);
+        vm.deal(owner3, BUY_IN * 1000);
+        vm.deal(owner4, BUY_IN * 1000);
     }
 
     function test_Constructor_RevertIfTableIdIsZero() public {
         vm.expectRevert("Table ID must be > 0");
-        new PokerTable(0, SMALL_BLIND, BIG_BLIND, address(mockVRF), address(chip));
+        new PokerTable(0, SMALL_BLIND, BIG_BLIND, address(mockVRF));
     }
 
     function test_Constructor_RevertIfSmallBlindIsZero() public {
         vm.expectRevert("Small blind must be > 0");
-        new PokerTable(1, 0, BIG_BLIND, address(mockVRF), address(chip));
+        new PokerTable(1, 0, BIG_BLIND, address(mockVRF));
     }
 
     function test_Constructor_RevertIfVrfAdapterIsZero() public {
         vm.expectRevert("Invalid VRF adapter");
-        new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(0), address(chip));
+        new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(0));
     }
 
     // ============ Seat Registration Tests ============
@@ -1839,14 +1837,29 @@ contract PokerTableTest is Test {
 
     // ============ Card-Based Settlement Tests (T-0902) ============
 
-    function test_Showdown_RevertIfNoReveals() public {
+    function test_Showdown_RevertIfNoRevealsBeforeTimeout() public {
         _setupAllSeats();
         pokerTable.startHand();
         _playToShowdown();
 
         // No reveals submitted
-        vm.expectRevert("No revealed hole cards");
+        vm.expectRevert("Showdown reveal window open");
         pokerTable.settleShowdown();
+    }
+
+    function test_Showdown_NoRevealsAfterTimeout_SettlesBySplit() public {
+        _setupAllSeats();
+        pokerTable.startHand();
+        _playToShowdown();
+
+        vm.warp(block.timestamp + pokerTable.SHOWDOWN_TIMEOUT() + 1);
+        pokerTable.settleShowdown();
+
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.SETTLED));
+        assertEq(pokerTable.getSeat(0).stack, BUY_IN, "Seat 0 split fallback");
+        assertEq(pokerTable.getSeat(1).stack, BUY_IN, "Seat 1 split fallback");
+        assertEq(pokerTable.getSeat(2).stack, BUY_IN, "Seat 2 split fallback");
+        assertEq(pokerTable.getSeat(3).stack, BUY_IN, "Seat 3 split fallback");
     }
 
     function test_Showdown_SingleRevealWinsByDefault() public {
@@ -2071,13 +2084,7 @@ contract PokerTableTest is Test {
     }
 
     function _registerSeat(uint8 seatIndex, address owner, address operator, uint256 buyIn) internal {
-        pokerTable.registerSeat(seatIndex, owner, operator, buyIn);
-    }
-
-    function _fundAndApprove(address seatOwner) internal {
-        chip.mint(seatOwner, BUY_IN * 1000);
-        vm.prank(seatOwner);
-        chip.approve(address(pokerTable), type(uint256).max);
+        pokerTable.registerSeat{value: buyIn}(seatIndex, owner, operator);
     }
 
     function _operatorFor(uint8 seat) internal view returns (address) {

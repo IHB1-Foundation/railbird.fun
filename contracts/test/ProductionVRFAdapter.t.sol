@@ -4,12 +4,10 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 import "../src/ProductionVRFAdapter.sol";
 import "../src/PokerTable.sol";
-import "../src/RailbirdChip.sol";
 
 contract ProductionVRFAdapterTest is Test {
     ProductionVRFAdapter public adapter;
     PokerTable public pokerTable;
-    RailbirdChip public chip;
 
     address public deployerOwner = address(this);
     address public vrfOperator = address(0xBEEF);
@@ -47,8 +45,10 @@ contract ProductionVRFAdapterTest is Test {
 
     function setUp() public {
         adapter = new ProductionVRFAdapter(vrfOperator);
-        chip = new RailbirdChip(address(this));
-        _fundOwners();
+        vm.deal(owner1, BUY_IN * 1000);
+        vm.deal(owner2, BUY_IN * 1000);
+        vm.deal(owner3, BUY_IN * 1000);
+        vm.deal(owner4, BUY_IN * 1000);
     }
 
     // ============ Constructor Tests ============
@@ -318,30 +318,11 @@ contract ProductionVRFAdapterTest is Test {
     // ============ Helpers ============
 
     function _setupPokerTableForFulfillment() internal {
-        pokerTable = new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(adapter), address(chip));
-        _approveOwnersForCurrentTable();
-        pokerTable.registerSeat(0, owner1, operator1, BUY_IN);
-        pokerTable.registerSeat(1, owner2, operator2, BUY_IN);
-        pokerTable.registerSeat(2, owner3, operator3, BUY_IN);
-        pokerTable.registerSeat(3, owner4, operator4, BUY_IN);
-    }
-
-    function _fundOwners() internal {
-        chip.mint(owner1, BUY_IN * 1000);
-        chip.mint(owner2, BUY_IN * 1000);
-        chip.mint(owner3, BUY_IN * 1000);
-        chip.mint(owner4, BUY_IN * 1000);
-    }
-
-    function _approveOwnersForCurrentTable() internal {
-        vm.prank(owner1);
-        chip.approve(address(pokerTable), type(uint256).max);
-        vm.prank(owner2);
-        chip.approve(address(pokerTable), type(uint256).max);
-        vm.prank(owner3);
-        chip.approve(address(pokerTable), type(uint256).max);
-        vm.prank(owner4);
-        chip.approve(address(pokerTable), type(uint256).max);
+        pokerTable = new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(adapter));
+        pokerTable.registerSeat{value: BUY_IN}(0, owner1, operator1);
+        pokerTable.registerSeat{value: BUY_IN}(1, owner2, operator2);
+        pokerTable.registerSeat{value: BUY_IN}(2, owner3, operator3);
+        pokerTable.registerSeat{value: BUY_IN}(3, owner4, operator4);
     }
 
     function _operatorFor(uint8 seat) internal view returns (address) {

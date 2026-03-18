@@ -180,6 +180,18 @@ contract PokerTable {
         uint256 newRequestId
     );
 
+    /**
+     * @notice Emitted when a revealed hole card duplicates a community card.
+     * @dev Indicates dealer integrity violation. Settlement proceeds regardless,
+     *      but this event allows off-chain monitoring/auditing.
+     */
+    event CardIntegrityViolation(
+        uint256 indexed handId,
+        uint8 indexed seatIndex,
+        uint8 card,
+        uint8 communityIndex
+    );
+
     // ============ State Variables ============
     uint256 public tableId;
     uint256 public smallBlind;
@@ -1435,6 +1447,19 @@ contract PokerTable {
         isHoleCardsRevealed[handId][seatIndex] = true;
 
         emit HoleCardsRevealed(handId, seatIndex, card1, card2);
+
+        // Post-hoc integrity check: verify hole cards don't duplicate community cards.
+        // Emits CardIntegrityViolation if a conflict is found (dealer integrity violation).
+        // Settlement proceeds regardless — this only provides an auditable signal.
+        for (uint8 ci = 0; ci < 5; ci++) {
+            if (communityCards[ci] == 255) continue;
+            if (card1 == communityCards[ci]) {
+                emit CardIntegrityViolation(handId, seatIndex, card1, ci);
+            }
+            if (card2 == communityCards[ci]) {
+                emit CardIntegrityViolation(handId, seatIndex, card2, ci);
+            }
+        }
     }
 
     /**

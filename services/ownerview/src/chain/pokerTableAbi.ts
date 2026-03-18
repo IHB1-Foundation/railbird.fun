@@ -34,4 +34,14 @@ export const PokerTableABI = [
     inputs: [],
     outputs: [{ type: "uint8" }],
   },
+  {
+    name: "CardIntegrityViolation",
+    type: "event",
+    inputs: [
+      { name: "handId",       type: "uint256", indexed: true },
+      { name: "seatIndex",    type: "uint8",   indexed: true },
+      { name: "card",         type: "uint8",   indexed: false },
+      { name: "communityIndex", type: "uint8", indexed: false },
+    ],
+  },
 ] as const;

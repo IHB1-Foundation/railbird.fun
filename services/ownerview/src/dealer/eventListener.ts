@@ -27,6 +27,9 @@ export interface EventListenerConfig {
 const HandStartedEventAbi = parseAbiItem(
   "event HandStarted(uint256 indexed handId, uint256 smallBlind, uint256 bigBlind, uint8 buttonSeat)"
 );
+const CardIntegrityViolationAbi = parseAbiItem(
+  "event CardIntegrityViolation(uint256 indexed handId, uint8 indexed seatIndex, uint8 card, uint8 communityIndex)"
+);
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
 /**
@@ -72,7 +75,7 @@ export class HandStartedEventListener {
   }
 
   /**
-   * Start listening for HandStarted events
+   * Start listening for HandStarted and CardIntegrityViolation events
    */
   async start(): Promise<void> {
     if (this.isRunning) {
@@ -92,6 +95,39 @@ export class HandStartedEventListener {
       },
       onError: (error) => {
         console.error("[DealerEventListener] Watch error:", error.message);
+      },
+    });
+
+    // Watch for CardIntegrityViolation events (dealer integrity monitoring)
+    this.client.watchContractEvent({
+      address: this.pokerTableAddress,
+      abi: [CardIntegrityViolationAbi],
+      eventName: "CardIntegrityViolation",
+      pollingInterval: this.pollInterval,
+      onLogs: (logs) => {
+        for (const log of logs) {
+          try {
+            const decoded = decodeEventLog({
+              abi: [CardIntegrityViolationAbi],
+              data: log.data,
+              topics: log.topics,
+            });
+            const args = decoded.args as {
+              handId: bigint;
+              seatIndex: number;
+              card: number;
+              communityIndex: number;
+            };
+            console.error(
+              `[DealerIntegrity] VIOLATION detected! table=${this.tableId} hand=${args.handId} ` +
+              `seat=${args.seatIndex} card=${args.card} communityIndex=${args.communityIndex} — ` +
+              `dealer dealt a hole card that duplicates a community card`
+            );
+          } catch (_e) { /* ignore decode errors */ }
+        }
+      },
+      onError: (error) => {
+        console.error("[DealerIntegrity] Watch error:", error.message);
       },
     });
 

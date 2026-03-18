@@ -2768,4 +2768,95 @@ contract PokerTableTest is Test {
             "River betting auto-skipped to showdown"
         );
     }
+
+    // ============ T-1202: Hole-Community Card Overlap Detection ============
+
+    /**
+     * @dev Fisher-Yates community cards with TEST_RANDOMNESS:
+     *      Flop: communityCards[0]=7♥(31), [1]=5♠(42), [2]=5♣(3)
+     *      Turn: communityCards[3]=5♥(29)
+     *      River: communityCards[4]=K♦(24)
+     *      Cards to avoid in hole cards: {3, 24, 29, 31, 42}
+     */
+
+    function test_CardIntegrity_NoViolation() public {
+        _setupAllSeats();
+        pokerTable.startHand();
+
+        // Hole cards deliberately chosen to NOT overlap with Fisher-Yates community cards:
+        // Community = {3(5♣), 29(5♥), 31(7♥), 42(5♠), 24(K♦)}
+        // Seat 0: 2♣(0)  3♣(1)  — safe
+        // Seat 1: 4♣(2)  6♣(4)  — safe
+        // Seat 2: 7♣(5)  8♣(6)  — safe
+        // Seat 3: 9♣(7)  T♣(8)  — safe
+        _commitCards(1, 0, 0, 1, bytes32("s0"));
+        _commitCards(1, 1, 2, 4, bytes32("s1"));
+        _commitCards(1, 2, 5, 6, bytes32("s2"));
+        _commitCards(1, 3, 7, 8, bytes32("s3"));
+
+        _playToShowdown();
+
+        // Reveal all cards — no CardIntegrityViolation should be emitted
+        vm.recordLogs();
+        pokerTable.revealHoleCards(1, 0, 0, 1, bytes32("s0"));
+        pokerTable.revealHoleCards(1, 1, 2, 4, bytes32("s1"));
+        pokerTable.revealHoleCards(1, 2, 5, 6, bytes32("s2"));
+        pokerTable.revealHoleCards(1, 3, 7, 8, bytes32("s3"));
+
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        bytes32 violationSig = keccak256("CardIntegrityViolation(uint256,uint8,uint8,uint8)");
+        for (uint256 i = 0; i < logs.length; i++) {
+            assertFalse(
+                logs[i].topics[0] == violationSig,
+                "CardIntegrityViolation emitted unexpectedly"
+            );
+        }
+
+        // All 13 unique cards: 8 hole + 5 community
+        uint8[5] memory comm = pokerTable.getCommunityCards();
+        uint8[13] memory allCards = [
+            uint8(0), 1, 2, 4, 5, 6, 7, 8,   // hole cards
+            comm[0], comm[1], comm[2], comm[3], comm[4]  // community
+        ];
+        for (uint8 i = 0; i < 13; i++) {
+            for (uint8 j = i + 1; j < 13; j++) {
+                assertFalse(allCards[i] == allCards[j], "Duplicate card detected");
+            }
+        }
+    }
+
+    function test_CardIntegrity_ViolationDetected() public {
+        _setupAllSeats();
+        pokerTable.startHand();
+
+        // Community card[2] = 5♣(3) from Fisher-Yates flop (communityCards index 2).
+        // Deliberately give seat 0 a hole card = 3 (5♣) to simulate dealer cheating.
+        // Seat 0: 5♣(3) A♣(12) ← 5♣ is also community card at index 2
+        _commitCards(1, 0, 3, 12, bytes32("s0"));
+        _commitCards(1, 1, 2, 4, bytes32("s1"));
+        _commitCards(1, 2, 5, 6, bytes32("s2"));
+        _commitCards(1, 3, 7, 8, bytes32("s3"));
+
+        _playToShowdown();
+
+        // Reveal seat 0 — CardIntegrityViolation should be emitted for card 3 (5♣)
+        vm.recordLogs();
+        pokerTable.revealHoleCards(1, 0, 3, 12, bytes32("s0"));
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+
+        bytes32 violationSig = keccak256("CardIntegrityViolation(uint256,uint8,uint8,uint8)");
+        bool violationFound = false;
+        for (uint256 i = 0; i < logs.length; i++) {
+            if (logs[i].topics[0] == violationSig) {
+                violationFound = true;
+                // Decode: seatIndex is topics[2] (indexed), card is in data
+                uint8 seatIndex = uint8(uint256(logs[i].topics[2]));
+                (uint8 card, uint8 commIdx) = abi.decode(logs[i].data, (uint8, uint8));
+                assertEq(seatIndex, 0, "Violation on seat 0");
+                assertEq(card, 3, "Violated card is 3 (5 of clubs)");
+                assertEq(commIdx, 2, "Community index 2 (flop third card)");
+            }
+        }
+        assertTrue(violationFound, "CardIntegrityViolation not emitted");
+    }
 }

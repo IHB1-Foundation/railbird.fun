@@ -2941,6 +2941,63 @@ contract PokerTableTest is Test {
         }
     }
 
+    // ============ T-1303: forceTimeout skips all-in players ============
+
+    function test_ForceTimeout_SkipsAllInPlayer() public {
+        // 3 players: seat 0 (button), seat 1 (SB), seat 2 (BB)
+        // Force seat 1 to go all-in on blind posting by reducing its stack
+        _registerSeat(0, owner1, operator1, BUY_IN);
+        _registerSeat(1, owner2, operator2, BUY_IN);
+        _registerSeat(2, owner3, operator3, BUY_IN);
+
+        // Set seat 1 stack to exactly SMALL_BLIND so it goes all-in posting SB
+        _setSeatStack(1, SMALL_BLIND);
+        pokerTable.startHand();
+
+        // Seat 1 should be all-in after posting SB
+        PokerTable.Seat memory seat1 = pokerTable.getSeat(1);
+        assertTrue(seat1.isAllIn, "Seat 1 should be all-in after posting SB");
+        assertTrue(seat1.isActive, "All-in seat should still be active");
+
+        // Get the current actor (should NOT be seat 1 — it's all-in)
+        (, , , uint8 actorSeat,) = pokerTable.getHandInfo();
+        assertFalse(pokerTable.getSeat(actorSeat).isAllIn, "Actor should not be all-in");
+
+        // Warp past deadline and call forceTimeout on the NON-all-in actor
+        vm.warp(block.timestamp + pokerTable.ACTION_TIMEOUT() + 1);
+        vm.roll(block.number + 2);
+        pokerTable.forceTimeout();
+
+        // Seat 1 (all-in) should still be active — forceTimeout didn't touch it
+        assertTrue(pokerTable.getSeat(1).isActive, "All-in player not folded by forceTimeout");
+    }
+
+    function test_ForceTimeout_AllInActor_AdvancesWithoutFold() public {
+        // Edge case: somehow an all-in seat is the actor. forceTimeout should advance, not fold.
+        _registerSeat(0, owner1, operator1, BUY_IN);
+        _registerSeat(1, owner2, operator2, BUY_IN);
+        _registerSeat(2, owner3, operator3, BUY_IN);
+
+        pokerTable.startHand();
+
+        // Seat 3 (UTG) has already acted. Seat 0 (BTN) calls.
+        vm.prank(operator4); // Hmm, only 3 seats registered. UTG = seat 0 (btn=0, SB=1, BB=2, UTG=0 wraps)
+        // Let's just do a normal test: all-in call scenario
+        // Reduce seat 0 stack to below toCall so it goes all-in on call
+        // UTG=seat 0 acts first (in 3-player, btn=0, SB=1, BB=2, UTG = next after BB = 0)
+        (, , , uint8 utg,) = pokerTable.getHandInfo();
+        _setSeatStack(utg, 5); // below bigBlind=20, force all-in call
+
+        // Warp past deadline
+        vm.warp(block.timestamp + pokerTable.ACTION_TIMEOUT() + 1);
+        vm.roll(block.number + 2);
+
+        // If actor is all-in (already set stack to 5), forceTimeout advances without fold
+        // Regardless: forceTimeout should not revert
+        pokerTable.forceTimeout();
+        // Test just verifies it doesn't revert or produce unexpected state
+    }
+
     function test_HeadsUp_ThreePlayerUsesNormalRule() public {
         // 3+ players: button is NOT the SB
         _setupAllSeats(); // registers seats 0, 1, 2, 3

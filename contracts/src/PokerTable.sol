@@ -689,6 +689,15 @@ contract PokerTable {
 
         uint8 seatIndex = currentHand.actorSeat;
 
+        // All-in players cannot act — just advance past them (defensive guard).
+        // _nextActiveSeat() already skips all-in players, but this prevents incorrect
+        // auto-folds if an all-in seat is somehow the current actor.
+        if (seats[seatIndex].isAllIn) {
+            _recordAction();
+            _advanceAction(seatIndex);
+            return;
+        }
+
         // Determine if check is legal (current bet already matched)
         bool canCheckNow = seats[seatIndex].currentBet == currentHand.currentBet;
 

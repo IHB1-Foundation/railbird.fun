@@ -14,14 +14,11 @@ import { ENV_VARS } from "./types.js";
 function setAllEnvVars(): void {
   process.env[ENV_VARS.CHAIN_ENV] = "testnet";
   process.env[ENV_VARS.RPC_URL] = "https://rpc.example.com";
-  process.env[ENV_VARS.POKER_TABLE_ADDRESS] = "0x1111111111111111111111111111111111111111";
+  process.env[ENV_VARS.POKER_TABLE_ADDRESSES] =
+    "0x1111111111111111111111111111111111111111,0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
   process.env[ENV_VARS.PLAYER_REGISTRY_ADDRESS] = "0x2222222222222222222222222222222222222222";
   process.env[ENV_VARS.PLAYER_VAULT_ADDRESS] = "0x3333333333333333333333333333333333333333";
   process.env[ENV_VARS.VRF_ADAPTER_ADDRESS] = "0x4444444444444444444444444444444444444444";
-  process.env[ENV_VARS.NADFUN_LENS_ADDRESS] = "0x5555555555555555555555555555555555555555";
-  process.env[ENV_VARS.NADFUN_BONDING_ROUTER_ADDRESS] = "0x6666666666666666666666666666666666666666";
-  process.env[ENV_VARS.NADFUN_DEX_ROUTER_ADDRESS] = "0x7777777777777777777777777777777777777777";
-  process.env[ENV_VARS.WMON_ADDRESS] = "0x8888888888888888888888888888888888888888";
   process.env[ENV_VARS.VRF_ADAPTER_TYPE] = "production";
 }
 
@@ -29,14 +26,10 @@ function setAllEnvVars(): void {
 function clearAllEnvVars(): void {
   delete process.env[ENV_VARS.CHAIN_ENV];
   delete process.env[ENV_VARS.RPC_URL];
-  delete process.env[ENV_VARS.POKER_TABLE_ADDRESS];
+  delete process.env[ENV_VARS.POKER_TABLE_ADDRESSES];
   delete process.env[ENV_VARS.PLAYER_REGISTRY_ADDRESS];
   delete process.env[ENV_VARS.PLAYER_VAULT_ADDRESS];
   delete process.env[ENV_VARS.VRF_ADAPTER_ADDRESS];
-  delete process.env[ENV_VARS.NADFUN_LENS_ADDRESS];
-  delete process.env[ENV_VARS.NADFUN_BONDING_ROUTER_ADDRESS];
-  delete process.env[ENV_VARS.NADFUN_DEX_ROUTER_ADDRESS];
-  delete process.env[ENV_VARS.WMON_ADDRESS];
   delete process.env[ENV_VARS.VRF_ADAPTER_TYPE];
 }
 
@@ -58,16 +51,26 @@ describe("chainConfig", () => {
       const config = getChainConfig();
 
       assert.strictEqual(config.env, "testnet");
-      assert.strictEqual(config.chainId, 10143);
+      assert.strictEqual(config.chainId, 1001);
       assert.strictEqual(config.rpcUrl, "https://rpc.example.com");
+      assert.deepStrictEqual(config.contracts.pokerTables, [
+        "0x1111111111111111111111111111111111111111",
+        "0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      ]);
       assert.strictEqual(
-        config.contracts.pokerTable,
-        "0x1111111111111111111111111111111111111111"
+        config.contracts.playerRegistry,
+        "0x2222222222222222222222222222222222222222"
       );
-      assert.strictEqual(
-        config.contracts.nadFunLens,
-        "0x5555555555555555555555555555555555555555"
-      );
+    });
+
+    it("supports single table address in comma-separated field", () => {
+      setAllEnvVars();
+      process.env[ENV_VARS.POKER_TABLE_ADDRESSES] =
+        "0x1111111111111111111111111111111111111111";
+      clearChainConfigCache();
+
+      const config = getChainConfig();
+      assert.strictEqual(config.contracts.pokerTables.length, 1);
     });
 
     it("throws ChainConfigError when CHAIN_ENV is missing", () => {
@@ -112,9 +115,9 @@ describe("chainConfig", () => {
       );
     });
 
-    it("throws ChainConfigError for invalid address format", () => {
+    it("throws ChainConfigError for invalid address in table list", () => {
       setAllEnvVars();
-      process.env[ENV_VARS.POKER_TABLE_ADDRESS] = "not-an-address";
+      process.env[ENV_VARS.POKER_TABLE_ADDRESSES] = "not-an-address";
 
       assert.throws(
         () => getChainConfig(),
@@ -163,7 +166,7 @@ describe("chainConfig", () => {
       assert.strictEqual(config2.rpcUrl, "https://new-rpc.example.com");
     });
 
-    it("supports all three environments", () => {
+    it("supports all three environments with correct chain IDs", () => {
       setAllEnvVars();
 
       process.env[ENV_VARS.CHAIN_ENV] = "local";
@@ -174,15 +177,16 @@ describe("chainConfig", () => {
       process.env[ENV_VARS.CHAIN_ENV] = "testnet";
       clearChainConfigCache();
       assert.strictEqual(getChainConfig().env, "testnet");
-      assert.strictEqual(getChainConfig().chainId, 10143);
+      assert.strictEqual(getChainConfig().chainId, 1001);
 
       process.env[ENV_VARS.CHAIN_ENV] = "mainnet";
       clearChainConfigCache();
       assert.strictEqual(getChainConfig().env, "mainnet");
+      assert.strictEqual(getChainConfig().chainId, 8217);
     });
   });
 
-  describe("VRF adapter type validation (T-0903)", () => {
+  describe("VRF adapter type validation", () => {
     it("allows any adapter type on local environment", () => {
       setAllEnvVars();
       process.env[ENV_VARS.CHAIN_ENV] = "local";
@@ -269,8 +273,7 @@ describe("chainConfig", () => {
       const missing = validateChainConfigEnv();
 
       assert.ok(missing.length > 0);
-      assert.ok(missing.includes(ENV_VARS.POKER_TABLE_ADDRESS));
-      assert.ok(missing.includes(ENV_VARS.NADFUN_LENS_ADDRESS));
+      assert.ok(missing.includes(ENV_VARS.POKER_TABLE_ADDRESSES));
     });
 
     it("does not throw even when vars are missing", () => {

@@ -14,19 +14,11 @@ export type Address = `0x${string}`;
  * Contract addresses for a specific environment
  */
 export interface ContractAddresses {
-  // Core protocol contracts
-  pokerTable: Address;
+  // Core protocol contracts (multi-table)
+  pokerTables: Address[];
   playerRegistry: Address;
   playerVault: Address;
   vrfAdapter: Address;
-
-  // nad.fun integration
-  nadFunLens: Address;
-  nadFunBondingRouter: Address;
-  nadFunDexRouter: Address;
-
-  // Token addresses
-  wmon: Address; // Wrapped MON
 }
 
 /**
@@ -47,19 +39,11 @@ export const ENV_VARS = {
   CHAIN_ENV: "CHAIN_ENV",
   RPC_URL: "RPC_URL",
 
-  // Contract addresses
-  POKER_TABLE_ADDRESS: "POKER_TABLE_ADDRESS",
+  // Contract addresses (comma-separated for multi-table)
+  POKER_TABLE_ADDRESSES: "POKER_TABLE_ADDRESSES",
   PLAYER_REGISTRY_ADDRESS: "PLAYER_REGISTRY_ADDRESS",
   PLAYER_VAULT_ADDRESS: "PLAYER_VAULT_ADDRESS",
   VRF_ADAPTER_ADDRESS: "VRF_ADAPTER_ADDRESS",
-
-  // nad.fun addresses
-  NADFUN_LENS_ADDRESS: "NADFUN_LENS_ADDRESS",
-  NADFUN_BONDING_ROUTER_ADDRESS: "NADFUN_BONDING_ROUTER_ADDRESS",
-  NADFUN_DEX_ROUTER_ADDRESS: "NADFUN_DEX_ROUTER_ADDRESS",
-
-  // Token addresses
-  WMON_ADDRESS: "WMON_ADDRESS",
 
   // VRF adapter type (must be "production" for testnet/mainnet)
   VRF_ADAPTER_TYPE: "VRF_ADAPTER_TYPE",

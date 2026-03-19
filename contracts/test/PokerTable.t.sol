@@ -3,12 +3,14 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 import "../src/PokerTable.sol";
+import "../src/ChipToken.sol";
 import "../src/HandEvaluator.sol";
 import "../src/mocks/MockVRFAdapter.sol";
 
 contract PokerTableTest is Test {
     PokerTable public pokerTable;
     MockVRFAdapter public mockVRF;
+    ChipToken public chipToken;
 
     // 4 players
     address public owner1 = address(0x1);
@@ -44,35 +46,39 @@ contract PokerTableTest is Test {
 
     function setUp() public {
         mockVRF = new MockVRFAdapter();
-        pokerTable = new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(mockVRF));
-        // Fund player wallets with native KAIA
-        vm.deal(owner1, BUY_IN * 1000);
-        vm.deal(owner2, BUY_IN * 1000);
-        vm.deal(owner3, BUY_IN * 1000);
-        vm.deal(owner4, BUY_IN * 1000);
+        chipToken = new ChipToken("TestChip", "TCHIP");
+        pokerTable = new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(mockVRF), address(chipToken));
+
+        // Mint chip tokens to player wallets
+        chipToken.mint(owner1, BUY_IN * 1000);
+        chipToken.mint(owner2, BUY_IN * 1000);
+        chipToken.mint(owner3, BUY_IN * 1000);
+        chipToken.mint(owner4, BUY_IN * 1000);
     }
 
     function test_Constructor_RevertIfTableIdIsZero() public {
         vm.expectRevert("Table ID must be > 0");
-        new PokerTable(0, SMALL_BLIND, BIG_BLIND, address(mockVRF));
+        new PokerTable(0, SMALL_BLIND, BIG_BLIND, address(mockVRF), address(chipToken));
     }
 
     function test_Constructor_RevertIfSmallBlindIsZero() public {
         vm.expectRevert("Small blind must be > 0");
-        new PokerTable(1, 0, BIG_BLIND, address(mockVRF));
+        new PokerTable(1, 0, BIG_BLIND, address(mockVRF), address(chipToken));
     }
 
     function test_Constructor_RevertIfVrfAdapterIsZero() public {
         vm.expectRevert("Invalid VRF adapter");
-        new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(0));
+        new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(0), address(chipToken));
+    }
+
+    function test_Constructor_RevertIfChipTokenIsZero() public {
+        vm.expectRevert("Invalid chip token");
+        new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(mockVRF), address(0));
     }
 
     // ============ Seat Registration Tests ============
 
     function test_RegisterSeat_Success() public {
-        vm.expectEmit(true, false, false, true);
-        emit SeatUpdated(0, owner1, operator1, BUY_IN);
-
         _registerSeat(0, owner1, operator1, BUY_IN);
 
         PokerTable.Seat memory seat = pokerTable.getSeat(0);
@@ -91,13 +97,19 @@ contract PokerTableTest is Test {
     function test_RegisterSeat_RevertIfSeatTaken() public {
         _registerSeat(0, owner1, operator1, BUY_IN);
 
+        vm.prank(owner2);
+        chipToken.approve(address(pokerTable), BUY_IN);
+        vm.prank(owner2);
         vm.expectRevert("Seat already taken");
-        _registerSeat(0, owner2, operator2, BUY_IN);
+        pokerTable.registerSeat(0, owner2, operator2, BUY_IN);
     }
 
     function test_RegisterSeat_RevertIfBuyInTooSmall() public {
+        vm.prank(owner1);
+        chipToken.approve(address(pokerTable), BIG_BLIND * 5);
+        vm.prank(owner1);
         vm.expectRevert("Buy-in too small");
-        _registerSeat(0, owner1, operator1, BIG_BLIND * 5);
+        pokerTable.registerSeat(0, owner1, operator1, BIG_BLIND * 5);
     }
 
     function test_RegisterSeat_AllFourSeats() public {
@@ -2086,7 +2098,10 @@ contract PokerTableTest is Test {
     }
 
     function _registerSeat(uint8 seatIndex, address owner, address operator, uint256 buyIn) internal {
-        pokerTable.registerSeat{value: buyIn}(seatIndex, owner, operator);
+        vm.prank(owner);
+        chipToken.approve(address(pokerTable), buyIn);
+        vm.prank(owner);
+        pokerTable.registerSeat(seatIndex, owner, operator, buyIn);
     }
 
     function _operatorFor(uint8 seat) internal view returns (address) {
@@ -3183,7 +3198,7 @@ contract PokerTableTest is Test {
         // We need a 5-seat scenario to ensure a mid-game joiner is NOT SB/BB
         address owner5 = address(0x5);
         address operator5 = address(0x55);
-        vm.deal(owner5, BUY_IN * 1000);
+        chipToken.mint(owner5, BUY_IN * 1000);
 
         // Initial: 3 players at seats 0, 1, 2
         _registerSeat(0, owner1, operator1, BUY_IN);

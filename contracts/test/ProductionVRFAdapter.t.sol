@@ -4,10 +4,12 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 import "../src/ProductionVRFAdapter.sol";
 import "../src/PokerTable.sol";
+import "../src/ChipToken.sol";
 
 contract ProductionVRFAdapterTest is Test {
     ProductionVRFAdapter public adapter;
     PokerTable public pokerTable;
+    ChipToken public chipToken;
 
     address public deployerOwner = address(this);
     address public vrfOperator = address(0xBEEF);
@@ -45,10 +47,13 @@ contract ProductionVRFAdapterTest is Test {
 
     function setUp() public {
         adapter = new ProductionVRFAdapter(vrfOperator);
-        vm.deal(owner1, BUY_IN * 1000);
-        vm.deal(owner2, BUY_IN * 1000);
-        vm.deal(owner3, BUY_IN * 1000);
-        vm.deal(owner4, BUY_IN * 1000);
+        chipToken = new ChipToken("TestChip", "TCHIP");
+
+        // Mint chip tokens to player wallets
+        chipToken.mint(owner1, BUY_IN * 1000);
+        chipToken.mint(owner2, BUY_IN * 1000);
+        chipToken.mint(owner3, BUY_IN * 1000);
+        chipToken.mint(owner4, BUY_IN * 1000);
     }
 
     // ============ Constructor Tests ============
@@ -318,11 +323,27 @@ contract ProductionVRFAdapterTest is Test {
     // ============ Helpers ============
 
     function _setupPokerTableForFulfillment() internal {
-        pokerTable = new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(adapter));
-        pokerTable.registerSeat{value: BUY_IN}(0, owner1, operator1);
-        pokerTable.registerSeat{value: BUY_IN}(1, owner2, operator2);
-        pokerTable.registerSeat{value: BUY_IN}(2, owner3, operator3);
-        pokerTable.registerSeat{value: BUY_IN}(3, owner4, operator4);
+        pokerTable = new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(adapter), address(chipToken));
+
+        vm.prank(owner1);
+        chipToken.approve(address(pokerTable), BUY_IN);
+        vm.prank(owner1);
+        pokerTable.registerSeat(0, owner1, operator1, BUY_IN);
+
+        vm.prank(owner2);
+        chipToken.approve(address(pokerTable), BUY_IN);
+        vm.prank(owner2);
+        pokerTable.registerSeat(1, owner2, operator2, BUY_IN);
+
+        vm.prank(owner3);
+        chipToken.approve(address(pokerTable), BUY_IN);
+        vm.prank(owner3);
+        pokerTable.registerSeat(2, owner3, operator3, BUY_IN);
+
+        vm.prank(owner4);
+        chipToken.approve(address(pokerTable), BUY_IN);
+        vm.prank(owner4);
+        pokerTable.registerSeat(3, owner4, operator4, BUY_IN);
     }
 
     function _operatorFor(uint8 seat) internal view returns (address) {

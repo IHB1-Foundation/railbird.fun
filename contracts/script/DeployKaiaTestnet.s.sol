@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Script.sol";
 import "../src/PokerTable.sol";
+import "../src/ChipToken.sol";
 import "../src/PlayerRegistry.sol";
 import "../src/PlayerVault.sol";
 import "../src/ProductionVRFAdapter.sol";
@@ -25,6 +26,10 @@ contract DeployKaiaTestnet is Script {
     function run() external {
         vm.startBroadcast();
 
+        // --- Chip Token ---
+        ChipToken chip = new ChipToken("RailbirdChip", "RCHIP");
+        console.log("ChipToken:", address(chip));
+
         // --- VRF Adapter ---
         address vrfAdapter;
         address vrfOp = vm.envAddress("VRF_OPERATOR_ADDRESS");
@@ -32,11 +37,11 @@ contract DeployKaiaTestnet is Script {
         console.log("VRF Adapter:", vrfAdapter);
 
         // --- Table 1: low-stakes ---
-        PokerTable table1 = new PokerTable(1, 0.1 ether, 0.2 ether, vrfAdapter);
+        PokerTable table1 = new PokerTable(1, 0.1 ether, 0.2 ether, vrfAdapter, address(chip));
         console.log("Table 1 (low):", address(table1));
 
         // --- Table 2: high-stakes ---
-        PokerTable table2 = new PokerTable(2, 1 ether, 2 ether, vrfAdapter);
+        PokerTable table2 = new PokerTable(2, 1 ether, 2 ether, vrfAdapter, address(chip));
         console.log("Table 2 (high):", address(table2));
 
         // --- Shared contracts ---
@@ -53,6 +58,7 @@ contract DeployKaiaTestnet is Script {
 
         // --- Summary ---
         console.log("\n=== KAIA Testnet Deployment Summary ===");
+        console.log("CHIP_TOKEN_ADDRESS=%s", vm.toString(address(chip)));
         console.log("POKER_TABLE_ADDRESSES=%s,%s", vm.toString(address(table1)), vm.toString(address(table2)));
         console.log("PLAYER_REGISTRY_ADDRESS=%s", vm.toString(address(registry)));
         console.log("PLAYER_VAULT_ADDRESS=%s", vm.toString(address(vault)));

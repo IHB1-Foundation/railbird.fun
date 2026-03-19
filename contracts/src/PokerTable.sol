@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import "./interfaces/IVRFAdapter.sol";
+import "./interfaces/IERC20.sol";
 import "./HandEvaluator.sol";
 
 /**
@@ -212,6 +213,7 @@ contract PokerTable {
     uint256 public tableId;
     uint256 public smallBlind;
     uint256 public bigBlind;
+    IERC20 public chipToken;
 
     GameState public gameState;
     uint256 public currentHandId;
@@ -301,16 +303,19 @@ contract PokerTable {
         uint256 _tableId,
         uint256 _smallBlind,
         uint256 _bigBlind,
-        address _vrfAdapter
+        address _vrfAdapter,
+        address _chipToken
     ) {
         require(_tableId > 0, "Table ID must be > 0");
         require(_smallBlind > 0, "Small blind must be > 0");
         require(_bigBlind >= _smallBlind, "Big blind must be >= small blind");
         require(_vrfAdapter != address(0), "Invalid VRF adapter");
+        require(_chipToken != address(0), "Invalid chip token");
         tableId = _tableId;
         smallBlind = _smallBlind;
         bigBlind = _bigBlind;
         vrfAdapter = _vrfAdapter;
+        chipToken = IERC20(_chipToken);
         gameState = GameState.WAITING_FOR_SEATS;
     }
 
@@ -325,18 +330,20 @@ contract PokerTable {
     function registerSeat(
         uint8 seatIndex,
         address owner,
-        address operator
-    ) external payable {
+        address operator,
+        uint256 buyIn
+    ) external {
         require(seatIndex < MAX_SEATS, "Invalid seat index");
         require(seats[seatIndex].owner == address(0), "Seat already taken");
         require(owner != address(0), "Owner cannot be zero");
-        require(msg.value >= bigBlind * 10, "Buy-in too small");
+        require(buyIn >= bigBlind * 10, "Buy-in too small");
+        require(chipToken.transferFrom(msg.sender, address(this), buyIn), "Transfer failed");
 
         seats[seatIndex] = Seat({
             owner: owner,
             operator: operator == address(0) ? owner : operator,
             // Mid-hand registrations are queued for the next hand.
-            stack: msg.value,
+            stack: buyIn,
             isActive: false,
             currentBet: 0,
             isAllIn: false,
@@ -348,14 +355,14 @@ contract PokerTable {
             needsPostBlind[seatIndex] = true;
         }
 
-        emit SeatUpdated(seatIndex, owner, operator == address(0) ? owner : operator, msg.value);
+        emit SeatUpdated(seatIndex, owner, operator == address(0) ? owner : operator, buyIn);
     }
 
     /**
      * @notice Add more chips to an existing seat.
      * @dev Allowed only between hands.
      */
-    function topUpSeat(uint8 seatIndex) external payable {
+    function topUpSeat(uint8 seatIndex, uint256 amount) external {
         require(
             gameState == GameState.WAITING_FOR_SEATS || gameState == GameState.SETTLED,
             "Top-up only between hands"
@@ -365,12 +372,13 @@ contract PokerTable {
         Seat storage seat = seats[seatIndex];
         require(seat.owner != address(0), "Seat not occupied");
         require(msg.sender == seat.owner, "Not seat owner");
-        require(msg.value > 0, "Top-up amount is zero");
+        require(amount > 0, "Top-up amount is zero");
+        require(chipToken.transferFrom(msg.sender, address(this), amount), "Transfer failed");
 
-        seat.stack += msg.value;
+        seat.stack += amount;
 
         emit SeatUpdated(seatIndex, seat.owner, seat.operator, seat.stack);
-        emit SeatTopUp(seatIndex, seat.owner, msg.value, seat.stack);
+        emit SeatTopUp(seatIndex, seat.owner, amount, seat.stack);
     }
 
     /**
@@ -392,8 +400,7 @@ contract PokerTable {
 
         seat.stack -= amount;
         address payoutRecipient = recipient == address(0) ? seat.owner : recipient;
-        (bool success, ) = payable(payoutRecipient).call{value: amount}("");
-        require(success, "Cash-out transfer failed");
+        require(chipToken.transfer(payoutRecipient, amount), "Cash-out transfer failed");
 
         emit SeatUpdated(seatIndex, seat.owner, seat.operator, seat.stack);
         emit SeatCashOut(seatIndex, seat.owner, payoutRecipient, amount, seat.stack);
@@ -421,8 +428,7 @@ contract PokerTable {
         needsPostBlind[seatIndex] = false;
 
         if (payoutAmount > 0) {
-            (bool success, ) = payable(payoutRecipient).call{value: payoutAmount}("");
-            require(success, "Leave transfer failed");
+            require(chipToken.transfer(payoutRecipient, payoutAmount), "Leave transfer failed");
         }
 
         emit SeatUpdated(seatIndex, address(0), address(0), 0);

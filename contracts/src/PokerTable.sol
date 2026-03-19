@@ -246,16 +246,19 @@ contract PokerTable {
     mapping(uint8 => bool) public needsPostBlind;
 
     // ============ Modifiers ============
-    modifier onlyOperator(uint8 seatIndex) {
+    function _checkOperator(uint8 seatIndex) internal view {
         require(seatIndex < MAX_SEATS, "Invalid seat");
         require(
             msg.sender == seats[seatIndex].operator || msg.sender == seats[seatIndex].owner,
             "Not operator"
         );
+    }
+    modifier onlyOperator(uint8 seatIndex) {
+        _checkOperator(seatIndex);
         _;
     }
 
-    modifier inBettingState() {
+    function _checkBettingState() internal view {
         require(
             gameState == GameState.BETTING_PRE ||
             gameState == GameState.BETTING_FLOP ||
@@ -263,21 +266,33 @@ contract PokerTable {
             gameState == GameState.BETTING_RIVER,
             "Not in betting state"
         );
+    }
+    modifier inBettingState() {
+        _checkBettingState();
         _;
     }
 
-    modifier isActorTurn(uint8 seatIndex) {
+    function _checkActorTurn(uint8 seatIndex) internal view {
         require(currentHand.actorSeat == seatIndex, "Not your turn");
+    }
+    modifier isActorTurn(uint8 seatIndex) {
+        _checkActorTurn(seatIndex);
         _;
     }
 
-    modifier withinDeadline() {
+    function _checkDeadline() internal view {
         require(block.timestamp <= actionDeadline, "Action deadline passed");
+    }
+    modifier withinDeadline() {
+        _checkDeadline();
         _;
     }
 
-    modifier oneActionPerBlock() {
+    function _checkOneActionPerBlock() internal view {
         require(block.number > lastActionBlock, "One action per block");
+    }
+    modifier oneActionPerBlock() {
+        _checkOneActionPerBlock();
         _;
     }
 

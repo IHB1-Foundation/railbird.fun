@@ -5,9 +5,19 @@ libs = ["lib"]
 solc = "0.8.24"
 via_ir = true
 
+# Deploy profile: optimizer on to fit KAIA 49152 byte limit
+[profile.deploy]
+src = "src"
+out = "out"
+libs = ["lib"]
+solc = "0.8.24"
+via_ir = true
+optimizer = true
+optimizer_runs = 200
+
 [rpc_endpoints]
-kaia-testnet = "https://public-en-kairos.node.real.io"
-kaia-mainnet = "https://public-en-kaia.node.real.io"
+kaia-testnet = "https://public-en-kairos.node.kaia.io"
+kaia-mainnet = "https://public-en-kaia.node.kaia.io"
 localhost = "http://localhost:8545"
 
 [etherscan]

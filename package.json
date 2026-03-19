@@ -17,5 +17,8 @@
     "overrides": {
       "next": "14.2.35"
     }
+  },
+  "dependencies": {
+    "tsx": "^4.7.0"
   }
 }

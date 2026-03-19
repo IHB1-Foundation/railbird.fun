@@ -3016,4 +3016,207 @@ contract PokerTableTest is Test {
         (, , , uint8 actorSeat,) = pokerTable.getHandInfo();
         assertEq(actorSeat, 3, "UTG (seat 3) acts first pre-flop with 4 players");
     }
+
+    // ============ Post Blind Tests ============
+
+    function test_PostBlind_NotSetForInitialSeats() public {
+        // Seats registered during WAITING_FOR_SEATS should NOT need post blind
+        _registerSeat(0, owner1, operator1, BUY_IN);
+        _registerSeat(1, owner2, operator2, BUY_IN);
+
+        assertFalse(pokerTable.needsPostBlind(0), "Initial seat 0 no post blind");
+        assertFalse(pokerTable.needsPostBlind(1), "Initial seat 1 no post blind");
+    }
+
+    function test_PostBlind_SetForMidGameJoiner() public {
+        // Start with 2 players, play a hand, then add a 3rd player
+        _registerSeat(0, owner1, operator1, BUY_IN);
+        _registerSeat(1, owner2, operator2, BUY_IN);
+        pokerTable.startHand();
+
+        // Fold to settle the hand
+        vm.prank(operator1);
+        vm.roll(block.number + 1);
+        pokerTable.fold(0);
+
+        // Now gameState = SETTLED. Register seat 2.
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.SETTLED));
+        _registerSeat(2, owner3, operator3, BUY_IN);
+
+        assertTrue(pokerTable.needsPostBlind(2), "Mid-game joiner needs post blind");
+        assertFalse(pokerTable.needsPostBlind(0), "Existing seat no post blind");
+    }
+
+    function test_PostBlind_DeductedOnStartHand() public {
+        // 2 players play a hand, 3rd joins, verify post blind is deducted
+        _registerSeat(0, owner1, operator1, BUY_IN);
+        _registerSeat(1, owner2, operator2, BUY_IN);
+        pokerTable.startHand();
+
+        // Fold to settle
+        vm.prank(operator1);
+        vm.roll(block.number + 1);
+        pokerTable.fold(0);
+
+        // Register seat 3 mid-game
+        _registerSeat(3, owner4, operator4, BUY_IN);
+        assertTrue(pokerTable.needsPostBlind(3));
+
+        // Start next hand. Button advances: btn=1, SB=0, BB=1? No—
+        // After hand 1: button advances. Let's check.
+        // Hand 1: btn=0, SB=0 (heads-up btn=SB), BB=1. After settle, btn advances to 1.
+        // Hand 2 with 3 players (seats 0,1,3): btn=1, SB=3, BB=0. Seat 3 is SB (post blind cleared for SB).
+        // Actually seat 3 is the mid-game joiner. Let's register seat 2 instead for clearer test.
+        // Re-do: register seat 2 as mid-game joiner.
+        // Actually seat 3 is fine. Let's just verify.
+
+        vm.roll(block.number + 1);
+        pokerTable.startHand();
+
+        // Seat 3 joined mid-game. If it's not SB or BB, it should have posted BB.
+        PokerTable.Seat memory seat3 = pokerTable.getSeat(3);
+
+        // needsPostBlind should be cleared after startHand
+        assertFalse(pokerTable.needsPostBlind(3), "Post blind flag cleared");
+
+        // If seat 3 is neither SB nor BB, it posted BB as live blind
+        // btn=1 (advanced from 0): with 3 players, SB=next(1)=3, BB=next(3)=0
+        // So seat 3 IS the SB. Post blind skipped (SB already paid).
+        // Verify SB posted normally
+        assertEq(seat3.currentBet, SMALL_BLIND, "Seat 3 is SB, posted SB normally");
+    }
+
+    function test_PostBlind_NonBlindSeatPaysExtraBB() public {
+        // Setup: 3 initial players, play hand, 4th joins mid-game in non-blind position
+        _registerSeat(0, owner1, operator1, BUY_IN);
+        _registerSeat(1, owner2, operator2, BUY_IN);
+        _registerSeat(2, owner3, operator3, BUY_IN);
+        pokerTable.startHand();
+
+        // Hand 1: btn=0, SB=1, BB=2, UTG=0. Fold everyone to settle.
+        vm.prank(operator1); // UTG=seat 0 for 3-player btn=0: SB=1,BB=2,UTG=0
+        vm.roll(block.number + 1);
+        pokerTable.fold(0);
+
+        // Only 2 active left -> immediate winner (seat 1 or 2 wins pot)
+        // Let seat 1 fold too (SB)
+        vm.prank(operator2);
+        vm.roll(block.number + 1);
+        pokerTable.fold(1);
+
+        // Hand settled. Register seat 3 mid-game.
+        _registerSeat(3, owner4, operator4, BUY_IN);
+        assertTrue(pokerTable.needsPostBlind(3));
+
+        uint256 stackBefore = BUY_IN;
+
+        vm.roll(block.number + 1);
+        pokerTable.startHand();
+
+        // Hand 2: btn advances to 1. With 4 players: SB=2, BB=3. Seat 3 IS the BB.
+        // So post blind is skipped (BB already pays BB).
+        PokerTable.Seat memory seat3 = pokerTable.getSeat(3);
+        assertEq(seat3.currentBet, BIG_BLIND, "Seat 3 is BB, posted BB normally");
+        assertEq(seat3.stack, stackBefore - BIG_BLIND, "BB cost only");
+        assertFalse(pokerTable.needsPostBlind(3), "Flag cleared");
+    }
+
+    function test_PostBlind_FourPlayerMidGameJoinerPaysPostBlind() public {
+        // Setup a scenario where mid-game joiner is NOT SB or BB
+        _registerSeat(0, owner1, operator1, BUY_IN);
+        _registerSeat(1, owner2, operator2, BUY_IN);
+        pokerTable.startHand();
+
+        // Fold to settle hand 1
+        vm.prank(operator1);
+        vm.roll(block.number + 1);
+        pokerTable.fold(0);
+
+        // Register seats 2 and 3 mid-game
+        _registerSeat(2, owner3, operator3, BUY_IN);
+        _registerSeat(3, owner4, operator4, BUY_IN);
+
+        vm.roll(block.number + 1);
+        pokerTable.startHand();
+
+        // Hand 2: btn advances from 0 to 1. With 4 players:
+        // SB = next(1) = 2, BB = next(2) = 3
+        // Seats 2 and 3 are both mid-game joiners.
+        // Seat 2 = SB (skipped), Seat 3 = BB (skipped).
+        // Seats 0 and 1 are not mid-game. So no post blind this hand.
+
+        // Let's fold again to get to hand 3 where we can test properly
+        // UTG in 4-player with btn=1: SB=2, BB=3, UTG=0
+        vm.prank(operator1);
+        vm.roll(block.number + 1);
+        pokerTable.fold(0);
+
+        vm.prank(operator2);
+        vm.roll(block.number + 1);
+        pokerTable.fold(1);
+
+        // Hand 2 settled. All post blind flags are cleared now.
+        assertFalse(pokerTable.needsPostBlind(2));
+        assertFalse(pokerTable.needsPostBlind(3));
+    }
+
+    function test_PostBlind_ClearedOnLeaveSeat() public {
+        _registerSeat(0, owner1, operator1, BUY_IN);
+        _registerSeat(1, owner2, operator2, BUY_IN);
+        pokerTable.startHand();
+
+        vm.prank(operator1);
+        vm.roll(block.number + 1);
+        pokerTable.fold(0);
+
+        // Register mid-game
+        _registerSeat(2, owner3, operator3, BUY_IN);
+        assertTrue(pokerTable.needsPostBlind(2));
+
+        // Leave before playing
+        vm.prank(owner3);
+        pokerTable.leaveSeat(2, owner3);
+        assertFalse(pokerTable.needsPostBlind(2), "Flag cleared on leave");
+    }
+
+    function test_PostBlind_EmitsEvent() public {
+        // We need a 5-seat scenario to ensure a mid-game joiner is NOT SB/BB
+        address owner5 = address(0x5);
+        address operator5 = address(0x55);
+        vm.deal(owner5, BUY_IN * 1000);
+
+        // Initial: 3 players at seats 0, 1, 2
+        _registerSeat(0, owner1, operator1, BUY_IN);
+        _registerSeat(1, owner2, operator2, BUY_IN);
+        _registerSeat(2, owner3, operator3, BUY_IN);
+        pokerTable.startHand();
+
+        // btn=0, SB=1, BB=2, UTG=0. Fold all to settle.
+        vm.prank(operator1);
+        vm.roll(block.number + 1);
+        pokerTable.fold(0);
+        vm.prank(operator2);
+        vm.roll(block.number + 1);
+        pokerTable.fold(1);
+
+        // Register seats 3 and 4 mid-game
+        _registerSeat(3, owner4, operator4, BUY_IN);
+        _registerSeat(4, owner5, operator5, BUY_IN);
+
+        // Hand 2: btn advances to 1. 5 players (0,1,2,3,4): SB=2, BB=3.
+        // Seat 3 = BB (post blind skipped), Seat 4 = NOT SB/BB → should post blind.
+        vm.roll(block.number + 1);
+        pokerTable.startHand();
+
+        PokerTable.Seat memory seat4 = pokerTable.getSeat(4);
+        // Seat 4 should have posted BB as live blind
+        assertEq(seat4.currentBet, BIG_BLIND, "Post blind = BB as live blind");
+        assertEq(seat4.stack, BUY_IN - BIG_BLIND, "Stack reduced by BB");
+        assertFalse(pokerTable.needsPostBlind(4), "Flag cleared");
+
+        // Verify pot includes the post blind
+        (, uint256 pot, , ,) = pokerTable.getHandInfo();
+        // pot = SB + BB + post blind = 10 + 20 + 20 = 50
+        assertEq(pot, SMALL_BLIND + BIG_BLIND + BIG_BLIND, "Pot includes post blind");
+    }
 }

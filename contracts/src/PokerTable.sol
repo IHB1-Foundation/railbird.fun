@@ -195,6 +195,12 @@ contract PokerTable {
      * @dev Indicates dealer integrity violation. Settlement proceeds regardless,
      *      but this event allows off-chain monitoring/auditing.
      */
+    event PostBlindPosted(
+        uint256 indexed handId,
+        uint8 indexed seatIndex,
+        uint256 amount
+    );
+
     event CardIntegrityViolation(
         uint256 indexed handId,
         uint8 indexed seatIndex,
@@ -235,6 +241,9 @@ contract PokerTable {
 
     // Track if hole cards are revealed: handId => seatIndex => revealed
     mapping(uint256 => mapping(uint8 => bool)) public isHoleCardsRevealed;
+
+    // Post blind: seats that joined mid-game must post BB as live blind on first hand
+    mapping(uint8 => bool) public needsPostBlind;
 
     // ============ Modifiers ============
     modifier onlyOperator(uint8 seatIndex) {
@@ -319,6 +328,11 @@ contract PokerTable {
             totalHandBet: 0
         });
 
+        // Mid-game joiners must post BB as live blind on their first hand
+        if (gameState != GameState.WAITING_FOR_SEATS) {
+            needsPostBlind[seatIndex] = true;
+        }
+
         emit SeatUpdated(seatIndex, owner, operator == address(0) ? owner : operator, msg.value);
     }
 
@@ -389,6 +403,7 @@ contract PokerTable {
         address payoutRecipient = recipient == address(0) ? seat.owner : recipient;
 
         delete seats[seatIndex];
+        needsPostBlind[seatIndex] = false;
 
         if (payoutAmount > 0) {
             (bool success, ) = payable(payoutRecipient).call{value: payoutAmount}("");
@@ -471,6 +486,22 @@ contract PokerTable {
         if (seats[bbSeat].stack == 0) seats[bbSeat].isAllIn = true;
 
         uint256 initialPot = sbPost + bbPost;
+
+        // Post blinds for mid-game joiners (live blind = BB, counts as currentBet)
+        // BB/SB seats already posted their blinds, so skip them.
+        for (uint8 i = 0; i < MAX_SEATS; i++) {
+            if (needsPostBlind[i] && seats[i].isActive && i != bbSeat && i != sbSeat) {
+                uint256 postAmount = bigBlind < seats[i].stack ? bigBlind : seats[i].stack;
+                seats[i].stack -= postAmount;
+                seats[i].currentBet = postAmount;
+                seats[i].totalHandBet += postAmount;
+                if (seats[i].stack == 0) seats[i].isAllIn = true;
+                initialPot += postAmount;
+                emit PostBlindPosted(currentHandId, i, postAmount);
+                emit SeatUpdated(i, seats[i].owner, seats[i].operator, seats[i].stack);
+            }
+            needsPostBlind[i] = false;
+        }
 
         // Pre-flop: first active seat after BB acts first.
         uint8 firstActor = _nextActiveSeat(bbSeat);
@@ -1609,6 +1640,7 @@ contract PokerTable {
             if (seats[i].owner != address(0) && seats[i].stack == 0) {
                 address owner = seats[i].owner;
                 delete seats[i];
+                needsPostBlind[i] = false;
                 emit SeatUpdated(i, address(0), address(0), 0);
                 emit SeatEvicted(i, owner);
             }

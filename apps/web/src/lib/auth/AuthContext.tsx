@@ -11,6 +11,10 @@ import {
 import type { AuthContextValue, AuthState, HoleCardsResponse } from "./types";
 import * as ownerviewApi from "./ownerviewApi";
 
+// KAIA Kairos testnet chain ID
+const KAIA_KAIROS_CHAIN_ID = 1001;
+const KAIA_KAIROS_CHAIN_ID_HEX = "0x3e9";
+
 // Session storage keys
 const STORAGE_KEY_TOKEN = "playerco_auth_token";
 const STORAGE_KEY_ADDRESS = "playerco_auth_address";
@@ -28,19 +32,72 @@ const initialState: AuthState = {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 /**
- * Check if window.ethereum is available
+ * Get the KAIA Wallet provider (window.klaytn or window.ethereum)
  */
-function hasEthereum(): boolean {
-  return typeof window !== "undefined" && typeof window.ethereum !== "undefined";
+function getKaiaProvider(): EthereumProvider | null {
+  if (typeof window === "undefined") return null;
+  return window.klaytn ?? window.ethereum ?? null;
+}
+
+/**
+ * Check if KAIA Wallet provider is available
+ */
+function hasKaiaWallet(): boolean {
+  return getKaiaProvider() !== null;
+}
+
+/**
+ * Ensure the wallet is on KAIA Kairos testnet.
+ * Attempts to switch chain; if the chain is unknown, adds it first.
+ */
+async function ensureKaiaKairosChain(): Promise<void> {
+  const provider = getKaiaProvider();
+  if (!provider) return;
+
+  const chainIdHex = (await provider.request({ method: "eth_chainId" })) as string;
+  const chainId = parseInt(chainIdHex, 16);
+
+  if (chainId === KAIA_KAIROS_CHAIN_ID) return;
+
+  try {
+    await provider.request({
+      method: "wallet_switchEthereumChain",
+      params: [{ chainId: KAIA_KAIROS_CHAIN_ID_HEX }],
+    });
+  } catch (switchError: unknown) {
+    // Chain not added to wallet (error code 4902) — add it
+    if (
+      typeof switchError === "object" &&
+      switchError !== null &&
+      "code" in switchError &&
+      (switchError as { code: number }).code === 4902
+    ) {
+      await provider.request({
+        method: "wallet_addEthereumChain",
+        params: [
+          {
+            chainId: KAIA_KAIROS_CHAIN_ID_HEX,
+            chainName: "KAIA Kairos Testnet",
+            nativeCurrency: { name: "KAIA", symbol: "KAIA", decimals: 18 },
+            rpcUrls: ["https://public-en-kairos.node.kaia.io"],
+            blockExplorerUrls: ["https://kairos.kaiascan.io"],
+          },
+        ],
+      });
+    } else {
+      throw new Error("Please switch to KAIA Kairos Testnet in your wallet.");
+    }
+  }
 }
 
 /**
  * Get connected accounts from wallet
  */
 async function getAccounts(): Promise<string[]> {
-  if (!hasEthereum()) return [];
+  const provider = getKaiaProvider();
+  if (!provider) return [];
   try {
-    const accounts = await window.ethereum!.request({
+    const accounts = await provider.request({
       method: "eth_accounts",
     });
     return accounts as string[];
@@ -53,10 +110,12 @@ async function getAccounts(): Promise<string[]> {
  * Request wallet connection
  */
 async function requestAccounts(): Promise<string[]> {
-  if (!hasEthereum()) {
-    throw new Error("No Ethereum wallet detected. Please install MetaMask.");
+  const provider = getKaiaProvider();
+  if (!provider) {
+    throw new Error("KAIA Wallet이 감지되지 않았습니다. KAIA Wallet을 설치해주세요.");
   }
-  const accounts = await window.ethereum!.request({
+  await ensureKaiaKairosChain();
+  const accounts = await provider.request({
     method: "eth_requestAccounts",
   });
   return accounts as string[];
@@ -66,10 +125,11 @@ async function requestAccounts(): Promise<string[]> {
  * Sign a message with the wallet
  */
 async function signMessage(address: string, message: string): Promise<string> {
-  if (!hasEthereum()) {
-    throw new Error("No Ethereum wallet detected");
+  const provider = getKaiaProvider();
+  if (!provider) {
+    throw new Error("KAIA Wallet이 감지되지 않았습니다.");
   }
-  const signature = await window.ethereum!.request({
+  const signature = await provider.request({
     method: "personal_sign",
     params: [message, address],
   });
@@ -127,8 +187,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     checkExistingSession();
 
-    // Listen for account changes
-    if (hasEthereum()) {
+    // Listen for account & chain changes
+    const provider = getKaiaProvider();
+    if (provider) {
       const handleAccountsChanged = (accounts: string[]) => {
         if (accounts.length === 0) {
           // Disconnected
@@ -152,12 +213,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       };
 
-      window.ethereum!.on("accountsChanged", handleAccountsChanged);
+      const handleChainChanged = (chainIdHex: string) => {
+        const chainId = parseInt(chainIdHex, 16);
+        if (chainId !== KAIA_KAIROS_CHAIN_ID) {
+          // Wrong network - disconnect and show error
+          sessionStorage.removeItem(STORAGE_KEY_TOKEN);
+          sessionStorage.removeItem(STORAGE_KEY_ADDRESS);
+          sessionStorage.removeItem(STORAGE_KEY_EXPIRES);
+          setState({
+            ...initialState,
+            error: "KAIA Kairos Testnet으로 네트워크를 변경해주세요.",
+          });
+        }
+      };
+
+      provider.on("accountsChanged", handleAccountsChanged);
+      provider.on("chainChanged", handleChainChanged);
       return () => {
-        window.ethereum!.removeListener(
-          "accountsChanged",
-          handleAccountsChanged
-        );
+        provider.removeListener("accountsChanged", handleAccountsChanged);
+        provider.removeListener("chainChanged", handleChainChanged);
       };
     }
   }, []);

@@ -24,7 +24,7 @@ export function WalletButton() {
         className="wallet-button"
         title={error || undefined}
       >
-        {isLoading ? "Connecting..." : "Connect Wallet"}
+        {isLoading ? "Connecting..." : "Connect KAIA Wallet"}
       </button>
     );
   }

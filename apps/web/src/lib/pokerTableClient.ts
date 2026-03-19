@@ -57,13 +57,17 @@ function getPublicClient() {
   });
 }
 
+function getKaiaProvider() {
+  if (typeof window === "undefined") return null;
+  return window.klaytn ?? window.ethereum ?? null;
+}
+
 function getWalletClient() {
-  if (typeof window === "undefined" || !window.ethereum) {
-    return null;
-  }
+  const provider = getKaiaProvider();
+  if (!provider) return null;
   return createWalletClient({
     chain: CHAIN,
-    transport: custom(window.ethereum),
+    transport: custom(provider),
   });
 }
 

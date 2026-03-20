@@ -81,7 +81,7 @@ async function main() {
   console.log(`Agent bot v${VERSION}`);
   const rpcUrl = requireEnv("RPC_URL");
   const defaultTurnActionDelayMs = 0;
-  const defaultPollIntervalMs = rpcUrl.includes("monad.xyz") ? 3000 : 1000;
+  const defaultPollIntervalMs = 1000;
   const aggressionFactor = parseBoundedFloat("AGGRESSION_FACTOR", 0.3);
   const turnActionDelayMs = parsePositiveInt("TURN_ACTION_DELAY_MS", defaultTurnActionDelayMs);
   const { strategy, engine, geminiModel } = createStrategy(aggressionFactor);

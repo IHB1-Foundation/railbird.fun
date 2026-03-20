@@ -48,9 +48,9 @@ export class ChainClient {
 
   constructor(config: ChainClientConfig) {
     this.chain = {
-      id: config.chainId || 10143,
-      name: "Monad",
-      nativeCurrency: { name: "MON", symbol: "MON", decimals: 18 },
+      id: config.chainId || 1001,
+      name: "KAIA Kairos",
+      nativeCurrency: { name: "KAIA", symbol: "KAIA", decimals: 18 },
       rpcUrls: {
         default: { http: [config.rpcUrl] },
       },

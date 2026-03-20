@@ -24,19 +24,19 @@ print_runtime_header() {
   echo "[railway] rpc_url=${RPC_URL:-unset}"
 }
 
-is_public_monad_rpc() {
-  [[ "${RPC_URL:-}" == *"monad.xyz"* ]]
+is_public_kaia_rpc() {
+  [[ "${RPC_URL:-}" == *"kaia.io"* ]] || [[ "${RPC_URL:-}" == *"node.real.io"* ]]
 }
 
 default_poll_interval_ms() {
   local local_default="$1"
-  local monad_default="$2"
+  local remote_default="$2"
   if [ -n "${POLL_INTERVAL_MS:-}" ]; then
     echo "$POLL_INTERVAL_MS"
     return
   fi
-  if is_public_monad_rpc; then
-    echo "$monad_default"
+  if is_public_kaia_rpc; then
+    echo "$remote_default"
     return
   fi
   echo "$local_default"

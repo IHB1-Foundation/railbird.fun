@@ -102,7 +102,7 @@ export class EventListener {
         let processedAny = false;
 
         while (this.running && fromBlock <= latestBlock) {
-          // Process in RPC-safe chunks. Monad testnet RPC rejects large eth_getLogs ranges.
+          // Process in RPC-safe chunks. Public RPCs may reject large eth_getLogs ranges.
           const range = BigInt(this.config.logBlockRange! - 1);
           const toBlock = fromBlock + range < latestBlock ? fromBlock + range : latestBlock;
 

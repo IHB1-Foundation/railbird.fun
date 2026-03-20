@@ -255,10 +255,9 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
             own Seat {ownedSeatIndex}
           </span>
           {holeCards && (
-            <div className="hole-cards">
-              <PokerCard cardIndex={holeCards.cards[0]} />
-              <PokerCard cardIndex={holeCards.cards[1]} />
-            </div>
+            <span className="owner-banner-cards">
+              Cards visible on your seat below
+            </span>
           )}
         </div>
       )}

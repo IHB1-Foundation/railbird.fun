@@ -2,7 +2,7 @@
 
 import type { CardInfo } from "./types";
 
-export const CHIP_SYMBOL = process.env.NEXT_PUBLIC_CHIP_SYMBOL || "KAIA";
+export const CHIP_SYMBOL = process.env.NEXT_PUBLIC_CHIP_SYMBOL || "RCHIP";
 
 // Card conversion (0-51 to display)
 const RANKS = ["2", "3", "4", "5", "6", "7", "8", "9", "T", "J", "Q", "K", "A"];

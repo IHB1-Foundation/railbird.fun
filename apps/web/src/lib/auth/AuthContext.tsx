@@ -11,9 +11,9 @@ import {
 import type { AuthContextValue, AuthState, HoleCardsResponse } from "./types";
 import * as ownerviewApi from "./ownerviewApi";
 
-// KAIA Kairos testnet chain ID
-const KAIA_KAIROS_CHAIN_ID = 1001;
-const KAIA_KAIROS_CHAIN_ID_HEX = "0x3e9";
+// HashKey Chain Testnet chain ID
+const HASHKEY_CHAIN_ID = 133;
+const HASHKEY_CHAIN_ID_HEX = "0x85";
 
 // Session storage keys
 const STORAGE_KEY_TOKEN = "playerco_auth_token";
@@ -32,37 +32,37 @@ const initialState: AuthState = {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 /**
- * Get the KAIA Wallet provider (window.klaytn or window.ethereum)
+ * Get the MetaMask/EIP-1193 provider (window.ethereum)
  */
-function getKaiaProvider(): EthereumProvider | null {
+function getProvider(): EthereumProvider | null {
   if (typeof window === "undefined") return null;
-  return window.klaytn ?? window.ethereum ?? null;
+  return window.ethereum ?? null;
 }
 
 /**
- * Check if KAIA Wallet provider is available
+ * Check if a wallet provider is available
  */
-function hasKaiaWallet(): boolean {
-  return getKaiaProvider() !== null;
+function hasWallet(): boolean {
+  return getProvider() !== null;
 }
 
 /**
- * Ensure the wallet is on KAIA Kairos testnet.
+ * Ensure the wallet is on HashKey Chain Testnet.
  * Attempts to switch chain; if the chain is unknown, adds it first.
  */
-async function ensureKaiaKairosChain(): Promise<void> {
-  const provider = getKaiaProvider();
+async function ensureHashKeyChain(): Promise<void> {
+  const provider = getProvider();
   if (!provider) return;
 
   const chainIdHex = (await provider.request({ method: "eth_chainId" })) as string;
   const chainId = parseInt(chainIdHex, 16);
 
-  if (chainId === KAIA_KAIROS_CHAIN_ID) return;
+  if (chainId === HASHKEY_CHAIN_ID) return;
 
   try {
     await provider.request({
       method: "wallet_switchEthereumChain",
-      params: [{ chainId: KAIA_KAIROS_CHAIN_ID_HEX }],
+      params: [{ chainId: HASHKEY_CHAIN_ID_HEX }],
     });
   } catch (switchError: unknown) {
     // Chain not added to wallet (error code 4902) — add it
@@ -76,16 +76,16 @@ async function ensureKaiaKairosChain(): Promise<void> {
         method: "wallet_addEthereumChain",
         params: [
           {
-            chainId: KAIA_KAIROS_CHAIN_ID_HEX,
-            chainName: "KAIA Kairos Testnet",
-            nativeCurrency: { name: "KAIA", symbol: "KAIA", decimals: 18 },
-            rpcUrls: ["https://public-en-kairos.node.kaia.io"],
-            blockExplorerUrls: ["https://kairos.kaiascan.io"],
+            chainId: HASHKEY_CHAIN_ID_HEX,
+            chainName: "HashKey Chain Testnet",
+            nativeCurrency: { name: "HSK", symbol: "HSK", decimals: 18 },
+            rpcUrls: ["https://testnet.hsk.xyz"],
+            blockExplorerUrls: ["https://testnet-explorer.hsk.xyz"],
           },
         ],
       });
     } else {
-      throw new Error("Please switch to KAIA Kairos Testnet in your wallet.");
+      throw new Error("Please switch to HashKey Chain Testnet in your wallet.");
     }
   }
 }
@@ -94,7 +94,7 @@ async function ensureKaiaKairosChain(): Promise<void> {
  * Get connected accounts from wallet
  */
 async function getAccounts(): Promise<string[]> {
-  const provider = getKaiaProvider();
+  const provider = getProvider();
   if (!provider) return [];
   try {
     const accounts = await provider.request({
@@ -110,11 +110,11 @@ async function getAccounts(): Promise<string[]> {
  * Request wallet connection
  */
 async function requestAccounts(): Promise<string[]> {
-  const provider = getKaiaProvider();
+  const provider = getProvider();
   if (!provider) {
-    throw new Error("KAIA Wallet이 감지되지 않았습니다. KAIA Wallet을 설치해주세요.");
+    throw new Error("Wallet not detected. Please install MetaMask.");
   }
-  await ensureKaiaKairosChain();
+  await ensureHashKeyChain();
   const accounts = await provider.request({
     method: "eth_requestAccounts",
   });
@@ -125,9 +125,9 @@ async function requestAccounts(): Promise<string[]> {
  * Sign a message with the wallet
  */
 async function signMessage(address: string, message: string): Promise<string> {
-  const provider = getKaiaProvider();
+  const provider = getProvider();
   if (!provider) {
-    throw new Error("KAIA Wallet이 감지되지 않았습니다.");
+    throw new Error("Wallet not detected.");
   }
   const signature = await provider.request({
     method: "personal_sign",
@@ -188,7 +188,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkExistingSession();
 
     // Listen for account & chain changes
-    const provider = getKaiaProvider();
+    const provider = getProvider();
     if (provider) {
       const handleAccountsChanged = (accounts: string[]) => {
         if (accounts.length === 0) {
@@ -215,14 +215,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const handleChainChanged = (chainIdHex: string) => {
         const chainId = parseInt(chainIdHex, 16);
-        if (chainId !== KAIA_KAIROS_CHAIN_ID) {
+        if (chainId !== HASHKEY_CHAIN_ID) {
           // Wrong network - disconnect and show error
           sessionStorage.removeItem(STORAGE_KEY_TOKEN);
           sessionStorage.removeItem(STORAGE_KEY_ADDRESS);
           sessionStorage.removeItem(STORAGE_KEY_EXPIRES);
           setState({
             ...initialState,
-            error: "KAIA Kairos Testnet으로 네트워크를 변경해주세요.",
+            error: "Please switch to HashKey Chain Testnet.",
           });
         }
       };

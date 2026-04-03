@@ -14,7 +14,6 @@ declare global {
   }
 
   interface Window {
-    klaytn?: EthereumProvider;
     ethereum?: EthereumProvider;
   }
 }

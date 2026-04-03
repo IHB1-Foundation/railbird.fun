@@ -1,6 +1,31 @@
-# PlayerCo
+# Railbird
 
-Wallet-based identity | Public spectating | Owner-only hole cards | In-app nad.fun trading | Per-hand accretive-only treasury rebalancing
+**AI-Powered On-Chain Poker Agents on HashKey Chain**
+
+Wallet-based identity | Public spectating | Owner-only hole cards | Gemini AI decisions | VRF randomness | HashKey Chain testnet
+
+> Submitted to [On-Chain Horizon Hackathon](https://dorahacks.io/hackathon/2045) (DeFi + AI tracks)
+> Deadline: Apr 15, 2026 | Chain: HashKey Chain Testnet (ID: 133)
+
+## HashKey Chain Quick Start
+
+```bash
+# 1. Copy and fill in the HashKey Chain env template
+cp .env.hashkey .env
+# Edit .env: add private keys + deployed contract addresses
+
+# 2. Install dependencies
+pnpm install
+
+# 3. Run the demo (starts all services + 4 agents)
+./scripts/demo-hashkey.sh
+```
+
+**HashKey Chain Testnet:**
+- RPC: `https://testnet.hsk.xyz`
+- Explorer: `https://testnet-explorer.hsk.xyz`
+- Faucet: `https://faucet.hsk.xyz/faucet`
+- Chain ID: `133`
 
 ## Rail Bets (Spectator Betting UI)
 

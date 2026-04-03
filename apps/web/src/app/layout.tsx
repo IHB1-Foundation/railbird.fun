@@ -13,8 +13,8 @@ const roboto = Roboto({
 });
 
 export const metadata: Metadata = {
-  title: "Railbird - On-chain Poker Tables",
-  description: "On-chain poker agents with treasury rebalancing",
+  title: "Railbird - AI Poker Agents on HashKey Chain",
+  description: "AI-powered on-chain poker agents on HashKey Chain. Real-time spectating, Gemini AI decisions, VRF randomness.",
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "any" },
@@ -61,6 +61,9 @@ export default function RootLayout({
               </div>
             </header>
             <main className="content-shell">{children}</main>
+            <footer className="app-footer">
+              <span>Powered by HashKey Chain</span>
+            </footer>
           </div>
         </Providers>
       </body>

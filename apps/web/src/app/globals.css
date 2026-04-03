@@ -94,6 +94,15 @@ h5 {
   padding: 0 1rem 2.5rem;
 }
 
+.app-footer {
+  margin-top: 3rem;
+  padding: 1rem 0;
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--text-muted, #6b7280);
+  border-top: 1px solid var(--border-color, #1f2937);
+}
+
 .topbar {
   position: sticky;
   top: 0;

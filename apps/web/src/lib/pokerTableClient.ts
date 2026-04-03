@@ -9,20 +9,24 @@ import {
   type Hash,
 } from "viem";
 
-// KAIA Kairos testnet (chain ID 1001)
-const KAIA_KAIROS: Chain = {
-  id: 1001,
-  name: "KAIA Kairos",
-  nativeCurrency: { name: "KAIA", symbol: "KAIA", decimals: 18 },
+function getRpcUrl(): string {
+  return process.env.NEXT_PUBLIC_RPC_URL || "https://testnet.hsk.xyz";
+}
+
+// HashKey Chain Testnet (chain ID 133)
+const HASHKEY_TESTNET: Chain = {
+  id: 133,
+  name: "HashKey Chain Testnet",
+  nativeCurrency: { name: "HSK", symbol: "HSK", decimals: 18 },
   rpcUrls: {
-    default: { http: ["https://public-en-kairos.node.real.io"] },
+    default: { http: [getRpcUrl()] },
   },
   blockExplorers: {
-    default: { name: "Kaiascan", url: "https://kairos.kaiascan.io" },
+    default: { name: "HashKey Explorer", url: "https://testnet-explorer.hsk.xyz" },
   },
 };
 
-const CHAIN: Chain = KAIA_KAIROS;
+const CHAIN: Chain = HASHKEY_TESTNET;
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as Address;
 
 const POKER_TABLE_ABI = [
@@ -46,10 +50,6 @@ const POKER_TABLE_ABI = [
   },
 ] as const;
 
-function getRpcUrl(): string {
-  return process.env.NEXT_PUBLIC_RPC_URL || "https://public-en-kairos.node.real.io";
-}
-
 function getPublicClient() {
   return createPublicClient({
     chain: CHAIN,
@@ -57,13 +57,13 @@ function getPublicClient() {
   });
 }
 
-function getKaiaProvider() {
+function getProvider() {
   if (typeof window === "undefined") return null;
-  return window.klaytn ?? window.ethereum ?? null;
+  return window.ethereum ?? null;
 }
 
 function getWalletClient() {
-  const provider = getKaiaProvider();
+  const provider = getProvider();
   if (!provider) return null;
   return createWalletClient({
     chain: CHAIN,

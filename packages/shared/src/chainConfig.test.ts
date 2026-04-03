@@ -51,7 +51,7 @@ describe("chainConfig", () => {
       const config = getChainConfig();
 
       assert.strictEqual(config.env, "testnet");
-      assert.strictEqual(config.chainId, 1001);
+      assert.strictEqual(config.chainId, 133);
       assert.strictEqual(config.rpcUrl, "https://rpc.example.com");
       assert.deepStrictEqual(config.contracts.pokerTables, [
         "0x1111111111111111111111111111111111111111",
@@ -177,12 +177,12 @@ describe("chainConfig", () => {
       process.env[ENV_VARS.CHAIN_ENV] = "testnet";
       clearChainConfigCache();
       assert.strictEqual(getChainConfig().env, "testnet");
-      assert.strictEqual(getChainConfig().chainId, 1001);
+      assert.strictEqual(getChainConfig().chainId, 133);
 
       process.env[ENV_VARS.CHAIN_ENV] = "mainnet";
       clearChainConfigCache();
       assert.strictEqual(getChainConfig().env, "mainnet");
-      assert.strictEqual(getChainConfig().chainId, 8217);
+      assert.strictEqual(getChainConfig().chainId, 177);
     });
   });
 

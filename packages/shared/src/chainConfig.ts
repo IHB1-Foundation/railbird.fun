@@ -11,11 +11,14 @@ import {
 
 /**
  * Known chain IDs by environment
+ * testnet: HashKey Chain Testnet (133)
+ * mainnet: HashKey Chain Mainnet (177)
+ * legacy KAIA: testnet=1001, mainnet=8217 (backward compat — set CHAIN_ID=1001 if needed)
  */
 const CHAIN_IDS: Record<ChainEnv, number> = {
   local: 31337, // Anvil/Hardhat default
-  testnet: 1001, // KAIA Kairos testnet
-  mainnet: 8217, // KAIA mainnet
+  testnet: 133, // HashKey Chain Testnet
+  mainnet: 177, // HashKey Chain Mainnet
 };
 
 /**
@@ -23,8 +26,8 @@ const CHAIN_IDS: Record<ChainEnv, number> = {
  */
 const BLOCK_EXPLORERS: Record<ChainEnv, string> = {
   local: "http://localhost:8545",
-  testnet: "https://kairos.kaiascan.io",
-  mainnet: "https://kaiascan.io",
+  testnet: "https://testnet-explorer.hsk.xyz",
+  mainnet: "https://explorer.hsk.xyz",
 };
 
 /**

@@ -5,7 +5,7 @@ libs = ["lib"]
 solc = "0.8.24"
 via_ir = true
 
-# Deploy profile: optimizer on to fit KAIA 49152 byte limit
+# Deploy profile: optimizer on (OP Stack 24KB limit, via_ir helps)
 [profile.deploy]
 src = "src"
 out = "out"
@@ -16,12 +16,17 @@ optimizer = true
 optimizer_runs = 1
 
 [rpc_endpoints]
+hashkey-testnet = "https://testnet.hsk.xyz"
+hashkey-mainnet = "https://mainnet.hsk.xyz"
 kaia-testnet = "https://public-en-kairos.node.kaia.io"
 kaia-mainnet = "https://public-en-kaia.node.kaia.io"
 localhost = "http://localhost:8545"
 
 [etherscan]
-# Kaiascan verification (set KAIASCAN_API_KEY in env when verifying)
+# HashKey Chain explorer verification (Blockscout-based)
+hashkey-testnet = { key = "placeholder", url = "https://testnet-explorer.hsk.xyz/api" }
+hashkey-mainnet = { key = "placeholder", url = "https://explorer.hsk.xyz/api" }
+# Kaiascan verification (legacy — set KAIASCAN_API_KEY in env when verifying)
 kaia-testnet = { key = "${KAIASCAN_API_KEY}", url = "https://api-kairos.kaiascan.io" }
 
 [fmt]

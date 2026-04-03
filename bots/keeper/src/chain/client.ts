@@ -67,9 +67,13 @@ export class ChainClient {
 
   constructor(config: ChainClientConfig) {
     this.chain = {
-      id: config.chainId || 31337,
-      name: "KAIA",
-      nativeCurrency: { name: "KAIA", symbol: "KAIA", decimals: 18 },
+      id: config.chainId || 133,
+      name: process.env.CHAIN_NAME || "HashKey Chain Testnet",
+      nativeCurrency: {
+        name: process.env.NATIVE_CURRENCY_NAME || "HashKey",
+        symbol: process.env.NATIVE_SYMBOL || "HSK",
+        decimals: 18,
+      },
       rpcUrls: {
         default: { http: [config.rpcUrl] },
       },

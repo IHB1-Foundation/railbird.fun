@@ -47,7 +47,7 @@ async function main(): Promise<void> {
     privateKey: requireEnv("VRF_OPERATOR_PRIVATE_KEY") as `0x${string}`,
     vrfAdapterAddress: requireEnv("VRF_ADAPTER_ADDRESS") as `0x${string}`,
     pokerTableAddresses,
-    chainId: parsePositiveInt("CHAIN_ID", 1001),
+    chainId: parsePositiveInt("CHAIN_ID", 133),
     pollIntervalMs: parsePositiveInt("VRF_OPERATOR_POLL_INTERVAL_MS", 1500),
     minConfirmations: parsePositiveInt("VRF_OPERATOR_MIN_CONFIRMATIONS", 1),
     rescanWindow: parsePositiveInt("VRF_OPERATOR_RESCAN_WINDOW", 256),

@@ -56,7 +56,7 @@ async function main() {
     privateKey: requireEnv("KEEPER_PRIVATE_KEY") as `0x${string}`,
     ownerviewUrl: process.env.OWNERVIEW_URL,
     dealerApiKey: process.env.DEALER_API_KEY,
-    chainId: parseInt(optionalEnv("CHAIN_ID", "1001")),
+    chainId: parseInt(optionalEnv("CHAIN_ID", "133")),
     pollIntervalMs: parsePositiveInt("POLL_INTERVAL_MS", defaultPollIntervalMs),
   };
 

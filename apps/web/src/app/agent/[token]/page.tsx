@@ -195,6 +195,14 @@ export default async function AgentPage({
         )}
       </div>
 
+      {/* Token Trading — only shown when nad.fun addresses are configured */}
+      {process.env.NEXT_PUBLIC_NADFUN_LENS_ADDRESS && (
+        <div className="card section-card">
+          <h3 className="section-title-sm">Token Trading</h3>
+          <div className="chart-placeholder">Trading widget not available on this network</div>
+        </div>
+      )}
+
     </section>
   );
 }

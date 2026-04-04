@@ -4,6 +4,7 @@ import { ChainClient, GameState, type TableState } from "./chain/client.js";
 import { OwnerViewClient, type HoleCardsResponse } from "./auth/ownerviewClient.js";
 import { SimpleStrategy, type Strategy, Decision, type DecisionContext, type HoleCards } from "./strategy/index.js";
 import { signMessage } from "viem/accounts";
+import { deriveEncryptionKeyPair } from "./auth/encryptionKey.js";
 
 export interface AgentBotConfig {
   rpcUrl: string;
@@ -44,6 +45,8 @@ export class AgentBot {
   private mySeatIndex: number | null = null;
   private waitingTurnKey: string | null = null;
   private currentBackoffMs: number = 0;
+  private encryptionPrivKey: Uint8Array | null = null;
+  private encryptionKeyRegistered: boolean = false;
 
   constructor(config: AgentBotConfig) {
     this.config = config;
@@ -101,6 +104,15 @@ export class AgentBot {
       }
     }
 
+    // Derive encryption key pair (once per run)
+    try {
+      const { privKey } = await deriveEncryptionKeyPair(this.config.privateKey);
+      this.encryptionPrivKey = privKey;
+      console.log("[AgentBot] Encryption key pair derived");
+    } catch (error) {
+      console.warn("[AgentBot] Failed to derive encryption key pair:", error);
+    }
+
     while (this.running) {
       try {
         await this.tick();
@@ -150,6 +162,23 @@ export class AgentBot {
       if (this.mySeatIndex !== null) {
         console.log(`[AgentBot] Found my seat: ${this.mySeatIndex}`);
         this.lastStack = state.seats[this.mySeatIndex].stack;
+
+        // Auto-register encryption key on-chain (once per session)
+        if (!this.encryptionKeyRegistered && this.encryptionPrivKey) {
+          const { secp256k1 } = await import("@noble/curves/secp256k1.js");
+          const pubKey = secp256k1.getPublicKey(this.encryptionPrivKey, true);
+          try {
+            const txHash = await this.chainClient.registerEncryptionKey(this.mySeatIndex, pubKey);
+            if (txHash) {
+              console.log(`[AgentBot] Encryption key registered: ${txHash}`);
+            } else {
+              console.log("[AgentBot] Encryption key already registered, skipping");
+            }
+            this.encryptionKeyRegistered = true;
+          } catch (error) {
+            console.warn("[AgentBot] Failed to register encryption key:", error);
+          }
+        }
       }
     }
 

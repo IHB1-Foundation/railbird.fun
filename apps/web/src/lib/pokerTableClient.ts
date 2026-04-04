@@ -48,6 +48,23 @@ const POKER_TABLE_ABI = [
     ],
     outputs: [],
   },
+  {
+    name: "registerEncryptionKey",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "seatIndex", type: "uint8" },
+      { name: "pubKey", type: "bytes" },
+    ],
+    outputs: [],
+  },
+  {
+    name: "getEncryptionKey",
+    type: "function",
+    stateMutability: "view",
+    inputs: [{ name: "seatIndex", type: "uint8" }],
+    outputs: [{ type: "bytes" }],
+  },
 ] as const;
 
 function getPublicClient() {
@@ -76,10 +93,17 @@ export interface RegisterSeatParams {
   seatIndex: number;
   buyInKaia: string;
   operator?: Address;
+  /**
+   * If provided, the encryption public key will be registered on-chain
+   * immediately after the seat registration transaction confirms.
+   * Pass the compressed secp256k1 public key (33 bytes) from deriveEncryptionKeyPair().
+   */
+  encryptionPubKey?: Uint8Array;
 }
 
 export interface RegisterSeatResult {
   registerTxHash: Hash;
+  encryptionKeyTxHash?: Hash;
 }
 
 export async function getPokerTableMaxSeats(tableAddress: Address): Promise<number> {
@@ -120,5 +144,91 @@ export async function registerSeat(params: RegisterSeatParams): Promise<Register
   });
   await publicClient.waitForTransactionReceipt({ hash: registerTxHash });
 
-  return { registerTxHash };
+  // Register encryption key immediately after seat registration (if provided)
+  let encryptionKeyTxHash: Hash | undefined;
+  if (params.encryptionPubKey) {
+    encryptionKeyTxHash = await registerEncryptionKeyOnChain({
+      tableAddress: params.tableAddress,
+      seatIndex: params.seatIndex,
+      pubKey: params.encryptionPubKey,
+    });
+  }
+
+  return { registerTxHash, encryptionKeyTxHash };
+}
+
+export interface RegisterEncryptionKeyParams {
+  tableAddress: Address;
+  seatIndex: number;
+  pubKey: Uint8Array;
+}
+
+/**
+ * Register (or update) the ECIES encryption public key for a seat on-chain.
+ * Skips the transaction if the same key is already registered.
+ *
+ * @returns transaction hash, or undefined if skipped (key already registered)
+ */
+export async function registerEncryptionKeyOnChain(
+  params: RegisterEncryptionKeyParams
+): Promise<Hash | undefined> {
+  const walletClient = getWalletClient();
+  if (!walletClient) throw new Error("No wallet connected");
+
+  const [account] = await walletClient.getAddresses();
+  if (!account) throw new Error("No account available");
+
+  const publicClient = getPublicClient();
+
+  // Check if the same key is already registered — skip if so
+  const existing = await publicClient.readContract({
+    address: params.tableAddress,
+    abi: POKER_TABLE_ABI,
+    functionName: "getEncryptionKey",
+    args: [params.seatIndex],
+  }) as `0x${string}`;
+
+  const newKeyHex = "0x" + Array.from(params.pubKey).map(b => b.toString(16).padStart(2, "0")).join("");
+  if (existing && existing !== "0x" && existing.toLowerCase() === newKeyHex.toLowerCase()) {
+    return undefined; // same key already registered, skip
+  }
+
+  const pubKeyHex = ("0x" + Array.from(params.pubKey).map(b => b.toString(16).padStart(2, "0")).join("")) as `0x${string}`;
+  const txHash = await walletClient.writeContract({
+    address: params.tableAddress,
+    abi: POKER_TABLE_ABI,
+    functionName: "registerEncryptionKey",
+    args: [params.seatIndex, pubKeyHex],
+    account,
+    chain: CHAIN,
+  });
+  await publicClient.waitForTransactionReceipt({ hash: txHash });
+
+  return txHash;
+}
+
+/**
+ * Get the registered ECIES encryption public key for a seat.
+ * Returns null if no key is registered.
+ */
+export async function getEncryptionKeyOnChain(
+  tableAddress: Address,
+  seatIndex: number
+): Promise<Uint8Array | null> {
+  const publicClient = getPublicClient();
+  const hex = await publicClient.readContract({
+    address: tableAddress,
+    abi: POKER_TABLE_ABI,
+    functionName: "getEncryptionKey",
+    args: [seatIndex],
+  }) as `0x${string}`;
+
+  if (!hex || hex === "0x") return null;
+  const h = hex.startsWith("0x") ? hex.slice(2) : hex;
+  if (h.length === 0) return null;
+  const bytes = new Uint8Array(h.length / 2);
+  for (let i = 0; i < bytes.length; i++) {
+    bytes[i] = parseInt(h.slice(i * 2, i * 2 + 2), 16);
+  }
+  return bytes;
 }

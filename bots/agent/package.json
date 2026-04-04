@@ -12,6 +12,8 @@
     "lint": "echo 'lint not configured yet'"
   },
   "dependencies": {
+    "@noble/curves": "^2.0.1",
+    "@noble/hashes": "^2.0.1",
     "@playerco/shared": "workspace:*",
     "viem": "^2.21.0"
   },

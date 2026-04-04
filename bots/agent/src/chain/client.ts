@@ -387,6 +387,55 @@ export class ChainClient {
     return hash;
   }
 
+  /**
+   * Register the agent's ECIES encryption public key for a seat.
+   * Skips the transaction if the same key is already registered.
+   */
+  async registerEncryptionKey(seatIndex: number, pubKey: Uint8Array): Promise<Hash | null> {
+    const ENCRYPTION_ABI = [
+      {
+        name: "getEncryptionKey",
+        type: "function",
+        stateMutability: "view",
+        inputs: [{ name: "seatIndex", type: "uint8" }],
+        outputs: [{ type: "bytes" }],
+      },
+      {
+        name: "registerEncryptionKey",
+        type: "function",
+        stateMutability: "nonpayable",
+        inputs: [
+          { name: "seatIndex", type: "uint8" },
+          { name: "pubKey", type: "bytes" },
+        ],
+        outputs: [],
+      },
+    ] as const;
+
+    const existing = await this.publicClient.readContract({
+      address: this.pokerTableAddress,
+      abi: ENCRYPTION_ABI,
+      functionName: "getEncryptionKey",
+      args: [seatIndex],
+    }) as `0x${string}`;
+
+    const newKeyHex = "0x" + Array.from(pubKey).map(b => b.toString(16).padStart(2, "0")).join("");
+    if (existing && existing !== "0x" && existing.toLowerCase() === newKeyHex.toLowerCase()) {
+      return null; // already registered
+    }
+
+    const hash = await this.walletClient.writeContract({
+      chain: this.chain,
+      account: this.account,
+      address: this.pokerTableAddress,
+      abi: ENCRYPTION_ABI,
+      functionName: "registerEncryptionKey",
+      args: [seatIndex, newKeyHex as `0x${string}`],
+    });
+    await this.publicClient.waitForTransactionReceipt({ hash });
+    return hash;
+  }
+
   // Find agent's seat index based on operator address
   findMySeat(state: TableState): number | null {
     for (let i = 0; i < state.seats.length; i++) {

@@ -1,11 +1,107 @@
 # Railbird
 
+> **Hackathon Submission — [On-Chain Horizon Hackathon](https://dorahacks.io/hackathon/2045)**
+> DeFi (primary) + AI (secondary) tracks | Deadline: Apr 15, 2026 | HashKey Chain Testnet (ID: 133)
+
+---
+
+## Hackathon Submission
+
+**Railbird: The World's First Trustless AI Poker Protocol on HashKey Chain**
+
+AI agents play on-chain Texas Hold'em — with verifiable shuffles, encrypted hole cards, and Gemini-powered decisions — all on HashKey Chain.
+
+### Key Features
+
+- **Trustless Dealer** — Verifiable shuffle (VRF + dealer seed + Fisher-Yates), ECIES per-player encryption, on-chain commit/reveal. No central entity can cheat.
+- **Gemini AI Agents** — 4 autonomous AI agents with distinct aggression profiles, making real-time poker decisions using hand strength, pot odds, and opponent modeling.
+- **KYC SBT Gate** — HashKey Chain's on-chain KYC (Soul Bound Token) integrated into seat registration. Only verified identities can play.
+- **Owner-Only Hole Cards** — Wallet-signature auth + ACL: only the seat owner can decrypt their own cards via ECIES.
+- **Provably Fair Randomness** — VRF-driven community cards and hole card shuffles, verified on-chain at showdown.
+
+### Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     HashKey Chain (ID: 133)                      │
+│                                                                   │
+│  PokerTable ──── VRFAdapter          PlayerRegistry              │
+│      │               │                      │                    │
+│      │          randomness             agent metadata            │
+│      │               │                      │                    │
+│  ChipToken       ShuffleVerifier       PlayerVault               │
+│  (RCHIP ERC-20)  (on-chain verify)    (treasury)                │
+└─────────┬────────────────────────��─────────┬────────────────────┘
+          │                                  │
+    ┌─────▼──────┐  wallet-sign auth  ┌──────▼──────┐
+    │  OwnerView  │◄──────────────────│   Web App   │
+    │  (ACL +     │   ECIES hole cards │  (Next.js)  │
+    │   Dealer)   │                   │  MetaMask   │
+    └─────────────┘                   └──────┬──────┘
+                                             │ REST + WS
+    ┌────────────────┐               ┌───────▼──────┐
+    │  AI Agent Bots │               │   Indexer    │
+    │  (Gemini API)  │               │  (Postgres)  │
+    └───────┬────────┘               └──────────────┘
+            │ operator txs
+    ◄───────▼──────────────────────────────────────►
+                  HashKey Chain Testnet
+```
+
+### HashKey Chain Integration
+
+| Feature | Usage |
+|---------|-------|
+| **KYC SBT** | `isHuman()` check on seat registration — only KYC-verified wallets can join |
+| **OP Stack** | Full EVM equivalence, low gas, standard Solidity tooling (Foundry) |
+| **VRF** | On-chain randomness for community card shuffles and hole card seeding |
+| **Blockscout** | Source-verified contracts on `https://testnet-explorer.hsk.xyz` |
+
+### Demo & Links
+
+| | |
+|---|---|
+| **Demo URL** | TBD (deployed after M3) |
+| **Demo Video** | TBD (recorded after M4) |
+| **Block Explorer** | `https://testnet-explorer.hsk.xyz` |
+| **DoraHacks** | `https://dorahacks.io/hackathon/2045` |
+
+### Deployed Contract Addresses (HashKey Chain Testnet)
+
+| Contract | Address |
+|----------|---------|
+| ChipToken (RCHIP) | TBD |
+| PokerTable 1 (low-stakes) | TBD |
+| PokerTable 2 (high-stakes) | TBD |
+| PlayerRegistry | TBD |
+| PlayerVault | TBD |
+| ProductionVRFAdapter | TBD |
+
+### Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| Smart Contracts | Solidity + Foundry |
+| Chain | HashKey Chain Testnet (OP Stack, Chain ID 133) |
+| Frontend | Next.js + TypeScript + viem |
+| Wallet | MetaMask (`window.ethereum`) |
+| AI | Google Gemini API (`gemini-2.0-flash`) |
+| Backend | Node.js + TypeScript + PostgreSQL |
+| Crypto | ECIES encryption, VRF, keccak256 commit/reveal |
+
+### Quick Start (3 lines)
+
+```bash
+cp .env.hashkey .env          # fill in private keys + contract addresses
+pnpm install                  # install all dependencies
+./scripts/demo-hashkey.sh     # start all services + 4 AI agents
+```
+
+---
+
 **AI-Powered On-Chain Poker Agents on HashKey Chain**
 
 Wallet-based identity | Public spectating | Owner-only hole cards | Gemini AI decisions | VRF randomness | HashKey Chain testnet
-
-> Submitted to [On-Chain Horizon Hackathon](https://dorahacks.io/hackathon/2045) (DeFi + AI tracks)
-> Deadline: Apr 15, 2026 | Chain: HashKey Chain Testnet (ID: 133)
 
 ## HashKey Chain Quick Start
 

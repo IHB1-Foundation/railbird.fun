@@ -209,10 +209,16 @@ contract PokerTable {
         uint8 communityIndex
     );
 
-    // ============ Trustless Dealer Events (T1.1) ============
+    // ============ Trustless Dealer Events (T1.1 / T1.2) ============
 
     /// @notice Emitted when a seat registers its ECIES encryption public key
     event EncryptionKeyRegistered(uint8 indexed seatIndex, bytes pubKey);
+
+    /// @notice Emitted when the dealer commits to its per-hand seed
+    event DealerSeedCommitted(uint256 indexed handId, bytes32 commitment);
+
+    /// @notice Emitted when the dealer reveals its seed at showdown
+    event DealerSeedRevealed(uint256 indexed handId, bytes32 seed);
 
     // ============ State Variables ============
     uint256 public tableId;
@@ -252,10 +258,14 @@ contract PokerTable {
     // Post blind: seats that joined mid-game must post BB as live blind on first hand
     mapping(uint8 => bool) public needsPostBlind;
 
-    // ============ Trustless Dealer State (T1.1) ============
+    // ============ Trustless Dealer State (T1.1 / T1.2) ============
 
-    // Per-seat ECIES encryption public key (compressed secp256k1, 33 bytes)
+    // T1.1: Per-seat ECIES encryption public key (compressed secp256k1, 33 bytes)
     mapping(uint8 => bytes) public encryptionKeys;
+
+    // T1.2: Dealer seed commit/reveal per hand
+    mapping(uint256 => bytes32) public dealerSeedCommits;  // handId => keccak256(seed)
+    mapping(uint256 => bytes32) public dealerSeedReveals;  // handId => revealed seed
 
     // ============ Modifiers ============
     function _checkOperator(uint8 seatIndex) internal view {
@@ -488,6 +498,55 @@ contract PokerTable {
     function getEncryptionKey(uint8 seatIndex) external view returns (bytes memory) {
         require(seatIndex < MAX_SEATS, "Invalid seat");
         return encryptionKeys[seatIndex];
+    }
+
+    // ============ Dealer Seed Commit/Reveal (T1.2) ============
+
+    /**
+     * @notice Dealer commits to its per-hand randomness seed.
+     * @dev Must be called before or at the start of betting, not after showdown.
+     * @param handId The hand ID
+     * @param commitment keccak256(dealerSeed)
+     */
+    function submitDealerSeedCommit(uint256 handId, bytes32 commitment) external {
+        require(handId > 0 && handId <= currentHandId, "Invalid hand ID");
+        require(commitment != bytes32(0), "Empty commitment");
+        require(dealerSeedCommits[handId] == bytes32(0), "DealerSeed: already committed");
+
+        // For current hand: only allowed at the start of pre-flop betting
+        if (handId == currentHandId) {
+            require(
+                gameState == GameState.BETTING_PRE,
+                "DealerSeed: too late to commit"
+            );
+        }
+
+        dealerSeedCommits[handId] = commitment;
+        emit DealerSeedCommitted(handId, commitment);
+    }
+
+    /**
+     * @notice Dealer reveals its seed at showdown, enabling post-hoc shuffle verification.
+     * @dev keccak256(seed) must match the stored commitment.
+     * @param handId The hand ID
+     * @param seed The original dealer seed
+     */
+    function revealDealerSeed(uint256 handId, bytes32 seed) external {
+        require(handId > 0 && handId <= currentHandId, "Invalid hand ID");
+        require(dealerSeedCommits[handId] != bytes32(0), "DealerSeed: no commitment");
+        require(dealerSeedReveals[handId] == bytes32(0), "DealerSeed: already revealed");
+
+        if (handId == currentHandId) {
+            require(
+                gameState == GameState.SHOWDOWN || gameState == GameState.SETTLED,
+                "DealerSeed: not in showdown"
+            );
+        }
+
+        require(keccak256(abi.encodePacked(seed)) == dealerSeedCommits[handId], "DealerSeed: commitment mismatch");
+
+        dealerSeedReveals[handId] = seed;
+        emit DealerSeedRevealed(handId, seed);
     }
 
     // ============ Hand Lifecycle ============

@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import "./interfaces/IVRFAdapter.sol";
 import "./interfaces/IERC20.sol";
 import "./HandEvaluator.sol";
+import { ShuffleVerifier, SeatReveal } from "./ShuffleVerifier.sol";
 
 /**
  * @title PokerTable
@@ -231,6 +232,15 @@ contract PokerTable {
         uint256 oldRequestId,
         uint256 newRequestId
     );
+
+    /// @notice Emitted when settlement occurs without a dealer seed reveal (soft enforcement)
+    event ShuffleUnverified(uint256 indexed handId);
+
+    /// @notice Emitted when dealer seed is revealed but shuffle verification fails
+    event ShuffleIntegrityViolation(uint256 indexed handId, bytes32 dealerSeed);
+
+    /// @notice Emitted when shuffle verification succeeds after dealer seed reveal
+    event ShuffleVerified(uint256 indexed handId, bytes32 dealerSeed);
 
     // ============ State Variables ============
     uint256 public tableId;
@@ -565,6 +575,47 @@ contract PokerTable {
 
         dealerSeedReveals[handId] = seed;
         emit DealerSeedRevealed(handId, seed);
+    }
+
+    /**
+     * @notice Verify shuffle integrity at showdown. Can be called by anyone after
+     *         the dealer seed has been revealed on-chain.
+     *
+     * @dev The caller provides the per-seat reveal data (cards + salts + commitments).
+     *      VRF randomness is read from on-chain storage. Dealer seed is read from on-chain storage.
+     *      Emits ShuffleVerified on success, ShuffleIntegrityViolation on failure.
+     *      This is a soft-enforcement: settlement is not affected by the outcome.
+     *
+     * @param handId    The hand ID to verify
+     * @param seatCount Number of seats that were dealt
+     * @param reveals   Per-seat reveal data (card1, card2, salt, commitment)
+     */
+    function verifyShuffleAtShowdown(
+        uint256 handId,
+        uint8 seatCount,
+        SeatReveal[] memory reveals
+    ) external {
+        require(handId > 0 && handId <= currentHandId, "Invalid hand ID");
+        require(dealerSeedReveals[handId] != bytes32(0), "Dealer seed not revealed yet");
+
+        uint256 vrfRandomness = holeCardVRFRandomness[handId];
+        require(vrfRandomness != 0, "VRF randomness not available");
+
+        bytes32 dealerSeed = dealerSeedReveals[handId];
+
+        bool valid = ShuffleVerifier.verifyShuffleAndHoleCards(
+            vrfRandomness,
+            dealerSeed,
+            seatCount,
+            handId,
+            reveals
+        );
+
+        if (valid) {
+            emit ShuffleVerified(handId, dealerSeed);
+        } else {
+            emit ShuffleIntegrityViolation(handId, dealerSeed);
+        }
     }
 
     // ============ Hand Lifecycle ============
@@ -1323,6 +1374,12 @@ contract PokerTable {
 
     function _settleHand(uint8 winnerSeat) internal {
         require(winnerSeat < MAX_SEATS, "Invalid winner");
+
+        // T4.2: Soft enforcement — emit ShuffleUnverified if dealer seed was never revealed
+        uint256 handId = currentHandId;
+        if (dealerSeedCommits[handId] != bytes32(0) && dealerSeedReveals[handId] == bytes32(0)) {
+            emit ShuffleUnverified(handId);
+        }
 
         uint256 potAmount = currentHand.pot;
         seats[winnerSeat].stack += potAmount;

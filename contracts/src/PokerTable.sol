@@ -209,6 +209,11 @@ contract PokerTable {
         uint8 communityIndex
     );
 
+    // ============ Trustless Dealer Events (T1.1) ============
+
+    /// @notice Emitted when a seat registers its ECIES encryption public key
+    event EncryptionKeyRegistered(uint8 indexed seatIndex, bytes pubKey);
+
     // ============ State Variables ============
     uint256 public tableId;
     uint256 public smallBlind;
@@ -246,6 +251,11 @@ contract PokerTable {
 
     // Post blind: seats that joined mid-game must post BB as live blind on first hand
     mapping(uint8 => bool) public needsPostBlind;
+
+    // ============ Trustless Dealer State (T1.1) ============
+
+    // Per-seat ECIES encryption public key (compressed secp256k1, 33 bytes)
+    mapping(uint8 => bytes) public encryptionKeys;
 
     // ============ Modifiers ============
     function _checkOperator(uint8 seatIndex) internal view {
@@ -443,6 +453,41 @@ contract PokerTable {
             if (seats[i].owner == address(0)) return false;
         }
         return true;
+    }
+
+    // ============ Encryption Key Registry (T1.1) ============
+
+    /**
+     * @notice Register a secp256k1 ECIES encryption public key for a seat.
+     * @dev Only the seat owner or operator may call. Key rotation is allowed between hands only.
+     * @param seatIndex The seat index (0..MAX_SEATS-1)
+     * @param pubKey Compressed (33 bytes) or uncompressed (65 bytes) secp256k1 public key
+     */
+    function registerEncryptionKey(uint8 seatIndex, bytes calldata pubKey) external {
+        require(seatIndex < MAX_SEATS, "Invalid seat");
+        require(
+            msg.sender == seats[seatIndex].owner || msg.sender == seats[seatIndex].operator,
+            "Not owner or operator"
+        );
+        require(pubKey.length == 33 || pubKey.length == 65, "Invalid pubKey length");
+        // Key rotation blocked while a hand is in progress
+        require(
+            gameState == GameState.WAITING_FOR_SEATS ||
+            gameState == GameState.SETTLED ||
+            gameState == GameState.TOURNAMENT_OVER,
+            "EncKeyReg: hand in progress"
+        );
+
+        encryptionKeys[seatIndex] = pubKey;
+        emit EncryptionKeyRegistered(seatIndex, pubKey);
+    }
+
+    /**
+     * @notice Get the encryption public key registered for a seat.
+     */
+    function getEncryptionKey(uint8 seatIndex) external view returns (bytes memory) {
+        require(seatIndex < MAX_SEATS, "Invalid seat");
+        return encryptionKeys[seatIndex];
     }
 
     // ============ Hand Lifecycle ============

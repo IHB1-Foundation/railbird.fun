@@ -12,6 +12,9 @@
     "lint": "echo 'lint not configured yet'"
   },
   "dependencies": {
+    "@noble/curves": "^2.0.1",
+    "@noble/hashes": "^2.0.1",
+    "@noble/secp256k1": "^3.0.0",
     "@playerco/shared": "workspace:*",
     "express": "^4.18.2",
     "jose": "^5.2.0",

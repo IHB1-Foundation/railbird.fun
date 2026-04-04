@@ -47,7 +47,7 @@ contract PokerTableTest is Test {
     function setUp() public {
         mockVRF = new MockVRFAdapter();
         chipToken = new ChipToken("TestChip", "TCHIP");
-        pokerTable = new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(mockVRF), address(chipToken));
+        pokerTable = new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(mockVRF), address(chipToken), address(0));
 
         // Mint chip tokens to player wallets
         chipToken.mint(owner1, BUY_IN * 1000);
@@ -58,22 +58,22 @@ contract PokerTableTest is Test {
 
     function test_Constructor_RevertIfTableIdIsZero() public {
         vm.expectRevert("Table ID must be > 0");
-        new PokerTable(0, SMALL_BLIND, BIG_BLIND, address(mockVRF), address(chipToken));
+        new PokerTable(0, SMALL_BLIND, BIG_BLIND, address(mockVRF), address(chipToken), address(0));
     }
 
     function test_Constructor_RevertIfSmallBlindIsZero() public {
         vm.expectRevert("Small blind must be > 0");
-        new PokerTable(1, 0, BIG_BLIND, address(mockVRF), address(chipToken));
+        new PokerTable(1, 0, BIG_BLIND, address(mockVRF), address(chipToken), address(0));
     }
 
     function test_Constructor_RevertIfVrfAdapterIsZero() public {
         vm.expectRevert("Invalid VRF adapter");
-        new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(0), address(chipToken));
+        new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(0), address(chipToken), address(0));
     }
 
     function test_Constructor_RevertIfChipTokenIsZero() public {
         vm.expectRevert("Invalid chip token");
-        new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(mockVRF), address(0));
+        new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(mockVRF), address(0), address(0));
     }
 
     // ============ Seat Registration Tests ============
@@ -162,6 +162,45 @@ contract PokerTableTest is Test {
 
         _registerSeat(3, owner4, operator4, BUY_IN);
         assertFalse(pokerTable.allSeatsFilled());
+    }
+
+    // ============ KYC SBT Gate Tests ============
+
+    /// @dev Minimal mock: always returns the configured value
+    function test_KYC_Disabled_AnyPlayerCanRegister() public {
+        // kycSBT == address(0) → gate disabled → existing behaviour unchanged
+        assertEq(pokerTable.kycSBT(), address(0));
+        _registerSeat(0, owner1, operator1, BUY_IN); // should not revert
+        assertEq(pokerTable.getSeat(0).owner, owner1);
+    }
+
+    function test_KYC_Enabled_KYCPassedPlayerCanRegister() public {
+        MockKYCSBT kyc = new MockKYCSBT();
+        PokerTable kycTable = new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(mockVRF), address(chipToken), address(kyc));
+
+        kyc.setHuman(owner1, true);
+        chipToken.mint(owner1, BUY_IN * 10);
+
+        vm.prank(owner1);
+        chipToken.approve(address(kycTable), BUY_IN);
+        vm.prank(owner1);
+        kycTable.registerSeat(0, owner1, operator1, BUY_IN); // should not revert
+
+        assertEq(kycTable.getSeat(0).owner, owner1);
+    }
+
+    function test_KYC_Enabled_KYCFailedPlayerReverts() public {
+        MockKYCSBT kyc = new MockKYCSBT();
+        PokerTable kycTable = new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(mockVRF), address(chipToken), address(kyc));
+
+        kyc.setHuman(owner2, false); // not KYC'd
+
+        chipToken.mint(owner2, BUY_IN * 10);
+        vm.prank(owner2);
+        chipToken.approve(address(kycTable), BUY_IN);
+        vm.prank(owner2);
+        vm.expectRevert("KYC required");
+        kycTable.registerSeat(0, owner2, operator2, BUY_IN);
     }
 
     // ============ Hand Start Tests ============
@@ -3250,5 +3289,18 @@ contract PokerTableTest is Test {
         if (pokerTable.gameState() != PokerTable.GameState.WAITING_VRF_HOLECARDS) return;
         mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
         pokerTable.advanceToPreflop();
+    }
+}
+
+/// @dev Configurable mock for IKYCSBTChecker used in KYC gate tests.
+contract MockKYCSBT {
+    mapping(address => bool) private _humans;
+
+    function setHuman(address account, bool value) external {
+        _humans[account] = value;
+    }
+
+    function isHuman(address account) external view returns (bool) {
+        return _humans[account];
     }
 }

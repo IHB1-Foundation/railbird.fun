@@ -269,7 +269,7 @@ contract ShuffleVerifierIntegrationTest is Test {
     function setUp() public {
         mockVRF = new MockVRFAdapter();
         chipToken = new ChipToken("TestChip", "TCHIP");
-        pokerTable = new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(mockVRF), address(chipToken));
+        pokerTable = new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(mockVRF), address(chipToken), address(0));
 
         chipToken.mint(owner1, BUY_IN * 100);
         chipToken.mint(owner2, BUY_IN * 100);

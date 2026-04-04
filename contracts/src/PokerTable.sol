@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import "./interfaces/IVRFAdapter.sol";
 import "./interfaces/IERC20.sol";
+import "./interfaces/IKYCSBTChecker.sol";
 import "./HandEvaluator.sol";
 import { ShuffleVerifier, SeatReveal } from "./ShuffleVerifier.sol";
 
@@ -212,6 +213,9 @@ contract PokerTable {
         uint8 communityIndex
     );
 
+    /// @notice Emitted when a seat registration passes the KYC SBT check
+    event KYCCheckPassed(address indexed player, uint8 seatIndex);
+
     // ============ Trustless Dealer Events ============
 
     /// @notice Emitted when a seat registers its ECIES encryption public key
@@ -293,6 +297,9 @@ contract PokerTable {
     mapping(uint256 => uint256) public holeCardVRFRandomness;  // handId => randomness
     uint256 public pendingHoleCardVRFRequestId;                // current pending hole-card VRF
 
+    /// @notice HashKey Chain KYC SBT checker. address(0) = KYC gate disabled.
+    address public kycSBT;
+
     // ============ Modifiers ============
     function _checkOperator(uint8 seatIndex) internal view {
         require(seatIndex < MAX_SEATS, "Invalid seat");
@@ -350,7 +357,8 @@ contract PokerTable {
         uint256 _smallBlind,
         uint256 _bigBlind,
         address _vrfAdapter,
-        address _chipToken
+        address _chipToken,
+        address _kycSBT
     ) {
         require(_tableId > 0, "Table ID must be > 0");
         require(_smallBlind > 0, "Small blind must be > 0");
@@ -362,6 +370,7 @@ contract PokerTable {
         bigBlind = _bigBlind;
         vrfAdapter = _vrfAdapter;
         chipToken = IERC20(_chipToken);
+        kycSBT = _kycSBT;
         gameState = GameState.WAITING_FOR_SEATS;
     }
 
@@ -383,6 +392,10 @@ contract PokerTable {
         require(seats[seatIndex].owner == address(0), "Seat already taken");
         require(owner != address(0), "Owner cannot be zero");
         require(buyIn >= bigBlind * 10, "Buy-in too small");
+        if (kycSBT != address(0)) {
+            require(IKYCSBTChecker(kycSBT).isHuman(msg.sender), "KYC required");
+            emit KYCCheckPassed(msg.sender, seatIndex);
+        }
         require(chipToken.transferFrom(msg.sender, address(this), buyIn), "Transfer failed");
 
         seats[seatIndex] = Seat({

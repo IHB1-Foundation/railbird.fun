@@ -18,6 +18,7 @@ import "../src/ProductionVRFAdapter.sol";
  *
  * Required env vars:
  *   VRF_OPERATOR_ADDRESS - operator wallet for ProductionVRFAdapter
+ *   KYC_SBT_ADDRESS      - HashKey Chain KYC SBT checker (address(0) to disable)
  *
  * Run:
  *   FOUNDRY_PROFILE=deploy forge script script/DeployHashKey.s.sol \
@@ -36,12 +37,20 @@ contract DeployHashKey is Script {
         address vrfAdapter = address(new ProductionVRFAdapter(vrfOp));
         console.log("VRF Adapter:", vrfAdapter);
 
+        // --- KYC SBT (address(0) = disabled) ---
+        address kycSBT = vm.envOr("KYC_SBT_ADDRESS", address(0));
+        if (kycSBT != address(0)) {
+            console.log("KYC SBT:", kycSBT);
+        } else {
+            console.log("KYC SBT: disabled");
+        }
+
         // --- Table 1: low-stakes ---
-        PokerTable table1 = new PokerTable(1, 0.1 ether, 0.2 ether, vrfAdapter, address(chip));
+        PokerTable table1 = new PokerTable(1, 0.1 ether, 0.2 ether, vrfAdapter, address(chip), kycSBT);
         console.log("Table 1 (low):", address(table1));
 
         // --- Table 2: high-stakes ---
-        PokerTable table2 = new PokerTable(2, 1 ether, 2 ether, vrfAdapter, address(chip));
+        PokerTable table2 = new PokerTable(2, 1 ether, 2 ether, vrfAdapter, address(chip), kycSBT);
         console.log("Table 2 (high):", address(table2));
 
         // --- Shared contracts ---

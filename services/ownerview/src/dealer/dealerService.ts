@@ -1,18 +1,23 @@
-import { createHash } from "node:crypto";
-import { toHex } from "viem";
+import { randomBytes } from "node:crypto";
+import { toHex, keccak256 } from "viem";
 import type { HoleCardStore } from "../holecards/index.js";
+import type { Card, EncryptedPayloadSerialized } from "../holecards/types.js";
 import type { DealParams, DealResult, DealerConfig } from "./types.js";
-import { dealHoleCards, generateSalt, generateCommitment } from "./cardGenerator.js";
+import { generateSalt, generateCommitment } from "./cardGenerator.js";
+import { verifiableShuffle, extractHoleCards } from "./verifiableShuffle.js";
+import { encryptHoleCards } from "./eciesEncrypt.js";
+import type { EncryptedPayload } from "./eciesEncrypt.js";
 
 /**
- * Generate a deterministic test salt from a seed and seat index
- * Returns a valid 32-byte hex string (0x-prefixed)
+ * Serialize EncryptedPayload (Uint8Array fields) to JSON-safe hex strings.
  */
-function generateTestSalt(seed: string, seatIndex: number): string {
-  const hash = createHash("sha256")
-    .update(`${seed}-${seatIndex}`)
-    .digest();
-  return toHex(hash);
+function serializePayload(payload: EncryptedPayload): EncryptedPayloadSerialized {
+  return {
+    ephemeralPubKey: toHex(payload.ephemeralPubKey),
+    iv: toHex(payload.iv),
+    ciphertext: toHex(payload.ciphertext),
+    mac: toHex(payload.mac),
+  };
 }
 
 /**
@@ -21,23 +26,22 @@ function generateTestSalt(seed: string, seatIndex: number): string {
 export class DealerError extends Error {
   constructor(
     message: string,
-    public code: "ALREADY_DEALT" | "DEAL_FAILED" | "INVALID_PARAMS"
+    public code: "ALREADY_DEALT" | "DEAL_FAILED" | "INVALID_PARAMS" | "MISSING_ENCRYPTION_KEY"
   ) {
     super(message);
     this.name = "DealerError";
   }
 }
 
-const DEFAULT_SEAT_COUNT = 9;
-
 /**
- * Dealer service responsible for generating and storing hole cards
+ * Dealer service — verifiable shuffle + ECIES encryption.
  *
- * Security notes:
- * - Cards are generated with cryptographically secure randomness
- * - Each seat gets a unique salt for their commitment
- * - Commitments can be verified on-chain at showdown
- * - Cards are never logged or exposed in public APIs
+ * Security properties:
+ * - Plaintext hole cards never stored (only ECIES-encrypted form)
+ * - Shuffle is deterministic from VRF randomness + dealer seed
+ * - Dealer seed is committed on-chain before dealing; revealed at showdown
+ * - Post-showdown verification: anyone can reconstruct the shuffle from on-chain data
+ * - Memory lifetime of plaintext cards is limited to the encrypt() call scope
  */
 export class DealerService {
   private holeCardStore: HoleCardStore;
@@ -49,27 +53,29 @@ export class DealerService {
   }
 
   /**
-   * Deal hole cards for a new hand
+   * Deal hole cards for a new hand using verifiable shuffle + ECIES encryption.
    *
-   * This should be called when a HandStarted event is received.
-   * It generates 2 unique hole cards for each seat and stores them.
+   * Flow:
+   *   1. Compute deck = verifiableShuffle(vrfRandomness, dealerSeed)
+   *   2. For each seat: extract cards, encrypt with seat's public key
+   *   3. Store encryptedCards + salt + commitment + reveal params in HoleCardStore
+   *   4. Plaintext cards are discarded after encrypt() returns
    *
-   * @param params The table and hand identifiers
-   * @returns Deal result with commitments for on-chain submission
-   * @throws DealerError if cards already dealt or generation fails
+   * @param params Deal parameters including VRF randomness, dealer seed, and per-seat encryption keys
+   * @returns Commitments + encrypted cards for all seats (no plaintext)
    */
-  deal(params: DealParams): DealResult {
-    const { tableId, handId } = params;
+  async deal(params: DealParams): Promise<DealResult> {
+    const { tableId, handId, vrfRandomness, dealerSeed, encryptionKeys } = params;
 
-    // Validate params
     if (!tableId || !handId) {
-      throw new DealerError(
-        "tableId and handId are required",
-        "INVALID_PARAMS"
-      );
+      throw new DealerError("tableId and handId are required", "INVALID_PARAMS");
     }
 
-    // Check if already dealt for this hand
+    if (encryptionKeys.size === 0) {
+      throw new DealerError("No encryption keys provided — cannot deal", "INVALID_PARAMS");
+    }
+
+    // Check if already dealt (idempotency)
     if (this.holeCardStore.getHand(tableId, handId).length > 0) {
       throw new DealerError(
         `Hole cards already dealt for table=${tableId}, hand=${handId}`,
@@ -77,127 +83,130 @@ export class DealerService {
       );
     }
 
-    const seatIndexes = this.resolveSeatIndexes(params);
-    if (seatIndexes.length === 0) {
-      throw new DealerError("No seat indexes to deal", "INVALID_PARAMS");
-    }
+    // Use test seed if configured, otherwise generate random
+    const resolvedDealerSeed = this.config.testDealerSeed ?? dealerSeed;
 
-    // Generate unique hole cards for requested seats.
-    const holeCards = dealHoleCards(seatIndexes.length, 2, this.config.testSeed);
+    // Compute the on-chain commitment to the dealer seed
+    const dealerSeedCommit = keccak256(resolvedDealerSeed);
 
-    const seats: DealResult["seats"] = [];
+    // Deterministic shuffle: deck[0..51] derived from VRF + dealer seed
+    const deck = verifiableShuffle(vrfRandomness, resolvedDealerSeed);
+
+    // Extract hole cards for each seat (seat i gets deck[i*2], deck[i*2+1])
+    const seatIndexes = Array.from(encryptionKeys.keys()).sort((a, b) => a - b);
+    const holeCardsMap = extractHoleCards(deck, seatIndexes);
+
+    const resultSeats: DealResult["seats"] = [];
 
     for (let i = 0; i < seatIndexes.length; i++) {
       const seatIndex = seatIndexes[i];
-      const cards = holeCards[i];
-      const salt = this.config.testSeed
-        ? generateTestSalt(this.config.testSeed, seatIndex)
-        : generateSalt();
+      const pubKey = encryptionKeys.get(seatIndex);
+
+      if (!pubKey) {
+        throw new DealerError(
+          `Missing encryption key for seat ${seatIndex}`,
+          "MISSING_ENCRYPTION_KEY"
+        );
+      }
+
+      const cards = holeCardsMap.get(seatIndex)!;
+
+      // Encrypt: plaintext cards exist only during this call
+      const encryptedPayload: EncryptedPayload = await encryptHoleCards(pubKey, cards);
+      const encryptedCards: EncryptedPayloadSerialized = serializePayload(encryptedPayload);
+
+      const salt = generateSalt();
       const commitment = generateCommitment(tableId, handId, seatIndex, cards, salt);
 
-      // Store in hole card store
+      // Store only encrypted form — no plaintext
       this.holeCardStore.set({
         tableId,
         handId,
         seatIndex,
-        cards,
+        encryptedCards,
         salt,
         commitment,
         createdAt: Date.now(),
+        vrfRandomness: vrfRandomness.toString(),
+        dealerSeed: resolvedDealerSeed,
       });
 
-      // Return commitment (but never salt or cards in public result)
-      seats.push({
-        seatIndex,
-        cards,
-        commitment,
-      });
+      resultSeats.push({ seatIndex, encryptedCards, commitment });
     }
 
-    return {
-      tableId,
-      handId,
-      seats,
-    };
+    return { tableId, handId, dealerSeedCommit, seats: resultSeats };
   }
 
   /**
-   * Get commitments for a hand (for on-chain submission)
-   *
-   * @param tableId Table identifier
-   * @param handId Hand identifier
-   * @returns Array of commitments for each seat, or null if not dealt
+   * Get commitments for a hand (for on-chain submission).
    */
   getCommitments(tableId: string, handId: string): Array<{ seatIndex: number; commitment: string }> | null {
     const records = this.holeCardStore.getHand(tableId, handId);
-
-    if (records.length === 0) {
-      return null;
-    }
-
-    return records.map((record) => ({
-      seatIndex: record.seatIndex,
-      commitment: record.commitment,
-    }));
+    if (records.length === 0) return null;
+    return records.map((r) => ({ seatIndex: r.seatIndex, commitment: r.commitment }));
   }
 
   /**
-   * Get reveal data for a seat (for showdown)
+   * Get reveal data for a seat at showdown.
    *
-   * @param tableId Table identifier
-   * @param handId Hand identifier
-   * @param seatIndex Seat index
-   * @returns Cards and salt for on-chain reveal, or null if not found
+   * Reconstructs plaintext cards from on-chain data (vrfRandomness + dealerSeed)
+   * using the verifiable shuffle. The salt is retrieved from storage.
+   *
+   * @returns { cards, salt, dealerSeed, vrfRandomness } or null if not found
    */
   getRevealData(
     tableId: string,
     handId: string,
     seatIndex: number
-  ): { cards: [number, number]; salt: string } | null {
+  ): { cards: [Card, Card]; salt: string; dealerSeed: string; vrfRandomness: string } | null {
     const record = this.holeCardStore.get(tableId, handId, seatIndex);
+    if (!record) return null;
 
-    if (!record) {
-      return null;
-    }
+    // Reconstruct plaintext cards from shuffle (no plaintext stored)
+    const vrfRandomness = BigInt(record.vrfRandomness);
+    const dealerSeed = record.dealerSeed as `0x${string}`;
+    const deck = verifiableShuffle(vrfRandomness, dealerSeed);
 
-    return {
-      cards: record.cards,
-      salt: record.salt,
-    };
+    // Find position of this seat in the stored records (by order of seatIndexes)
+    const handRecords = this.holeCardStore.getHand(tableId, handId);
+    const seatPosition = handRecords.findIndex((r) => r.seatIndex === seatIndex);
+    if (seatPosition === -1) return null;
+
+    const cards: [Card, Card] = [deck[seatPosition * 2], deck[seatPosition * 2 + 1]];
+
+    return { cards, salt: record.salt, dealerSeed: record.dealerSeed, vrfRandomness: record.vrfRandomness };
   }
 
   /**
-   * Check if a hand has been dealt
+   * Get the encrypted cards for a seat (for owner retrieval).
+   */
+  getEncryptedCards(
+    tableId: string,
+    handId: string,
+    seatIndex: number
+  ): EncryptedPayloadSerialized | null {
+    const record = this.holeCardStore.get(tableId, handId, seatIndex);
+    return record?.encryptedCards ?? null;
+  }
+
+  /**
+   * Check if a hand has been dealt.
    */
   isHandDealt(tableId: string, handId: string): boolean {
     return this.holeCardStore.getHand(tableId, handId).length > 0;
   }
 
   /**
-   * Clean up hole cards for a completed hand
-   *
-   * Should be called after hand settlement and any reveal period
+   * Clean up hole cards for a completed hand.
    */
   cleanupHand(tableId: string, handId: string): number {
     return this.holeCardStore.deleteHand(tableId, handId);
   }
 
-  private resolveSeatIndexes(params: DealParams): number[] {
-    if (params.seatIndexes && params.seatIndexes.length > 0) {
-      const uniq = new Set<number>();
-      for (const seat of params.seatIndexes) {
-        if (!Number.isInteger(seat) || seat < 0 || seat > 255) {
-          throw new DealerError(`Invalid seat index: ${seat}`, "INVALID_PARAMS");
-        }
-        uniq.add(seat);
-      }
-      return Array.from(uniq).sort((a, b) => a - b);
-    }
-
-    const count = this.config.defaultSeatCount ?? DEFAULT_SEAT_COUNT;
-    if (!Number.isInteger(count) || count <= 0 || count > 52 / 2) {
-      throw new DealerError(`Invalid default seat count: ${count}`, "INVALID_PARAMS");
-    }
-    return Array.from({ length: count }, (_, i) => i);
+  /**
+   * Generate a random dealer seed (32 bytes, 0x-prefixed).
+   */
+  static generateDealerSeed(): `0x${string}` {
+    return toHex(randomBytes(32));
   }
 }

@@ -67,12 +67,12 @@ export function createOwnerRoutes(
         return;
       }
 
-      // Return only the cards - never return salt or commitment to client
+      // Return encrypted cards — client decrypts locally with their private key
       res.json({
         tableId,
         handId,
         seatIndex,
-        cards: record.cards,
+        encryptedCards: record.encryptedCards,
       });
     } catch (err) {
       if (err instanceof ChainError) {

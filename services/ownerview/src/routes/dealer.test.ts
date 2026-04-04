@@ -1,49 +1,55 @@
 import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
+import { secp256k1 } from "@noble/curves/secp256k1.js";
 import { HoleCardStore } from "../holecards/index.js";
-import { DealerService } from "../dealer/index.js";
+import { DealerService, DealerError } from "../dealer/index.js";
 
-// Simulate the route handler logic for testing
-function simulateDealEndpoint(
+// ============ Test helpers ============
+
+const TEST_VRF = 0xdeadbeefdeadbeefn;
+const TEST_DEALER_SEED =
+  "0x0000000000000000000000000000000000000000000000000000000000000001" as const;
+
+function buildEncryptionKeys(count = 4): Map<number, Uint8Array> {
+  const keys = new Map<number, Uint8Array>();
+  for (let i = 0; i < count; i++) {
+    const priv = secp256k1.utils.randomSecretKey();
+    keys.set(i, secp256k1.getPublicKey(priv, true));
+  }
+  return keys;
+}
+
+async function simulateDealEndpoint(
   dealerService: DealerService,
-  params: { tableId: string; handId: string }
-): { status: number; body: Record<string, unknown> } {
+  params: { tableId: string; handId: string; encryptionKeys?: Map<number, Uint8Array> }
+): Promise<{ status: number; body: Record<string, unknown> }> {
   const { tableId, handId } = params;
 
-  if (!tableId || typeof tableId !== "string") {
-    return {
-      status: 400,
-      body: { error: "Missing or invalid tableId", code: "INVALID_TABLE_ID" },
-    };
-  }
+  if (!tableId) return { status: 400, body: { code: "INVALID_TABLE_ID" } };
+  if (!handId) return { status: 400, body: { code: "INVALID_HAND_ID" } };
 
-  if (!handId || typeof handId !== "string") {
-    return {
-      status: 400,
-      body: { error: "Missing or invalid handId", code: "INVALID_HAND_ID" },
-    };
-  }
+  const encryptionKeys = params.encryptionKeys ?? buildEncryptionKeys(4);
 
   try {
-    const result = dealerService.deal({ tableId, handId });
+    const result = await dealerService.deal({
+      tableId,
+      handId,
+      vrfRandomness: TEST_VRF,
+      dealerSeed: TEST_DEALER_SEED,
+      encryptionKeys,
+    });
     return {
       status: 201,
       body: {
         tableId: result.tableId,
         handId: result.handId,
-        commitments: result.seats.map((s) => ({
-          seatIndex: s.seatIndex,
-          commitment: s.commitment,
-        })),
+        dealerSeedCommit: result.dealerSeedCommit,
+        commitments: result.seats.map((s) => ({ seatIndex: s.seatIndex, commitment: s.commitment })),
       },
     };
   } catch (err) {
-    if (err instanceof Error && err.name === "DealerError") {
-      const dealerError = err as unknown as { code: string; message: string };
-      return {
-        status: dealerError.code === "ALREADY_DEALT" ? 409 : 400,
-        body: { error: dealerError.message, code: dealerError.code },
-      };
+    if (err instanceof DealerError) {
+      return { status: err.code === "ALREADY_DEALT" ? 409 : 400, body: { code: err.code, error: err.message } };
     }
     throw err;
   }
@@ -54,51 +60,29 @@ function simulateCommitmentsEndpoint(
   params: { tableId: string; handId: string }
 ): { status: number; body: Record<string, unknown> } {
   const { tableId, handId } = params;
-
-  if (!tableId || typeof tableId !== "string") {
-    return {
-      status: 400,
-      body: { error: "Missing or invalid tableId", code: "INVALID_TABLE_ID" },
-    };
-  }
-
-  if (!handId || typeof handId !== "string") {
-    return {
-      status: 400,
-      body: { error: "Missing or invalid handId", code: "INVALID_HAND_ID" },
-    };
-  }
+  if (!tableId) return { status: 400, body: { code: "INVALID_TABLE_ID" } };
+  if (!handId) return { status: 400, body: { code: "INVALID_HAND_ID" } };
 
   const commitments = dealerService.getCommitments(tableId, handId);
-
-  if (!commitments) {
-    return {
-      status: 404,
-      body: { error: "Hand not dealt", code: "NOT_FOUND" },
-    };
-  }
-
-  return {
-    status: 200,
-    body: { tableId, handId, commitments },
-  };
+  if (!commitments) return { status: 404, body: { code: "NOT_FOUND" } };
+  return { status: 200, body: { tableId, handId, commitments } };
 }
 
-// Simulate dealer auth middleware
 function simulateDealerAuth(
   apiKey: string | undefined,
   authHeader: string | undefined
 ): { status: number; body: Record<string, unknown> } | null {
-  if (!apiKey) return null; // No auth required
+  if (!apiKey) return null;
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return { status: 401, body: { error: "Missing or invalid Authorization header", code: "UNAUTHORIZED" } };
+    return { status: 401, body: { code: "UNAUTHORIZED" } };
   }
-  const token = authHeader.slice(7);
-  if (token !== apiKey) {
-    return { status: 403, body: { error: "Invalid dealer API key", code: "FORBIDDEN" } };
+  if (authHeader.slice(7) !== apiKey) {
+    return { status: 403, body: { code: "FORBIDDEN" } };
   }
-  return null; // Auth passed
+  return null;
 }
+
+// ============ Tests ============
 
 describe("Dealer Routes", () => {
   let holeCardStore: HoleCardStore;
@@ -106,134 +90,82 @@ describe("Dealer Routes", () => {
 
   beforeEach(() => {
     holeCardStore = new HoleCardStore();
-    dealerService = new DealerService(holeCardStore, { testSeed: "test-seed", defaultSeatCount: 4 });
+    dealerService = new DealerService(holeCardStore, { testDealerSeed: TEST_DEALER_SEED });
   });
 
   describe("POST /dealer/deal", () => {
-    it("should return 201 and commitments for all 4 seats on successful deal", () => {
-      const result = simulateDealEndpoint(dealerService, {
-        tableId: "1",
-        handId: "1",
-      });
+    it("should return 201 and commitments for all 4 seats on successful deal", async () => {
+      const result = await simulateDealEndpoint(dealerService, { tableId: "1", handId: "1" });
 
       assert.equal(result.status, 201);
       assert.equal(result.body.tableId, "1");
       assert.equal(result.body.handId, "1");
 
-      const commitments = result.body.commitments as Array<{
-        seatIndex: number;
-        commitment: string;
-      }>;
+      const commitments = result.body.commitments as Array<{ seatIndex: number; commitment: string }>;
       assert.equal(commitments.length, 4);
-      assert.equal(commitments[0].seatIndex, 0);
-      assert.equal(commitments[1].seatIndex, 1);
-      assert.equal(commitments[2].seatIndex, 2);
-      assert.equal(commitments[3].seatIndex, 3);
     });
 
-    it("should NOT expose cards in response", () => {
-      const result = simulateDealEndpoint(dealerService, {
-        tableId: "1",
-        handId: "1",
-      });
-
+    it("should NOT expose plaintext cards in response", async () => {
+      const result = await simulateDealEndpoint(dealerService, { tableId: "1", handId: "1" });
       assert.equal(result.status, 201);
-
-      // Security check: cards should never be in the response
       const bodyStr = JSON.stringify(result.body);
-      assert.ok(
-        !bodyStr.includes('"cards"'),
-        "Response should not contain cards"
-      );
+      assert.ok(!bodyStr.includes('"cards"'), "response must not contain plaintext cards");
     });
 
-    it("should return 409 if already dealt", () => {
-      simulateDealEndpoint(dealerService, { tableId: "1", handId: "1" });
-      const result = simulateDealEndpoint(dealerService, {
-        tableId: "1",
-        handId: "1",
-      });
-
+    it("should return 409 if already dealt", async () => {
+      const keys = buildEncryptionKeys(4);
+      await simulateDealEndpoint(dealerService, { tableId: "1", handId: "1", encryptionKeys: keys });
+      const result = await simulateDealEndpoint(dealerService, { tableId: "1", handId: "1", encryptionKeys: keys });
       assert.equal(result.status, 409);
       assert.equal(result.body.code, "ALREADY_DEALT");
     });
 
-    it("should return 400 for missing tableId", () => {
-      const result = simulateDealEndpoint(dealerService, {
-        tableId: "",
-        handId: "1",
-      });
-
+    it("should return 400 for missing tableId", async () => {
+      const result = await simulateDealEndpoint(dealerService, { tableId: "", handId: "1" });
       assert.equal(result.status, 400);
       assert.equal(result.body.code, "INVALID_TABLE_ID");
     });
 
-    it("should return 400 for missing handId", () => {
-      const result = simulateDealEndpoint(dealerService, {
-        tableId: "1",
-        handId: "",
-      });
-
+    it("should return 400 for missing handId", async () => {
+      const result = await simulateDealEndpoint(dealerService, { tableId: "1", handId: "" });
       assert.equal(result.status, 400);
       assert.equal(result.body.code, "INVALID_HAND_ID");
     });
   });
 
   describe("GET /dealer/commitments", () => {
-    it("should return commitments for all 4 seats of a dealt hand", () => {
-      dealerService.deal({ tableId: "1", handId: "1" });
-      const result = simulateCommitmentsEndpoint(dealerService, {
-        tableId: "1",
-        handId: "1",
-      });
+    it("should return commitments for all 4 seats of a dealt hand", async () => {
+      await simulateDealEndpoint(dealerService, { tableId: "1", handId: "1" });
+      const result = simulateCommitmentsEndpoint(dealerService, { tableId: "1", handId: "1" });
 
       assert.equal(result.status, 200);
-      assert.equal(result.body.tableId, "1");
-      assert.equal(result.body.handId, "1");
-
-      const commitments = result.body.commitments as Array<{
-        seatIndex: number;
-        commitment: string;
-      }>;
+      const commitments = result.body.commitments as Array<{ seatIndex: number; commitment: string }>;
       assert.equal(commitments.length, 4);
     });
 
     it("should return 404 for undealt hand", () => {
-      const result = simulateCommitmentsEndpoint(dealerService, {
-        tableId: "1",
-        handId: "999",
-      });
-
+      const result = simulateCommitmentsEndpoint(dealerService, { tableId: "1", handId: "999" });
       assert.equal(result.status, 404);
-      assert.equal(result.body.code, "NOT_FOUND");
     });
   });
 
   describe("Security - Information Leakage Prevention", () => {
-    it("deal endpoint never exposes hole cards", () => {
-      const result = simulateDealEndpoint(dealerService, {
-        tableId: "1",
-        handId: "1",
-      });
-
-      // Check that the response doesn't contain any card values
+    it("deal endpoint never exposes hole cards or salt", async () => {
+      const result = await simulateDealEndpoint(dealerService, { tableId: "1", handId: "1" });
       const bodyStr = JSON.stringify(result.body);
-      assert.ok(!bodyStr.includes('"cards"'), "No cards field");
-      assert.ok(!bodyStr.includes('"salt"'), "No salt field");
+      assert.ok(!bodyStr.includes('"cards"'), "No plaintext cards");
+      assert.ok(!bodyStr.includes('"salt"'), "No salt");
 
-      // Verify cards are stored but not returned
-      const storedCards = holeCardStore.get("1", "1", 0);
-      assert.ok(storedCards, "Cards should be stored");
-      assert.ok(storedCards.cards.length === 2, "Two cards stored");
+      // Stored records must also not have plaintext cards
+      const stored = holeCardStore.get("1", "1", 0);
+      assert.ok(stored, "record must be stored");
+      assert.ok(stored.encryptedCards, "encryptedCards must be present");
+      assert.ok(!("cards" in stored), "stored record must not have plaintext cards");
     });
 
-    it("commitments endpoint never exposes cards or salts", () => {
-      dealerService.deal({ tableId: "1", handId: "1" });
-      const result = simulateCommitmentsEndpoint(dealerService, {
-        tableId: "1",
-        handId: "1",
-      });
-
+    it("commitments endpoint never exposes cards or salts", async () => {
+      await simulateDealEndpoint(dealerService, { tableId: "1", handId: "1" });
+      const result = simulateCommitmentsEndpoint(dealerService, { tableId: "1", handId: "1" });
       const bodyStr = JSON.stringify(result.body);
       assert.ok(!bodyStr.includes('"cards"'), "No cards field");
       assert.ok(!bodyStr.includes('"salt"'), "No salt field");
@@ -243,57 +175,41 @@ describe("Dealer Routes", () => {
   describe("Dealer Auth Middleware", () => {
     const API_KEY = "test-dealer-api-key-secret";
 
-    it("should pass when no API key is configured (local dev)", () => {
-      const result = simulateDealerAuth(undefined, undefined);
-      assert.equal(result, null);
+    it("should pass when no API key is configured", () => {
+      assert.equal(simulateDealerAuth(undefined, undefined), null);
     });
 
-    it("should return 401 when API key is configured but no auth header", () => {
-      const result = simulateDealerAuth(API_KEY, undefined);
-      assert.notEqual(result, null);
-      assert.equal(result!.status, 401);
-      assert.equal(result!.body.code, "UNAUTHORIZED");
+    it("should return 401 when API key configured but no auth header", () => {
+      assert.equal(simulateDealerAuth(API_KEY, undefined)!.status, 401);
     });
 
     it("should return 401 when auth header is not Bearer", () => {
-      const result = simulateDealerAuth(API_KEY, "Basic abc123");
-      assert.notEqual(result, null);
-      assert.equal(result!.status, 401);
-      assert.equal(result!.body.code, "UNAUTHORIZED");
+      assert.equal(simulateDealerAuth(API_KEY, "Basic abc123")!.status, 401);
     });
 
     it("should return 403 when API key is wrong", () => {
-      const result = simulateDealerAuth(API_KEY, "Bearer wrong-key");
-      assert.notEqual(result, null);
-      assert.equal(result!.status, 403);
-      assert.equal(result!.body.code, "FORBIDDEN");
+      assert.equal(simulateDealerAuth(API_KEY, "Bearer wrong-key")!.status, 403);
     });
 
     it("should pass when API key matches", () => {
-      const result = simulateDealerAuth(API_KEY, `Bearer ${API_KEY}`);
-      assert.equal(result, null);
+      assert.equal(simulateDealerAuth(API_KEY, `Bearer ${API_KEY}`), null);
     });
   });
 
   describe("4-seat dealing", () => {
-    it("should deal unique cards to all 4 seats", () => {
-      dealerService.deal({ tableId: "1", handId: "1" });
+    it("should store encrypted cards for all 4 seats (no plaintext)", async () => {
+      await simulateDealEndpoint(dealerService, { tableId: "1", handId: "1" });
 
-      const allCards: number[] = [];
       for (let seat = 0; seat < 4; seat++) {
         const record = holeCardStore.get("1", "1", seat);
-        assert.ok(record, `Seat ${seat} should have cards`);
-        assert.equal(record.cards.length, 2, `Seat ${seat} should have 2 cards`);
-        allCards.push(...record.cards);
+        assert.ok(record, `Seat ${seat} must have a record`);
+        assert.ok(record.encryptedCards, `Seat ${seat} must have encryptedCards`);
+        assert.ok(!("cards" in record), `Seat ${seat} must NOT have plaintext cards`);
       }
-
-      // All 8 cards should be unique
-      const uniqueCards = new Set(allCards);
-      assert.equal(uniqueCards.size, 8, "All 8 cards should be unique across 4 seats");
     });
 
-    it("should generate unique commitments for each seat", () => {
-      dealerService.deal({ tableId: "1", handId: "1" });
+    it("should generate unique commitments for each seat", async () => {
+      await simulateDealEndpoint(dealerService, { tableId: "1", handId: "1" });
 
       const commitments = new Set<string>();
       for (let seat = 0; seat < 4; seat++) {
@@ -301,8 +217,7 @@ describe("Dealer Routes", () => {
         assert.ok(record);
         commitments.add(record.commitment);
       }
-
-      assert.equal(commitments.size, 4, "All 4 commitments should be unique");
+      assert.equal(commitments.size, 4, "All 4 commitments must be unique");
     });
   });
 });

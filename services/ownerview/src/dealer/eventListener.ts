@@ -7,7 +7,7 @@ import {
   decodeEventLog,
 } from "viem";
 import type { Address } from "@playerco/shared";
-import type { DealerService } from "./dealerService.js";
+import { DealerService } from "./dealerService.js";
 import type { HandStartedEvent } from "./types.js";
 import { PokerTableABI } from "../chain/pokerTableAbi.js";
 
@@ -200,15 +200,37 @@ export class HandStartedEventListener {
     try {
       const seatIndexes = await this.getOccupiedSeatIndexes();
 
-      // Deal hole cards
-      const result = this.dealerService.deal({
+      // Fetch per-seat encryption keys from on-chain
+      const encryptionKeys = await this.getEncryptionKeys(seatIndexes);
+      if (encryptionKeys.size === 0) {
+        console.warn(
+          `[DealerEventListener] No encryption keys registered for hand ${handIdStr} — skipping deal`
+        );
+        return;
+      }
+
+      // Fetch hole card VRF randomness from on-chain (stored by fulfillVRF callback)
+      const vrfRandomness = await this.getHoleCardVRFRandomness(handIdStr);
+      if (vrfRandomness === 0n) {
+        console.warn(
+          `[DealerEventListener] Hole card VRF not fulfilled yet for hand ${handIdStr} — skipping`
+        );
+        return;
+      }
+
+      // Generate dealer seed and deal
+      const dealerSeed = DealerService.generateDealerSeed();
+
+      const result = await this.dealerService.deal({
         tableId: this.tableId,
         handId: handIdStr,
-        seatIndexes,
+        vrfRandomness,
+        dealerSeed,
+        encryptionKeys,
       });
 
       console.log(
-        `[DealerEventListener] Dealt cards for hand ${handIdStr}: ${result.seats.length} occupied seats`
+        `[DealerEventListener] Dealt cards for hand ${handIdStr}: ${result.seats.length} seats, commit=${result.dealerSeedCommit}`
       );
 
       // Invoke callback if set
@@ -269,5 +291,47 @@ export class HandStartedEventListener {
       }
     }
     return occupied;
+  }
+
+  /**
+   * Fetch the hole card VRF randomness for a hand from on-chain.
+   * Returns 0n if VRF has not been fulfilled yet.
+   */
+  private async getHoleCardVRFRandomness(handId: string): Promise<bigint> {
+    const randomness = await this.client.readContract({
+      address: this.pokerTableAddress,
+      abi: PokerTableABI,
+      functionName: "holeCardVRFRandomness",
+      args: [BigInt(handId)],
+    });
+    return randomness as bigint;
+  }
+
+  /**
+   * Fetch registered ECIES encryption keys for each seat from on-chain.
+   * Returns a map of seatIndex → compressed public key (33 bytes).
+   */
+  private async getEncryptionKeys(seatIndexes: number[]): Promise<Map<number, Uint8Array>> {
+    const keys = new Map<number, Uint8Array>();
+
+    await Promise.all(
+      seatIndexes.map(async (seatIndex) => {
+        const keyHex = await this.client.readContract({
+          address: this.pokerTableAddress,
+          abi: PokerTableABI,
+          functionName: "getEncryptionKey",
+          args: [seatIndex],
+        }) as `0x${string}`;
+
+        if (keyHex && keyHex !== "0x") {
+          const hex = keyHex.replace(/^0x/, "");
+          if (hex.length > 0) {
+            keys.set(seatIndex, Uint8Array.from(Buffer.from(hex, "hex")));
+          }
+        }
+      })
+    );
+
+    return keys;
   }
 }

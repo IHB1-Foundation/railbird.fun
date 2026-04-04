@@ -15,15 +15,31 @@ export interface HoleCards {
 }
 
 /**
- * Stored hole card record
+ * JSON-serializable form of an ECIES encrypted payload.
+ * All Uint8Array fields are hex-encoded strings (0x-prefixed).
+ */
+export interface EncryptedPayloadSerialized {
+  ephemeralPubKey: string; // 0x + 66 hex chars (33 bytes compressed pubKey)
+  iv: string;              // 0x + 24 hex chars (12 bytes nonce)
+  ciphertext: string;      // 0x-prefixed hex
+  mac: string;             // 0x + 32 hex chars (16 bytes GCM tag)
+}
+
+/**
+ * Stored hole card record — no plaintext cards.
+ *
+ * Cards are stored exclusively in ECIES-encrypted form.
+ * At showdown, plaintext is reconstructed from vrfRandomness + dealerSeed
+ * using the deterministic verifiable shuffle.
  */
 export interface HoleCardRecord {
   tableId: string;
   handId: string;
   seatIndex: number;
-  cards: [Card, Card];
-  salt: string;
-  /** keccak256(tableId, handId, seatIndex, cards, salt) */
-  commitment: string;
+  encryptedCards: EncryptedPayloadSerialized;
+  salt: string;           // 0x-prefixed hex bytes32, kept for commitment reveal
+  commitment: string;     // keccak256(handId, seatIndex, card1, card2, salt)
   createdAt: number;
+  vrfRandomness: string;  // bigint as decimal string (for showdown reconstruction)
+  dealerSeed: string;     // 0x-prefixed hex bytes32 (for showdown reconstruction)
 }

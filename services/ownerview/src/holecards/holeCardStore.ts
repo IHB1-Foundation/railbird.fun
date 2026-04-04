@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import type { HoleCardRecord, Card } from "./types.js";
+import type { HoleCardRecord } from "./types.js";
 
 /**
  * Error thrown when hole card operations fail
@@ -25,6 +25,8 @@ export class HoleCardError extends Error {
  * containing an array of HoleCardRecord objects (one per seat).
  *
  * Falls back to in-memory when no dataDir is provided (for tests).
+ *
+ * Records store only ECIES-encrypted cards — no plaintext.
  */
 export class HoleCardStore {
   private memStore: Map<string, HoleCardRecord> = new Map();
@@ -64,10 +66,13 @@ export class HoleCardStore {
   }
 
   set(record: HoleCardRecord): void {
-    for (const card of record.cards) {
-      if (card < 0 || card > 51) {
-        throw new HoleCardError(`Invalid card value: ${card}`, "INVALID_CARDS");
-      }
+    // Validate required encrypted payload fields
+    if (!record.encryptedCards ||
+        !record.encryptedCards.ephemeralPubKey ||
+        !record.encryptedCards.iv ||
+        !record.encryptedCards.ciphertext ||
+        !record.encryptedCards.mac) {
+      throw new HoleCardError("Invalid encrypted payload: missing fields", "INVALID_CARDS");
     }
 
     const key = this.makeKey(record.tableId, record.handId, record.seatIndex);

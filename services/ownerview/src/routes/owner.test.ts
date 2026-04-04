@@ -3,6 +3,24 @@ import assert from "node:assert/strict";
 import { HoleCardStore } from "../holecards/index.js";
 import type { Address } from "@playerco/shared";
 import type { SeatInfo } from "../chain/index.js";
+import type { EncryptedPayloadSerialized } from "../holecards/types.js";
+
+// Mock encrypted payload (does not need to be cryptographically valid for ACL tests)
+const MOCK_ENCRYPTED: EncryptedPayloadSerialized = {
+  ephemeralPubKey: "0x" + "02".padEnd(66, "a"),
+  iv: "0x" + "ab".repeat(12),
+  ciphertext: "0x0a19",
+  mac: "0x" + "ff".repeat(16),
+};
+
+function mockEncrypted(seatIndex: number): EncryptedPayloadSerialized {
+  return {
+    ephemeralPubKey: "0x02" + String(seatIndex).padStart(64, "0"),
+    iv: "0x" + String(seatIndex).padStart(24, "0"),
+    ciphertext: "0x" + String(seatIndex).padStart(4, "0"),
+    mac: "0x" + String(seatIndex).padStart(32, "0"),
+  };
+}
 
 // Since Express router internals are hard to test directly,
 // we'll test the core logic: HoleCardStore and ownership verification
@@ -80,14 +98,14 @@ async function getHoleCardsLogic(
     };
   }
 
-  // Return only safe fields
+  // Return encrypted cards — client decrypts locally
   return {
     status: 200,
     body: {
       tableId,
       handId,
       seatIndex,
-      cards: record.cards,
+      encryptedCards: record.encryptedCards,
     },
   };
 }
@@ -171,16 +189,18 @@ describe("Owner Routes - Hole Cards ACL Logic", () => {
       });
     });
 
-    it("should return hole cards for authenticated seat owner", async () => {
-      // Store hole cards for seat 0
+    it("should return encrypted hole cards for authenticated seat owner", async () => {
+      // Store encrypted hole cards for seat 0
       holeCardStore.set({
         tableId: "1",
         handId: "1",
         seatIndex: 0,
-        cards: [10, 25],
-        salt: "secret-salt",
+        encryptedCards: MOCK_ENCRYPTED,
+        salt: "0x" + "aa".repeat(32),
         commitment: "0xabc123",
         createdAt: Date.now(),
+        vrfRandomness: "12345",
+        dealerSeed: "0x" + "cc".repeat(32),
       });
 
       const result = await getHoleCardsLogic(chainService, holeCardStore, {
@@ -190,24 +210,23 @@ describe("Owner Routes - Hole Cards ACL Logic", () => {
       });
 
       assert.equal(result.status, 200);
-      assert.deepEqual(result.body, {
-        tableId: "1",
-        handId: "1",
-        seatIndex: 0,
-        cards: [10, 25],
-      });
+      assert.equal(result.body.seatIndex, 0);
+      assert.ok(result.body.encryptedCards, "response must contain encryptedCards");
+      assert.ok(!("cards" in result.body), "response must NOT contain plaintext cards");
     });
 
     it("should NOT return hole cards for a different seat (ACL check)", async () => {
-      // Store hole cards for seat 1 (owned by ownerAddress1)
+      // Store encrypted hole cards for seat 1 (owned by ownerAddress1)
       holeCardStore.set({
         tableId: "1",
         handId: "1",
         seatIndex: 1,
-        cards: [30, 45],
-        salt: "other-secret",
+        encryptedCards: mockEncrypted(1),
+        salt: "0x" + "aa".repeat(32),
         commitment: "0xdef456",
         createdAt: Date.now(),
+        vrfRandomness: "12345",
+        dealerSeed: "0x" + "cc".repeat(32),
       });
 
       // Owner of seat 0 tries to get hole cards
@@ -222,17 +241,19 @@ describe("Owner Routes - Hole Cards ACL Logic", () => {
       // Key security check: owner of seat 0 cannot see seat 1's cards
     });
 
-    it("should return correct seat's hole cards based on ownership (4 seats)", async () => {
-      // Store hole cards for all 4 seats
+    it("should return correct seat's encrypted cards based on ownership (4 seats)", async () => {
+      // Store encrypted hole cards for all 4 seats
       for (let seat = 0; seat < 4; seat++) {
         holeCardStore.set({
           tableId: "1",
           handId: "1",
           seatIndex: seat,
-          cards: [seat * 10, seat * 10 + 1] as [number, number],
-          salt: `secret-${seat}`,
-          commitment: `0xcommit${seat}`,
+          encryptedCards: mockEncrypted(seat),
+          salt: "0x" + "aa".repeat(32),
+          commitment: `0x${seat.toString().padStart(64, "0")}`,
           createdAt: Date.now(),
+          vrfRandomness: "12345",
+          dealerSeed: "0x" + "cc".repeat(32),
         });
       }
 
@@ -247,7 +268,8 @@ describe("Owner Routes - Hole Cards ACL Logic", () => {
 
         assert.equal(result.status, 200);
         assert.equal(result.body.seatIndex, seat);
-        assert.deepEqual(result.body.cards, [seat * 10, seat * 10 + 1]);
+        assert.ok(result.body.encryptedCards, `seat ${seat} must have encryptedCards`);
+        assert.ok(!("cards" in result.body), `seat ${seat} must NOT have plaintext cards`);
       }
     });
 
@@ -256,10 +278,12 @@ describe("Owner Routes - Hole Cards ACL Logic", () => {
         tableId: "1",
         handId: "1",
         seatIndex: 0,
-        cards: [10, 25],
-        salt: "super-secret-salt",
+        encryptedCards: MOCK_ENCRYPTED,
+        salt: "0x" + "aa".repeat(32),
         commitment: "0xcommitment",
         createdAt: Date.now(),
+        vrfRandomness: "12345",
+        dealerSeed: "0x" + "cc".repeat(32),
       });
 
       const result = await getHoleCardsLogic(chainService, holeCardStore, {
@@ -270,22 +294,10 @@ describe("Owner Routes - Hole Cards ACL Logic", () => {
 
       assert.equal(result.status, 200);
 
-      // Security check: salt and commitment should NOT be in response
-      assert.equal(
-        "salt" in result.body,
-        false,
-        "Response should not contain salt"
-      );
-      assert.equal(
-        "commitment" in result.body,
-        false,
-        "Response should not contain commitment"
-      );
-      assert.equal(
-        "createdAt" in result.body,
-        false,
-        "Response should not contain createdAt"
-      );
+      // Security check: salt, commitment, and createdAt should NOT be in response
+      assert.equal("salt" in result.body, false, "Response should not contain salt");
+      assert.equal("commitment" in result.body, false, "Response should not contain commitment");
+      assert.equal("createdAt" in result.body, false, "Response should not contain createdAt");
     });
 
     it("should handle case-insensitive address matching", async () => {
@@ -293,10 +305,12 @@ describe("Owner Routes - Hole Cards ACL Logic", () => {
         tableId: "1",
         handId: "1",
         seatIndex: 0,
-        cards: [10, 25],
-        salt: "salt",
+        encryptedCards: MOCK_ENCRYPTED,
+        salt: "0x" + "aa".repeat(32),
         commitment: "0xabc",
         createdAt: Date.now(),
+        vrfRandomness: "12345",
+        dealerSeed: "0x" + "cc".repeat(32),
       });
 
       // Use uppercase address
@@ -310,7 +324,7 @@ describe("Owner Routes - Hole Cards ACL Logic", () => {
       });
 
       assert.equal(result.status, 200);
-      assert.deepEqual(result.body.cards, [10, 25]);
+      assert.ok(result.body.encryptedCards, "response must contain encryptedCards");
     });
   });
 
@@ -322,14 +336,16 @@ describe("Owner Routes - Hole Cards ACL Logic", () => {
           tableId: "1",
           handId: "1",
           seatIndex: seat,
-          cards: [seat * 10 + 2, seat * 10 + 3] as [number, number],
-          salt: `salt-${seat}`,
-          commitment: `0xcommit${seat}`,
+          encryptedCards: mockEncrypted(seat),
+          salt: "0x" + "aa".repeat(32),
+          commitment: `0x${seat.toString().padStart(64, "0")}`,
           createdAt: Date.now(),
+          vrfRandomness: "12345",
+          dealerSeed: "0x" + "cc".repeat(32),
         });
       }
 
-      // Owner of seat 0 should only see their own cards
+      // Owner of seat 0 should only see their own encrypted cards
       const result = await getHoleCardsLogic(chainService, holeCardStore, {
         wallet: ownerAddress0,
         tableId: "1",
@@ -338,7 +354,9 @@ describe("Owner Routes - Hole Cards ACL Logic", () => {
 
       assert.equal(result.status, 200);
       assert.equal(result.body.seatIndex, 0);
-      assert.deepEqual(result.body.cards, [2, 3]);
+      // Response must have encryptedCards for seat 0, not any other seat
+      assert.ok(result.body.encryptedCards, "must have encryptedCards");
+      assert.ok(!("cards" in result.body), "must NOT have plaintext cards");
     });
 
     it("ownership is determined by on-chain lookup, not request params", async () => {
@@ -347,10 +365,12 @@ describe("Owner Routes - Hole Cards ACL Logic", () => {
         tableId: "1",
         handId: "1",
         seatIndex: 3,
-        cards: [30, 45],
-        salt: "salt",
+        encryptedCards: mockEncrypted(3),
+        salt: "0x" + "aa".repeat(32),
         commitment: "0xabc",
         createdAt: Date.now(),
+        vrfRandomness: "12345",
+        dealerSeed: "0x" + "cc".repeat(32),
       });
 
       // Owner of seat 0 cannot access seat 3's cards

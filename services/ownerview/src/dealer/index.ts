@@ -15,6 +15,9 @@ export {
 } from "./cardGenerator.js";
 
 export { DealerService, DealerError } from "./dealerService.js";
+export { verifiableShuffle, extractHoleCards, computeShuffleSeed } from "./verifiableShuffle.js";
+export type { EncryptedPayload } from "./eciesEncrypt.js";
+export { encryptHoleCards, decryptHoleCards } from "./eciesEncrypt.js";
 
 export {
   HandStartedEventListener,

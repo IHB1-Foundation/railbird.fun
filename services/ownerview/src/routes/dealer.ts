@@ -49,32 +49,54 @@ export function createDealerRoutes(dealerService: DealerService, dealerApiKey?: 
    *
    * Body: { tableId: string, handId: string }
    */
-  router.post("/deal", (req: Request, res: Response) => {
-    const { tableId, handId } = req.body;
+  router.post("/deal", async (req: Request, res: Response) => {
+    const { tableId, handId, vrfRandomness, dealerSeed, encryptionKeys } = req.body;
 
     if (!tableId || typeof tableId !== "string") {
-      res.status(400).json({
-        error: "Missing or invalid tableId",
-        code: "INVALID_TABLE_ID",
-      });
+      res.status(400).json({ error: "Missing or invalid tableId", code: "INVALID_TABLE_ID" });
+      return;
+    }
+    if (!handId || typeof handId !== "string") {
+      res.status(400).json({ error: "Missing or invalid handId", code: "INVALID_HAND_ID" });
+      return;
+    }
+    if (!vrfRandomness) {
+      res.status(400).json({ error: "Missing vrfRandomness", code: "INVALID_PARAMS" });
+      return;
+    }
+    if (!dealerSeed || typeof dealerSeed !== "string") {
+      res.status(400).json({ error: "Missing or invalid dealerSeed", code: "INVALID_PARAMS" });
+      return;
+    }
+    if (!encryptionKeys || typeof encryptionKeys !== "object") {
+      res.status(400).json({ error: "Missing encryptionKeys map", code: "INVALID_PARAMS" });
       return;
     }
 
-    if (!handId || typeof handId !== "string") {
-      res.status(400).json({
-        error: "Missing or invalid handId",
-        code: "INVALID_HAND_ID",
-      });
-      return;
+    // encryptionKeys arrives as { "0": "0x...", "1": "0x..." } (JSON object)
+    const keysMap = new Map<number, Uint8Array>();
+    for (const [seatStr, hexKey] of Object.entries(encryptionKeys as Record<string, string>)) {
+      const seatIdx = Number(seatStr);
+      if (!Number.isInteger(seatIdx) || seatIdx < 0 || seatIdx > 8) continue;
+      // hex key → Uint8Array
+      const hex = (hexKey as string).replace(/^0x/, "");
+      keysMap.set(seatIdx, Uint8Array.from(Buffer.from(hex, "hex")));
     }
 
     try {
-      const result = dealerService.deal({ tableId, handId });
+      const result = await dealerService.deal({
+        tableId,
+        handId,
+        vrfRandomness: BigInt(vrfRandomness),
+        dealerSeed: dealerSeed as `0x${string}`,
+        encryptionKeys: keysMap,
+      });
 
-      // Return commitments only (never expose cards in this endpoint)
+      // Return commitments and dealer seed commit (never expose encrypted cards here)
       res.status(201).json({
         tableId: result.tableId,
         handId: result.handId,
+        dealerSeedCommit: result.dealerSeedCommit,
         commitments: result.seats.map((s) => ({
           seatIndex: s.seatIndex,
           commitment: s.commitment,
@@ -83,10 +105,7 @@ export function createDealerRoutes(dealerService: DealerService, dealerApiKey?: 
     } catch (err) {
       if (err instanceof DealerError) {
         const statusCode = err.code === "ALREADY_DEALT" ? 409 : 400;
-        res.status(statusCode).json({
-          error: err.message,
-          code: err.code,
-        });
+        res.status(statusCode).json({ error: err.message, code: err.code });
         return;
       }
       throw err;

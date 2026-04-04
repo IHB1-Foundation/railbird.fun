@@ -1,27 +1,34 @@
-import type { Card } from "../holecards/types.js";
+import type { EncryptedPayloadSerialized } from "../holecards/types.js";
 
 /**
- * Parameters for dealing a hand
+ * Parameters for dealing a hand using the verifiable shuffle + ECIES protocol.
  */
 export interface DealParams {
   tableId: string;
   handId: string;
+  /** VRF randomness from on-chain holeCardVRFRandomness[handId] */
+  vrfRandomness: bigint;
+  /** Dealer's randomly generated seed (bytes32, 0x-prefixed) */
+  dealerSeed: `0x${string}`;
   /**
-   * Optional explicit seat indexes to deal.
-   * If omitted, dealer uses configured default seat count.
+   * Per-seat ECIES encryption public keys (compressed secp256k1, 33 bytes).
+   * Map from seat index to public key bytes.
+   * Only seats present in this map will be dealt.
    */
-  seatIndexes?: number[];
+  encryptionKeys: Map<number, Uint8Array>;
 }
 
 /**
- * Result of dealing hole cards to all seats
+ * Result of dealing hole cards — no plaintext cards exposed.
  */
 export interface DealResult {
   tableId: string;
   handId: string;
+  /** keccak256(dealerSeed) — submit this on-chain via submitDealerSeedCommit() */
+  dealerSeedCommit: string;
   seats: Array<{
     seatIndex: number;
-    cards: [Card, Card];
+    encryptedCards: EncryptedPayloadSerialized;
     commitment: string;
   }>;
 }
@@ -31,15 +38,11 @@ export interface DealResult {
  */
 export interface DealerConfig {
   /**
-   * Optional seed for deterministic card generation (for testing)
-   * In production, this should not be set (uses crypto.randomBytes)
+   * Fixed dealer seed for testing (bypasses random seed generation).
+   * Must be 0x-prefixed 32-byte hex.
+   * In production, this should not be set (uses crypto.randomBytes).
    */
-  testSeed?: string;
-  /**
-   * Default seat count when DealParams.seatIndexes is omitted.
-   * Defaults to 4 to keep local test/dev behavior stable.
-   */
-  defaultSeatCount?: number;
+  testDealerSeed?: `0x${string}`;
 }
 
 /**

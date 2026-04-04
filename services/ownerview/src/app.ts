@@ -34,6 +34,12 @@ export interface AppConfig {
   tableId?: string;
   /** Enable event listener for automatic dealing (default: false) */
   enableEventListener?: boolean;
+  /**
+   * Enable the trustless dealer protocol (verifiable shuffle + ECIES).
+   * When false (default), automatic dealing is disabled (legacy/rollback mode).
+   * Set via TRUSTLESS_DEALER_ENABLED env var.
+   */
+  trustlessDealerEnabled?: boolean;
   /** Directory for persistent hole card storage. Omit for in-memory (tests). */
   dataDir?: string;
   /** API key for dealer endpoint authentication. Omit to disable (local dev). */
@@ -121,6 +127,7 @@ export function createApp(config: AppConfig): AppContext {
       {
         rpcUrl: config.rpcUrl,
         pokerTableAddress: config.pokerTableAddress,
+        trustlessDealerEnabled: config.trustlessDealerEnabled,
       },
       dealerService,
       config.tableId

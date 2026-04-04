@@ -49,12 +49,24 @@ if (!isLocal && !DEALER_API_KEY) {
 // Defaults to ./data/holecards in non-local, undefined (in-memory) in local
 const HOLECARD_DATA_DIR = process.env.HOLECARD_DATA_DIR || (!isLocal ? join(process.cwd(), "data", "holecards") : undefined);
 
+// TRUSTLESS_DEALER_ENABLED: opt-in to verifiable shuffle + ECIES protocol.
+// Default false — automatic dealing is disabled until explicitly enabled.
+// Set to "true" to enable the trustless dealer (requires ECIES keys on-chain and VRF).
+const TRUSTLESS_DEALER_ENABLED = process.env.TRUSTLESS_DEALER_ENABLED === "true";
+
+if (TRUSTLESS_DEALER_ENABLED) {
+  console.log("[OwnerView] Trustless dealer protocol ENABLED (verifiable shuffle + ECIES)");
+} else {
+  console.log("[OwnerView] Trustless dealer protocol DISABLED (legacy mode). Set TRUSTLESS_DEALER_ENABLED=true to enable.");
+}
+
 const { app, authService, chainService, stopRetention } = createApp({
   jwtSecret: JWT_SECRET,
   rpcUrl: RPC_URL,
   pokerTableAddress: POKER_TABLE_ADDRESS,
   dataDir: HOLECARD_DATA_DIR,
   dealerApiKey: DEALER_API_KEY,
+  trustlessDealerEnabled: TRUSTLESS_DEALER_ENABLED,
 });
 
 // Start cleanup intervals
@@ -81,6 +93,7 @@ app.listen(PORT, () => {
   console.log(`  Chain service: ${chainService ? "enabled" : "disabled (local only)"}`);
   console.log(`  Storage: ${HOLECARD_DATA_DIR ? `persistent (${HOLECARD_DATA_DIR})` : "in-memory"}`);
   console.log(`  Dealer auth: ${DEALER_API_KEY ? "enabled" : "disabled (local only)"}`);
+  console.log(`  Trustless dealer: ${TRUSTLESS_DEALER_ENABLED ? "enabled (ECIES + verifiable shuffle)" : "disabled (legacy mode)"}`);
 });
 
 // Re-export for programmatic use

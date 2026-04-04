@@ -19,6 +19,18 @@ export interface EventListenerConfig {
   pokerTableAddress: Address;
   /** Polling interval in milliseconds (default: 2000) */
   pollInterval?: number;
+  /**
+   * Enable the trustless dealer protocol (verifiable shuffle + ECIES encryption).
+   *
+   * - `true`:  New protocol — VRF-seeded shuffle, per-seat ECIES encryption,
+   *            on-chain dealer seed commit, showdown verification.
+   * - `false` (default): Legacy mode — automatic dealing is disabled.
+   *            Operators must submit deals manually via the /dealer API.
+   *            Use this during migration or as a rollback mechanism.
+   *
+   * Controlled by TRUSTLESS_DEALER_ENABLED env var.
+   */
+  trustlessDealerEnabled?: boolean;
 }
 
 /**
@@ -48,6 +60,7 @@ export class HandStartedEventListener {
   private pokerTableAddress: Address;
   private dealerService: DealerService;
   private pollInterval: number;
+  private trustlessDealerEnabled: boolean;
   private isRunning: boolean = false;
   private unwatch: (() => void) | null = null;
   private tableId: string;
@@ -64,6 +77,7 @@ export class HandStartedEventListener {
     this.pokerTableAddress = config.pokerTableAddress;
     this.dealerService = dealerService;
     this.pollInterval = config.pollInterval ?? 2000;
+    this.trustlessDealerEnabled = config.trustlessDealerEnabled ?? false;
     this.tableId = tableId;
   }
 
@@ -132,7 +146,8 @@ export class HandStartedEventListener {
     });
 
     console.log(
-      `[DealerEventListener] Started watching HandStarted events for table ${this.tableId} at ${this.pokerTableAddress}`
+      `[DealerEventListener] Started watching HandStarted events for table ${this.tableId} at ${this.pokerTableAddress} ` +
+      `[trustless-dealer: ${this.trustlessDealerEnabled ? "ENABLED" : "DISABLED"}]`
     );
   }
 
@@ -188,6 +203,15 @@ export class HandStartedEventListener {
    */
   private async handleHandStarted(event: HandStartedEvent): Promise<void> {
     const handIdStr = event.handId.toString();
+
+    // Feature flag: skip automatic dealing in legacy mode
+    if (!this.trustlessDealerEnabled) {
+      console.log(
+        `[DealerEventListener] Trustless dealer disabled (TRUSTLESS_DEALER_ENABLED=false). ` +
+        `Skipping automatic deal for hand ${handIdStr}. Use /dealer API to deal manually.`
+      );
+      return;
+    }
 
     // Check if already dealt (idempotency)
     if (this.dealerService.isHandDealt(this.tableId, handIdStr)) {

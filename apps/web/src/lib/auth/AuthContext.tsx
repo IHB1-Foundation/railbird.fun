@@ -10,6 +10,7 @@ import {
 } from "react";
 import type { AuthContextValue, AuthState, HoleCardsResponse } from "./types";
 import * as ownerviewApi from "./ownerviewApi";
+import { deriveEncryptionKeyPair, clearEncryptionKeyCache } from "./encryptionKey";
 
 // HashKey Chain Testnet chain ID
 const HASHKEY_CHAIN_ID = 133;
@@ -269,11 +270,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * Disconnect and clear session
    */
   const disconnect = useCallback(() => {
+    if (state.address) {
+      clearEncryptionKeyCache(state.address);
+    }
     sessionStorage.removeItem(STORAGE_KEY_TOKEN);
     sessionStorage.removeItem(STORAGE_KEY_ADDRESS);
     sessionStorage.removeItem(STORAGE_KEY_EXPIRES);
     setState(initialState);
-  }, []);
+  }, [state.address]);
 
   /**
    * Authenticate with wallet signature
@@ -321,25 +325,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [state.address]);
 
   /**
-   * Get hole cards for a specific table/hand
+   * Get hole cards for a specific table/hand.
+   * Automatically derives the encryption key pair (prompts wallet once per session)
+   * and decrypts the server's encrypted response client-side.
    */
   const getHoleCards = useCallback(
     async (
       tableId: string,
       handId: string
     ): Promise<HoleCardsResponse | null> => {
-      if (!state.token) {
+      if (!state.token || !state.address) {
         return null;
       }
 
       try {
-        return await ownerviewApi.getHoleCards(state.token, tableId, handId);
+        // Derive (or retrieve cached) encryption key pair
+        const { privKey } = await deriveEncryptionKeyPair(
+          state.address,
+          (message, address) => signMessage(address, message)
+        );
+
+        return await ownerviewApi.getHoleCards(state.token, tableId, handId, privKey);
       } catch {
-        // Not owner of any seat or other error - return null
+        // Not owner of any seat, decryption failed, or other error — return null
         return null;
       }
     },
-    [state.token]
+    [state.token, state.address]
   );
 
   const value: AuthContextValue = {

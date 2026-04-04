@@ -21,6 +21,20 @@ export interface VerifyResponse {
   expiresAt: string;
 }
 
+/** Raw encrypted response from the ownerview server */
+export interface EncryptedHoleCardsResponse {
+  tableId: string;
+  handId: string;
+  seatIndex: number;
+  encryptedCards: {
+    ephemeralPubKey: string;
+    iv: string;
+    ciphertext: string;
+    mac: string;
+  };
+}
+
+/** Decrypted hole cards — returned by getHoleCards() after client-side decryption */
 export interface HoleCardsResponse {
   tableId: string;
   handId: string;

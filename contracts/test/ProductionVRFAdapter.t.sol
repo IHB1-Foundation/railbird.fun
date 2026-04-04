@@ -356,6 +356,14 @@ contract ProductionVRFAdapterTest is Test {
     function _startHandAndGetToVRF() internal {
         pokerTable.startHand();
 
+        // Fulfill hole-card VRF (new T1.3 flow: WAITING_VRF_HOLECARDS → WAITING_FOR_HOLECARDS)
+        uint256 hcReqId = pokerTable.pendingHoleCardVRFRequestId();
+        vm.prank(vrfOperator);
+        adapter.fulfillRandomness(hcReqId, 99999);
+
+        // Advance to BETTING_PRE
+        pokerTable.advanceToPreflop();
+
         // Complete pre-flop: UTG(3) calls, BTN(0) calls, SB(1) calls, BB(2) checks
         vm.prank(operator4);
         vm.roll(block.number + 1);

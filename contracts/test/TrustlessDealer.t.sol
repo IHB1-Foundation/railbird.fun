@@ -8,7 +8,8 @@ import "../src/mocks/MockVRFAdapter.sol";
 
 /**
  * @title TrustlessDealerTest
- * @notice Tests for T1.1 (Encryption Key Registry) and T1.2 (Dealer Seed Commit/Reveal).
+ * @notice Tests for T1.1 (Encryption Key Registry), T1.2 (Dealer Seed Commit/Reveal),
+ *         and T1.3 (Hole Card VRF Request).
  */
 contract TrustlessDealerTest is Test {
     PokerTable public pokerTable;
@@ -36,6 +37,9 @@ contract TrustlessDealerTest is Test {
     event EncryptionKeyRegistered(uint8 indexed seatIndex, bytes pubKey);
     event DealerSeedCommitted(uint256 indexed handId, bytes32 commitment);
     event DealerSeedRevealed(uint256 indexed handId, bytes32 seed);
+    event HoleCardVRFFulfilled(uint256 indexed handId, uint256 randomness);
+    event HoleCardVRFReRequested(uint256 indexed handId, uint256 oldRequestId, uint256 newRequestId);
+    event VRFRequested(uint256 indexed handId, PokerTable.GameState street, uint256 requestId);
 
     function setUp() public {
         mockVRF = new MockVRFAdapter();
@@ -85,11 +89,14 @@ contract TrustlessDealerTest is Test {
         _registerSeat(0, owner1, operator1, BUY_IN);
         _registerSeat(1, owner2, operator2, BUY_IN);
 
+        // Register, play a hand, then rotate key after settlement
         vm.prank(owner1);
         pokerTable.registerEncryptionKey(0, COMPRESSED_PUBKEY);
 
-        // Start and complete a hand (old flow: BETTING_PRE directly)
+        // Start and complete a hand
         pokerTable.startHand();
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
+        pokerTable.advanceToPreflop();
 
         // SB (seat0 in heads-up) folds
         vm.prank(operator1);
@@ -99,9 +106,11 @@ contract TrustlessDealerTest is Test {
         assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.SETTLED));
 
         // Now rotate key
+        bytes memory newKey = UNCOMPRESSED_PUBKEY;
         vm.prank(owner1);
-        pokerTable.registerEncryptionKey(0, UNCOMPRESSED_PUBKEY);
-        assertEq(pokerTable.getEncryptionKey(0), UNCOMPRESSED_PUBKEY);
+        pokerTable.registerEncryptionKey(0, newKey);
+
+        assertEq(pokerTable.getEncryptionKey(0), newKey);
     }
 
     function test_RegisterEncryptionKey_RevertInvalidLength() public {
@@ -125,10 +134,10 @@ contract TrustlessDealerTest is Test {
         _registerSeat(1, owner2, operator2, BUY_IN);
 
         pokerTable.startHand();
-        // Now in BETTING_PRE — hand in progress
+        // Now in WAITING_VRF_HOLECARDS — hand in progress
         assertEq(
             uint256(pokerTable.gameState()),
-            uint256(PokerTable.GameState.BETTING_PRE)
+            uint256(PokerTable.GameState.WAITING_VRF_HOLECARDS)
         );
 
         vm.prank(owner1);
@@ -143,11 +152,11 @@ contract TrustlessDealerTest is Test {
 
     // ============ T1.2: Dealer Seed Commit/Reveal ============
 
-    function test_SubmitDealerSeedCommit_DuringBettingPre() public {
+    function test_SubmitDealerSeedCommit_DuringWaitingVRF() public {
         _registerSeat(0, owner1, operator1, BUY_IN);
         _registerSeat(1, owner2, operator2, BUY_IN);
 
-        pokerTable.startHand(); // → BETTING_PRE
+        pokerTable.startHand(); // → WAITING_VRF_HOLECARDS
 
         bytes32 seed = bytes32(uint256(0x123abc));
         bytes32 commitment = keccak256(abi.encodePacked(seed));
@@ -155,6 +164,20 @@ contract TrustlessDealerTest is Test {
         vm.expectEmit(true, false, false, true);
         emit DealerSeedCommitted(1, commitment);
 
+        pokerTable.submitDealerSeedCommit(1, commitment);
+
+        assertEq(pokerTable.dealerSeedCommits(1), commitment);
+    }
+
+    function test_SubmitDealerSeedCommit_DuringWaitingForHoleCards() public {
+        _registerSeat(0, owner1, operator1, BUY_IN);
+        _registerSeat(1, owner2, operator2, BUY_IN);
+
+        pokerTable.startHand();
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS); // → WAITING_FOR_HOLECARDS
+
+        bytes32 seed = bytes32(uint256(0x456def));
+        bytes32 commitment = keccak256(abi.encodePacked(seed));
         pokerTable.submitDealerSeedCommit(1, commitment);
 
         assertEq(pokerTable.dealerSeedCommits(1), commitment);
@@ -192,6 +215,8 @@ contract TrustlessDealerTest is Test {
 
         pokerTable.startHand();
         pokerTable.submitDealerSeedCommit(1, commitment);
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
+        pokerTable.advanceToPreflop();
 
         _playHeadsUpToShowdown();
 
@@ -212,6 +237,8 @@ contract TrustlessDealerTest is Test {
 
         pokerTable.startHand();
         pokerTable.submitDealerSeedCommit(1, commitment);
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
+        pokerTable.advanceToPreflop();
 
         _playHeadsUpToShowdown();
 
@@ -228,6 +255,8 @@ contract TrustlessDealerTest is Test {
 
         pokerTable.startHand();
         pokerTable.submitDealerSeedCommit(1, commitment);
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
+        pokerTable.advanceToPreflop();
 
         // Still in BETTING_PRE — not showdown yet
         vm.expectRevert("DealerSeed: not in showdown");
@@ -239,11 +268,187 @@ contract TrustlessDealerTest is Test {
         _registerSeat(1, owner2, operator2, BUY_IN);
 
         pokerTable.startHand();
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
+        pokerTable.advanceToPreflop();
 
         _playHeadsUpToShowdown();
 
         vm.expectRevert("DealerSeed: no commitment");
         pokerTable.revealDealerSeed(1, bytes32(uint256(0xaabbcc)));
+    }
+
+    // ============ T1.3: Hole Card VRF Request ============
+
+    function test_StartHand_TransitionsToWaitingVRFHoleCards() public {
+        _registerSeat(0, owner1, operator1, BUY_IN);
+        _registerSeat(1, owner2, operator2, BUY_IN);
+
+        vm.expectEmit(true, false, false, false);
+        emit VRFRequested(1, PokerTable.GameState.WAITING_VRF_HOLECARDS, 1);
+
+        pokerTable.startHand();
+
+        assertEq(
+            uint256(pokerTable.gameState()),
+            uint256(PokerTable.GameState.WAITING_VRF_HOLECARDS)
+        );
+        assertEq(pokerTable.pendingHoleCardVRFRequestId(), 1);
+    }
+
+    function test_FulfillHoleCardVRF_TransitionsToWaitingForHoleCards() public {
+        _registerSeat(0, owner1, operator1, BUY_IN);
+        _registerSeat(1, owner2, operator2, BUY_IN);
+
+        pokerTable.startHand();
+
+        vm.expectEmit(true, false, false, true);
+        emit HoleCardVRFFulfilled(1, TEST_RANDOMNESS);
+
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
+
+        assertEq(
+            uint256(pokerTable.gameState()),
+            uint256(PokerTable.GameState.WAITING_FOR_HOLECARDS)
+        );
+        assertEq(pokerTable.holeCardVRFRandomness(1), TEST_RANDOMNESS);
+        assertEq(pokerTable.pendingHoleCardVRFRequestId(), 0);
+    }
+
+    function test_AdvanceToPreflop_TransitionsToBettingPre() public {
+        _registerSeat(0, owner1, operator1, BUY_IN);
+        _registerSeat(1, owner2, operator2, BUY_IN);
+
+        pokerTable.startHand();
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
+
+        assertEq(
+            uint256(pokerTable.gameState()),
+            uint256(PokerTable.GameState.WAITING_FOR_HOLECARDS)
+        );
+
+        pokerTable.advanceToPreflop();
+
+        assertEq(
+            uint256(pokerTable.gameState()),
+            uint256(PokerTable.GameState.BETTING_PRE)
+        );
+    }
+
+    function test_AdvanceToPreflop_RevertIfNotInCorrectState() public {
+        _registerSeat(0, owner1, operator1, BUY_IN);
+        _registerSeat(1, owner2, operator2, BUY_IN);
+
+        pokerTable.startHand();
+        // Still in WAITING_VRF_HOLECARDS, not WAITING_FOR_HOLECARDS
+        vm.expectRevert("Not waiting for hole cards");
+        pokerTable.advanceToPreflop();
+    }
+
+    function test_HoleCardVRF_DoesNotAffectCommunityCardVRF() public {
+        _registerSeat(0, owner1, operator1, BUY_IN);
+        _registerSeat(1, owner2, operator2, BUY_IN);
+
+        pokerTable.startHand();
+        // Hole card VRF gets requestId=1
+        assertEq(pokerTable.pendingVRFRequestId(), 0); // community card VRF not pending yet
+
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS); // fulfill hole card VRF
+        pokerTable.advanceToPreflop();
+
+        // Community card VRF still not pending
+        assertEq(pokerTable.pendingVRFRequestId(), 0);
+
+        // Complete pre-flop betting
+        vm.prank(operator1); // SB folds in heads-up
+        vm.roll(block.number + 1);
+        pokerTable.fold(0);
+
+        // Hand settled (fold wins), no community card VRF needed
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.SETTLED));
+    }
+
+    function test_HoleCardVRF_SecondHandUsesNewRandomness() public {
+        _registerSeat(0, owner1, operator1, BUY_IN);
+        _registerSeat(1, owner2, operator2, BUY_IN);
+
+        // Hand 1
+        pokerTable.startHand();
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
+        pokerTable.advanceToPreflop();
+
+        assertEq(pokerTable.holeCardVRFRandomness(1), TEST_RANDOMNESS);
+
+        // Fold to settle
+        vm.prank(operator1);
+        vm.roll(block.number + 1);
+        pokerTable.fold(0);
+
+        // Hand 2
+        pokerTable.startHand();
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS + 1);
+        pokerTable.advanceToPreflop();
+
+        assertEq(pokerTable.holeCardVRFRandomness(2), TEST_RANDOMNESS + 1);
+        // Hand 1 randomness unchanged
+        assertEq(pokerTable.holeCardVRFRandomness(1), TEST_RANDOMNESS);
+    }
+
+    function test_ReRequestHoleCardVRF_AfterTimeout() public {
+        _registerSeat(0, owner1, operator1, BUY_IN);
+        _registerSeat(1, owner2, operator2, BUY_IN);
+
+        pokerTable.startHand();
+        uint256 oldRequestId = pokerTable.pendingHoleCardVRFRequestId();
+        assertEq(oldRequestId, 1);
+
+        // Before timeout
+        vm.expectRevert("VRF timeout not reached");
+        pokerTable.reRequestHoleCardVRF();
+
+        // After timeout
+        vm.warp(block.timestamp + 6 minutes);
+
+        vm.expectEmit(true, false, false, true);
+        emit HoleCardVRFReRequested(1, oldRequestId, 2);
+
+        pokerTable.reRequestHoleCardVRF();
+
+        uint256 newRequestId = pokerTable.pendingHoleCardVRFRequestId();
+        assertEq(newRequestId, 2);
+        assertTrue(newRequestId != oldRequestId);
+    }
+
+    function test_ReRequestHoleCardVRF_OldIdRejected() public {
+        _registerSeat(0, owner1, operator1, BUY_IN);
+        _registerSeat(1, owner2, operator2, BUY_IN);
+
+        pokerTable.startHand();
+        uint256 oldRequestId = pokerTable.pendingHoleCardVRFRequestId();
+
+        vm.warp(block.timestamp + 6 minutes);
+        pokerTable.reRequestHoleCardVRF();
+
+        // Old request fulfillment should fail (wrong request ID)
+        vm.prank(address(mockVRF));
+        vm.expectRevert("Invalid request ID");
+        pokerTable.fulfillVRF(oldRequestId, TEST_RANDOMNESS);
+    }
+
+    function test_FulfillVRF_RevertForHoleCardIfNotInState() public {
+        _registerSeat(0, owner1, operator1, BUY_IN);
+        _registerSeat(1, owner2, operator2, BUY_IN);
+
+        pokerTable.startHand();
+        uint256 hcReqId = pokerTable.pendingHoleCardVRFRequestId();
+
+        // Fulfill once (valid)
+        mockVRF.fulfillRandomness(hcReqId, TEST_RANDOMNESS);
+        // State now WAITING_FOR_HOLECARDS
+
+        // Trying to fulfill again should fail (state is no longer WAITING_VRF_HOLECARDS)
+        vm.prank(address(mockVRF));
+        vm.expectRevert("Not waiting for VRF");
+        pokerTable.fulfillVRF(hcReqId, TEST_RANDOMNESS + 1);
     }
 
     // ============ Helpers ============
@@ -256,7 +461,7 @@ contract TrustlessDealerTest is Test {
     }
 
     /**
-     * @dev Play a 2-player heads-up hand to SHOWDOWN (old flow: BETTING_PRE directly).
+     * @dev Play a 2-player heads-up hand to SHOWDOWN by checking/calling all streets.
      */
     function _playHeadsUpToShowdown() internal {
         // Pre-flop: SB (seat0) calls, BB (seat1) checks

@@ -124,7 +124,7 @@ contract PokerTableTest is Test {
         _registerSeat(0, owner1, operator1, BUY_IN);
         _registerSeat(1, owner2, operator2, BUY_IN);
 
-        pokerTable.startHand();
+        _startHandFull();
         assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.BETTING_PRE));
 
         _registerSeat(2, owner3, operator3, BUY_IN);
@@ -141,7 +141,7 @@ contract PokerTableTest is Test {
 
         assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.SETTLED));
 
-        pokerTable.startHand();
+        _startHandFull();
         assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.BETTING_PRE));
 
         PokerTable.Seat memory nextHandSeat = pokerTable.getSeat(2);
@@ -172,7 +172,7 @@ contract PokerTableTest is Test {
         vm.expectEmit(true, false, false, true);
         emit HandStarted(1, SMALL_BLIND, BIG_BLIND, 0);
 
-        pokerTable.startHand();
+        _startHandFull();
 
         assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.BETTING_PRE));
         assertEq(pokerTable.currentHandId(), 1);
@@ -187,7 +187,7 @@ contract PokerTableTest is Test {
 
     function test_StartHand_BlindsDeducted() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         // Button=0: SB=seat1, BB=seat2, others unaffected
         assertEq(pokerTable.getSeat(0).stack, BUY_IN, "Button stack unchanged");
@@ -200,7 +200,7 @@ contract PokerTableTest is Test {
         _registerSeat(0, owner1, operator1, BUY_IN);
         _registerSeat(1, owner2, operator2, BUY_IN);
 
-        pokerTable.startHand();
+        _startHandFull();
         assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.BETTING_PRE));
     }
 
@@ -214,7 +214,7 @@ contract PokerTableTest is Test {
         assertEq(pokerTable.getSeat(0).stack, 0);
         assertEq(pokerTable.getSeat(0).owner, owner1);
 
-        pokerTable.startHand();
+        _startHandFull();
 
         assertEq(pokerTable.getSeat(0).owner, address(0), "Zero-stack seat should be evicted");
         assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.BETTING_PRE));
@@ -224,7 +224,7 @@ contract PokerTableTest is Test {
 
     function test_Fold_UTGFolds_GameContinues() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         // UTG (seat 3) folds - 3 players remain, game continues
         vm.prank(operator4);
@@ -241,7 +241,7 @@ contract PokerTableTest is Test {
 
     function test_Fold_AllFoldToOne_Settles() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         // UTG folds
         vm.prank(operator4);
@@ -266,7 +266,7 @@ contract PokerTableTest is Test {
 
     function test_Call_UTGCallsBB() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         // UTG (seat 3) calls the BB
         vm.prank(operator4);
@@ -283,7 +283,7 @@ contract PokerTableTest is Test {
 
     function test_Check_BBChecksAfterAllCall() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         // All call/check to complete preflop
         _completePreflop();
@@ -294,7 +294,7 @@ contract PokerTableTest is Test {
 
     function test_Check_RevertIfMustCall() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         // UTG (seat 3) tries to check but must call or raise (owes BB)
         vm.prank(operator4);
@@ -306,7 +306,7 @@ contract PokerTableTest is Test {
 
     function test_Raise_Success() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         // UTG (seat 3) raises to 60
         vm.prank(operator4);
@@ -324,7 +324,7 @@ contract PokerTableTest is Test {
 
     function test_Raise_RevertIfTooSmall() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         vm.prank(operator4);
         vm.roll(block.number + 1);
@@ -335,7 +335,7 @@ contract PokerTableTest is Test {
 
     function test_Raise_ReraiseBattle() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         // UTG raises to 60
         vm.prank(operator4);
@@ -355,7 +355,7 @@ contract PokerTableTest is Test {
 
     function test_Raise_ResetsOtherPlayersHasActed() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         // UTG calls
         vm.prank(operator4);
@@ -378,7 +378,7 @@ contract PokerTableTest is Test {
 
     function test_Action_RevertIfNotOperator() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         vm.prank(address(0x999));
         vm.roll(block.number + 1);
@@ -389,7 +389,7 @@ contract PokerTableTest is Test {
 
     function test_Action_RevertIfNotYourTurn() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         // Seat 0 (Button) tries to act but it's UTG's (seat 3) turn
         vm.prank(operator1);
@@ -401,7 +401,7 @@ contract PokerTableTest is Test {
 
     function test_Action_OwnerCanAct() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         // Owner acts directly (not via operator) for UTG
         vm.prank(owner4);
@@ -416,7 +416,7 @@ contract PokerTableTest is Test {
 
     function test_BettingRoundComplete_ToVRF() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         // All call, BB checks -> round complete
         // UTG calls
@@ -442,17 +442,18 @@ contract PokerTableTest is Test {
         emit BettingRoundComplete(1, PokerTable.GameState.BETTING_PRE, PokerTable.GameState.WAITING_VRF_FLOP);
 
         vm.expectEmit(true, false, false, true);
-        emit VRFRequested(1, PokerTable.GameState.WAITING_VRF_FLOP, 1);
+        // Hole-card VRF used requestId=1; flop VRF gets requestId=2
+        emit VRFRequested(1, PokerTable.GameState.WAITING_VRF_FLOP, 2);
 
         pokerTable.check(2);
 
         assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.WAITING_VRF_FLOP));
-        assertEq(mockVRF.lastRequestId(), 1);
+        assertEq(mockVRF.lastRequestId(), 2);
     }
 
     function test_FulfillVRF_TransitionToFlop() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         _completePreflop();
         mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
@@ -474,7 +475,7 @@ contract PokerTableTest is Test {
 
     function test_FullHandToShowdown() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         // Commit cards for all seats
         uint8[4] memory h1 = [uint8(12), uint8(0), uint8(2), uint8(4)];
@@ -507,7 +508,7 @@ contract PokerTableTest is Test {
 
     function test_VRF_RequestInSameTxAsFinalAction() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         // Complete preflop betting with calls
         vm.prank(operator4);
@@ -522,29 +523,30 @@ contract PokerTableTest is Test {
         vm.roll(block.number + 1);
         pokerTable.call(1);
 
-        // Before BB check, verify no VRF request yet
-        assertEq(mockVRF.lastRequestId(), 0);
+        // Before BB check, verify no community-card VRF is pending yet
+        // (hole-card VRF was already fulfilled during _startHandFull(), requestId=1)
+        assertEq(pokerTable.pendingVRFRequestId(), 0);
 
-        // BB checks - should trigger VRF request in same tx
+        // BB checks - should trigger flop VRF request in same tx (gets requestId=2)
         vm.prank(operator3);
         vm.roll(block.number + 1);
 
         vm.expectEmit(true, false, false, true);
         emit BettingRoundComplete(1, PokerTable.GameState.BETTING_PRE, PokerTable.GameState.WAITING_VRF_FLOP);
         vm.expectEmit(true, false, false, true);
-        emit VRFRequested(1, PokerTable.GameState.WAITING_VRF_FLOP, 1);
+        emit VRFRequested(1, PokerTable.GameState.WAITING_VRF_FLOP, 2);
 
         pokerTable.check(2);
 
-        assertEq(mockVRF.lastRequestId(), 1);
+        assertEq(mockVRF.lastRequestId(), 2);
         assertEq(mockVRF.lastTableId(), 1);
         assertEq(mockVRF.lastHandId(), 1);
-        assertEq(pokerTable.pendingVRFRequestId(), 1);
+        assertEq(pokerTable.pendingVRFRequestId(), 2);
     }
 
     function test_VRF_FlopDealsCommunityCards() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         _completePreflop();
 
@@ -566,7 +568,7 @@ contract PokerTableTest is Test {
 
     function test_VRF_TurnDealsSingleCard() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         _completePreflop();
         mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
@@ -584,7 +586,7 @@ contract PokerTableTest is Test {
 
     function test_VRF_RiverDealsFinalCard() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         _completePreflop();
         mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
@@ -606,7 +608,7 @@ contract PokerTableTest is Test {
 
     function test_VRF_CommunityCardsResetOnNewHand() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         _completePreflop();
         mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
@@ -629,7 +631,7 @@ contract PokerTableTest is Test {
         pokerTable.fold(3);
 
         // Start new hand
-        pokerTable.startHand();
+        _startHandFull();
 
         uint8[5] memory cards2 = pokerTable.getCommunityCards();
         for (uint8 i = 0; i < 5; i++) {
@@ -639,7 +641,7 @@ contract PokerTableTest is Test {
 
     function test_VRF_CardsDerivedDeterministically() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         _completePreflop();
         uint256 specificRandomness = 999999;
@@ -662,7 +664,7 @@ contract PokerTableTest is Test {
 
         // Start second hand - button has moved to seat 1
         // New positions: SB=2, BB=3, UTG=0
-        pokerTable.startHand();
+        _startHandFull();
 
         // UTG (seat 0) calls
         vm.prank(operator1);
@@ -698,7 +700,7 @@ contract PokerTableTest is Test {
 
     function test_FulfillVRF_RevertIfNotAdapter() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
         _completePreflop();
 
         // Table is now in WAITING_VRF_FLOP
@@ -714,7 +716,7 @@ contract PokerTableTest is Test {
 
     function test_FulfillVRF_SucceedsThroughAdapter() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
         _completePreflop();
 
         // Fulfill through mock adapter (which is the registered vrfAdapter)
@@ -724,7 +726,7 @@ contract PokerTableTest is Test {
 
     function test_ReRequestVRF_SuccessAfterTimeout() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
         _completePreflop();
 
         uint256 oldReqId = pokerTable.pendingVRFRequestId();
@@ -745,7 +747,7 @@ contract PokerTableTest is Test {
 
     function test_ReRequestVRF_RevertBeforeTimeout() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
         _completePreflop();
 
         // Try to re-request immediately (before timeout)
@@ -755,7 +757,7 @@ contract PokerTableTest is Test {
 
     function test_ReRequestVRF_RevertNotInVRFState() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         // Still in BETTING_PRE
         vm.expectRevert("Not waiting for VRF");
@@ -764,7 +766,7 @@ contract PokerTableTest is Test {
 
     function test_ReRequestVRF_EmitsEvent() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
         _completePreflop();
 
         uint256 oldReqId = pokerTable.pendingVRFRequestId();
@@ -780,7 +782,7 @@ contract PokerTableTest is Test {
 
     function test_ReRequestVRF_OldRequestRejected() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
         _completePreflop();
 
         uint256 oldReqId = pokerTable.pendingVRFRequestId();
@@ -795,7 +797,7 @@ contract PokerTableTest is Test {
 
     function test_ReRequestVRF_MultipleReRequests() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
         _completePreflop();
 
         // First re-request
@@ -819,7 +821,7 @@ contract PokerTableTest is Test {
 
     function test_Settlement_FoldTransfersPotToWinner() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         // All fold to BB (seat 2)
         vm.prank(operator4);
@@ -842,7 +844,7 @@ contract PokerTableTest is Test {
 
     function test_Settlement_FoldEmitsCorrectEvent() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         // UTG folds
         vm.prank(operator4);
@@ -866,7 +868,7 @@ contract PokerTableTest is Test {
 
     function test_Settlement_ShowdownDistributesPot() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         uint8[4] memory h1 = [uint8(12), uint8(0), uint8(2), uint8(4)];
         uint8[4] memory h2 = [uint8(25), uint8(14), uint8(16), uint8(18)];
@@ -923,7 +925,7 @@ contract PokerTableTest is Test {
 
     function test_Settlement_ShowdownEmitsEvent() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         uint8[4] memory h1 = [uint8(0), uint8(12), uint8(2), uint8(4)];
         uint8[4] memory h2 = [uint8(14), uint8(25), uint8(16), uint8(18)];
@@ -951,7 +953,7 @@ contract PokerTableTest is Test {
 
     function test_Settlement_PotAccumulatesFromRaises() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         // UTG raises to 60
         vm.prank(operator4);
@@ -1001,7 +1003,7 @@ contract PokerTableTest is Test {
         _setupAllSeats();
         assertEq(pokerTable.buttonSeat(), 0, "Initial button at seat 0");
 
-        pokerTable.startHand();
+        _startHandFull();
 
         // All fold to BB
         vm.prank(operator4);
@@ -1019,7 +1021,7 @@ contract PokerTableTest is Test {
         assertEq(pokerTable.buttonSeat(), 1, "Button moves to seat 1");
 
         // Play another hand and fold
-        pokerTable.startHand();
+        _startHandFull();
 
         // New positions: BTN=1, SB=2, BB=3, UTG=0
         vm.prank(operator1);
@@ -1039,7 +1041,7 @@ contract PokerTableTest is Test {
 
     function test_Settlement_StateTransitionsToSettled() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.BETTING_PRE));
 
@@ -1061,7 +1063,7 @@ contract PokerTableTest is Test {
 
     function test_Settlement_CanStartNewHandAfterSettlement() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         // Quick fold to settle
         vm.prank(operator4);
@@ -1078,7 +1080,7 @@ contract PokerTableTest is Test {
 
         assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.SETTLED));
 
-        pokerTable.startHand();
+        _startHandFull();
         assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.BETTING_PRE));
         assertEq(pokerTable.currentHandId(), 2, "Hand ID increments");
     }
@@ -1087,7 +1089,7 @@ contract PokerTableTest is Test {
 
     function test_GetAmountToCall() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         // UTG needs to call BB
         assertEq(pokerTable.getAmountToCall(3), BIG_BLIND, "UTG owes BB");
@@ -1101,7 +1103,7 @@ contract PokerTableTest is Test {
 
     function test_CanCheck() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         assertFalse(pokerTable.canCheck(3)); // UTG cannot check pre-flop
         assertFalse(pokerTable.canCheck(0)); // Button cannot check pre-flop
@@ -1113,7 +1115,7 @@ contract PokerTableTest is Test {
 
     function test_Action_RevertAfterDeadline() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         vm.warp(block.timestamp + 31 minutes);
         vm.roll(block.number + 1);
@@ -1126,7 +1128,7 @@ contract PokerTableTest is Test {
 
     function test_ForceTimeout_RevertIfDeadlineNotPassed() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
         vm.roll(block.number + 1);
 
         vm.expectRevert("Deadline not passed");
@@ -1135,7 +1137,7 @@ contract PokerTableTest is Test {
 
     function test_ForceTimeout_AutoFoldWhenMustCall() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         // UTG must call (not at currentBet), so should auto-fold
         vm.warp(block.timestamp + 31 minutes);
@@ -1152,7 +1154,7 @@ contract PokerTableTest is Test {
 
     function test_ForceTimeout_AutoFoldSettlesWhenOneRemains() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         // UTG folds
         vm.prank(operator4);
@@ -1181,7 +1183,7 @@ contract PokerTableTest is Test {
 
     function test_ForceTimeout_AutoCheckWhenLegal() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         // All call, then BB can check - advance time
         vm.prank(operator4);
@@ -1213,7 +1215,7 @@ contract PokerTableTest is Test {
 
     function test_ForceTimeout_MultipleTimeoutsToShowdown() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         // Pre-flop: all call, BB times out (auto-check)
         vm.prank(operator4);
@@ -1246,7 +1248,7 @@ contract PokerTableTest is Test {
 
     function test_ForceTimeout_RevertIfNotInBettingState() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         _completePreflop();
 
@@ -1264,7 +1266,7 @@ contract PokerTableTest is Test {
 
     function test_OneActionPerBlock_SecondActionReverts() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         vm.roll(block.number + 1);
 
@@ -1280,7 +1282,7 @@ contract PokerTableTest is Test {
 
     function test_OneActionPerBlock_SucceedsAfterBlockAdvance() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         vm.roll(block.number + 1);
 
@@ -1299,7 +1301,7 @@ contract PokerTableTest is Test {
 
     function test_OneActionPerBlock_ForceTimeoutRespects() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         vm.roll(block.number + 1);
 
@@ -1320,7 +1322,7 @@ contract PokerTableTest is Test {
 
     function test_OneActionPerBlock_StartHandSetsLastActionBlock() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         // Without advancing block, action should fail
         vm.prank(operator4);
@@ -1332,7 +1334,7 @@ contract PokerTableTest is Test {
 
     function test_SubmitHoleCommit_Success() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         bytes32 commitment = keccak256(abi.encodePacked(uint256(1), uint8(0), uint8(10), uint8(25), bytes32("salt123")));
 
@@ -1346,7 +1348,7 @@ contract PokerTableTest is Test {
 
     function test_SubmitHoleCommit_AllFourSeats() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         for (uint8 i = 0; i < 4; i++) {
             bytes32 commit = keccak256(abi.encodePacked(uint256(1), i, uint8(i * 10), uint8(i * 10 + 5), bytes32("salt")));
@@ -1357,7 +1359,7 @@ contract PokerTableTest is Test {
 
     function test_SubmitHoleCommit_RevertIfAlreadySubmitted() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         bytes32 commitment = keccak256("test");
         pokerTable.submitHoleCommit(1, 0, commitment);
@@ -1368,7 +1370,7 @@ contract PokerTableTest is Test {
 
     function test_SubmitHoleCommit_RevertIfEmptyCommitment() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         vm.expectRevert("Empty commitment");
         pokerTable.submitHoleCommit(1, 0, bytes32(0));
@@ -1376,7 +1378,7 @@ contract PokerTableTest is Test {
 
     function test_SubmitHoleCommit_RevertIfInvalidSeat() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         vm.expectRevert("Invalid seat");
         pokerTable.submitHoleCommit(1, 9, keccak256("test")); // seat 9 is out of range (0..8)
@@ -1384,7 +1386,7 @@ contract PokerTableTest is Test {
 
     function test_SubmitHoleCommit_RevertIfInvalidHandId() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         vm.expectRevert("Invalid hand ID");
         pokerTable.submitHoleCommit(0, 0, keccak256("test"));
@@ -1402,7 +1404,7 @@ contract PokerTableTest is Test {
 
     function test_RevealHoleCards_Success() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         _playToShowdown();
 
@@ -1426,7 +1428,7 @@ contract PokerTableTest is Test {
 
     function test_RevealHoleCards_RevertWithWrongCards() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         _playToShowdown();
 
@@ -1445,7 +1447,7 @@ contract PokerTableTest is Test {
 
     function test_RevealHoleCards_RevertWithWrongSalt() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         _playToShowdown();
 
@@ -1461,7 +1463,7 @@ contract PokerTableTest is Test {
 
     function test_RevealHoleCards_RevertIfNoCommitment() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         _playToShowdown();
 
@@ -1471,7 +1473,7 @@ contract PokerTableTest is Test {
 
     function test_RevealHoleCards_RevertIfAlreadyRevealed() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         _playToShowdown();
 
@@ -1489,7 +1491,7 @@ contract PokerTableTest is Test {
 
     function test_RevealHoleCards_RevertIfNotAtShowdown() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         uint8 card1 = 10;
         uint8 card2 = 25;
@@ -1504,7 +1506,7 @@ contract PokerTableTest is Test {
 
     function test_RevealHoleCards_RevertIfInvalidCards() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         _playToShowdown();
 
@@ -1518,7 +1520,7 @@ contract PokerTableTest is Test {
 
     function test_RevealHoleCards_RevertIfDuplicateCards() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         _playToShowdown();
 
@@ -1532,7 +1534,7 @@ contract PokerTableTest is Test {
 
     function test_GetRevealedHoleCards_ReturnsUnrevealedDefault() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         (uint8 card1, uint8 card2) = pokerTable.getRevealedHoleCards(1, 0);
         assertEq(card1, 255);
@@ -1541,7 +1543,7 @@ contract PokerTableTest is Test {
 
     function test_RevealHoleCards_CanRevealAfterSettlement() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         uint8 card1 = 10;
         uint8 card2 = 25;
@@ -1571,7 +1573,7 @@ contract PokerTableTest is Test {
 
     function test_FullShowdownWithReveal_AllFourSeats() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         // Submit commitments for all 4 seats (distinct cards)
         uint8[4] memory c1 = [uint8(10), uint8(20), uint8(30), uint8(40)];
@@ -1612,7 +1614,7 @@ contract PokerTableTest is Test {
 
     function test_FourSeat_PreflopActionOrder() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         // UTG (seat 3) acts first pre-flop
         (,,, uint8 actor,) = pokerTable.getHandInfo();
@@ -1645,7 +1647,7 @@ contract PokerTableTest is Test {
 
     function test_FourSeat_PostflopActionOrder() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         _completePreflop();
         mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
@@ -1678,7 +1680,7 @@ contract PokerTableTest is Test {
 
     function test_FourSeat_FoldSkipsInTurnOrder() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         // UTG folds
         vm.prank(operator4);
@@ -1725,7 +1727,7 @@ contract PokerTableTest is Test {
 
     function test_FourSeat_MultipleFoldsMidRound() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         // UTG raises to 60
         vm.prank(operator4);
@@ -1756,7 +1758,7 @@ contract PokerTableTest is Test {
         for (uint8 hand = 0; hand < 4; hand++) {
             assertEq(pokerTable.buttonSeat(), hand % 4, "Button rotates correctly");
 
-            pokerTable.startHand();
+            _startHandFull();
 
             // Quick fold to settle - UTG acts first
             uint8 utg = (pokerTable.buttonSeat() + 3) % 4;
@@ -1781,7 +1783,7 @@ contract PokerTableTest is Test {
 
     function test_FourSeat_PostflopWithFoldedPlayers() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         // UTG folds, BTN folds preflop
         vm.prank(operator4);
@@ -1819,7 +1821,7 @@ contract PokerTableTest is Test {
 
     function test_FourSeat_FoldCompletesRoundIfAllActed() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         _completePreflop();
         mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
@@ -1851,7 +1853,7 @@ contract PokerTableTest is Test {
 
     function test_Showdown_RevertIfNoRevealsBeforeTimeout() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
         _playToShowdown();
 
         // No reveals submitted
@@ -1861,7 +1863,7 @@ contract PokerTableTest is Test {
 
     function test_Showdown_NoRevealsAfterTimeout_SettlesBySplit() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
         _playToShowdown();
 
         vm.warp(block.timestamp + pokerTable.SHOWDOWN_TIMEOUT() + 1);
@@ -1876,7 +1878,7 @@ contract PokerTableTest is Test {
 
     function test_Showdown_SingleRevealWinsByDefault() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         // Only seat 2 reveals
         _commitCards(1, 2, 0, 14, bytes32("s2"));
@@ -1894,7 +1896,7 @@ contract PokerTableTest is Test {
 
     function test_Showdown_StrongerHandWins() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         // Give each seat different cards; evaluator picks winner
         uint8[4] memory h1 = [uint8(12), uint8(0), uint8(2), uint8(4)];
@@ -1921,7 +1923,7 @@ contract PokerTableTest is Test {
 
     function test_Showdown_LoserDoesNotGain() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         uint8[4] memory h1 = [uint8(0), uint8(12), uint8(2), uint8(4)];
         uint8[4] memory h2 = [uint8(14), uint8(25), uint8(16), uint8(18)];
@@ -1958,7 +1960,7 @@ contract PokerTableTest is Test {
 
     function test_Showdown_TieSplitsPot() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         // Fisher-Yates board (TEST_RANDOMNESS): 5♣(3), 5♠(42), 5♥(29), 7♥(31), K♦(24)
         // Board has three 5s + K♦. Players with a K pair with the board K → full house 5-5-5-K-K.
@@ -2000,7 +2002,7 @@ contract PokerTableTest is Test {
 
     function test_Showdown_UnrevealedSeatForfeits() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         // Seat 0 has stronger cards but doesn't reveal
         // Seat 0: A♣ A♦ (doesn't reveal)
@@ -2022,7 +2024,7 @@ contract PokerTableTest is Test {
 
     function test_Showdown_RevertNotAtShowdown() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         // Still in BETTING_PRE
         vm.expectRevert("Not at showdown");
@@ -2031,7 +2033,7 @@ contract PokerTableTest is Test {
 
     function test_Showdown_WinnerDeterminedByCards_NotPosition() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         // Give all seats different cards
         uint8[4] memory h1 = [uint8(0), uint8(2), uint8(4), uint8(12)];
@@ -2192,7 +2194,7 @@ contract PokerTableTest is Test {
         _registerSeat(2, owner3, operator3, BUY_IN);
         _setSeatStack(1, 5);
 
-        pokerTable.startHand();
+        _startHandFull();
 
         PokerTable.Seat memory sbSeat = pokerTable.getSeat(1);
         assertEq(sbSeat.currentBet, 5, "SB should post all 5 as blind");
@@ -2207,7 +2209,7 @@ contract PokerTableTest is Test {
         _registerSeat(2, owner3, operator3, BUY_IN);
         _setSeatStack(2, 15);
 
-        pokerTable.startHand();
+        _startHandFull();
 
         PokerTable.Seat memory bbSeat = pokerTable.getSeat(2);
         assertEq(bbSeat.currentBet, 15, "BB should post all 15 as blind");
@@ -2222,7 +2224,7 @@ contract PokerTableTest is Test {
         _setSeatStack(1, 1);
 
         // Should not revert — seat with stack=1 is playable
-        pokerTable.startHand();
+        _startHandFull();
         assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.BETTING_PRE));
     }
 
@@ -2236,7 +2238,7 @@ contract PokerTableTest is Test {
         _registerSeat(2, owner3, operator3, BUY_IN);
         _setSeatStack(1, 12);
 
-        pokerTable.startHand();
+        _startHandFull();
 
         // firstActor preflop = _nextActiveSeat(bbSeat=2) = seat1
         (,,, uint8 actor,) = pokerTable.getHandInfo();
@@ -2262,7 +2264,7 @@ contract PokerTableTest is Test {
         // seat1 SB stack=12, after posting SB=10, stack=2, toCall=10 → should NOT revert
         _setSeatStack(1, 12);
 
-        pokerTable.startHand();
+        _startHandFull();
 
         vm.prank(operator2);
         vm.roll(block.number + 1);
@@ -2284,7 +2286,7 @@ contract PokerTableTest is Test {
         _registerSeat(2, owner3, operator3, BUY_IN);
         _setSeatStack(1, 25); // posts SB=10, left with 15
 
-        pokerTable.startHand();
+        _startHandFull();
 
         (,,, uint8 actor,) = pokerTable.getHandInfo();
         assertEq(actor, 1, "Seat1 acts first");
@@ -2311,7 +2313,7 @@ contract PokerTableTest is Test {
         // seat1 SB, 80 total → posts 10 → stack=70. Raise to 80 (all-in).
         _setSeatStack(1, 80);
 
-        pokerTable.startHand();
+        _startHandFull();
 
         vm.prank(operator2);
         vm.roll(block.number + 1);
@@ -2333,7 +2335,7 @@ contract PokerTableTest is Test {
         // seat1 goes all-in posting blind (stack=5 < SB=10)
         _setSeatStack(1, 5);
 
-        pokerTable.startHand();
+        _startHandFull();
         assertTrue(pokerTable.getSeat(1).isAllIn, "Seat1 should be all-in");
 
         // Pre-flop actor: firstActive after BB(seat2) that is not all-in
@@ -2359,7 +2361,7 @@ contract PokerTableTest is Test {
         _registerSeat(2, owner3, operator3, BUY_IN);
         _setSeatStack(1, 5); // all-in blind
 
-        pokerTable.startHand();
+        _startHandFull();
         // seat1 is all-in. seat2 is BB. Pre-flop: only seat2 can act.
         (,,, uint8 actor,) = pokerTable.getHandInfo();
         assertEq(actor, 2, "seat2 (BB) is the only non-all-in actor");
@@ -2388,7 +2390,7 @@ contract PokerTableTest is Test {
         _setSeatStack(1, 5);
         _setSeatStack(2, 15);
 
-        pokerTable.startHand();
+        _startHandFull();
 
         // Both are all-in from blind posting
         assertTrue(pokerTable.getSeat(1).isAllIn, "Seat1 all-in");
@@ -2444,7 +2446,7 @@ contract PokerTableTest is Test {
         _registerSeat(2, owner3, operator3, BUY_IN);
         _setSeatStack(1, 200);
 
-        pokerTable.startHand();
+        _startHandFull();
 
         vm.prank(operator2);
         vm.roll(block.number + 1);
@@ -2489,7 +2491,7 @@ contract PokerTableTest is Test {
         _setSeatStack(1, 200);
         _setSeatStack(2, 500);
 
-        pokerTable.startHand();
+        _startHandFull();
         // button=0, SB=seat1, BB=seat2, UTG=seat3 acts first
 
         // seat3 calls (matches BB=20)
@@ -2552,7 +2554,7 @@ contract PokerTableTest is Test {
         _registerSeat(2, owner3, operator3, BUY_IN);
         _setSeatStack(1, 200);
 
-        pokerTable.startHand();
+        _startHandFull();
         vm.prank(operator2); vm.roll(block.number + 1);
         pokerTable.raise(1, 200);
         vm.prank(operator3); vm.roll(block.number + 1);
@@ -2642,7 +2644,7 @@ contract PokerTableTest is Test {
         _registerSeat(2, owner3, operator3, BUY_IN);
         _setSeatStack(1, 300); // seat1 (SB) short stack
 
-        pokerTable.startHand();
+        _startHandFull();
         // seat1 SB posts 10, stack=290. seat2 BB posts 20, stack=980.
         // seat1 acts first (2-player, heads-up). seat1 calls all-in (goes all-in via raise)
         (,,, uint8 actor,) = pokerTable.getHandInfo();
@@ -2749,7 +2751,7 @@ contract PokerTableTest is Test {
         _registerSeat(2, owner3, operator3, BUY_IN);
         _setSeatStack(1, 5);
 
-        pokerTable.startHand();
+        _startHandFull();
         // seat1 all-in, seat2 is the only actor (1 non-all-in player)
 
         // seat2 checks preflop
@@ -2796,7 +2798,7 @@ contract PokerTableTest is Test {
 
     function test_CardIntegrity_NoViolation() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         // Hole cards deliberately chosen to NOT overlap with Fisher-Yates community cards:
         // Community = {3(5♣), 29(5♥), 31(7♥), 42(5♠), 24(K♦)}
@@ -2842,7 +2844,7 @@ contract PokerTableTest is Test {
 
     function test_CardIntegrity_ViolationDetected() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         // Community card[2] = 5♣(3) from Fisher-Yates flop (communityCards index 2).
         // Deliberately give seat 0 a hole card = 3 (5♣) to simulate dealer cheating.
@@ -2882,7 +2884,7 @@ contract PokerTableTest is Test {
         _registerSeat(0, owner1, operator1, BUY_IN);
         _registerSeat(1, owner2, operator2, BUY_IN);
 
-        pokerTable.startHand();
+        _startHandFull();
 
         // Button = 0: in heads-up, seat 0 should be SB and seat 1 should be BB
         PokerTable.Seat memory seat0 = pokerTable.getSeat(0);
@@ -2905,7 +2907,7 @@ contract PokerTableTest is Test {
         _registerSeat(0, owner1, operator1, BUY_IN);
         _registerSeat(1, owner2, operator2, BUY_IN);
 
-        pokerTable.startHand();
+        _startHandFull();
 
         // Seat 1 (BB) folds → seat 0 wins the pot (blinds = 30)
         // Then seat 1 has BUY_IN - BIG_BLIND = 980. Still alive.
@@ -2927,7 +2929,7 @@ contract PokerTableTest is Test {
 
         // startHand() → _evictBustedSeats() → seat 1 evicted → 1 playable → TournamentWinner
         vm.recordLogs();
-        pokerTable.startHand();
+        _startHandFull();
         Vm.Log[] memory logs = vm.getRecordedLogs();
 
         bytes32 winnerSig = keccak256("TournamentWinner(address,uint8,uint256)");
@@ -2944,7 +2946,7 @@ contract PokerTableTest is Test {
 
     function test_TournamentWinner_NotEmittedWithMultiplePlayers() public {
         _setupAllSeats();
-        pokerTable.startHand();
+        _startHandFull();
 
         vm.recordLogs();
         // No settlement yet — shouldn't emit TournamentWinner
@@ -2967,7 +2969,7 @@ contract PokerTableTest is Test {
 
         // Set seat 1 stack to exactly SMALL_BLIND so it goes all-in posting SB
         _setSeatStack(1, SMALL_BLIND);
-        pokerTable.startHand();
+        _startHandFull();
 
         // Seat 1 should be all-in after posting SB
         PokerTable.Seat memory seat1 = pokerTable.getSeat(1);
@@ -2993,7 +2995,7 @@ contract PokerTableTest is Test {
         _registerSeat(1, owner2, operator2, BUY_IN);
         _registerSeat(2, owner3, operator3, BUY_IN);
 
-        pokerTable.startHand();
+        _startHandFull();
 
         // Seat 3 (UTG) has already acted. Seat 0 (BTN) calls.
         vm.prank(operator4); // Hmm, only 3 seats registered. UTG = seat 0 (btn=0, SB=1, BB=2, UTG=0 wraps)
@@ -3016,7 +3018,7 @@ contract PokerTableTest is Test {
     function test_HeadsUp_ThreePlayerUsesNormalRule() public {
         // 3+ players: button is NOT the SB
         _setupAllSeats(); // registers seats 0, 1, 2, 3
-        pokerTable.startHand();
+        _startHandFull();
 
         // Button=0: SB = seat 1, BB = seat 2
         PokerTable.Seat memory seat0 = pokerTable.getSeat(0);
@@ -3047,7 +3049,7 @@ contract PokerTableTest is Test {
         // Start with 2 players, play a hand, then add a 3rd player
         _registerSeat(0, owner1, operator1, BUY_IN);
         _registerSeat(1, owner2, operator2, BUY_IN);
-        pokerTable.startHand();
+        _startHandFull();
 
         // Fold to settle the hand
         vm.prank(operator1);
@@ -3066,7 +3068,7 @@ contract PokerTableTest is Test {
         // 2 players play a hand, 3rd joins, verify post blind is deducted
         _registerSeat(0, owner1, operator1, BUY_IN);
         _registerSeat(1, owner2, operator2, BUY_IN);
-        pokerTable.startHand();
+        _startHandFull();
 
         // Fold to settle
         vm.prank(operator1);
@@ -3086,7 +3088,7 @@ contract PokerTableTest is Test {
         // Actually seat 3 is fine. Let's just verify.
 
         vm.roll(block.number + 1);
-        pokerTable.startHand();
+        _startHandFull();
 
         // Seat 3 joined mid-game. If it's not SB or BB, it should have posted BB.
         PokerTable.Seat memory seat3 = pokerTable.getSeat(3);
@@ -3106,7 +3108,7 @@ contract PokerTableTest is Test {
         _registerSeat(0, owner1, operator1, BUY_IN);
         _registerSeat(1, owner2, operator2, BUY_IN);
         _registerSeat(2, owner3, operator3, BUY_IN);
-        pokerTable.startHand();
+        _startHandFull();
 
         // Hand 1: btn=0, SB=1, BB=2, UTG=0. Fold everyone to settle.
         vm.prank(operator1); // UTG=seat 0 for 3-player btn=0: SB=1,BB=2,UTG=0
@@ -3126,7 +3128,7 @@ contract PokerTableTest is Test {
         uint256 stackBefore = BUY_IN;
 
         vm.roll(block.number + 1);
-        pokerTable.startHand();
+        _startHandFull();
 
         // Hand 2: btn advances to 1. With 4 players: SB=2, BB=3. Seat 3 IS the BB.
         // So post blind is skipped (BB already pays BB).
@@ -3140,7 +3142,7 @@ contract PokerTableTest is Test {
         // Setup a scenario where mid-game joiner is NOT SB or BB
         _registerSeat(0, owner1, operator1, BUY_IN);
         _registerSeat(1, owner2, operator2, BUY_IN);
-        pokerTable.startHand();
+        _startHandFull();
 
         // Fold to settle hand 1
         vm.prank(operator1);
@@ -3152,7 +3154,7 @@ contract PokerTableTest is Test {
         _registerSeat(3, owner4, operator4, BUY_IN);
 
         vm.roll(block.number + 1);
-        pokerTable.startHand();
+        _startHandFull();
 
         // Hand 2: btn advances from 0 to 1. With 4 players:
         // SB = next(1) = 2, BB = next(2) = 3
@@ -3178,7 +3180,7 @@ contract PokerTableTest is Test {
     function test_PostBlind_ClearedOnLeaveSeat() public {
         _registerSeat(0, owner1, operator1, BUY_IN);
         _registerSeat(1, owner2, operator2, BUY_IN);
-        pokerTable.startHand();
+        _startHandFull();
 
         vm.prank(operator1);
         vm.roll(block.number + 1);
@@ -3204,7 +3206,7 @@ contract PokerTableTest is Test {
         _registerSeat(0, owner1, operator1, BUY_IN);
         _registerSeat(1, owner2, operator2, BUY_IN);
         _registerSeat(2, owner3, operator3, BUY_IN);
-        pokerTable.startHand();
+        _startHandFull();
 
         // btn=0, SB=1, BB=2, UTG=0. Fold all to settle.
         vm.prank(operator1);
@@ -3221,7 +3223,7 @@ contract PokerTableTest is Test {
         // Hand 2: btn advances to 1. 5 players (0,1,2,3,4): SB=2, BB=3.
         // Seat 3 = BB (post blind skipped), Seat 4 = NOT SB/BB → should post blind.
         vm.roll(block.number + 1);
-        pokerTable.startHand();
+        _startHandFull();
 
         PokerTable.Seat memory seat4 = pokerTable.getSeat(4);
         // Seat 4 should have posted BB as live blind
@@ -3233,5 +3235,20 @@ contract PokerTableTest is Test {
         (, uint256 pot, , ,) = pokerTable.getHandInfo();
         // pot = SB + BB + post blind = 10 + 20 + 20 = 50
         assertEq(pot, SMALL_BLIND + BIG_BLIND + BIG_BLIND, "Pot includes post blind");
+    }
+
+    // ============ Trustless Dealer Test Helpers ============
+
+    /**
+     * @dev Full hand start: startHand() + fulfill hole-card VRF + advanceToPreflop().
+     *      Reaches BETTING_PRE through the new WAITING_VRF_HOLECARDS → WAITING_FOR_HOLECARDS
+     *      → BETTING_PRE flow without submitting mock commits (so tests can submit their own).
+     */
+    function _startHandFull() internal {
+        pokerTable.startHand();
+        // If tournament ended during startHand() (eviction), stop here.
+        if (pokerTable.gameState() != PokerTable.GameState.WAITING_VRF_HOLECARDS) return;
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
+        pokerTable.advanceToPreflop();
     }
 }

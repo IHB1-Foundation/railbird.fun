@@ -28,9 +28,11 @@ contract PokerTable {
         BETTING_TURN,       // Turn betting
         WAITING_VRF_RIVER,  // Waiting for VRF to deal river
         BETTING_RIVER,      // River betting
-        SHOWDOWN,           // Waiting for hole card reveals
-        SETTLED,            // Hand complete, ready for next hand
-        TOURNAMENT_OVER     // Only one player with chips remains — tournament ended
+        SHOWDOWN,              // Waiting for hole card reveals
+        SETTLED,               // Hand complete, ready for next hand
+        TOURNAMENT_OVER,       // Only one player with chips remains — tournament ended
+        WAITING_VRF_HOLECARDS, // Waiting for VRF to seed hole card shuffle
+        WAITING_FOR_HOLECARDS  // VRF received; waiting for dealer to submit hole commits
     }
 
     enum ActionType {
@@ -209,7 +211,7 @@ contract PokerTable {
         uint8 communityIndex
     );
 
-    // ============ Trustless Dealer Events (T1.1 / T1.2) ============
+    // ============ Trustless Dealer Events ============
 
     /// @notice Emitted when a seat registers its ECIES encryption public key
     event EncryptionKeyRegistered(uint8 indexed seatIndex, bytes pubKey);
@@ -219,6 +221,16 @@ contract PokerTable {
 
     /// @notice Emitted when the dealer reveals its seed at showdown
     event DealerSeedRevealed(uint256 indexed handId, bytes32 seed);
+
+    /// @notice Emitted when hole-card VRF randomness is received
+    event HoleCardVRFFulfilled(uint256 indexed handId, uint256 randomness);
+
+    /// @notice Emitted when VRF re-request is issued for hole cards
+    event HoleCardVRFReRequested(
+        uint256 indexed handId,
+        uint256 oldRequestId,
+        uint256 newRequestId
+    );
 
     // ============ State Variables ============
     uint256 public tableId;
@@ -258,7 +270,7 @@ contract PokerTable {
     // Post blind: seats that joined mid-game must post BB as live blind on first hand
     mapping(uint8 => bool) public needsPostBlind;
 
-    // ============ Trustless Dealer State (T1.1 / T1.2) ============
+    // ============ Trustless Dealer State ============
 
     // T1.1: Per-seat ECIES encryption public key (compressed secp256k1, 33 bytes)
     mapping(uint8 => bytes) public encryptionKeys;
@@ -266,6 +278,10 @@ contract PokerTable {
     // T1.2: Dealer seed commit/reveal per hand
     mapping(uint256 => bytes32) public dealerSeedCommits;  // handId => keccak256(seed)
     mapping(uint256 => bytes32) public dealerSeedReveals;  // handId => revealed seed
+
+    // T1.3: Hole card VRF randomness per hand
+    mapping(uint256 => uint256) public holeCardVRFRandomness;  // handId => randomness
+    uint256 public pendingHoleCardVRFRequestId;                // current pending hole-card VRF
 
     // ============ Modifiers ============
     function _checkOperator(uint8 seatIndex) internal view {
@@ -504,7 +520,7 @@ contract PokerTable {
 
     /**
      * @notice Dealer commits to its per-hand randomness seed.
-     * @dev Must be called before or at the start of betting, not after showdown.
+     * @dev Must be called before or right after hole card VRF, not after betting starts.
      * @param handId The hand ID
      * @param commitment keccak256(dealerSeed)
      */
@@ -513,9 +529,11 @@ contract PokerTable {
         require(commitment != bytes32(0), "Empty commitment");
         require(dealerSeedCommits[handId] == bytes32(0), "DealerSeed: already committed");
 
-        // For current hand: only allowed at the start of pre-flop betting
+        // For current hand: only allowed before betting has started
         if (handId == currentHandId) {
             require(
+                gameState == GameState.WAITING_VRF_HOLECARDS ||
+                gameState == GameState.WAITING_FOR_HOLECARDS ||
                 gameState == GameState.BETTING_PRE,
                 "DealerSeed: too late to commit"
             );
@@ -594,6 +612,7 @@ contract PokerTable {
             communityCards[i] = 255;
         }
         pendingVRFRequestId = 0;
+        pendingHoleCardVRFRequestId = 0;
         vrfRequestTimestamp = 0;
         showdownStartTimestamp = 0;
 
@@ -645,7 +664,6 @@ contract PokerTable {
             hasActed: initialHasActed
         });
 
-        gameState = GameState.BETTING_PRE;
         actionDeadline = block.timestamp + ACTION_TIMEOUT;
         lastActionBlock = block.number;
 
@@ -654,10 +672,20 @@ contract PokerTable {
         emit SeatUpdated(bbSeat, seats[bbSeat].owner, seats[bbSeat].operator, seats[bbSeat].stack);
         emit PotUpdated(currentHandId, initialPot);
 
-        // If all players are all-in from blind posting, auto-skip pre-flop betting
-        if (_countNonAllInActivePlayers() == 0) {
-            _completeBettingRound();
+        // Request VRF for hole card shuffle seed (separate from community card VRF)
+        uint256 hcRequestId = 0;
+        if (vrfAdapter != address(0)) {
+            hcRequestId = IVRFAdapter(vrfAdapter).requestRandomness(
+                tableId,
+                currentHandId,
+                uint8(GameState.WAITING_VRF_HOLECARDS)
+            );
+            pendingHoleCardVRFRequestId = hcRequestId;
+            vrfRequestTimestamp = block.timestamp;
         }
+        gameState = GameState.WAITING_VRF_HOLECARDS;
+
+        emit VRFRequested(currentHandId, GameState.WAITING_VRF_HOLECARDS, hcRequestId);
     }
 
     // ============ Actions ============
@@ -1097,6 +1125,18 @@ contract PokerTable {
      */
     function fulfillVRF(uint256 requestId, uint256 randomness) external {
         require(msg.sender == vrfAdapter, "Only VRF adapter");
+
+        // Route: hole card VRF
+        if (gameState == GameState.WAITING_VRF_HOLECARDS) {
+            require(requestId == pendingHoleCardVRFRequestId, "Invalid request ID");
+            holeCardVRFRandomness[currentHandId] = randomness;
+            pendingHoleCardVRFRequestId = 0;
+            gameState = GameState.WAITING_FOR_HOLECARDS;
+            emit HoleCardVRFFulfilled(currentHandId, randomness);
+            return;
+        }
+
+        // Route: community card VRF
         require(
             gameState == GameState.WAITING_VRF_FLOP ||
             gameState == GameState.WAITING_VRF_TURN ||
@@ -1167,6 +1207,43 @@ contract PokerTable {
         vrfRequestTimestamp = block.timestamp;
 
         emit VRFReRequested(currentHandId, gameState, oldRequestId, newRequestId);
+    }
+
+    /**
+     * @notice Re-request hole card VRF when the original fulfillment is delayed.
+     * @dev Anyone can call after VRF_TIMEOUT has passed.
+     */
+    function reRequestHoleCardVRF() external {
+        require(gameState == GameState.WAITING_VRF_HOLECARDS, "Not waiting for hole card VRF");
+        require(vrfAdapter != address(0), "No VRF adapter");
+        require(block.timestamp > vrfRequestTimestamp + VRF_TIMEOUT, "VRF timeout not reached");
+
+        uint256 oldRequestId = pendingHoleCardVRFRequestId;
+        uint256 newRequestId = IVRFAdapter(vrfAdapter).requestRandomness(
+            tableId,
+            currentHandId,
+            uint8(GameState.WAITING_VRF_HOLECARDS)
+        );
+        pendingHoleCardVRFRequestId = newRequestId;
+        vrfRequestTimestamp = block.timestamp;
+
+        emit HoleCardVRFReRequested(currentHandId, oldRequestId, newRequestId);
+    }
+
+    /**
+     * @notice Advance from WAITING_FOR_HOLECARDS to BETTING_PRE.
+     * @dev Callable by anyone once the hole-card VRF has been fulfilled.
+     *      Dealers should submit commitments before calling this, but it is not enforced
+     *      here — commitment verification happens at showdown reveal time.
+     *      Mirrors the permissionless design of startHand().
+     */
+    function advanceToPreflop() external {
+        require(gameState == GameState.WAITING_FOR_HOLECARDS, "Not waiting for hole cards");
+        gameState = GameState.BETTING_PRE;
+        // If all players are all-in from blind posting, skip pre-flop betting
+        if (_countNonAllInActivePlayers() == 0) {
+            _completeBettingRound();
+        }
     }
 
     /**
@@ -1575,12 +1652,12 @@ contract PokerTable {
         require(commitment != bytes32(0), "Empty commitment");
         require(holeCommits[handId][seatIndex] == bytes32(0), "Commitment already exists");
 
-        // Can only submit during active hand (not after settlement)
-        // For current hand: allowed from BETTING_PRE onwards until showdown settlement
+        // For current hand: allowed once a hand is underway (not idle or settled)
         if (handId == currentHandId) {
             require(
                 gameState != GameState.WAITING_FOR_SEATS &&
-                gameState != GameState.SETTLED,
+                gameState != GameState.SETTLED &&
+                gameState != GameState.TOURNAMENT_OVER,
                 "Cannot submit commit now"
             );
         }
@@ -1722,6 +1799,8 @@ contract PokerTable {
 
     function canStartHand() external view returns (bool) {
         if (gameState == GameState.TOURNAMENT_OVER) return false;
+        if (gameState == GameState.WAITING_VRF_HOLECARDS) return false;
+        if (gameState == GameState.WAITING_FOR_HOLECARDS) return false;
         if (!(gameState == GameState.WAITING_FOR_SEATS || gameState == GameState.SETTLED)) return false;
         return _countPlayableSeats() >= 2;
     }

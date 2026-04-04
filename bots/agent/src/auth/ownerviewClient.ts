@@ -1,6 +1,9 @@
 // OwnerView API client for wallet authentication and hole card fetching
 
 import { type Address } from "viem";
+import { secp256k1 } from "@noble/curves/secp256k1.js";
+import { hkdf } from "@noble/hashes/hkdf.js";
+import { sha256 } from "@noble/hashes/sha2.js";
 
 export interface NonceResponse {
   nonce: string;
@@ -24,11 +27,28 @@ export interface HoleCardsResponse {
   holeCards: HoleCard[];
 }
 
+/** Encrypted payload as received from the ownerview server */
+interface EncryptedPayloadSerialized {
+  ephemeralPubKey: string;
+  iv: string;
+  ciphertext: string;
+  mac: string;
+}
+
 export interface OwnerViewClientConfig {
   baseUrl: string;
   signMessage: (message: string) => Promise<string>;
   address: Address;
+  /**
+   * ECIES encryption private key for decrypting hole cards.
+   * Should be derived via deriveEncryptionKeyPair() before passing here.
+   * If not provided, getHoleCards() will fail with an error.
+   */
+  encryptionPrivKey?: Uint8Array;
 }
+
+const AES_KEY_LEN = 32;
+const TAG_LEN = 16;
 
 export class OwnerViewClient {
   private baseUrl: string;
@@ -36,11 +56,20 @@ export class OwnerViewClient {
   private address: Address;
   private token: string | null = null;
   private tokenExpiresAt: number = 0;
+  private encryptionPrivKey: Uint8Array | null;
 
   constructor(config: OwnerViewClientConfig) {
     this.baseUrl = config.baseUrl.replace(/\/$/, ""); // Remove trailing slash
     this.signMessage = config.signMessage;
     this.address = config.address;
+    this.encryptionPrivKey = config.encryptionPrivKey ?? null;
+  }
+
+  /**
+   * Update the encryption private key (called after key derivation completes).
+   */
+  setEncryptionPrivKey(privKey: Uint8Array): void {
+    this.encryptionPrivKey = privKey;
   }
 
   /**
@@ -118,10 +147,17 @@ export class OwnerViewClient {
   }
 
   /**
-   * Get hole cards for the authenticated user's seat
+   * Get hole cards for the authenticated user's seat.
+   * Fetches encrypted cards from the server and decrypts them client-side.
+   *
+   * Requires encryptionPrivKey to be set (via constructor or setEncryptionPrivKey).
    */
   async getHoleCards(tableId: string | number, handId: string | number): Promise<HoleCardsResponse> {
     await this.ensureAuthenticated();
+
+    if (!this.encryptionPrivKey) {
+      throw new Error("Encryption private key not set — call setEncryptionPrivKey() or pass encryptionPrivKey in config");
+    }
 
     const url = `${this.baseUrl}/owner/holecards?tableId=${encodeURIComponent(
       String(tableId)
@@ -138,7 +174,22 @@ export class OwnerViewClient {
       throw new Error(errorBody.error || `Failed to get hole cards: ${res.status}`);
     }
 
-    return res.json() as Promise<HoleCardsResponse>;
+    const raw = await res.json() as {
+      tableId: string;
+      handId: string;
+      seatIndex: number;
+      encryptedCards: EncryptedPayloadSerialized;
+    };
+
+    // Client-side ECIES decryption
+    const [card1, card2] = await this.decryptHoleCards(raw.encryptedCards);
+
+    return {
+      tableId: raw.tableId,
+      handId: raw.handId,
+      seatIndex: raw.seatIndex,
+      holeCards: [{ card: card1 }, { card: card2 }],
+    };
   }
 
   /**
@@ -147,4 +198,69 @@ export class OwnerViewClient {
   getToken(): string | null {
     return this.token;
   }
+
+  // ─── ECIES Decryption (secp256k1 ECDH + HKDF-SHA256 + AES-256-GCM) ─────
+
+  private async decryptHoleCards(
+    payload: EncryptedPayloadSerialized
+  ): Promise<[number, number]> {
+    const privKey = this.encryptionPrivKey!;
+
+    const ephemeralPubKey = hexToBytes(payload.ephemeralPubKey);
+    const iv = hexToBytes(payload.iv);
+    const ciphertext = hexToBytes(payload.ciphertext);
+    const mac = hexToBytes(payload.mac);
+
+    // ECDH: sharedPoint = privKey * ephemeralPubKey
+    let sharedX: Uint8Array;
+    try {
+      const sharedPoint = secp256k1.getSharedSecret(privKey, ephemeralPubKey, true);
+      sharedX = sharedPoint.slice(1); // x-coordinate only (skip prefix byte)
+    } catch (err) {
+      throw new Error(`ECIES key mismatch: ${err}`);
+    }
+
+    // HKDF-SHA256 -> AES-256 key
+    const aesKey = hkdf(sha256, sharedX, undefined, undefined, AES_KEY_LEN);
+
+    const cryptoKey = await crypto.subtle.importKey(
+      "raw",
+      aesKey.buffer as ArrayBuffer,
+      { name: "AES-GCM" },
+      false,
+      ["decrypt"]
+    );
+
+    // Reconstitute ciphertext || tag
+    const ciphertextWithTag = new Uint8Array(ciphertext.length + mac.length);
+    ciphertextWithTag.set(ciphertext);
+    ciphertextWithTag.set(mac, ciphertext.length);
+
+    let decryptedBuf: ArrayBuffer;
+    try {
+      decryptedBuf = await crypto.subtle.decrypt(
+        { name: "AES-GCM", iv: iv.buffer as ArrayBuffer, tagLength: TAG_LEN * 8 },
+        cryptoKey,
+        ciphertextWithTag.buffer as ArrayBuffer
+      );
+    } catch {
+      throw new Error("ECIES decryption failed: MAC verification failed — wrong key or tampered ciphertext");
+    }
+
+    const decrypted = new Uint8Array(decryptedBuf);
+    if (decrypted.length !== 2) {
+      throw new Error(`ECIES decryption failed: unexpected plaintext length ${decrypted.length}`);
+    }
+
+    return [decrypted[0], decrypted[1]];
+  }
+}
+
+function hexToBytes(hex: string): Uint8Array {
+  const h = hex.startsWith("0x") ? hex.slice(2) : hex;
+  const bytes = new Uint8Array(h.length / 2);
+  for (let i = 0; i < bytes.length; i++) {
+    bytes[i] = parseInt(h.slice(i * 2, i * 2 + 2), 16);
+  }
+  return bytes;
 }

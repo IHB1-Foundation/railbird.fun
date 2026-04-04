@@ -104,11 +104,14 @@ export class AgentBot {
       }
     }
 
-    // Derive encryption key pair (once per run)
+    // Derive encryption key pair (once per run) and inject into ownerviewClient
     try {
       const { privKey } = await deriveEncryptionKeyPair(this.config.privateKey);
       this.encryptionPrivKey = privKey;
       console.log("[AgentBot] Encryption key pair derived");
+      if (this.ownerviewClient) {
+        this.ownerviewClient.setEncryptionPrivKey(privKey);
+      }
     } catch (error) {
       console.warn("[AgentBot] Failed to derive encryption key pair:", error);
     }

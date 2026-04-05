@@ -19,6 +19,7 @@ import {
   updateAgentMetaUri,
   insertVaultSnapshot,
   insertRebalanceEvent,
+  insertRevealedHolecard,
   getHand,
 } from "../db/index.js";
 import { gameStateToString, actionTypeToString } from "./abis.js";
@@ -479,6 +480,29 @@ export async function handleCardIntegrityViolation(
   console.error(
     `[CardIntegrityViolation] INTEGRITY ALERT table=${ctx.tableId} hand=${args.handId} seat=${args.seatIndex} card=${args.card} communityIndex=${args.communityIndex}`
   );
+}
+
+export async function handleHoleCardsRevealed(
+  log: Log,
+  args: { handId: bigint; seatIndex: number; card1: number; card2: number },
+  ctx: EventContext
+): Promise<void> {
+  const meta = getLogMeta(log);
+  if (!meta) return;
+  if (await isEventProcessed(meta.blockNumber, meta.logIndex)) return;
+
+  await insertRevealedHolecard(
+    ctx.tableId,
+    args.handId,
+    args.seatIndex,
+    args.card1,
+    args.card2,
+    meta.blockNumber,
+    meta.txHash
+  );
+
+  await markEventProcessed(meta.blockNumber, meta.logIndex, meta.txHash, "HoleCardsRevealed");
+  console.log(`[HoleCardsRevealed] hand=${args.handId} seat=${args.seatIndex} cards=[${args.card1},${args.card2}]`);
 }
 
 export async function handleRebalanceBuy(

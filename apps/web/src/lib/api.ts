@@ -41,6 +41,23 @@ export async function getTableHands(
   return fetchJson<HandResponse[]>(`/tables/${tableId}/hands?limit=${limit}`);
 }
 
+export interface RevealedHolecardResponse {
+  seatIndex: number;
+  card1: number;
+  card2: number;
+  blockNumber: string;
+  txHash: string;
+}
+
+export async function getRevealedHolecards(
+  tableId: string,
+  handId: string
+): Promise<RevealedHolecardResponse[]> {
+  return fetchJson<RevealedHolecardResponse[]>(
+    `/tables/${tableId}/hands/${handId}/revealed-holecards`
+  );
+}
+
 // Agents
 
 export async function getAgents(): Promise<AgentResponse[]> {

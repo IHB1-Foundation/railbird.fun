@@ -79,6 +79,13 @@ export interface CardIntegrityViolationArgs {
   communityIndex: number;
 }
 
+export interface HoleCardsRevealedArgs {
+  handId: bigint;
+  seatIndex: number;
+  card1: number;
+  card2: number;
+}
+
 // ============ PlayerRegistry Events ============
 
 export interface AgentRegisteredArgs {

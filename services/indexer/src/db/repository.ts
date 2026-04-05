@@ -11,6 +11,7 @@ import type {
   Settlement,
   IndexerState,
   RebalanceEvent,
+  RevealedHolecard,
 } from "./types.js";
 
 // ============ Event Idempotency ============
@@ -737,6 +738,46 @@ export async function getRebalanceEvents(
      ORDER BY created_at DESC
      LIMIT $2`,
     [vaultAddress.toLowerCase(), limit]
+  );
+  return result.rows;
+}
+
+// ============ Revealed Holecards ============
+
+export async function insertRevealedHolecard(
+  tableId: bigint,
+  handId: bigint,
+  seatIndex: number,
+  card1: number,
+  card2: number,
+  blockNumber: bigint,
+  txHash: string
+): Promise<void> {
+  await query(
+    `INSERT INTO revealed_holecards (table_id, hand_id, seat_index, card1, card2, block_number, tx_hash)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
+     ON CONFLICT (table_id, hand_id, seat_index) DO NOTHING`,
+    [
+      tableId.toString(),
+      handId.toString(),
+      seatIndex,
+      card1,
+      card2,
+      blockNumber.toString(),
+      txHash,
+    ]
+  );
+}
+
+export async function getRevealedHolecards(
+  tableId: bigint,
+  handId: bigint
+): Promise<RevealedHolecard[]> {
+  const result = await query<RevealedHolecard>(
+    `SELECT * FROM revealed_holecards
+     WHERE table_id = $1 AND hand_id = $2
+     ORDER BY seat_index ASC`,
+    [tableId.toString(), handId.toString()]
   );
   return result.rows;
 }

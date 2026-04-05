@@ -204,6 +204,26 @@ export interface RebalanceEventResponse {
   timestamp: string;
 }
 
+export interface RevealedHolecard {
+  id: number;
+  table_id: string;
+  hand_id: string;
+  seat_index: number;
+  card1: number;
+  card2: number;
+  block_number: string;
+  tx_hash: string;
+  created_at: Date;
+}
+
+export interface RevealedHolecardResponse {
+  seatIndex: number;
+  card1: number;
+  card2: number;
+  blockNumber: string;
+  txHash: string;
+}
+
 // ============ Leaderboard Types ============
 
 export type LeaderboardMetric = "roi" | "pnl" | "winrate" | "mdd";

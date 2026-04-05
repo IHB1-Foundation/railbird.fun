@@ -17,6 +17,7 @@ import type {
   ForceTimeoutArgs,
   TournamentWinnerArgs,
   CardIntegrityViolationArgs,
+  HoleCardsRevealedArgs,
   AgentRegisteredArgs,
   OperatorUpdatedArgs,
   OwnerUpdatedArgs,
@@ -306,6 +307,13 @@ export class EventListener {
           await handlers.handleCardIntegrityViolation(
             log,
             decoded.args as unknown as CardIntegrityViolationArgs,
+            tableContext
+          );
+          break;
+        case "HoleCardsRevealed":
+          await handlers.handleHoleCardsRevealed(
+            log,
+            decoded.args as unknown as HoleCardsRevealedArgs,
             tableContext
           );
           break;

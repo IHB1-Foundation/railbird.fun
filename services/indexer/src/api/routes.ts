@@ -13,6 +13,7 @@ import {
   getAllAgents,
   getAgentsByOwner,
   getRebalanceEvents,
+  getRevealedHolecards,
   getLatestVaultSnapshot,
   getVaultSnapshots,
   getVaultSnapshotsInPeriod,
@@ -380,6 +381,36 @@ router.get("/tables/:tableId/hands/:handId", async (req, res) => {
     res.json(formatHandResponse(hand, actions));
   } catch (error) {
     console.error("Error fetching hand:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/tables/:tableId/hands/:handId/revealed-holecards", async (req, res) => {
+  try {
+    const tableId = BigInt(req.params.tableId);
+    const table = await getTable(tableId);
+    if (
+      !table ||
+      (CONFIGURED_TABLE_ADDRESSES.size > 0 &&
+        !CONFIGURED_TABLE_ADDRESSES.has(String(table.contract_address).toLowerCase()))
+    ) {
+      return res.status(404).json({ error: "Table not found" });
+    }
+
+    const handId = BigInt(req.params.handId);
+    const holecards = await getRevealedHolecards(tableId, handId);
+
+    res.json(
+      holecards.map((h) => ({
+        seatIndex: h.seat_index,
+        card1: h.card1,
+        card2: h.card2,
+        blockNumber: h.block_number,
+        txHash: h.tx_hash,
+      }))
+    );
+  } catch (error) {
+    console.error("Error fetching revealed holecards:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });

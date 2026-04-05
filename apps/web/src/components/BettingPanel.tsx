@@ -31,6 +31,33 @@ interface BettingPanelProps {
   initialTable: TableResponse;
 }
 
+/** Type guard: value is a Wager object */
+function isWager(v: unknown): v is Wager {
+  if (typeof v !== "object" || v === null) return false;
+  const w = v as Record<string, unknown>;
+  return (
+    typeof w.id === "string" &&
+    typeof w.tableId === "string" &&
+    typeof w.handId === "string" &&
+    typeof w.seatIndex === "number" &&
+    typeof w.stakeWei === "string" &&
+    typeof w.oddsBps === "number" &&
+    typeof w.profileName === "string" &&
+    (w.status === "open" || w.status === "won" || w.status === "lost") &&
+    typeof w.placedAt === "string"
+  );
+}
+
+/** Type guard: value is Wager[] */
+function isWagerArray(v: unknown): v is Wager[] {
+  return Array.isArray(v) && v.every(isWager);
+}
+
+/** Type guard: value is string[] */
+function isStringArray(v: unknown): v is string[] {
+  return Array.isArray(v) && v.every((x) => typeof x === "string");
+}
+
 function parseChipInputToWei(raw: string): bigint | null {
   const value = raw.trim();
   if (!/^\d+(\.\d{0,18})?$/.test(value)) return null;
@@ -63,11 +90,38 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
       const rawWagers = localStorage.getItem(WAGERS_KEY);
       const rawSettled = localStorage.getItem(SETTLED_HANDS_KEY);
 
-      if (rawBankroll) setBankrollWei(BigInt(rawBankroll));
-      if (rawWagers) setWagers(JSON.parse(rawWagers) as Wager[]);
-      if (rawSettled) setSettledHands(new Set(JSON.parse(rawSettled) as string[]));
+      if (rawBankroll) {
+        // Validate: must be a numeric string parseable by BigInt
+        if (/^\d+$/.test(rawBankroll.trim())) {
+          setBankrollWei(BigInt(rawBankroll));
+        } else {
+          localStorage.removeItem(BANKROLL_KEY);
+        }
+      }
+
+      if (rawWagers) {
+        const parsed: unknown = JSON.parse(rawWagers);
+        if (isWagerArray(parsed)) {
+          setWagers(parsed);
+        } else {
+          localStorage.removeItem(WAGERS_KEY);
+        }
+      }
+
+      if (rawSettled) {
+        const parsed: unknown = JSON.parse(rawSettled);
+        if (isStringArray(parsed)) {
+          setSettledHands(new Set(parsed));
+        } else {
+          localStorage.removeItem(SETTLED_HANDS_KEY);
+        }
+      }
     } catch {
-      setNotice("Could not load saved betting data. Starting from defaults.");
+      // Corrupted localStorage — clear all betting keys and start from defaults
+      localStorage.removeItem(BANKROLL_KEY);
+      localStorage.removeItem(WAGERS_KEY);
+      localStorage.removeItem(SETTLED_HANDS_KEY);
+      setNotice("Saved betting data was corrupted. Starting from defaults.");
     }
   }, []);
 

@@ -226,9 +226,19 @@ export async function getEncryptionKeyOnChain(
   if (!hex || hex === "0x") return null;
   const h = hex.startsWith("0x") ? hex.slice(2) : hex;
   if (h.length === 0) return null;
-  const bytes = new Uint8Array(h.length / 2);
-  for (let i = 0; i < bytes.length; i++) {
-    bytes[i] = parseInt(h.slice(i * 2, i * 2 + 2), 16);
+  // Validate hex format: must be even-length and contain only hex chars
+  if (h.length % 2 !== 0 || !/^[0-9a-fA-F]+$/.test(h)) {
+    console.error("getEncryptionKeyOnChain: unexpected hex format", hex);
+    return null;
   }
-  return bytes;
+  try {
+    const bytes = new Uint8Array(h.length / 2);
+    for (let i = 0; i < bytes.length; i++) {
+      bytes[i] = parseInt(h.slice(i * 2, i * 2 + 2), 16);
+    }
+    return bytes;
+  } catch (err) {
+    console.error("getEncryptionKeyOnChain: failed to parse hex key", err);
+    return null;
+  }
 }

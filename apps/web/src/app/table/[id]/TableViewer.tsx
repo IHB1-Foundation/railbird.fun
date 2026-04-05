@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
-import type { Address } from "viem";
+import { isAddress, type Address } from "viem";
 import { useAuth, type HoleCardsResponse } from "@/lib/auth";
 import { getPokerTableMaxSeats, registerSeat } from "@/lib/pokerTableClient";
 import {
@@ -211,6 +211,20 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
     }
 
     const operatorInput = joinOperator.trim();
+
+    // Validate operator address if provided
+    if (operatorInput.length > 0 && !isAddress(operatorInput)) {
+      setJoinStatus("Invalid address: operator must be a valid 0x Ethereum address.");
+      return;
+    }
+
+    // Validate buy-in amount: positive integer, no decimals, max 1 trillion chips
+    const buyInNum = Number(joinBuyIn);
+    if (!joinBuyIn || isNaN(buyInNum) || buyInNum <= 0 || !Number.isInteger(buyInNum) || buyInNum > 1e12) {
+      setJoinStatus("Invalid buy-in: enter a positive whole number (max 1,000,000,000,000).");
+      return;
+    }
+
     const operator = operatorInput.length > 0 ? (operatorInput as Address) : undefined;
 
     try {

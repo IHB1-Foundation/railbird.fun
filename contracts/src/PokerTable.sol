@@ -18,9 +18,14 @@ contract PokerTable {
 
     // ============ Constants ============
     uint8 public constant MAX_SEATS = 9;
-    uint256 public constant ACTION_TIMEOUT = 30 minutes;
-    uint256 public constant VRF_TIMEOUT = 5 minutes;
-    uint256 public constant SHOWDOWN_TIMEOUT = 10 minutes;
+
+    // ============ Immutable Timeout Config ============
+    /// @notice Per-action deadline (set at deploy). Range: 1 min – 60 min.
+    uint256 public immutable ACTION_TIMEOUT;
+    /// @notice VRF fulfillment deadline (set at deploy). Range: 30 s – 30 min.
+    uint256 public immutable VRF_TIMEOUT;
+    /// @notice Showdown reveal deadline (set at deploy). Range: 1 min – 60 min.
+    uint256 public immutable SHOWDOWN_TIMEOUT;
 
     // ============ Enums ============
     enum GameState {
@@ -361,19 +366,28 @@ contract PokerTable {
         uint256 _bigBlind,
         address _vrfAdapter,
         address _chipToken,
-        address _kycSBT
+        address _kycSBT,
+        uint256 _actionTimeout,
+        uint256 _vrfTimeout,
+        uint256 _showdownTimeout
     ) {
         require(_tableId > 0, "Table ID must be > 0");
         require(_smallBlind > 0, "Small blind must be > 0");
         require(_bigBlind >= _smallBlind, "Big blind must be >= small blind");
         require(_vrfAdapter != address(0), "Invalid VRF adapter");
         require(_chipToken != address(0), "Invalid chip token");
+        require(_actionTimeout >= 1 minutes && _actionTimeout <= 60 minutes, "actionTimeout out of range");
+        require(_vrfTimeout >= 30 seconds && _vrfTimeout <= 30 minutes, "vrfTimeout out of range");
+        require(_showdownTimeout >= 1 minutes && _showdownTimeout <= 60 minutes, "showdownTimeout out of range");
         tableId = _tableId;
         smallBlind = _smallBlind;
         bigBlind = _bigBlind;
         vrfAdapter = _vrfAdapter;
         chipToken = IERC20(_chipToken);
         kycSBT = _kycSBT;
+        ACTION_TIMEOUT = _actionTimeout;
+        VRF_TIMEOUT = _vrfTimeout;
+        SHOWDOWN_TIMEOUT = _showdownTimeout;
         gameState = GameState.WAITING_FOR_SEATS;
     }
 

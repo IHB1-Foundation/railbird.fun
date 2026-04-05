@@ -99,12 +99,13 @@ function makeRequest(overrides: Partial<VrfRequest> = {}): VrfRequest {
 // ---------------------------------------------------------------------------
 
 describe("buildRandomness", () => {
-  test("same inputs produce identical output (deterministic)", () => {
+  test("same public inputs produce DIFFERENT output each call (per-request random salt)", () => {
+    // With per-request random salt, two calls with identical inputs must produce different outputs.
     const { bot } = makeBotWithMock();
     const req = makeRequest();
     const r1 = (bot as any).buildRandomness(1n, req, 100n, MOCK_BLOCK_HASH);
     const r2 = (bot as any).buildRandomness(1n, req, 100n, MOCK_BLOCK_HASH);
-    assert.strictEqual(r1, r2, "same inputs must produce same randomness");
+    assert.notStrictEqual(r1, r2, "per-request salt must make same public inputs produce different output");
   });
 
   test("result is never 0n", () => {
@@ -116,24 +117,29 @@ describe("buildRandomness", () => {
     }
   });
 
-  test("different requestIds produce different randomness", () => {
-    const { bot } = makeBotWithMock();
+  test("static randomSalt allowed on localhost (deterministic for testing)", () => {
+    const bot1 = makeBotWithMock({ randomSalt: "salt-a" }).bot;  // rpcUrl is localhost
     const req  = makeRequest();
-    const r1 = (bot as any).buildRandomness(1n, req, 100n, MOCK_BLOCK_HASH);
-    const r2 = (bot as any).buildRandomness(2n, req, 100n, MOCK_BLOCK_HASH);
-    assert.notStrictEqual(r1, r2, "different requestIds must produce different randomness");
+    // Same salt + same inputs → same output (deterministic when static salt used)
+    const r1 = (bot1 as any).buildRandomness(1n, req, 100n, MOCK_BLOCK_HASH);
+    const r2 = (bot1 as any).buildRandomness(1n, req, 100n, MOCK_BLOCK_HASH);
+    assert.strictEqual(r1, r2, "static salt on localhost must be deterministic");
   });
 
-  test("different block hashes produce different randomness", () => {
-    const { bot } = makeBotWithMock();
+  test("static randomSalt throws on non-local rpcUrl", () => {
+    const bot = makeBotWithMock({
+      rpcUrl: "https://mainnet.example.com",
+      randomSalt: "static-salt",
+    }).bot;
     const req = makeRequest();
-    const hash2 = "0xdeaddeaddeaddeaddeaddeaddeaddeaddeaddeaddeaddeaddeaddeaddeaddead" as `0x${string}`;
-    const r1 = (bot as any).buildRandomness(1n, req, 100n, MOCK_BLOCK_HASH);
-    const r2 = (bot as any).buildRandomness(1n, req, 100n, hash2);
-    assert.notStrictEqual(r1, r2, "different block hashes must produce different randomness");
+    assert.throws(
+      () => (bot as any).buildRandomness(1n, req, 100n, MOCK_BLOCK_HASH),
+      /static randomSalt is not allowed outside local/,
+      "static salt on non-local URL must throw"
+    );
   });
 
-  test("randomSalt affects output", () => {
+  test("different randomSalts produce different output (localhost only)", () => {
     const bot1 = makeBotWithMock({ randomSalt: "salt-a" }).bot;
     const bot2 = makeBotWithMock({ randomSalt: "salt-b" }).bot;
     const req  = makeRequest();

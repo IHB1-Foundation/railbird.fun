@@ -1,4 +1,5 @@
-import { encodePacked, keccak256, stringToHex } from "viem";
+import { randomBytes } from "crypto";
+import { bytesToHex, encodePacked, keccak256, stringToHex } from "viem";
 import { ChainClient, type VrfRequest } from "./chain/client.js";
 
 export interface VrfOperatorBotConfig {
@@ -219,13 +220,47 @@ export class VrfOperatorBot {
     }
   }
 
+  /**
+   * Returns true when the configured RPC URL points to a local node (anvil / hardhat / localhost).
+   * Static salts are only permitted in local environments.
+   */
+  private isLocalEnvironment(): boolean {
+    const url = this.config.rpcUrl.toLowerCase();
+    return url.includes("localhost") || url.includes("127.0.0.1") || url.includes("anvil");
+  }
+
+  /**
+   * Build a randomness value for a VRF fulfillment.
+   *
+   * The salt is generated fresh per call using Node's cryptographically secure
+   * RNG. This means even if all on-chain inputs are known to an adversary, the
+   * output is not predictable before it is submitted.
+   *
+   * A static `randomSalt` may be provided in the config **only** for local /
+   * testing environments (anvil / localhost). Using it in production throws.
+   */
   private buildRandomness(
     requestId: bigint,
     request: VrfRequest,
     currentBlockNumber: bigint,
     latestBlockHash: `0x${string}`
   ): bigint {
-    const saltHex = keccak256(stringToHex(this.config.randomSalt ?? "railbird-vrf-operator"));
+    let saltHex: `0x${string}`;
+
+    if (this.config.randomSalt !== undefined) {
+      // Static salt — only permitted locally.
+      if (!this.isLocalEnvironment()) {
+        throw new Error(
+          `[VRFOperator] static randomSalt is not allowed outside local/anvil environments ` +
+          `(rpcUrl=${this.config.rpcUrl}). Remove randomSalt from config for production.`
+        );
+      }
+      saltHex = keccak256(stringToHex(this.config.randomSalt));
+    } else {
+      // Cryptographically secure per-request random salt.
+      saltHex = bytesToHex(randomBytes(32));
+    }
+
     const digest = keccak256(
       encodePacked(
         [

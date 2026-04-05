@@ -19,3 +19,7 @@ export {
   clearChainConfigCache,
   ChainConfigError,
 } from "./chainConfig.js";
+
+// Logger
+export { createLogger } from "./logger.js";
+export type { LoggerOptions, LogLevel } from "./logger.js";

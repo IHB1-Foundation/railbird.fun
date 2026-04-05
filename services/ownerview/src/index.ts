@@ -1,7 +1,9 @@
 // @playerco/ownerview - Wallet-sign auth + hole card ACL service
 import { join } from "node:path";
-import { VERSION, type Address } from "@playerco/shared";
+import { VERSION, type Address, createLogger } from "@playerco/shared";
 import { createApp } from "./app.js";
+
+const logger = createLogger({ service: "ownerview" });
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3001;
 const CHAIN_ENV = process.env.CHAIN_ENV || "local";
@@ -10,16 +12,12 @@ const isLocal = CHAIN_ENV === "local";
 // JWT_SECRET: required explicitly in non-local environments (no insecure default)
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
-  if (isLocal) {
-    console.error("JWT_SECRET is not set. Set JWT_SECRET (min 32 characters) to start the service.");
-  } else {
-    console.error(`JWT_SECRET is required for ${CHAIN_ENV} environment. No insecure defaults allowed.`);
-  }
+  logger.error({ env: CHAIN_ENV }, "JWT_SECRET is not set. Set JWT_SECRET (min 32 characters) to start the service.");
   process.exit(1);
 }
 
 if (JWT_SECRET.length < 32) {
-  console.error("JWT_SECRET must be at least 32 characters");
+  logger.error("JWT_SECRET must be at least 32 characters");
   process.exit(1);
 }
 
@@ -28,9 +26,9 @@ const RPC_URL = process.env.RPC_URL;
 const POKER_TABLE_ADDRESS = process.env.POKER_TABLE_ADDRESS as Address | undefined;
 
 if (!isLocal && (!RPC_URL || !POKER_TABLE_ADDRESS)) {
-  console.error(
-    `RPC_URL and POKER_TABLE_ADDRESS are required for ${CHAIN_ENV} environment.\n` +
-      `OwnerView cannot verify seat ownership without chain access. Refusing to start.`
+  logger.error(
+    { env: CHAIN_ENV },
+    "RPC_URL and POKER_TABLE_ADDRESS are required. OwnerView cannot verify seat ownership without chain access."
   );
   process.exit(1);
 }
@@ -38,9 +36,9 @@ if (!isLocal && (!RPC_URL || !POKER_TABLE_ADDRESS)) {
 // DEALER_API_KEY: required in non-local environments to protect dealer endpoints
 const DEALER_API_KEY = process.env.DEALER_API_KEY;
 if (!isLocal && !DEALER_API_KEY) {
-  console.error(
-    `DEALER_API_KEY is required for ${CHAIN_ENV} environment.\n` +
-      `Dealer endpoints must be protected with operator auth. Refusing to start.`
+  logger.error(
+    { env: CHAIN_ENV },
+    "DEALER_API_KEY is required. Dealer endpoints must be protected with operator auth."
   );
   process.exit(1);
 }
@@ -50,15 +48,14 @@ if (!isLocal && !DEALER_API_KEY) {
 const HOLECARD_DATA_DIR = process.env.HOLECARD_DATA_DIR || (!isLocal ? join(process.cwd(), "data", "holecards") : undefined);
 
 // TRUSTLESS_DEALER_ENABLED: opt-in to verifiable shuffle + ECIES protocol.
-// Default false — automatic dealing is disabled until explicitly enabled.
-// Set to "true" to enable the trustless dealer (requires ECIES keys on-chain and VRF).
 const TRUSTLESS_DEALER_ENABLED = process.env.TRUSTLESS_DEALER_ENABLED === "true";
 
-if (TRUSTLESS_DEALER_ENABLED) {
-  console.log("[OwnerView] Trustless dealer protocol ENABLED (verifiable shuffle + ECIES)");
-} else {
-  console.log("[OwnerView] Trustless dealer protocol DISABLED (legacy mode). Set TRUSTLESS_DEALER_ENABLED=true to enable.");
-}
+logger.info(
+  { trustlessDealer: TRUSTLESS_DEALER_ENABLED },
+  TRUSTLESS_DEALER_ENABLED
+    ? "Trustless dealer protocol ENABLED (verifiable shuffle + ECIES)"
+    : "Trustless dealer protocol DISABLED (legacy mode)"
+);
 
 const { app, authService, chainService, stopRetention } = createApp({
   jwtSecret: JWT_SECRET,
@@ -74,26 +71,32 @@ authService.start();
 
 // Graceful shutdown
 process.on("SIGTERM", () => {
-  console.log("Received SIGTERM, shutting down...");
+  logger.info("Received SIGTERM, shutting down...");
   authService.stop();
   stopRetention?.();
   process.exit(0);
 });
 
 process.on("SIGINT", () => {
-  console.log("Received SIGINT, shutting down...");
+  logger.info("Received SIGINT, shutting down...");
   authService.stop();
   stopRetention?.();
   process.exit(0);
 });
 
 app.listen(PORT, () => {
-  console.log(`OwnerView service v${VERSION} listening on port ${PORT}`);
-  console.log(`  Environment: ${CHAIN_ENV}`);
-  console.log(`  Chain service: ${chainService ? "enabled" : "disabled (local only)"}`);
-  console.log(`  Storage: ${HOLECARD_DATA_DIR ? `persistent (${HOLECARD_DATA_DIR})` : "in-memory"}`);
-  console.log(`  Dealer auth: ${DEALER_API_KEY ? "enabled" : "disabled (local only)"}`);
-  console.log(`  Trustless dealer: ${TRUSTLESS_DEALER_ENABLED ? "enabled (ECIES + verifiable shuffle)" : "disabled (legacy mode)"}`);
+  logger.info(
+    {
+      port: PORT,
+      env: CHAIN_ENV,
+      chainService: chainService ? "enabled" : "disabled",
+      storage: HOLECARD_DATA_DIR ?? "in-memory",
+      dealerAuth: DEALER_API_KEY ? "enabled" : "disabled",
+      trustlessDealer: TRUSTLESS_DEALER_ENABLED,
+      version: VERSION,
+    },
+    "OwnerView service listening"
+  );
 });
 
 // Re-export for programmatic use

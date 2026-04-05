@@ -1,15 +1,17 @@
 // @playerco/indexer - Event ingestion and REST API
 
-import { VERSION } from "@playerco/shared";
+import { VERSION, createLogger } from "@playerco/shared";
 import { createApp } from "./api/index.js";
 import { EventListener } from "./events/index.js";
 import { setListenerStatus } from "./events/listenerState.js";
 import { getPool, closePool } from "./db/index.js";
-import { createWsServer, getWsManager } from "./ws/index.js";
+import { createWsServer } from "./ws/index.js";
 import type { Address } from "viem";
 import { createServer } from "http";
 
-console.log(`Indexer service v${VERSION}`);
+const logger = createLogger({ service: "indexer" });
+
+logger.info({ version: VERSION }, "Indexer service starting");
 
 const PORT = parseInt(process.env.PORT || "3002", 10);
 const CHAIN_ENV = process.env.CHAIN_ENV || "local";
@@ -34,11 +36,7 @@ async function main(): Promise<void> {
     const requiredDbVars = ["DB_HOST", "DB_NAME", "DB_USER", "DB_PASSWORD"];
     const missingDb = requiredDbVars.filter((v) => !process.env[v]);
     if (missingDb.length > 0) {
-      console.error(
-        `Database configuration required for ${CHAIN_ENV} environment.\n` +
-          `Missing: ${missingDb.join(", ")}\n` +
-          `No implicit defaults allowed in non-local environments.`
-      );
+      logger.error({ missing: missingDb, env: CHAIN_ENV }, "Database configuration required but missing");
       process.exit(1);
     }
   }
@@ -47,9 +45,9 @@ async function main(): Promise<void> {
   try {
     const pool = getPool();
     await pool.query("SELECT 1");
-    console.log("Database connection successful");
+    logger.info("Database connection successful");
   } catch (error) {
-    console.error("Database connection failed:", error);
+    logger.error({ err: error }, "Database connection failed");
     throw new Error("Indexer requires a live database connection. Refusing to start.");
   }
 
@@ -60,10 +58,9 @@ async function main(): Promise<void> {
     process.env.RPC_URL;
 
   if (!isLocal && !hasChainConfig) {
-    console.error(
-      `Chain configuration required for ${CHAIN_ENV} environment.\n` +
-        `Missing: POKER_TABLE_ADDRESSES, PLAYER_REGISTRY_ADDRESS, and/or RPC_URL.\n` +
-        `Indexer cannot function without chain event ingestion in production.`
+    logger.error(
+      { env: CHAIN_ENV },
+      "Chain configuration required but missing (POKER_TABLE_ADDRESSES, PLAYER_REGISTRY_ADDRESS, RPC_URL)"
     );
     process.exit(1);
   }
@@ -79,12 +76,10 @@ async function main(): Promise<void> {
   });
 
   httpServer.listen(PORT, () => {
-    console.log(`REST API listening on port ${PORT}`);
-    console.log(`  Environment: ${CHAIN_ENV}`);
-    console.log(`Health check: http://localhost:${PORT}/api/health`);
-    console.log(`Tables: http://localhost:${PORT}/api/tables`);
-    console.log(`Agents: http://localhost:${PORT}/api/agents`);
-    console.log(`WebSocket: ws://localhost:${PORT}/ws/tables/:id`);
+    logger.info(
+      { port: PORT, env: CHAIN_ENV, healthUrl: `http://localhost:${PORT}/api/health` },
+      "REST API listening"
+    );
   });
 
   const server = httpServer;
@@ -110,23 +105,14 @@ async function main(): Promise<void> {
       })
       .catch((err: unknown) => {
         const reason = err instanceof Error ? err.message : String(err);
-        console.error(
-          JSON.stringify({
-            level: "error",
-            service: "indexer",
-            event: "event_listener_fatal",
-            message: "Event listener encountered a fatal error — exiting",
-            reason,
-            timestamp: new Date().toISOString(),
-          })
-        );
+        logger.error({ reason }, "Event listener encountered a fatal error — exiting");
         setListenerStatus("failed", reason);
         process.exit(1);
       });
 
     // Graceful shutdown
     const shutdown = async () => {
-      console.log("Shutting down...");
+      logger.info("Shutting down...");
       listener.stop();
       wss.close();
       server.close();
@@ -138,10 +124,10 @@ async function main(): Promise<void> {
     process.on("SIGTERM", shutdown);
   } else {
     // Only reachable in local mode (non-local already exited above)
-    console.log("Chain config not provided - event listener disabled (local dev mode)");
+    logger.info("Chain config not provided - event listener disabled (local dev mode)");
 
     const shutdown = async () => {
-      console.log("Shutting down...");
+      logger.info("Shutting down...");
       wss.close();
       server.close();
       await closePool();
@@ -154,6 +140,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((err) => {
-  console.error("Fatal error:", err);
+  logger.error({ err }, "Fatal error");
   process.exit(1);
 });

@@ -86,10 +86,13 @@ async function main() {
   const turnActionDelayMs = parsePositiveInt("TURN_ACTION_DELAY_MS", defaultTurnActionDelayMs);
   const { strategy, engine, geminiModel } = createStrategy(aggressionFactor);
 
-  // AGENT_TABLE_ADDRESS takes precedence over POKER_TABLE_ADDRESS for per-agent table assignment
-  const tableAddress = process.env.AGENT_TABLE_ADDRESS || process.env.POKER_TABLE_ADDRESS;
+  // AGENT_TABLE_ADDRESS is deprecated — use POKER_TABLE_ADDRESS instead
+  if (process.env.AGENT_TABLE_ADDRESS) {
+    console.warn("[AgentBot] AGENT_TABLE_ADDRESS is deprecated. Use POKER_TABLE_ADDRESS instead.");
+  }
+  const tableAddress = process.env.POKER_TABLE_ADDRESS || process.env.AGENT_TABLE_ADDRESS;
   if (!tableAddress) {
-    throw new Error("Missing required environment variable: AGENT_TABLE_ADDRESS (or POKER_TABLE_ADDRESS)");
+    throw new Error("Missing required environment variable: POKER_TABLE_ADDRESS");
   }
 
   // Load configuration from environment
@@ -108,7 +111,7 @@ async function main() {
 
   console.log("Configuration:");
   console.log(`  RPC URL: ${config.rpcUrl}`);
-  console.log(`  Table: ${config.pokerTableAddress} (${process.env.AGENT_TABLE_ADDRESS ? "AGENT_TABLE_ADDRESS" : "POKER_TABLE_ADDRESS"})`);
+  console.log(`  Table: ${config.pokerTableAddress}`);
   console.log(`  OwnerView: ${config.ownerviewUrl}`);
   console.log(`  Chain ID: ${config.chainId}`);
   console.log(`  Poll interval: ${config.pollIntervalMs}ms`);

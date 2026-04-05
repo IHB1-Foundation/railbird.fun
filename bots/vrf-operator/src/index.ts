@@ -1,3 +1,4 @@
+import { ENV_VARS } from "@playerco/shared";
 import { VrfOperatorBot } from "./bot.js";
 
 const VERSION = "0.0.1";
@@ -34,7 +35,7 @@ async function main(): Promise<void> {
   // Support POKER_TABLE_ADDRESSES (comma-separated, preferred) or POKER_TABLE_ADDRESS (single)
   // The VRF operator processes all requests on the adapter regardless of source table.
   // Table addresses are used only for startup adapter-address validation.
-  const tableAddressesRaw = process.env.POKER_TABLE_ADDRESSES || process.env.POKER_TABLE_ADDRESS;
+  const tableAddressesRaw = process.env[ENV_VARS.POKER_TABLE_ADDRESSES] || process.env.POKER_TABLE_ADDRESS;
   const pokerTableAddresses = tableAddressesRaw
     ? (tableAddressesRaw
         .split(",")
@@ -43,9 +44,9 @@ async function main(): Promise<void> {
     : [];
 
   const config = {
-    rpcUrl: requireEnv("RPC_URL"),
+    rpcUrl: requireEnv(ENV_VARS.RPC_URL),
     privateKey: requireEnv("VRF_OPERATOR_PRIVATE_KEY") as `0x${string}`,
-    vrfAdapterAddress: requireEnv("VRF_ADAPTER_ADDRESS") as `0x${string}`,
+    vrfAdapterAddress: requireEnv(ENV_VARS.VRF_ADAPTER_ADDRESS) as `0x${string}`,
     pokerTableAddresses,
     chainId: parsePositiveInt("CHAIN_ID", 133),
     pollIntervalMs: parsePositiveInt("VRF_OPERATOR_POLL_INTERVAL_MS", 1500),

@@ -12,6 +12,7 @@
     "lint": "echo 'lint not configured yet'"
   },
   "dependencies": {
+    "@playerco/shared": "workspace:*",
     "viem": "^2.21.0"
   },
   "devDependencies": {

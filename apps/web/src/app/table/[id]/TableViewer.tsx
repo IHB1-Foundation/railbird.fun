@@ -15,6 +15,7 @@ import {
 } from "@/lib/utils";
 import type { TableResponse } from "@/lib/types";
 import { GAME_STATES, ACTION_TYPES } from "@/lib/types";
+import { useWebSocket } from "@/lib/useWebSocket";
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 const TABLE_MAX_SEATS = Number(process.env.NEXT_PUBLIC_TABLE_MAX_SEATS || "9");
@@ -51,7 +52,6 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
   const [joinOperator, setJoinOperator] = useState<string>("");
   const [joinLoading, setJoinLoading] = useState<boolean>(false);
   const [joinStatus, setJoinStatus] = useState<string>("");
-  const [pollConnected, setPollConnected] = useState<boolean>(true);
 
   const { isConnected, isAuthenticated, address, connect, getHoleCards } = useAuth();
 
@@ -92,32 +92,30 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
     [normalizedSeats]
   );
 
-  // Polling refresh (WebSocket removed)
   const refreshTable = useCallback(async () => {
     try {
       const res = await fetch(`${INDEXER_BASE}/api/tables/${tableId}`, {
         cache: "no-store",
       });
-      if (!res.ok) {
-        setPollConnected(false);
-        return;
-      }
+      if (!res.ok) return;
       const data = (await res.json()) as TableResponse;
       setTable(data);
-      setPollConnected(true);
     } catch (err) {
-      console.error("[TableViewer] Table poll failed:", err);
-      setPollConnected(false);
+      console.error("[TableViewer] Table fetch failed:", err);
     }
   }, [tableId]);
 
-  useEffect(() => {
-    void refreshTable();
-    const interval = setInterval(() => {
-      void refreshTable();
-    }, 3000);
-    return () => clearInterval(interval);
-  }, [refreshTable]);
+  const handleWsMessage = useCallback(
+    (msg: { type: string; tableId: string; timestamp: string; data: unknown }) => {
+      if (msg.type === "poll_update" || msg.type === "table_update") {
+        // Full table snapshot from either WS or fallback polling
+        setTable(msg.data as TableResponse);
+      }
+    },
+    []
+  );
+
+  const wsStatus = useWebSocket({ tableId, onMessage: handleWsMessage });
 
   // Update timer every second
   useEffect(() => {
@@ -260,8 +258,14 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
   return (
     <div>
       {/* Connection Status */}
-      <div className={cn("connection-status", pollConnected ? "connected" : "disconnected")}>
-        {pollConnected ? "Polling" : "Disconnected"}
+      <div className={cn(
+        "connection-status",
+        wsStatus === "connected" ? "connected" : wsStatus === "polling" ? "polling" : "disconnected"
+      )}>
+        {wsStatus === "connected" && "Live"}
+        {wsStatus === "connecting" && "Connecting…"}
+        {wsStatus === "reconnecting" && "Reconnecting…"}
+        {wsStatus === "polling" && "Polling (fallback)"}
       </div>
 
       {/* Owner Mode Banner */}

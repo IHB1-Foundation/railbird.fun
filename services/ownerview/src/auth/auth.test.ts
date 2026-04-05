@@ -2,7 +2,7 @@ import { describe, it, beforeEach, afterEach } from "node:test";
 import assert from "node:assert";
 import { privateKeyToAccount, generatePrivateKey } from "viem/accounts";
 import type { Address } from "@playerco/shared";
-import { NonceStore } from "./nonceStore.js";
+import { NonceStore, NonceRateLimitError } from "./nonceStore.js";
 import { SessionManager, createSignMessage, verifyWalletSignature } from "./session.js";
 import { AuthService, AuthError } from "./authService.js";
 
@@ -72,6 +72,68 @@ describe("NonceStore", () => {
     const removed = store.cleanup();
     assert.equal(removed, 2);
     assert.equal(store.size(), 0);
+    store.stopCleanup();
+  });
+
+  it("rejects 6th nonce request for same address (per-address limit = 5)", () => {
+    const address = "0x1234567890123456789012345678901234567890" as Address;
+    const store = new NonceStore(60_000); // long TTL so nonces don't expire
+    for (let i = 0; i < 5; i++) {
+      store.create(address);
+    }
+    assert.equal(store.countForAddress(address), 5);
+    assert.throws(
+      () => store.create(address),
+      (err: unknown) => err instanceof NonceRateLimitError
+    );
+  });
+
+  it("allows new nonce after consuming one (per-address slot freed)", () => {
+    const address = "0x1234567890123456789012345678901234567890" as Address;
+    const store = new NonceStore(60_000);
+    for (let i = 0; i < 5; i++) {
+      store.create(address);
+    }
+    const nonces = [...Array(5).keys()].map(() => store.get(address)); // won't work, but let's consume differently
+    // consume first nonce to free a slot
+    const firstNonce = [...store["nonces"].keys()][0];
+    store.consume(firstNonce, address);
+    assert.equal(store.countForAddress(address), 4);
+    // now creating one more should succeed
+    const newNonce = store.create(address);
+    assert.equal(typeof newNonce, "string");
+  });
+
+  it("rejects nonce creation when global limit reached", () => {
+    const store = new NonceStore(60_000);
+    // Fill global limit with different addresses
+    for (let i = 0; i < 10_000; i++) {
+      const addr = `0x${i.toString(16).padStart(40, "0")}` as Address;
+      // Each address gets 1 nonce, so we hit the global limit at 10_000
+      store["nonces"].set(`fake-nonce-${i}`, {
+        nonce: `fake-nonce-${i}`,
+        address: addr,
+        createdAt: Date.now(),
+        expiresAt: Date.now() + 60_000,
+      });
+    }
+    assert.equal(store.size(), 10_000);
+    const anyAddr = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" as Address;
+    assert.throws(
+      () => store.create(anyAddr),
+      (err: unknown) => err instanceof NonceRateLimitError
+    );
+  });
+
+  it("cleans up per-address tracking on cleanup()", async () => {
+    const address = "0x1234567890123456789012345678901234567890" as Address;
+    const store = new NonceStore(50);
+    store.create(address);
+    store.create(address);
+    assert.equal(store.countForAddress(address), 2);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    store.cleanup();
+    assert.equal(store.countForAddress(address), 0);
     store.stopCleanup();
   });
 });

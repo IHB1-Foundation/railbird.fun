@@ -27,7 +27,8 @@ export function createAuthRoutes(authService: AuthService): Router {
       res.json(result);
     } catch (err) {
       if (err instanceof AuthError) {
-        res.status(400).json({
+        const statusCode = err.code === "RATE_LIMITED" ? 429 : 400;
+        res.status(statusCode).json({
           error: err.message,
           code: err.code,
         });

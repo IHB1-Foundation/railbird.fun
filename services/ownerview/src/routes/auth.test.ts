@@ -76,6 +76,20 @@ describe("Auth Routes", () => {
       const json = (await res.json()) as { code: string };
       assert.equal(json.code, "INVALID_ADDRESS");
     });
+
+    it("returns 429 after exceeding per-address nonce limit", async () => {
+      const address = "0x1234567890123456789012345678901234567890";
+      // Request 5 nonces (the per-address limit)
+      for (let i = 0; i < 5; i++) {
+        const res = await request(ctx.app, "GET", `/auth/nonce?address=${address}`);
+        assert.equal(res.status, 200);
+      }
+      // 6th request should be rate-limited
+      const res = await request(ctx.app, "GET", `/auth/nonce?address=${address}`);
+      assert.equal(res.status, 429);
+      const json = (await res.json()) as { code: string };
+      assert.equal(json.code, "RATE_LIMITED");
+    });
   });
 
   describe("POST /auth/verify", () => {

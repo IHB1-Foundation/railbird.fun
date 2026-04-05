@@ -1,5 +1,5 @@
 import type { Address } from "@playerco/shared";
-import { NonceStore } from "./nonceStore.js";
+import { NonceStore, NonceRateLimitError } from "./nonceStore.js";
 import { SessionManager, verifyWalletSignature } from "./session.js";
 import type { AuthConfig, SessionPayload } from "./types.js";
 import { DEFAULT_AUTH_CONFIG } from "./types.js";
@@ -16,6 +16,7 @@ export class AuthError extends Error {
       | "INVALID_SIGNATURE"
       | "EXPIRED_NONCE"
       | "INVALID_TOKEN"
+      | "RATE_LIMITED"
   ) {
     super(message);
     this.name = "AuthError";
@@ -68,7 +69,16 @@ export class AuthService {
     }
 
     const normalizedAddress = address.toLowerCase() as Address;
-    const nonce = this.nonceStore.create(normalizedAddress);
+
+    let nonce: string;
+    try {
+      nonce = this.nonceStore.create(normalizedAddress);
+    } catch (err) {
+      if (err instanceof NonceRateLimitError) {
+        throw new AuthError(err.message, "RATE_LIMITED");
+      }
+      throw err;
+    }
 
     return {
       nonce,

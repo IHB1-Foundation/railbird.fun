@@ -46,7 +46,7 @@ describe("AuthMiddleware", () => {
 
     assert.equal(res.statusCode, 401);
     assert.deepEqual(res.jsonData, {
-      error: "Missing Authorization header",
+      error: "Missing Authorization header or session cookie",
       code: "MISSING_AUTH",
     });
     assert.equal(nextCalled, false);

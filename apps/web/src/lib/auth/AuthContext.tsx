@@ -10,6 +10,7 @@ import {
 } from "react";
 import type { AuthContextValue, AuthState, HoleCardsResponse } from "./types";
 import * as ownerviewApi from "./ownerviewApi";
+import { COOKIE_SESSION_ENABLED } from "./ownerviewApi";
 import { deriveEncryptionKeyPair, clearEncryptionKeyCache } from "./encryptionKey";
 
 // HashKey Chain Testnet chain ID
@@ -143,7 +144,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Check for existing session on mount
   useEffect(() => {
     const checkExistingSession = async () => {
-      // Check for stored session
+      if (COOKIE_SESSION_ENABLED) {
+        // Cookie mode: session is in httpOnly cookie — presence of csrf_token cookie
+        // indicates a live session. We can't read the JWT itself.
+        const hasCsrf = document.cookie
+          .split(";")
+          .some((c) => c.trim().startsWith("csrf_token="));
+
+        const accounts = await getAccounts();
+        if (hasCsrf && accounts.length > 0) {
+          setState({
+            isConnected: true,
+            isAuthenticated: true,
+            address: accounts[0],
+            token: null, // token lives in httpOnly cookie
+            isLoading: false,
+            error: null,
+          });
+          return;
+        }
+        if (accounts.length > 0) {
+          setState((prev) => ({
+            ...prev,
+            isConnected: true,
+            address: accounts[0],
+          }));
+        }
+        return;
+      }
+
+      // Bearer token mode: check sessionStorage
       const storedToken = sessionStorage.getItem(STORAGE_KEY_TOKEN);
       const storedAddress = sessionStorage.getItem(STORAGE_KEY_ADDRESS);
       const storedExpires = sessionStorage.getItem(STORAGE_KEY_EXPIRES);
@@ -191,18 +221,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Listen for account & chain changes
     const provider = getProvider();
     if (provider) {
+      const clearStoredSession = () => {
+        if (!COOKIE_SESSION_ENABLED) {
+          sessionStorage.removeItem(STORAGE_KEY_TOKEN);
+          sessionStorage.removeItem(STORAGE_KEY_ADDRESS);
+          sessionStorage.removeItem(STORAGE_KEY_EXPIRES);
+        }
+      };
+
       const handleAccountsChanged = (accounts: string[]) => {
         if (accounts.length === 0) {
-          // Disconnected
-          sessionStorage.removeItem(STORAGE_KEY_TOKEN);
-          sessionStorage.removeItem(STORAGE_KEY_ADDRESS);
-          sessionStorage.removeItem(STORAGE_KEY_EXPIRES);
+          clearStoredSession();
           setState(initialState);
         } else {
-          // Account changed - clear auth, keep connection
-          sessionStorage.removeItem(STORAGE_KEY_TOKEN);
-          sessionStorage.removeItem(STORAGE_KEY_ADDRESS);
-          sessionStorage.removeItem(STORAGE_KEY_EXPIRES);
+          clearStoredSession();
           setState({
             isConnected: true,
             isAuthenticated: false,
@@ -217,10 +249,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const handleChainChanged = (chainIdHex: string) => {
         const chainId = parseInt(chainIdHex, 16);
         if (chainId !== HASHKEY_CHAIN_ID) {
-          // Wrong network - disconnect and show error
-          sessionStorage.removeItem(STORAGE_KEY_TOKEN);
-          sessionStorage.removeItem(STORAGE_KEY_ADDRESS);
-          sessionStorage.removeItem(STORAGE_KEY_EXPIRES);
+          clearStoredSession();
           setState({
             ...initialState,
             error: "Please switch to HashKey Chain Testnet.",
@@ -273,9 +302,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (state.address) {
       clearEncryptionKeyCache(state.address);
     }
-    sessionStorage.removeItem(STORAGE_KEY_TOKEN);
-    sessionStorage.removeItem(STORAGE_KEY_ADDRESS);
-    sessionStorage.removeItem(STORAGE_KEY_EXPIRES);
+    if (COOKIE_SESSION_ENABLED) {
+      // Ask server to clear httpOnly cookies
+      fetch(`${process.env.NEXT_PUBLIC_OWNERVIEW_URL || "https://ownerview.railbird.fun"}/auth/logout`, {
+        method: "POST",
+        credentials: "include",
+      }).catch(() => {/* ignore errors on logout */});
+    } else {
+      sessionStorage.removeItem(STORAGE_KEY_TOKEN);
+      sessionStorage.removeItem(STORAGE_KEY_ADDRESS);
+      sessionStorage.removeItem(STORAGE_KEY_EXPIRES);
+    }
     setState(initialState);
   }, [state.address]);
 
@@ -297,24 +334,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const signature = await signMessage(state.address, message);
 
       // 3. Verify signature and get token
-      const { token, expiresAt } = await ownerviewApi.verifySignature(
+      const verifyResult = await ownerviewApi.verifySignature(
         state.address,
         nonce,
         signature
       );
 
-      // 4. Store session
-      sessionStorage.setItem(STORAGE_KEY_TOKEN, token);
-      sessionStorage.setItem(STORAGE_KEY_ADDRESS, state.address);
-      sessionStorage.setItem(STORAGE_KEY_EXPIRES, expiresAt);
+      if (COOKIE_SESSION_ENABLED) {
+        // Cookie mode: token is in httpOnly cookie — don't touch sessionStorage
+        setState((prev) => ({
+          ...prev,
+          isAuthenticated: true,
+          token: null, // token lives in httpOnly cookie, not accessible to JS
+          isLoading: false,
+          error: null,
+        }));
+      } else {
+        // Bearer mode: store token in sessionStorage
+        const token = verifyResult.token ?? "";
+        const expiresAt = String(verifyResult.expiresAt);
+        sessionStorage.setItem(STORAGE_KEY_TOKEN, token);
+        sessionStorage.setItem(STORAGE_KEY_ADDRESS, state.address);
+        sessionStorage.setItem(STORAGE_KEY_EXPIRES, expiresAt);
 
-      setState((prev) => ({
-        ...prev,
-        isAuthenticated: true,
-        token,
-        isLoading: false,
-        error: null,
-      }));
+        setState((prev) => ({
+          ...prev,
+          isAuthenticated: true,
+          token,
+          isLoading: false,
+          error: null,
+        }));
+      }
     } catch (err) {
       setState((prev) => ({
         ...prev,
@@ -334,9 +384,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       tableId: string,
       handId: string
     ): Promise<HoleCardsResponse | null> => {
-      if (!state.token || !state.address) {
+      // In cookie mode, token is null but session is in httpOnly cookie
+      if ((!COOKIE_SESSION_ENABLED && !state.token) || !state.address) {
         return null;
       }
+      if (!state.isAuthenticated) return null;
 
       try {
         // Derive (or retrieve cached) encryption key pair
@@ -345,7 +397,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           (message, address) => signMessage(address, message)
         );
 
-        return await ownerviewApi.getHoleCards(state.token, tableId, handId, privKey);
+        return await ownerviewApi.getHoleCards(state.token ?? undefined, tableId, handId, privKey);
       } catch {
         // Not owner of any seat, decryption failed, or other error — return null
         return null;

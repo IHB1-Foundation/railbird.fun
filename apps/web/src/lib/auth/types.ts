@@ -16,9 +16,12 @@ export interface NonceResponse {
 }
 
 export interface VerifyResponse {
-  token: string;
+  /** Absent in cookie-session mode — token is stored in an httpOnly cookie. */
+  token?: string;
   address: string;
-  expiresAt: string;
+  expiresAt: string | number;
+  /** True when the server set an httpOnly cookie instead of returning a bearer token. */
+  cookieSession?: boolean;
 }
 
 /** Raw encrypted response from the ownerview server */

@@ -7,11 +7,64 @@ const OWNERVIEW_URL =
   process.env.NEXT_PUBLIC_OWNERVIEW_URL || "https://ownerview.railbird.fun";
 
 /**
+ * When true, session tokens are stored in httpOnly cookies.
+ * JS code uses credentials: 'include' and a CSRF token from the csrf_token cookie.
+ * Defaults to true in production.
+ */
+export const COOKIE_SESSION_ENABLED =
+  process.env.NEXT_PUBLIC_COOKIE_SESSION === "true" ||
+  (process.env.NEXT_PUBLIC_COOKIE_SESSION !== "false" &&
+    process.env.NODE_ENV === "production");
+
+const CSRF_COOKIE_NAME = "csrf_token";
+
+/**
+ * Read the CSRF token from the csrf_token cookie (set by OwnerView on verify).
+ * Returns empty string if not found.
+ */
+function readCsrfToken(): string {
+  if (typeof document === "undefined") return "";
+  const match = document.cookie
+    .split(";")
+    .map((c) => c.trim())
+    .find((c) => c.startsWith(`${CSRF_COOKIE_NAME}=`));
+  return match ? match.slice(CSRF_COOKIE_NAME.length + 1) : "";
+}
+
+/**
+ * Build fetch options for an authenticated request.
+ * In cookie mode: credentials: 'include' + X-CSRF-Token header.
+ * In bearer mode: Authorization: Bearer <token> header.
+ */
+function authHeaders(token?: string): RequestInit {
+  if (COOKIE_SESSION_ENABLED) {
+    return {
+      credentials: "include" as RequestCredentials,
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": readCsrfToken(),
+      },
+    };
+  }
+  return {
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  };
+}
+
+/**
  * Get a nonce for wallet authentication
  */
 export async function getNonce(address: string): Promise<NonceResponse> {
+  const fetchOptions: RequestInit = COOKIE_SESSION_ENABLED
+    ? { credentials: "include" }
+    : {};
+
   const res = await fetch(
-    `${OWNERVIEW_URL}/auth/nonce?address=${encodeURIComponent(address)}`
+    `${OWNERVIEW_URL}/auth/nonce?address=${encodeURIComponent(address)}`,
+    fetchOptions
   );
 
   if (!res.ok) {
@@ -23,20 +76,23 @@ export async function getNonce(address: string): Promise<NonceResponse> {
 }
 
 /**
- * Verify signature and get session token
+ * Verify signature and get session token.
+ * In cookie mode: server sets httpOnly cookie; returns { address, expiresAt, cookieSession: true }.
+ * In bearer mode: returns { token, address, expiresAt }.
  */
 export async function verifySignature(
   address: string,
   nonce: string,
   signature: string
 ): Promise<VerifyResponse> {
-  const res = await fetch(`${OWNERVIEW_URL}/auth/verify`, {
+  const fetchOptions: RequestInit = {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ address, nonce, signature }),
-  });
+    ...(COOKIE_SESSION_ENABLED ? { credentials: "include" as RequestCredentials } : {}),
+  };
+
+  const res = await fetch(`${OWNERVIEW_URL}/auth/verify`, fetchOptions);
 
   if (!res.ok) {
     const error = await res.json().catch(() => ({ error: "Request failed" }));
@@ -53,16 +109,13 @@ export async function verifySignature(
  * client-side and the plaintext cards are returned. This ensures the server never
  * sees plaintext cards.
  *
- * If no decryption key is provided (legacy / fallback), the raw encrypted payload
- * is returned as-is (caller must handle decryption separately).
- *
- * @param token   Auth session token
+ * @param token   Auth session token (ignored in cookie session mode)
  * @param tableId Table identifier
  * @param handId  Hand identifier
  * @param privKey Optional: 32-byte secp256k1 private key for client-side decryption
  */
 export async function getHoleCards(
-  token: string,
+  token: string | undefined,
   tableId: string,
   handId: string,
   privKey?: Uint8Array
@@ -71,11 +124,7 @@ export async function getHoleCards(
     `${OWNERVIEW_URL}/owner/holecards?tableId=${encodeURIComponent(
       tableId
     )}&handId=${encodeURIComponent(handId)}`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    }
+    authHeaders(token)
   );
 
   if (!res.ok) {

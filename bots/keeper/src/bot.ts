@@ -4,6 +4,29 @@
 import { ChainClient, GameState, type TableState } from "./chain/client.js";
 
 const ZERO_BYTES32 = "0x0000000000000000000000000000000000000000000000000000000000000000";
+const DEFAULT_REQUEST_TIMEOUT_MS = parseInt(process.env.REQUEST_TIMEOUT_MS || "10000", 10);
+
+/**
+ * Fetch wrapper with AbortController timeout.
+ */
+async function fetchWithTimeout(
+  url: string,
+  options: RequestInit = {},
+  timeoutMs: number = DEFAULT_REQUEST_TIMEOUT_MS
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new Error(`Request timed out after ${timeoutMs}ms: ${url}`);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 export interface KeeperBotConfig {
   rpcUrl: string;
@@ -378,20 +401,20 @@ export class KeeperBot {
     const handIdStr = handId.toString();
     const authHeader = { Authorization: `Bearer ${this.config.dealerApiKey!}` };
 
-    const dealRes = await fetch(`${baseUrl}/dealer/deal`, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        ...authHeader,
-      },
-      body: JSON.stringify({ tableId, handId: handIdStr }),
-    });
+    const dealRes = await fetchWithTimeout(
+      `${baseUrl}/dealer/deal`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json", ...authHeader },
+        body: JSON.stringify({ tableId, handId: handIdStr }),
+      }
+    );
     if (!dealRes.ok && dealRes.status !== 409) {
       const body = await dealRes.text().catch(() => "");
       throw new Error(`dealer/deal failed (${dealRes.status}): ${body}`);
     }
 
-    const commitmentsRes = await fetch(
+    const commitmentsRes = await fetchWithTimeout(
       `${baseUrl}/dealer/commitments?tableId=${encodeURIComponent(tableId)}&handId=${encodeURIComponent(handIdStr)}`,
       { headers: authHeader }
     );
@@ -415,7 +438,7 @@ export class KeeperBot {
     const handIdStr = handId.toString();
     const authHeader = { Authorization: `Bearer ${this.config.dealerApiKey!}` };
 
-    const res = await fetch(
+    const res = await fetchWithTimeout(
       `${baseUrl}/dealer/reveal?tableId=${encodeURIComponent(tableId)}&handId=${encodeURIComponent(handIdStr)}&seatIndex=${seatIndex}`,
       { headers: authHeader }
     );

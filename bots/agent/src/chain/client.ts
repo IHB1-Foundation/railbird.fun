@@ -78,7 +78,11 @@ export interface ChainClientConfig {
   privateKey: `0x${string}`;
   pokerTableAddress: Address;
   chainId?: number;
+  /** Timeout for waitForTransactionReceipt in ms. Defaults to TX_TIMEOUT_MS env or 60_000. */
+  txTimeoutMs?: number;
 }
+
+const DEFAULT_TX_TIMEOUT_MS = parseInt(process.env.TX_TIMEOUT_MS || "60000", 10);
 
 export class ChainClient {
   private publicClient: PublicClient;
@@ -90,6 +94,7 @@ export class ChainClient {
   private smallBlindCache: bigint | null = null;
   private bigBlindCache: bigint | null = null;
   private actionTimeoutCache: bigint | null = null;
+  private txTimeoutMs: number;
 
   constructor(config: ChainClientConfig) {
     this.chain = {
@@ -107,6 +112,7 @@ export class ChainClient {
 
     this.account = privateKeyToAccount(config.privateKey);
     this.pokerTableAddress = config.pokerTableAddress;
+    this.txTimeoutMs = config.txTimeoutMs ?? DEFAULT_TX_TIMEOUT_MS;
 
     this.publicClient = createPublicClient({
       chain: this.chain,
@@ -318,7 +324,7 @@ export class ChainClient {
       functionName: "fold",
       args: [seatIndex],
     });
-    await this.publicClient.waitForTransactionReceipt({ hash });
+    await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });
     return hash;
   }
 
@@ -331,7 +337,7 @@ export class ChainClient {
       functionName: "check",
       args: [seatIndex],
     });
-    await this.publicClient.waitForTransactionReceipt({ hash });
+    await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });
     return hash;
   }
 
@@ -344,7 +350,7 @@ export class ChainClient {
       functionName: "call",
       args: [seatIndex],
     });
-    await this.publicClient.waitForTransactionReceipt({ hash });
+    await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });
     return hash;
   }
 
@@ -357,7 +363,7 @@ export class ChainClient {
       functionName: "raise",
       args: [seatIndex, raiseToAmount],
     });
-    await this.publicClient.waitForTransactionReceipt({ hash });
+    await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });
     return hash;
   }
 
@@ -370,7 +376,7 @@ export class ChainClient {
       functionName: "startHand",
       args: [],
     });
-    await this.publicClient.waitForTransactionReceipt({ hash });
+    await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });
     return hash;
   }
 
@@ -383,7 +389,7 @@ export class ChainClient {
       functionName: "forceTimeout",
       args: [],
     });
-    await this.publicClient.waitForTransactionReceipt({ hash });
+    await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });
     return hash;
   }
 
@@ -432,7 +438,7 @@ export class ChainClient {
       functionName: "registerEncryptionKey",
       args: [seatIndex, newKeyHex as `0x${string}`],
     });
-    await this.publicClient.waitForTransactionReceipt({ hash });
+    await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });
     return hash;
   }
 

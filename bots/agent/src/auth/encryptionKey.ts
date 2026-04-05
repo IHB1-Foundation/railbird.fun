@@ -117,7 +117,10 @@ export async function ensureEncryptionKeyRegistered(params: {
   }) as `0x${string}`;
 
   // Wait for confirmation
-  await publicClient.waitForTransactionReceipt({ hash: txHash });
+  await publicClient.waitForTransactionReceipt({
+    hash: txHash,
+    timeout: parseInt(process.env.TX_TIMEOUT_MS || "60000", 10),
+  });
   console.log(`[EncryptionKey] Registered for seat ${seatIndex}: ${txHash}`);
 
   return txHash;

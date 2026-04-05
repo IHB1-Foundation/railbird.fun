@@ -55,7 +55,11 @@ export interface ChainClientConfig {
   privateKey: `0x${string}`;
   pokerTableAddress: Address;
   chainId?: number;
+  /** Timeout for waitForTransactionReceipt in ms. Defaults to TX_TIMEOUT_MS env or 60_000. */
+  txTimeoutMs?: number;
 }
+
+const DEFAULT_TX_TIMEOUT_MS = parseInt(process.env.TX_TIMEOUT_MS || "60000", 10);
 
 export class ChainClient {
   private publicClient: PublicClient;
@@ -64,6 +68,7 @@ export class ChainClient {
   private pokerTableAddress: Address;
   private chain: Chain;
   private tableIdCache: bigint | null = null;
+  private txTimeoutMs: number;
 
   constructor(config: ChainClientConfig) {
     this.chain = {
@@ -81,6 +86,7 @@ export class ChainClient {
 
     this.account = privateKeyToAccount(config.privateKey);
     this.pokerTableAddress = config.pokerTableAddress;
+    this.txTimeoutMs = config.txTimeoutMs ?? DEFAULT_TX_TIMEOUT_MS;
 
     this.publicClient = createPublicClient({
       chain: this.chain,
@@ -208,7 +214,7 @@ export class ChainClient {
       functionName: "forceTimeout",
       args: [],
     });
-    await this.publicClient.waitForTransactionReceipt({ hash });
+    await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });
     return hash;
   }
 
@@ -221,7 +227,7 @@ export class ChainClient {
       functionName: "startHand",
       args: [],
     });
-    await this.publicClient.waitForTransactionReceipt({ hash });
+    await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });
     return hash;
   }
 
@@ -234,7 +240,7 @@ export class ChainClient {
       functionName: "settleShowdown",
       args: [],
     });
-    await this.publicClient.waitForTransactionReceipt({ hash });
+    await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });
     return hash;
   }
 
@@ -247,7 +253,7 @@ export class ChainClient {
       functionName: "reRequestVRF",
       args: [],
     });
-    await this.publicClient.waitForTransactionReceipt({ hash });
+    await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });
     return hash;
   }
 
@@ -260,7 +266,7 @@ export class ChainClient {
       functionName: "submitHoleCommit",
       args: [handId, seatIndex, commitment],
     });
-    await this.publicClient.waitForTransactionReceipt({ hash });
+    await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });
     return hash;
   }
 
@@ -279,7 +285,7 @@ export class ChainClient {
       functionName: "revealHoleCards",
       args: [handId, seatIndex, card1, card2, salt],
     });
-    await this.publicClient.waitForTransactionReceipt({ hash });
+    await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });
     return hash;
   }
 

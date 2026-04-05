@@ -45,6 +45,32 @@ export interface OwnerViewClientConfig {
    * If not provided, getHoleCards() will fail with an error.
    */
   encryptionPrivKey?: Uint8Array;
+  /** HTTP request timeout in milliseconds. Defaults to REQUEST_TIMEOUT_MS env var or 10_000. */
+  requestTimeoutMs?: number;
+}
+
+const DEFAULT_REQUEST_TIMEOUT_MS = parseInt(process.env.REQUEST_TIMEOUT_MS || "10000", 10);
+
+/**
+ * Fetch wrapper with AbortController timeout.
+ */
+async function fetchWithTimeout(
+  url: string,
+  options: RequestInit = {},
+  timeoutMs: number = DEFAULT_REQUEST_TIMEOUT_MS
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new Error(`Request timed out after ${timeoutMs}ms: ${url}`);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 const AES_KEY_LEN = 32;
@@ -57,12 +83,14 @@ export class OwnerViewClient {
   private token: string | null = null;
   private tokenExpiresAt: number = 0;
   private encryptionPrivKey: Uint8Array | null;
+  private requestTimeoutMs: number;
 
   constructor(config: OwnerViewClientConfig) {
     this.baseUrl = config.baseUrl.replace(/\/$/, ""); // Remove trailing slash
     this.signMessage = config.signMessage;
     this.address = config.address;
     this.encryptionPrivKey = config.encryptionPrivKey ?? null;
+    this.requestTimeoutMs = config.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
   }
 
   /**
@@ -77,7 +105,7 @@ export class OwnerViewClient {
    */
   private async getNonce(): Promise<NonceResponse> {
     const url = `${this.baseUrl}/auth/nonce?address=${encodeURIComponent(this.address)}`;
-    const res = await fetch(url);
+    const res = await fetchWithTimeout(url, {}, this.requestTimeoutMs);
 
     if (!res.ok) {
       const errorBody = await res.json().catch(() => ({ error: "Request failed" })) as { error?: string };
@@ -91,17 +119,15 @@ export class OwnerViewClient {
    * Verify signature and get session token
    */
   private async verifySignature(nonce: string, signature: string): Promise<VerifyResponse> {
-    const res = await fetch(`${this.baseUrl}/auth/verify`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
+    const res = await fetchWithTimeout(
+      `${this.baseUrl}/auth/verify`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ address: this.address, nonce, signature }),
       },
-      body: JSON.stringify({
-        address: this.address,
-        nonce,
-        signature,
-      }),
-    });
+      this.requestTimeoutMs
+    );
 
     if (!res.ok) {
       const errorBody = await res.json().catch(() => ({ error: "Request failed" })) as { error?: string };
@@ -163,11 +189,11 @@ export class OwnerViewClient {
       String(tableId)
     )}&handId=${encodeURIComponent(String(handId))}`;
 
-    const res = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${this.token}`,
-      },
-    });
+    const res = await fetchWithTimeout(
+      url,
+      { headers: { Authorization: `Bearer ${this.token}` } },
+      this.requestTimeoutMs
+    );
 
     if (!res.ok) {
       const errorBody = await res.json().catch(() => ({ error: "Request failed" })) as { error?: string };

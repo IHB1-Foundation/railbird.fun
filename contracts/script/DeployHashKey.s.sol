@@ -45,12 +45,16 @@ contract DeployHashKey is Script {
             console.log("KYC SBT: disabled");
         }
 
+        // --- Dealer address (the OwnerView service wallet) ---
+        address dealerAddr = vm.envAddress("DEALER_ADDRESS");
+        console.log("Dealer:", dealerAddr);
+
         // --- Table 1: low-stakes ---
-        PokerTable table1 = new PokerTable(1, 0.1 ether, 0.2 ether, vrfAdapter, address(chip), kycSBT, 30 minutes, 5 minutes, 10 minutes, 9);
+        PokerTable table1 = new PokerTable(1, 0.1 ether, 0.2 ether, vrfAdapter, address(chip), kycSBT, 30 minutes, 5 minutes, 10 minutes, 9, dealerAddr);
         console.log("Table 1 (low):", address(table1));
 
         // --- Table 2: high-stakes ---
-        PokerTable table2 = new PokerTable(2, 1 ether, 2 ether, vrfAdapter, address(chip), kycSBT, 30 minutes, 5 minutes, 10 minutes, 9);
+        PokerTable table2 = new PokerTable(2, 1 ether, 2 ether, vrfAdapter, address(chip), kycSBT, 30 minutes, 5 minutes, 10 minutes, 9, dealerAddr);
         console.log("Table 2 (high):", address(table2));
 
         // --- Shared contracts ---

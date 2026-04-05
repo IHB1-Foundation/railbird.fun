@@ -259,6 +259,12 @@ contract PokerTable {
     /// @notice Emitted when shuffle verification succeeds after dealer seed reveal
     event ShuffleVerified(uint256 indexed handId, bytes32 dealerSeed);
 
+    /// @notice Emitted when admin address is updated
+    event AdminUpdated(address indexed oldAdmin, address indexed newAdmin);
+
+    /// @notice Emitted when dealer address is updated
+    event DealerUpdated(address indexed oldDealer, address indexed newDealer);
+
     // ============ State Variables ============
     uint256 public tableId;
     uint256 public smallBlind;
@@ -313,6 +319,11 @@ contract PokerTable {
     /// @notice HashKey Chain KYC SBT checker. address(0) = KYC gate disabled.
     address public kycSBT;
 
+    /// @notice Admin address — can update dealer and other params.
+    address public admin;
+    /// @notice Authorized dealer address — the only address that may submit hole commits and seed commits.
+    address public dealer;
+
     // ============ Modifiers ============
     function _checkOperator(uint8 seatIndex) internal view {
         require(seatIndex < numSeats, "Invalid seat");
@@ -364,6 +375,16 @@ contract PokerTable {
         _;
     }
 
+    modifier onlyAdmin() {
+        require(msg.sender == admin, "Not admin");
+        _;
+    }
+
+    modifier onlyDealer() {
+        require(msg.sender == dealer, "Not dealer");
+        _;
+    }
+
     // ============ Constructor ============
     constructor(
         uint256 _tableId,
@@ -375,7 +396,8 @@ contract PokerTable {
         uint256 _actionTimeout,
         uint256 _vrfTimeout,
         uint256 _showdownTimeout,
-        uint8 _numSeats
+        uint8 _numSeats,
+        address _dealer
     ) {
         require(_tableId > 0, "Table ID must be > 0");
         require(_smallBlind > 0, "Small blind must be > 0");
@@ -386,6 +408,7 @@ contract PokerTable {
         require(_vrfTimeout >= 30 seconds && _vrfTimeout <= 30 minutes, "vrfTimeout out of range");
         require(_showdownTimeout >= 1 minutes && _showdownTimeout <= 60 minutes, "showdownTimeout out of range");
         require(_numSeats >= 2 && _numSeats <= MAX_SEATS, "numSeats out of range (2-9)");
+        require(_dealer != address(0), "Invalid dealer");
         tableId = _tableId;
         smallBlind = _smallBlind;
         bigBlind = _bigBlind;
@@ -396,7 +419,25 @@ contract PokerTable {
         VRF_TIMEOUT = _vrfTimeout;
         SHOWDOWN_TIMEOUT = _showdownTimeout;
         numSeats = _numSeats;
+        admin = msg.sender;
+        dealer = _dealer;
         gameState = GameState.WAITING_FOR_SEATS;
+    }
+
+    // ============ Admin Functions ============
+
+    /// @notice Transfer admin role to a new address.
+    function setAdmin(address _newAdmin) external onlyAdmin {
+        require(_newAdmin != address(0), "Invalid admin");
+        emit AdminUpdated(admin, _newAdmin);
+        admin = _newAdmin;
+    }
+
+    /// @notice Update the authorized dealer address.
+    function setDealer(address _newDealer) external onlyAdmin {
+        require(_newDealer != address(0), "Invalid dealer");
+        emit DealerUpdated(dealer, _newDealer);
+        dealer = _newDealer;
     }
 
     // ============ Seat Management ============
@@ -572,20 +613,16 @@ contract PokerTable {
      * @param handId The hand ID
      * @param commitment keccak256(dealerSeed)
      */
-    function submitDealerSeedCommit(uint256 handId, bytes32 commitment) external {
-        require(handId > 0 && handId <= currentHandId, "Invalid hand ID");
+    function submitDealerSeedCommit(uint256 handId, bytes32 commitment) external onlyDealer {
+        require(handId == currentHandId, "Must be current hand");
         require(commitment != bytes32(0), "Empty commitment");
         require(dealerSeedCommits[handId] == bytes32(0), "DealerSeed: already committed");
-
-        // For current hand: only allowed before betting has started
-        if (handId == currentHandId) {
-            require(
-                gameState == GameState.WAITING_VRF_HOLECARDS ||
-                gameState == GameState.WAITING_FOR_HOLECARDS ||
-                gameState == GameState.BETTING_PRE,
-                "DealerSeed: too late to commit"
-            );
-        }
+        require(
+            gameState == GameState.WAITING_VRF_HOLECARDS ||
+            gameState == GameState.WAITING_FOR_HOLECARDS ||
+            gameState == GameState.BETTING_PRE,
+            "DealerSeed: too late to commit"
+        );
 
         dealerSeedCommits[handId] = commitment;
         emit DealerSeedCommitted(handId, commitment);
@@ -1732,8 +1769,9 @@ contract PokerTable {
 
     /**
      * @notice Submit hole card commitment for a seat
-     * @dev Should be called by dealer after dealing hole cards
-     * @param handId The hand ID for which to submit commitment
+     * @dev Only the authorized dealer may call this. Commitments are only accepted for the
+     *      current active hand while it is in the WAITING_FOR_HOLECARDS state.
+     * @param handId The hand ID — must equal currentHandId
      * @param seatIndex The seat index (0..MAX_SEATS-1)
      * @param commitment The keccak256 hash of (handId, seatIndex, card1, card2, salt)
      */
@@ -1741,21 +1779,17 @@ contract PokerTable {
         uint256 handId,
         uint8 seatIndex,
         bytes32 commitment
-    ) external {
+    ) external onlyDealer {
         require(seatIndex < numSeats, "Invalid seat");
-        require(handId > 0 && handId <= currentHandId, "Invalid hand ID");
+        require(handId == currentHandId, "Must be current hand");
+        require(
+            gameState != GameState.WAITING_FOR_SEATS &&
+            gameState != GameState.SETTLED &&
+            gameState != GameState.TOURNAMENT_OVER,
+            "Cannot submit commit now"
+        );
         require(commitment != bytes32(0), "Empty commitment");
         require(holeCommits[handId][seatIndex] == bytes32(0), "Commitment already exists");
-
-        // For current hand: allowed once a hand is underway (not idle or settled)
-        if (handId == currentHandId) {
-            require(
-                gameState != GameState.WAITING_FOR_SEATS &&
-                gameState != GameState.SETTLED &&
-                gameState != GameState.TOURNAMENT_OVER,
-                "Cannot submit commit now"
-            );
-        }
 
         holeCommits[handId][seatIndex] = commitment;
 

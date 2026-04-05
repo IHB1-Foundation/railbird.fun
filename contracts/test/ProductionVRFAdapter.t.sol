@@ -323,7 +323,7 @@ contract ProductionVRFAdapterTest is Test {
     // ============ Helpers ============
 
     function _setupPokerTableForFulfillment() internal {
-        pokerTable = new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(adapter), address(chipToken), address(0), 30 minutes, 5 minutes, 10 minutes, 9);
+        pokerTable = new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(adapter), address(chipToken), address(0), 30 minutes, 5 minutes, 10 minutes, 9, address(this));
 
         vm.prank(owner1);
         chipToken.approve(address(pokerTable), BUY_IN);

@@ -47,7 +47,7 @@ contract PokerTableTest is Test {
     function setUp() public {
         mockVRF = new MockVRFAdapter();
         chipToken = new ChipToken("TestChip", "TCHIP");
-        pokerTable = new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(mockVRF), address(chipToken), address(0), 30 minutes, 5 minutes, 10 minutes, 9);
+        pokerTable = new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(mockVRF), address(chipToken), address(0), 30 minutes, 5 minutes, 10 minutes, 9, address(this));
 
         // Mint chip tokens to player wallets
         chipToken.mint(owner1, BUY_IN * 1000);
@@ -58,41 +58,41 @@ contract PokerTableTest is Test {
 
     function test_Constructor_RevertIfTableIdIsZero() public {
         vm.expectRevert("Table ID must be > 0");
-        new PokerTable(0, SMALL_BLIND, BIG_BLIND, address(mockVRF), address(chipToken), address(0), 30 minutes, 5 minutes, 10 minutes, 9);
+        new PokerTable(0, SMALL_BLIND, BIG_BLIND, address(mockVRF), address(chipToken), address(0), 30 minutes, 5 minutes, 10 minutes, 9, address(this));
     }
 
     function test_Constructor_RevertIfSmallBlindIsZero() public {
         vm.expectRevert("Small blind must be > 0");
-        new PokerTable(1, 0, BIG_BLIND, address(mockVRF), address(chipToken), address(0), 30 minutes, 5 minutes, 10 minutes, 9);
+        new PokerTable(1, 0, BIG_BLIND, address(mockVRF), address(chipToken), address(0), 30 minutes, 5 minutes, 10 minutes, 9, address(this));
     }
 
     function test_Constructor_RevertIfVrfAdapterIsZero() public {
         vm.expectRevert("Invalid VRF adapter");
-        new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(0), address(chipToken), address(0), 30 minutes, 5 minutes, 10 minutes, 9);
+        new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(0), address(chipToken), address(0), 30 minutes, 5 minutes, 10 minutes, 9, address(this));
     }
 
     function test_Constructor_RevertIfChipTokenIsZero() public {
         vm.expectRevert("Invalid chip token");
-        new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(mockVRF), address(0), address(0), 30 minutes, 5 minutes, 10 minutes, 9);
+        new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(mockVRF), address(0), address(0), 30 minutes, 5 minutes, 10 minutes, 9, address(this));
     }
 
     function test_Constructor_RevertIfActionTimeoutTooShort() public {
         vm.expectRevert("actionTimeout out of range");
-        new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(mockVRF), address(chipToken), address(0), 30 seconds, 5 minutes, 10 minutes, 9);
+        new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(mockVRF), address(chipToken), address(0), 30 seconds, 5 minutes, 10 minutes, 9, address(this));
     }
 
     function test_Constructor_RevertIfActionTimeoutTooLong() public {
         vm.expectRevert("actionTimeout out of range");
-        new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(mockVRF), address(chipToken), address(0), 61 minutes, 5 minutes, 10 minutes, 9);
+        new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(mockVRF), address(chipToken), address(0), 61 minutes, 5 minutes, 10 minutes, 9, address(this));
     }
 
     function test_Constructor_RevertIfVrfTimeoutTooShort() public {
         vm.expectRevert("vrfTimeout out of range");
-        new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(mockVRF), address(chipToken), address(0), 30 minutes, 29 seconds, 10 minutes, 9);
+        new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(mockVRF), address(chipToken), address(0), 30 minutes, 29 seconds, 10 minutes, 9, address(this));
     }
 
     function test_Constructor_ConfigurableTimeoutsStored() public {
-        PokerTable custom = new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(mockVRF), address(chipToken), address(0), 5 minutes, 1 minutes, 2 minutes, 4);
+        PokerTable custom = new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(mockVRF), address(chipToken), address(0), 5 minutes, 1 minutes, 2 minutes, 4, address(this));
         assertEq(custom.ACTION_TIMEOUT(), 5 minutes);
         assertEq(custom.VRF_TIMEOUT(), 1 minutes);
         assertEq(custom.SHOWDOWN_TIMEOUT(), 2 minutes);
@@ -101,12 +101,12 @@ contract PokerTableTest is Test {
 
     function test_Constructor_RevertIfNumSeatsTooFew() public {
         vm.expectRevert("numSeats out of range (2-9)");
-        new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(mockVRF), address(chipToken), address(0), 30 minutes, 5 minutes, 10 minutes, 1);
+        new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(mockVRF), address(chipToken), address(0), 30 minutes, 5 minutes, 10 minutes, 1, address(this));
     }
 
     function test_Constructor_RevertIfNumSeatsTooMany() public {
         vm.expectRevert("numSeats out of range (2-9)");
-        new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(mockVRF), address(chipToken), address(0), 30 minutes, 5 minutes, 10 minutes, 10);
+        new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(mockVRF), address(chipToken), address(0), 30 minutes, 5 minutes, 10 minutes, 10, address(this));
     }
 
     // ============ Seat Registration Tests ============
@@ -209,7 +209,7 @@ contract PokerTableTest is Test {
 
     function test_KYC_Enabled_KYCPassedPlayerCanRegister() public {
         MockKYCSBT kyc = new MockKYCSBT();
-        PokerTable kycTable = new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(mockVRF), address(chipToken), address(kyc), 30 minutes, 5 minutes, 10 minutes, 9);
+        PokerTable kycTable = new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(mockVRF), address(chipToken), address(kyc), 30 minutes, 5 minutes, 10 minutes, 9, address(this));
 
         kyc.setHuman(owner1, true);
         chipToken.mint(owner1, BUY_IN * 10);
@@ -224,7 +224,7 @@ contract PokerTableTest is Test {
 
     function test_KYC_Enabled_KYCFailedPlayerReverts() public {
         MockKYCSBT kyc = new MockKYCSBT();
-        PokerTable kycTable = new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(mockVRF), address(chipToken), address(kyc), 30 minutes, 5 minutes, 10 minutes, 9);
+        PokerTable kycTable = new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(mockVRF), address(chipToken), address(kyc), 30 minutes, 5 minutes, 10 minutes, 9, address(this));
 
         kyc.setHuman(owner2, false); // not KYC'd
 
@@ -1460,17 +1460,27 @@ contract PokerTableTest is Test {
         _setupAllSeats();
         _startHandFull();
 
-        vm.expectRevert("Invalid hand ID");
+        vm.expectRevert("Must be current hand");
         pokerTable.submitHoleCommit(0, 0, keccak256("test"));
 
-        vm.expectRevert("Invalid hand ID");
+        vm.expectRevert("Must be current hand");
         pokerTable.submitHoleCommit(2, 0, keccak256("test")); // hand 2 doesn't exist yet
     }
 
     function test_SubmitHoleCommit_RevertIfGameNotStarted() public {
         _setupAllSeats();
 
-        vm.expectRevert("Invalid hand ID");
+        // currentHandId == 0, so any handId != 0 reverts with Must be current hand
+        vm.expectRevert("Must be current hand");
+        pokerTable.submitHoleCommit(1, 0, keccak256("test"));
+    }
+
+    function test_SubmitHoleCommit_RevertIfNotDealer() public {
+        _setupAllSeats();
+        _startHandFull();
+
+        vm.prank(address(0xDEAD));
+        vm.expectRevert("Not dealer");
         pokerTable.submitHoleCommit(1, 0, keccak256("test"));
     }
 

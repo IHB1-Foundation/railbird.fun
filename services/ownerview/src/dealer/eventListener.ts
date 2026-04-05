@@ -62,7 +62,7 @@ export class HandStartedEventListener {
   private pollInterval: number;
   private trustlessDealerEnabled: boolean;
   private isRunning: boolean = false;
-  private unwatch: (() => void) | null = null;
+  private unwatchers: Array<() => void> = [];
   private tableId: string;
   private onHandStarted?: OnHandStartedCallback;
 
@@ -99,7 +99,7 @@ export class HandStartedEventListener {
     this.isRunning = true;
 
     // Watch for new HandStarted events
-    this.unwatch = this.client.watchContractEvent({
+    this.unwatchers.push(this.client.watchContractEvent({
       address: this.pokerTableAddress,
       abi: [HandStartedEventAbi],
       eventName: "HandStarted",
@@ -110,10 +110,10 @@ export class HandStartedEventListener {
       onError: (error) => {
         console.error("[DealerEventListener] Watch error:", error.message);
       },
-    });
+    }));
 
     // Watch for CardIntegrityViolation events (dealer integrity monitoring)
-    this.client.watchContractEvent({
+    this.unwatchers.push(this.client.watchContractEvent({
       address: this.pokerTableAddress,
       abi: [CardIntegrityViolationAbi],
       eventName: "CardIntegrityViolation",
@@ -143,7 +143,7 @@ export class HandStartedEventListener {
       onError: (error) => {
         console.error("[DealerIntegrity] Watch error:", error.message);
       },
-    });
+    }));
 
     console.log(
       `[DealerEventListener] Started watching HandStarted events for table ${this.tableId} at ${this.pokerTableAddress} ` +
@@ -155,10 +155,10 @@ export class HandStartedEventListener {
    * Stop listening for events
    */
   stop(): void {
-    if (this.unwatch) {
-      this.unwatch();
-      this.unwatch = null;
+    for (const unwatch of this.unwatchers) {
+      unwatch();
     }
+    this.unwatchers = [];
     this.isRunning = false;
     console.log("[DealerEventListener] Stopped");
   }

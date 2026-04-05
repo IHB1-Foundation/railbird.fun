@@ -52,6 +52,10 @@ export interface KeeperStats {
   errors: number;
   lastAction: string;
   lastActionTime: number;
+  /** Breakdown of error categories for observability. */
+  rpcErrors: number;
+  apiErrors: number;
+  txErrors: number;
 }
 
 export class KeeperBot {
@@ -66,6 +70,9 @@ export class KeeperBot {
     errors: 0,
     lastAction: "none",
     lastActionTime: 0,
+    rpcErrors: 0,
+    apiErrors: 0,
+    txErrors: 0,
   };
 
   // Track last state to detect changes

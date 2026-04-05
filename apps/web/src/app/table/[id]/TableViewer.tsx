@@ -62,8 +62,9 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
         if (onchainMaxSeats > 0) {
           setMaxSeats(onchainMaxSeats);
         }
-      } catch {
-        // Keep env fallback value on errors.
+      } catch (err) {
+        // Keep env fallback value on errors — log for debugging.
+        console.error("[TableViewer] Failed to fetch max seats from contract:", err);
       }
     })();
   }, [table.contractAddress]);
@@ -104,7 +105,8 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
       const data = (await res.json()) as TableResponse;
       setTable(data);
       setPollConnected(true);
-    } catch {
+    } catch (err) {
+      console.error("[TableViewer] Table poll failed:", err);
       setPollConnected(false);
     }
   }, [tableId]);
@@ -136,7 +138,8 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
       try {
         const cards = await getHoleCards(tableId, table.currentHand.handId);
         setHoleCards(cards);
-      } catch {
+      } catch (err) {
+        console.error("[TableViewer] Failed to fetch hole cards:", err);
         setHoleCards(null);
       }
     };

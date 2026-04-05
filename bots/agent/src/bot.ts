@@ -23,6 +23,10 @@ export interface BotStats {
   totalProfit: bigint;
   actionsSubmitted: number;
   errors: number;
+  /** Breakdown of error categories for observability. */
+  rpcErrors: number;
+  apiErrors: number;
+  txErrors: number;
 }
 
 export class AgentBot {
@@ -37,6 +41,9 @@ export class AgentBot {
     totalProfit: 0n,
     actionsSubmitted: 0,
     errors: 0,
+    rpcErrors: 0,
+    apiErrors: 0,
+    txErrors: 0,
   };
 
   // Track last known hand for detecting new hands
@@ -292,7 +299,8 @@ export class AgentBot {
           };
         }
       } catch (error) {
-        console.warn("[AgentBot] Failed to get hole cards:", error);
+        // Hole card failure is non-fatal: bot can still play with heuristics.
+        console.error("[AgentBot] Failed to get hole cards (playing without):", error);
       }
     }
 

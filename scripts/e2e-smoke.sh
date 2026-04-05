@@ -130,11 +130,18 @@ for i in 0 1 2 3; do
 done
 pass "Minted 1,000,000 rCHIP to each agent"
 
-# Deploy PokerTable (tableId=1, smallBlind=1 rCHIP, bigBlind=2 rCHIP, vrfAdapter, chipToken)
+# Deploy PokerTable
+# Args: tableId smallBlind bigBlind vrfAdapter chipToken kycSBT actionTimeout vrfTimeout showdownTimeout numSeats
 SMALL_BLIND_WEI=1000000000000000000
 BIG_BLIND_WEI=2000000000000000000
+ACTION_TIMEOUT_S=1800   # 30 minutes
+VRF_TIMEOUT_S=300       # 5 minutes
+SHOWDOWN_TIMEOUT_S=600  # 10 minutes
+NUM_SEATS=4
 TABLE_ADDR=$(forge create contracts/src/PokerTable.sol:PokerTable \
   --constructor-args 1 $SMALL_BLIND_WEI $BIG_BLIND_WEI $VRF_ADDR $RCHIP_ADDR \
+    "0x0000000000000000000000000000000000000000" \
+    $ACTION_TIMEOUT_S $VRF_TIMEOUT_S $SHOWDOWN_TIMEOUT_S $NUM_SEATS \
   --rpc-url $RPC_URL \
   --private-key $DEPLOYER_KEY \
   --json 2>/dev/null | node -e "const d=require('fs').readFileSync('/dev/stdin','utf8');console.log(JSON.parse(d).deployedTo)")
@@ -315,6 +322,51 @@ if [ $TOTAL_ERRORS -eq 0 ]; then
   pass "No fatal errors in agent logs"
 else
   fail "$TOTAL_ERRORS fatal errors found in agent logs"
+fi
+
+# --- Assertion: HandSettled events on-chain ---
+# HandSettled(uint256 indexed handId, uint8 winnerSeat, uint256 potAmount)
+# keccak256("HandSettled(uint256,uint8,uint256)") = topic0
+HAND_SETTLED_TOPIC="0x$(cast keccak "HandSettled(uint256,uint8,uint256)" 2>/dev/null | tr -d '0x' 2>/dev/null || echo '')"
+if [ -n "$HAND_SETTLED_TOPIC" ] && [ -n "$TABLE_ADDR" ]; then
+  SETTLEMENT_COUNT=$(cast logs \
+    --address "$TABLE_ADDR" \
+    --topic0 "$HAND_SETTLED_TOPIC" \
+    --rpc-url "$RPC_URL" \
+    --json 2>/dev/null | node -e "
+      let data=''; process.stdin.on('data',d=>data+=d);
+      process.stdin.on('end',()=>{
+        try{ const logs=JSON.parse(data); console.log(logs.length); }
+        catch{ console.log(0); }
+      });" 2>/dev/null || echo "0")
+  echo "    HandSettled events on-chain: $SETTLEMENT_COUNT"
+  if [ "$SETTLEMENT_COUNT" -ge "$NUM_HANDS" ] 2>/dev/null; then
+    pass "HandSettled events match expected hands ($SETTLEMENT_COUNT >= $NUM_HANDS)"
+  else
+    fail "Expected >= $NUM_HANDS HandSettled events, got $SETTLEMENT_COUNT"
+  fi
+else
+  echo "    (skipping on-chain event assertion: cast keccak unavailable)"
+fi
+
+# --- Assertion: Indexer data consistency (optional) ---
+INDEXER_URL=${INDEXER_URL:-http://localhost:3100}
+if curl -s --max-time 2 "$INDEXER_URL/api/tables" > /dev/null 2>&1; then
+  INDEXER_HAND_COUNT=$(curl -s --max-time 5 "$INDEXER_URL/api/tables/1/hands?limit=100" 2>/dev/null | \
+    node -e "
+      let d=''; process.stdin.on('data',x=>d+=x);
+      process.stdin.on('end',()=>{
+        try{ console.log(JSON.parse(d).length); }
+        catch{ console.log(0); }
+      });" 2>/dev/null || echo "0")
+  echo "    Indexer indexed hands: $INDEXER_HAND_COUNT"
+  if [ "$INDEXER_HAND_COUNT" -ge "$NUM_HANDS" ] 2>/dev/null; then
+    pass "Indexer data: at least $NUM_HANDS hands indexed ($INDEXER_HAND_COUNT)"
+  else
+    fail "Indexer data inconsistency: expected >= $NUM_HANDS hands, got $INDEXER_HAND_COUNT"
+  fi
+else
+  echo "    (indexer not running at $INDEXER_URL — skipping indexer data assertion)"
 fi
 
 echo ""

@@ -5,6 +5,8 @@
   "scripts": {
     "build": "forge build",
     "test": "forge test",
+    "coverage": "forge coverage --ir-minimum",
+    "coverage:lcov": "forge coverage --ir-minimum --report lcov",
     "clean": "forge clean",
     "lint": "solhint 'src/**/*.sol'"
   },

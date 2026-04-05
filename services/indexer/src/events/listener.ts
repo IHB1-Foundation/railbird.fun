@@ -4,6 +4,27 @@ import { createPublicClient, http, type Log, decodeEventLog, type Address } from
 import { getChainConfig } from "@playerco/shared";
 import { pokerTableAbi, playerRegistryAbi, playerVaultAbi, gameStateToString } from "./abis.js";
 import * as handlers from "./handlers.js";
+import type {
+  SeatUpdatedArgs,
+  HandStartedArgs,
+  ActionTakenArgs,
+  PotUpdatedArgs,
+  BettingRoundCompleteArgs,
+  VRFRequestedArgs,
+  CommunityCardsDealtArgs,
+  HandSettledArgs,
+  ShowdownTimedOutArgs,
+  ForceTimeoutArgs,
+  TournamentWinnerArgs,
+  CardIntegrityViolationArgs,
+  AgentRegisteredArgs,
+  OperatorUpdatedArgs,
+  OwnerUpdatedArgs,
+  VaultUpdatedArgs,
+  TableUpdatedArgs,
+  MetaURIUpdatedArgs,
+  VaultSnapshotArgs,
+} from "./eventArgs.js";
 import {
   getAllAgents,
   getIndexerState,
@@ -206,83 +227,83 @@ export class EventListener {
         case "SeatUpdated":
           await handlers.handleSeatUpdated(
             log,
-            decoded.args as any,
+            decoded.args as unknown as SeatUpdatedArgs,
             tableContext
           );
           break;
         case "HandStarted":
           await handlers.handleHandStarted(
             log,
-            decoded.args as any,
+            decoded.args as unknown as HandStartedArgs,
             tableContext
           );
           break;
         case "ActionTaken":
           await handlers.handleActionTaken(
             log,
-            decoded.args as any,
+            decoded.args as unknown as ActionTakenArgs,
             tableContext
           );
           break;
         case "PotUpdated":
           await handlers.handlePotUpdated(
             log,
-            decoded.args as any,
+            decoded.args as unknown as PotUpdatedArgs,
             tableContext
           );
           break;
         case "BettingRoundComplete":
           await handlers.handleBettingRoundComplete(
             log,
-            decoded.args as any,
+            decoded.args as unknown as BettingRoundCompleteArgs,
             tableContext
           );
           break;
         case "VRFRequested":
           await handlers.handleVRFRequested(
             log,
-            decoded.args as any,
+            decoded.args as unknown as VRFRequestedArgs,
             tableContext
           );
           break;
         case "CommunityCardsDealt":
           await handlers.handleCommunityCardsDealt(
             log,
-            decoded.args as any,
+            decoded.args as unknown as CommunityCardsDealtArgs,
             tableContext
           );
           break;
         case "HandSettled":
           await handlers.handleHandSettled(
             log,
-            decoded.args as any,
+            decoded.args as unknown as HandSettledArgs,
             tableContext
           );
           break;
         case "ShowdownTimedOut":
           await handlers.handleShowdownTimedOut(
             log,
-            decoded.args as any
+            decoded.args as unknown as ShowdownTimedOutArgs
           );
           break;
         case "ForceTimeout":
           await handlers.handleForceTimeout(
             log,
-            decoded.args as any,
+            decoded.args as unknown as ForceTimeoutArgs,
             tableContext
           );
           break;
         case "TournamentWinner":
           await handlers.handleTournamentWinner(
             log,
-            decoded.args as any,
+            decoded.args as unknown as TournamentWinnerArgs,
             tableContext
           );
           break;
         case "CardIntegrityViolation":
           await handlers.handleCardIntegrityViolation(
             log,
-            decoded.args as any,
+            decoded.args as unknown as CardIntegrityViolationArgs,
             tableContext
           );
           break;
@@ -301,25 +322,29 @@ export class EventListener {
       });
 
       switch (decoded.eventName) {
-        case "AgentRegistered":
-          this.trackVaultAddress((decoded.args as any).vault);
-          await handlers.handleAgentRegistered(log, decoded.args as any);
+        case "AgentRegistered": {
+          const agentArgs = decoded.args as unknown as AgentRegisteredArgs;
+          this.trackVaultAddress(agentArgs.vault);
+          await handlers.handleAgentRegistered(log, agentArgs);
           break;
+        }
         case "OperatorUpdated":
-          await handlers.handleOperatorUpdated(log, decoded.args as any);
+          await handlers.handleOperatorUpdated(log, decoded.args as unknown as OperatorUpdatedArgs);
           break;
         case "OwnerUpdated":
-          await handlers.handleOwnerUpdated(log, decoded.args as any);
+          await handlers.handleOwnerUpdated(log, decoded.args as unknown as OwnerUpdatedArgs);
           break;
-        case "VaultUpdated":
-          this.trackVaultAddress((decoded.args as any).newVault);
-          await handlers.handleVaultUpdated(log, decoded.args as any);
+        case "VaultUpdated": {
+          const vaultArgs = decoded.args as unknown as VaultUpdatedArgs;
+          this.trackVaultAddress(vaultArgs.newVault);
+          await handlers.handleVaultUpdated(log, vaultArgs);
           break;
+        }
         case "TableUpdated":
-          await handlers.handleTableUpdated(log, decoded.args as any);
+          await handlers.handleTableUpdated(log, decoded.args as unknown as TableUpdatedArgs);
           break;
         case "MetaURIUpdated":
-          await handlers.handleMetaURIUpdated(log, decoded.args as any);
+          await handlers.handleMetaURIUpdated(log, decoded.args as unknown as MetaURIUpdatedArgs);
           break;
       }
     } catch (error) {
@@ -339,7 +364,7 @@ export class EventListener {
         case "VaultSnapshot":
           await handlers.handleVaultSnapshot(
             log,
-            decoded.args as any,
+            decoded.args as unknown as VaultSnapshotArgs,
             log.address
           );
           break;
@@ -377,9 +402,9 @@ export class EventListener {
         });
 
         if (decoded.eventName === "AgentRegistered") {
-          this.trackVaultAddress((decoded.args as any).vault);
+          this.trackVaultAddress((decoded.args as unknown as AgentRegisteredArgs).vault);
         } else if (decoded.eventName === "VaultUpdated") {
-          this.trackVaultAddress((decoded.args as any).newVault);
+          this.trackVaultAddress((decoded.args as unknown as VaultUpdatedArgs).newVault);
         }
       } catch {
         // Ignore decode failures in discovery pass; processRegistryLog handles reporting.

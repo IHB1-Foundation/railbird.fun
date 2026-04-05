@@ -10,6 +10,7 @@ import type {
   VaultSnapshot,
   Settlement,
   IndexerState,
+  RebalanceEvent,
 } from "./types.js";
 
 // ============ Event Idempotency ============
@@ -691,6 +692,51 @@ export async function getVaultSnapshotsInPeriod(
      ${periodCondition}
      ORDER BY created_at ASC`,
     params
+  );
+  return result.rows;
+}
+
+// ============ Rebalance Events ============
+
+export async function insertRebalanceEvent(
+  vaultAddress: string,
+  handId: bigint,
+  direction: "buy" | "sell",
+  amountIn: bigint,
+  amountOut: bigint,
+  navBefore: bigint,
+  navAfter: bigint,
+  blockNumber: bigint,
+  txHash: string
+): Promise<void> {
+  await query(
+    `INSERT INTO rebalance_events
+       (vault_address, hand_id, direction, amount_in, amount_out, nav_before, nav_after, block_number, tx_hash)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+    [
+      vaultAddress.toLowerCase(),
+      handId.toString(),
+      direction,
+      amountIn.toString(),
+      amountOut.toString(),
+      navBefore.toString(),
+      navAfter.toString(),
+      blockNumber.toString(),
+      txHash,
+    ]
+  );
+}
+
+export async function getRebalanceEvents(
+  vaultAddress: string,
+  limit = 50
+): Promise<RebalanceEvent[]> {
+  const result = await query<RebalanceEvent>(
+    `SELECT * FROM rebalance_events
+     WHERE vault_address = $1
+     ORDER BY created_at DESC
+     LIMIT $2`,
+    [vaultAddress.toLowerCase(), limit]
   );
   return result.rows;
 }

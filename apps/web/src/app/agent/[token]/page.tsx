@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { getAgent, getAgentSnapshots } from "@/lib/api";
+import { getAgent, getAgentSnapshots, getAgentRebalances, type RebalanceEventResponse } from "@/lib/api";
 import {
   formatMon,
   shortenAddress,
   formatPercent,
   formatNavPerShare,
+  formatTime,
 } from "@/lib/utils";
 export const dynamic = "force-dynamic";
 
@@ -17,12 +18,16 @@ export default async function AgentPage({
 
   let agent;
   let snapshots;
+  let rebalances: RebalanceEventResponse[] = [];
   let error = null;
 
   try {
     agent = await getAgent(token);
     if (agent.vaultAddress) {
-      snapshots = await getAgentSnapshots(token, 50);
+      [snapshots, rebalances] = await Promise.all([
+        getAgentSnapshots(token, 50),
+        getAgentRebalances(token, 50).catch(() => []),
+      ]);
     }
   } catch (e) {
     error = e instanceof Error ? e.message : "Failed to load agent";
@@ -192,6 +197,49 @@ export default async function AgentPage({
           <div className="chart-placeholder">
             No snapshot history available
           </div>
+        )}
+      </div>
+
+      {/* Rebalancing History */}
+      <div className="card section-card">
+        <h3 className="section-title-sm">Rebalancing History</h3>
+        {rebalances.length > 0 ? (
+          <div className="table-scroll">
+            <table className="leaderboard-table">
+              <thead>
+                <tr>
+                  <th>Hand</th>
+                  <th>Direction</th>
+                  <th>Amount In</th>
+                  <th>Amount Out</th>
+                  <th>NAV Before</th>
+                  <th>NAV After</th>
+                  <th>Time</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rebalances.map((r) => (
+                  <tr key={r.id}>
+                    <td>#{r.handId}</td>
+                    <td>
+                      <span className={r.direction === "buy" ? "value-positive" : "value-negative"}>
+                        {r.direction === "buy" ? "Buy" : "Sell"}
+                      </span>
+                    </td>
+                    <td>{formatMon(r.amountIn)}</td>
+                    <td>{formatMon(r.amountOut)}</td>
+                    <td>{formatNavPerShare(r.navBefore)}</td>
+                    <td className={BigInt(r.navAfter) >= BigInt(r.navBefore) ? "value-positive" : "value-negative"}>
+                      {formatNavPerShare(r.navAfter)}
+                    </td>
+                    <td className="text-muted">{formatTime(r.timestamp)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="chart-placeholder">No rebalancing events yet</div>
         )}
       </div>
 

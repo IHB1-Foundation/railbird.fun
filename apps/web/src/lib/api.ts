@@ -51,6 +51,24 @@ export async function getAgentsByOwner(ownerAddress: string): Promise<AgentRespo
   return fetchJson<AgentResponse[]>(`/agents?owner=${encodeURIComponent(ownerAddress)}`);
 }
 
+export interface RebalanceEventResponse {
+  id: number;
+  vaultAddress: string;
+  handId: string;
+  direction: "buy" | "sell";
+  amountIn: string;
+  amountOut: string;
+  navBefore: string;
+  navAfter: string;
+  blockNumber: string;
+  txHash: string;
+  timestamp: string;
+}
+
+export async function getAgentRebalances(token: string, limit = 50): Promise<RebalanceEventResponse[]> {
+  return fetchJson<RebalanceEventResponse[]>(`/agents/${token}/rebalances?limit=${limit}`);
+}
+
 export async function getAgent(token: string): Promise<AgentResponse> {
   return fetchJson<AgentResponse>(`/agents/${token}`);
 }

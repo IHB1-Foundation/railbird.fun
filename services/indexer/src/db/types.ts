@@ -176,6 +176,34 @@ export interface VaultSnapshotResponse {
   blockNumber: string;
 }
 
+export interface RebalanceEvent {
+  id: number;
+  vault_address: string;
+  hand_id: string;
+  direction: "buy" | "sell";
+  amount_in: string;
+  amount_out: string;
+  nav_before: string;
+  nav_after: string;
+  block_number: string;
+  tx_hash: string;
+  created_at: Date;
+}
+
+export interface RebalanceEventResponse {
+  id: number;
+  vaultAddress: string;
+  handId: string;
+  direction: "buy" | "sell";
+  amountIn: string;
+  amountOut: string;
+  navBefore: string;
+  navAfter: string;
+  blockNumber: string;
+  txHash: string;
+  timestamp: string;
+}
+
 // ============ Leaderboard Types ============
 
 export type LeaderboardMetric = "roi" | "pnl" | "winrate" | "mdd";

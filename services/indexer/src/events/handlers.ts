@@ -18,6 +18,7 @@ import {
   updateAgentTable,
   updateAgentMetaUri,
   insertVaultSnapshot,
+  insertRebalanceEvent,
   getHand,
 } from "../db/index.js";
 import { gameStateToString, actionTypeToString } from "./abis.js";
@@ -478,4 +479,50 @@ export async function handleCardIntegrityViolation(
   console.error(
     `[CardIntegrityViolation] INTEGRITY ALERT table=${ctx.tableId} hand=${args.handId} seat=${args.seatIndex} card=${args.card} communityIndex=${args.communityIndex}`
   );
+}
+
+export async function handleRebalanceBuy(
+  log: Log,
+  args: { handId: bigint; monIn: bigint; tokenOut: bigint; navBefore: bigint; navAfter: bigint },
+  vaultAddress: string
+): Promise<void> {
+  const meta = getLogMeta(log);
+  if (!meta) return;
+  if (await isEventProcessed(meta.blockNumber, meta.logIndex)) return;
+  await insertRebalanceEvent(
+    vaultAddress,
+    args.handId,
+    "buy",
+    args.monIn,
+    args.tokenOut,
+    args.navBefore,
+    args.navAfter,
+    meta.blockNumber,
+    meta.txHash
+  );
+  await markEventProcessed(meta.blockNumber, meta.logIndex, meta.txHash, "RebalanceBuy");
+  console.log(`[RebalanceBuy] vault=${vaultAddress} hand=${args.handId} monIn=${args.monIn} tokenOut=${args.tokenOut}`);
+}
+
+export async function handleRebalanceSell(
+  log: Log,
+  args: { handId: bigint; tokenIn: bigint; monOut: bigint; navBefore: bigint; navAfter: bigint },
+  vaultAddress: string
+): Promise<void> {
+  const meta = getLogMeta(log);
+  if (!meta) return;
+  if (await isEventProcessed(meta.blockNumber, meta.logIndex)) return;
+  await insertRebalanceEvent(
+    vaultAddress,
+    args.handId,
+    "sell",
+    args.tokenIn,
+    args.monOut,
+    args.navBefore,
+    args.navAfter,
+    meta.blockNumber,
+    meta.txHash
+  );
+  await markEventProcessed(meta.blockNumber, meta.logIndex, meta.txHash, "RebalanceSell");
+  console.log(`[RebalanceSell] vault=${vaultAddress} hand=${args.handId} tokenIn=${args.tokenIn} monOut=${args.monOut}`);
 }

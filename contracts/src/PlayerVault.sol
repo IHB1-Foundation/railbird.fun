@@ -140,4 +140,26 @@ contract PlayerVault is IPlayerVault {
     function emitSnapshot() external onlyOwner {
         emit VaultSnapshot(0, getExternalAssets(), cumulativePnl);
     }
+
+    /// @dev Called by the keeper/operator after executing a NAV-accretive buy on nad.fun
+    function recordRebalanceBuy(
+        uint256 handId,
+        uint256 monIn,
+        uint256 tokenOut,
+        uint256 navBefore,
+        uint256 navAfter
+    ) external onlyOwner {
+        emit RebalanceBuy(handId, monIn, tokenOut, navBefore, navAfter);
+    }
+
+    /// @dev Called by the keeper/operator after executing a NAV-accretive sell on nad.fun
+    function recordRebalanceSell(
+        uint256 handId,
+        uint256 tokenIn,
+        uint256 monOut,
+        uint256 navBefore,
+        uint256 navAfter
+    ) external onlyOwner {
+        emit RebalanceSell(handId, tokenIn, monOut, navBefore, navAfter);
+    }
 }

@@ -12,6 +12,7 @@ import {
   getAgent,
   getAllAgents,
   getAgentsByOwner,
+  getRebalanceEvents,
   getLatestVaultSnapshot,
   getVaultSnapshots,
   getVaultSnapshotsInPeriod,
@@ -442,6 +443,38 @@ router.get("/agents/:address/snapshots", async (req, res) => {
     res.json(snapshots.map(formatSnapshotResponse));
   } catch (error) {
     console.error("Error fetching snapshots:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/agents/:address/rebalances", async (req, res) => {
+  try {
+    const tokenAddress = req.params.address.toLowerCase();
+    const limit = Math.min(parseInt(req.query.limit as string) || 50, 500);
+
+    const agent = await getAgent(tokenAddress);
+    if (!agent || !agent.vault_address) {
+      return res.status(404).json({ error: "Agent or vault not found" });
+    }
+
+    const events = await getRebalanceEvents(agent.vault_address, limit);
+    res.json(
+      events.map((e) => ({
+        id: e.id,
+        vaultAddress: e.vault_address,
+        handId: e.hand_id,
+        direction: e.direction,
+        amountIn: e.amount_in,
+        amountOut: e.amount_out,
+        navBefore: e.nav_before,
+        navAfter: e.nav_after,
+        blockNumber: e.block_number,
+        txHash: e.tx_hash,
+        timestamp: e.created_at.toISOString(),
+      }))
+    );
+  } catch (error) {
+    console.error("Error fetching rebalance events:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });

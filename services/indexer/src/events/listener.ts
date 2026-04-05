@@ -24,6 +24,8 @@ import type {
   TableUpdatedArgs,
   MetaURIUpdatedArgs,
   VaultSnapshotArgs,
+  RebalanceBuyArgs,
+  RebalanceSellArgs,
 } from "./eventArgs.js";
 import {
   getAllAgents,
@@ -365,6 +367,20 @@ export class EventListener {
           await handlers.handleVaultSnapshot(
             log,
             decoded.args as unknown as VaultSnapshotArgs,
+            log.address
+          );
+          break;
+        case "RebalanceBuy":
+          await handlers.handleRebalanceBuy(
+            log,
+            decoded.args as unknown as RebalanceBuyArgs,
+            log.address
+          );
+          break;
+        case "RebalanceSell":
+          await handlers.handleRebalanceSell(
+            log,
+            decoded.args as unknown as RebalanceSellArgs,
             log.address
           );
           break;

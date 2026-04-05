@@ -130,3 +130,19 @@ export interface VaultSnapshotArgs {
   P: bigint;
   cumulativePnl: bigint;
 }
+
+export interface RebalanceBuyArgs {
+  handId: bigint;
+  monIn: bigint;
+  tokenOut: bigint;
+  navBefore: bigint;
+  navAfter: bigint;
+}
+
+export interface RebalanceSellArgs {
+  handId: bigint;
+  tokenIn: bigint;
+  monOut: bigint;
+  navBefore: bigint;
+  navAfter: bigint;
+}

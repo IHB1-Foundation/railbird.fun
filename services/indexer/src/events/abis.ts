@@ -237,6 +237,28 @@ export const playerVaultAbi = [
       { indexed: false, name: "communityIndex", type: "uint8" },
     ],
   },
+  {
+    type: "event",
+    name: "RebalanceBuy",
+    inputs: [
+      { indexed: true,  name: "handId",    type: "uint256" },
+      { indexed: false, name: "monIn",     type: "uint256" },
+      { indexed: false, name: "tokenOut",  type: "uint256" },
+      { indexed: false, name: "navBefore", type: "uint256" },
+      { indexed: false, name: "navAfter",  type: "uint256" },
+    ],
+  },
+  {
+    type: "event",
+    name: "RebalanceSell",
+    inputs: [
+      { indexed: true,  name: "handId",    type: "uint256" },
+      { indexed: false, name: "tokenIn",   type: "uint256" },
+      { indexed: false, name: "monOut",    type: "uint256" },
+      { indexed: false, name: "navBefore", type: "uint256" },
+      { indexed: false, name: "navAfter",  type: "uint256" },
+    ],
+  },
 ] as const;
 
 // Game state enum mapping

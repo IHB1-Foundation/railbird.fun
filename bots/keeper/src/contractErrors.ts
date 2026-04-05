@@ -20,6 +20,11 @@ export const CONTRACT_ERRORS = {
 
   // submitHoleCommit — idempotent duplicate (not fatal)
   COMMITMENT_ALREADY_EXISTS: "Commitment already exists",
+
+  // Multi-keeper race: another keeper already acted this block
+  ONE_ACTION_PER_BLOCK: "One action per block",
+  INVALID_GAME_STATE: "Invalid game state",
+  NOT_YOUR_TURN: "Not your turn",
 } as const;
 
 /**
@@ -56,4 +61,19 @@ export function isSettleShowdownRetriable(error: unknown): boolean {
  */
 export function isCommitmentAlreadyExists(error: unknown): boolean {
   return String(error).includes(CONTRACT_ERRORS.COMMITMENT_ALREADY_EXISTS);
+}
+
+/**
+ * Returns true when a transaction fails because another keeper already acted
+ * in the same block or the game state changed before this keeper could act.
+ * These are benign multi-keeper coordination races, not real errors.
+ */
+export function isDuplicateKeeperAction(error: unknown): boolean {
+  const msg = String(error);
+  return (
+    msg.includes(CONTRACT_ERRORS.ONE_ACTION_PER_BLOCK) ||
+    msg.includes(CONTRACT_ERRORS.INVALID_GAME_STATE) ||
+    msg.includes(CONTRACT_ERRORS.CANNOT_START_HAND) ||
+    msg.includes(CONTRACT_ERRORS.VRF_TIMEOUT_NOT_REACHED)
+  );
 }

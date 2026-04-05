@@ -50,7 +50,23 @@ async function main() {
   const rpcUrl = requireEnv("RPC_URL");
   const defaultPollIntervalMs = 2000;
 
-  const tableAddresses = parseTableAddresses();
+  const allTableAddresses = parseTableAddresses();
+  const actionJitterMs = parsePositiveInt("KEEPER_ACTION_JITTER_MS", 0);
+
+  // Table sharding: when running multiple keeper processes, each can own a
+  // subset of tables. Set KEEPER_SHARD_ID (0-indexed) and KEEPER_TOTAL_SHARDS.
+  // Example: 2 processes → process 0 gets even-indexed tables, process 1 gets odd.
+  const totalShards = parsePositiveInt("KEEPER_TOTAL_SHARDS", 1);
+  const shardId = parsePositiveInt("KEEPER_SHARD_ID", 0);
+  const tableAddresses = totalShards > 1
+    ? allTableAddresses.filter((_, i) => i % totalShards === shardId)
+    : allTableAddresses;
+
+  if (tableAddresses.length === 0) {
+    console.log(`[KeeperBot] No tables assigned to shard ${shardId}/${totalShards}. Exiting.`);
+    return;
+  }
+
   const baseConfig = {
     rpcUrl,
     privateKey: requireEnv("KEEPER_PRIVATE_KEY") as `0x${string}`,
@@ -58,6 +74,7 @@ async function main() {
     dealerApiKey: process.env.DEALER_API_KEY,
     chainId: parseInt(optionalEnv("CHAIN_ID", "133")),
     pollIntervalMs: parsePositiveInt("POLL_INTERVAL_MS", defaultPollIntervalMs),
+    actionJitterMs,
   };
 
   console.log("Configuration:");
@@ -65,6 +82,10 @@ async function main() {
   console.log(`  Tables: ${tableAddresses.join(", ")}`);
   console.log(`  Chain ID: ${baseConfig.chainId}`);
   console.log(`  Poll interval: ${baseConfig.pollIntervalMs}ms`);
+  console.log(`  Action jitter: ${actionJitterMs}ms`);
+  if (totalShards > 1) {
+    console.log(`  Shard: ${shardId}/${totalShards} (${tableAddresses.length}/${allTableAddresses.length} tables)`);
+  }
   console.log(`  Dealer integration: ${baseConfig.ownerviewUrl && baseConfig.dealerApiKey ? "enabled" : "disabled"}`);
 
   // Create one KeeperBot per table
@@ -100,6 +121,7 @@ async function main() {
     console.log(`  Hands started: ${stats.handsStarted}`);
     console.log(`  Showdowns settled: ${stats.showdownsSettled}`);
     console.log(`  Errors: ${stats.errors}`);
+    console.log(`  Coordination skips: ${stats.coordinationSkips}`);
     console.log(`  Last action: ${stats.lastAction} at ${new Date(stats.lastActionTime).toISOString()}`);
   }
 }

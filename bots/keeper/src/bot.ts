@@ -7,6 +7,7 @@ import {
   isCannotStartHand,
   isSettleShowdownRetriable,
   isCommitmentAlreadyExists,
+  isDuplicateKeeperAction,
 } from "./contractErrors.js";
 
 const ZERO_BYTES32 = "0x0000000000000000000000000000000000000000000000000000000000000000";
@@ -42,6 +43,12 @@ export interface KeeperBotConfig {
   dealerApiKey?: string;
   chainId?: number;
   pollIntervalMs?: number;
+  /**
+   * Max random delay (ms) added before each on-chain action to reduce
+   * collision probability when multiple keeper instances run in parallel.
+   * Default: 0 (no jitter). Set via KEEPER_ACTION_JITTER_MS.
+   */
+  actionJitterMs?: number;
 }
 
 export interface KeeperStats {
@@ -56,6 +63,8 @@ export interface KeeperStats {
   rpcErrors: number;
   apiErrors: number;
   txErrors: number;
+  /** Duplicate/race actions skipped due to multi-keeper coordination. */
+  coordinationSkips: number;
 }
 
 export class KeeperBot {
@@ -73,6 +82,7 @@ export class KeeperBot {
     rpcErrors: 0,
     apiErrors: 0,
     txErrors: 0,
+    coordinationSkips: 0,
   };
 
   // Track last state to detect changes
@@ -195,14 +205,21 @@ export class KeeperBot {
       `[KeeperBot] Timeout detected! Deadline: ${state.actionDeadline}, Current: ${currentTimestamp}`
     );
 
+    // Jitter before acting to reduce collision with other keeper instances
+    await this.coordinationJitter();
+
     try {
       const hash = await this.chainClient.forceTimeout();
       this.stats.timeoutsForced++;
       this.recordAction("forceTimeout");
       console.log(`[KeeperBot] Forced timeout, tx: ${hash}`);
     } catch (error) {
-      console.error("[KeeperBot] Failed to force timeout:", error);
-      this.stats.errors++;
+      if (isDuplicateKeeperAction(error)) {
+        this.handleCoordinationRace("forceTimeout", error);
+      } else {
+        console.error("[KeeperBot] Failed to force timeout:", error);
+        this.stats.errors++;
+      }
     }
   }
 
@@ -234,6 +251,9 @@ export class KeeperBot {
         `Current: ${currentTimestamp}, Requesting new VRF...`
     );
 
+    // Jitter before acting to reduce collision with other keeper instances
+    await this.coordinationJitter();
+
     try {
       const hash = await this.chainClient.reRequestVRF();
       this.stats.vrfReRequests++;
@@ -242,7 +262,7 @@ export class KeeperBot {
     } catch (error) {
       if (isVrfAlreadyReRequested(error)) {
         // Race condition: someone else already re-requested
-        console.log("[KeeperBot] VRF already re-requested by another keeper");
+        this.handleCoordinationRace("reRequestVRF", error);
       } else {
         console.error("[KeeperBot] Failed to re-request VRF:", error);
         this.stats.errors++;
@@ -264,13 +284,18 @@ export class KeeperBot {
 
     console.log("[KeeperBot] Table is ready, starting new hand...");
 
+    // Jitter before acting to reduce collision with other keeper instances
+    await this.coordinationJitter();
+
     try {
       const hash = await this.chainClient.startHand();
       this.stats.handsStarted++;
       this.recordAction("startHand");
       console.log(`[KeeperBot] Started new hand, tx: ${hash}`);
     } catch (error) {
-      if (!isCannotStartHand(error)) {
+      if (isCannotStartHand(error)) {
+        this.handleCoordinationRace("startHand", error);
+      } else {
         console.error("[KeeperBot] Failed to start hand:", error);
         this.stats.errors++;
       }
@@ -289,6 +314,9 @@ export class KeeperBot {
 
     console.log("[KeeperBot] Showdown detected, triggering card-based settlement...");
 
+    // Jitter before acting to reduce collision with other keeper instances
+    await this.coordinationJitter();
+
     try {
       await this.checkAndRevealHoleCards(state.currentHandId);
       const hash = await this.chainClient.settleShowdown();
@@ -299,6 +327,8 @@ export class KeeperBot {
       if (isSettleShowdownRetriable(error)) {
         // Reveal window still open or no reveals yet: retry later.
         console.log("[KeeperBot] Waiting for hole card reveals before settlement...");
+      } else if (isDuplicateKeeperAction(error)) {
+        this.handleCoordinationRace("settleShowdown", error);
       } else {
         console.error("[KeeperBot] Failed to settle showdown:", error);
         this.stats.errors++;
@@ -467,6 +497,27 @@ export class KeeperBot {
 
   private sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Random jitter before on-chain actions when multiple keeper instances run.
+   * Each keeper sleeps a random [0, actionJitterMs] ms so they act at different
+   * times, reducing the chance two keepers submit the same transaction.
+   */
+  private async coordinationJitter(): Promise<void> {
+    const maxJitter = this.config.actionJitterMs ?? 0;
+    if (maxJitter <= 0) return;
+    const delay = Math.floor(Math.random() * maxJitter);
+    if (delay > 0) await this.sleep(delay);
+  }
+
+  /**
+   * Handle errors that indicate another keeper instance already acted.
+   * These are not real errors but expected coordination races.
+   */
+  private handleCoordinationRace(context: string, error: unknown): void {
+    this.stats.coordinationSkips++;
+    console.info(`[KeeperBot] Coordination skip in ${context} (another keeper acted first):`, String(error).split("\n")[0]);
   }
 
   private isRateLimitError(error: unknown): boolean {

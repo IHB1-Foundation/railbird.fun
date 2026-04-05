@@ -6,8 +6,7 @@ import { useAuth } from "@/lib/auth";
 import { shortenAddress, formatMon, formatNavPerShare } from "@/lib/utils";
 import type { AgentResponse } from "@/lib/types";
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_INDEXER_URL || "https://indexer.railbird.fun";
+import { getAgentsByOwner } from "@/lib/api";
 
 export default function MyAgentsPage() {
   const { isConnected, isAuthenticated, address, connect, authenticate } =
@@ -28,19 +27,7 @@ export default function MyAgentsPage() {
       setError(null);
 
       try {
-        // Fetch all agents and filter by owner
-        // In production, the API should support ?owner= query param
-        const res = await fetch(`${API_BASE}/api/agents`);
-        if (!res.ok) {
-          throw new Error(`Failed to fetch agents: ${res.status}`);
-        }
-        const allAgents: AgentResponse[] = await res.json();
-
-        // Filter by owner address (case-insensitive)
-        const owned = allAgents.filter(
-          (agent) =>
-            agent.ownerAddress.toLowerCase() === address.toLowerCase()
-        );
+        const owned = await getAgentsByOwner(address);
         setAgents(owned);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load agents");

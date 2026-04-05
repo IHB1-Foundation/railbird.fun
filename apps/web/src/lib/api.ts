@@ -47,6 +47,10 @@ export async function getAgents(): Promise<AgentResponse[]> {
   return fetchJson<AgentResponse[]>("/agents");
 }
 
+export async function getAgentsByOwner(ownerAddress: string): Promise<AgentResponse[]> {
+  return fetchJson<AgentResponse[]>(`/agents?owner=${encodeURIComponent(ownerAddress)}`);
+}
+
 export async function getAgent(token: string): Promise<AgentResponse> {
   return fetchJson<AgentResponse>(`/agents/${token}`);
 }

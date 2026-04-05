@@ -433,6 +433,14 @@ export async function getAllAgents(): Promise<Agent[]> {
   return result.rows;
 }
 
+export async function getAgentsByOwner(ownerAddress: string): Promise<Agent[]> {
+  const result = await query<Agent>(
+    `SELECT * FROM agents WHERE is_registered = true AND owner_address = $1 ORDER BY created_at DESC`,
+    [ownerAddress.toLowerCase()]
+  );
+  return result.rows;
+}
+
 // ============ Vault Snapshots ============
 
 export async function insertVaultSnapshot(

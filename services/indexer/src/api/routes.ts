@@ -11,6 +11,7 @@ import {
   getHandActions,
   getAgent,
   getAllAgents,
+  getAgentsByOwner,
   getLatestVaultSnapshot,
   getVaultSnapshots,
   getVaultSnapshotsInPeriod,
@@ -384,9 +385,12 @@ router.get("/tables/:tableId/hands/:handId", async (req, res) => {
 
 // ============ Agents ============
 
-router.get("/agents", async (_req, res) => {
+router.get("/agents", async (req, res) => {
   try {
-    const agents = await getAllAgents();
+    const ownerParam = req.query.owner as string | undefined;
+    const agents = ownerParam
+      ? await getAgentsByOwner(ownerParam)
+      : await getAllAgents();
 
     const response = await Promise.all(
       agents.map(async (agent) => {

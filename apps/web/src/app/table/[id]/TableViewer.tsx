@@ -166,6 +166,11 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
   const gameState = GAME_STATES[table.gameState] || table.gameState;
   const currentHand = table.currentHand;
   const isActive = gameState !== "Waiting for Seats" && gameState !== "Settled";
+  const vrfStreet: string | null =
+    table.gameState === "WAITING_VRF_FLOP" || table.gameState === "4" ? "Flop"
+    : table.gameState === "WAITING_VRF_TURN" || table.gameState === "6" ? "Turn"
+    : table.gameState === "WAITING_VRF_RIVER" || table.gameState === "8" ? "River"
+    : null;
   const actorSeat = currentHand?.actorSeat ?? null;
   const actorSeatData = actorSeat !== null ? seatByIndex.get(actorSeat) : null;
   const streetSections = useMemo(() => {
@@ -406,6 +411,7 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
                   {timeRemaining}
                 </div>
               )}
+              {vrfStreet && <VrfStatusWidget street={vrfStreet} />}
             </div>
           </div>
 
@@ -522,6 +528,18 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
           ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+// VRF Status Widget — shown during WAITING_VRF_* states
+function VrfStatusWidget({ street }: { street: string }) {
+  return (
+    <div className="vrf-status-widget">
+      <span className="vrf-spinner" />
+      <span className="vrf-label">
+        Waiting for VRF ({street})
+      </span>
     </div>
   );
 }

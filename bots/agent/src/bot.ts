@@ -5,6 +5,7 @@ import { OwnerViewClient, type HoleCardsResponse } from "./auth/ownerviewClient.
 import { SimpleStrategy, type Strategy, Decision, type DecisionContext, type HoleCards } from "./strategy/index.js";
 import { signMessage } from "viem/accounts";
 import { deriveEncryptionKeyPair } from "./auth/encryptionKey.js";
+import { CircuitBreaker, CircuitOpenError } from "@playerco/shared";
 
 export interface AgentBotConfig {
   rpcUrl: string;
@@ -45,6 +46,9 @@ export class AgentBot {
     apiErrors: 0,
     txErrors: 0,
   };
+
+  // Circuit breakers for external services
+  private ownerViewCircuit = new CircuitBreaker({ name: "OwnerView", failureThreshold: 5, recoveryTimeoutMs: 30_000 });
 
   // Track last known hand for detecting new hands
   private lastHandId: bigint = 0n;
@@ -293,13 +297,15 @@ export class AgentBot {
   private async submitAction(state: TableState): Promise<void> {
     const seatIndex = this.mySeatIndex!;
 
-    // Get hole cards if available
+    // Get hole cards if available, guarded by circuit breaker
     let holeCards: HoleCards | null = null;
     if (this.ownerviewClient) {
       try {
-        const response = await this.ownerviewClient.getHoleCards(
-          String(state.tableId),
-          String(state.currentHandId)
+        const response = await this.ownerViewCircuit.execute(() =>
+          this.ownerviewClient!.getHoleCards(
+            String(state.tableId),
+            String(state.currentHandId)
+          )
         );
         if (response.holeCards && response.holeCards.length >= 2) {
           holeCards = {
@@ -308,8 +314,13 @@ export class AgentBot {
           };
         }
       } catch (error) {
-        // Hole card failure is non-fatal: bot can still play with heuristics.
-        console.error("[AgentBot] Failed to get hole cards (playing without):", error);
+        if (error instanceof CircuitOpenError) {
+          // Circuit open: skip silently (logged when circuit opened)
+        } else {
+          // Hole card failure is non-fatal: bot can still play with heuristics.
+          console.error("[AgentBot] Failed to get hole cards (playing without):", error);
+          this.stats.apiErrors++;
+        }
       }
     }
 

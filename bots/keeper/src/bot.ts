@@ -9,6 +9,7 @@ import {
   isCommitmentAlreadyExists,
   isDuplicateKeeperAction,
 } from "./contractErrors.js";
+import { CircuitBreaker, CircuitOpenError } from "@playerco/shared";
 
 const ZERO_BYTES32 = "0x0000000000000000000000000000000000000000000000000000000000000000";
 const DEFAULT_REQUEST_TIMEOUT_MS = parseInt(process.env.REQUEST_TIMEOUT_MS || "10000", 10);
@@ -84,6 +85,9 @@ export class KeeperBot {
     txErrors: 0,
     coordinationSkips: 0,
   };
+
+  // Circuit breaker for the dealer API
+  private dealerCircuit = new CircuitBreaker({ name: "DealerAPI", failureThreshold: 5, recoveryTimeoutMs: 30_000 });
 
   // Track last state to detect changes
   private lastHandId: bigint = 0n;
@@ -354,7 +358,20 @@ export class KeeperBot {
       return;
     }
 
-    const commitments = await this.getDealerCommitments(state.currentHandId);
+    let commitments: Array<{ seatIndex: number; commitment: `0x${string}` }>;
+    try {
+      commitments = await this.dealerCircuit.execute(() =>
+        this.getDealerCommitments(state.currentHandId)
+      );
+    } catch (error) {
+      if (error instanceof CircuitOpenError) {
+        // Dealer API unavailable; skip silently
+        return;
+      }
+      console.error("[KeeperBot] Failed to get dealer commitments:", error);
+      this.stats.apiErrors++;
+      return;
+    }
     let submitted = 0;
     for (const { seatIndex, commitment } of commitments) {
       const existing = await this.chainClient.getHoleCommit(state.currentHandId, seatIndex);
@@ -386,7 +403,19 @@ export class KeeperBot {
       return;
     }
 
-    const commitments = await this.getDealerCommitments(handId);
+    let commitments: Array<{ seatIndex: number; commitment: `0x${string}` }>;
+    try {
+      commitments = await this.dealerCircuit.execute(() =>
+        this.getDealerCommitments(handId)
+      );
+    } catch (error) {
+      if (error instanceof CircuitOpenError) {
+        return;
+      }
+      console.error("[KeeperBot] Failed to get dealer commitments for reveal:", error);
+      this.stats.apiErrors++;
+      return;
+    }
     let revealedCount = 0;
     for (const { seatIndex, commitment } of commitments) {
       const onChainCommit = await this.chainClient.getHoleCommit(handId, seatIndex);
@@ -399,7 +428,19 @@ export class KeeperBot {
         continue;
       }
 
-      const reveal = await this.getDealerReveal(handId, seatIndex);
+      let reveal: { cards: [number, number]; salt: `0x${string}` };
+      try {
+        reveal = await this.dealerCircuit.execute(() =>
+          this.getDealerReveal(handId, seatIndex)
+        );
+      } catch (error) {
+        if (error instanceof CircuitOpenError) {
+          return;
+        }
+        console.error(`[KeeperBot] Failed to get dealer reveal hand=${handId} seat=${seatIndex}:`, error);
+        this.stats.apiErrors++;
+        continue;
+      }
       try {
         const hash = await this.chainClient.revealHoleCards(
           handId,

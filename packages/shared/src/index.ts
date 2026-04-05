@@ -23,3 +23,7 @@ export {
 // Logger
 export { createLogger } from "./logger.js";
 export type { LoggerOptions, LogLevel } from "./logger.js";
+
+// Circuit breaker
+export { CircuitBreaker, CircuitOpenError } from "./circuitBreaker.js";
+export type { CircuitState, CircuitBreakerOptions } from "./circuitBreaker.js";

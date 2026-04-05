@@ -2,6 +2,12 @@
 // starting hands, settling showdowns, and triggering rebalancing
 
 import { ChainClient, GameState, type TableState } from "./chain/client.js";
+import {
+  isVrfAlreadyReRequested,
+  isCannotStartHand,
+  isSettleShowdownRetriable,
+  isCommitmentAlreadyExists,
+} from "./contractErrors.js";
 
 const ZERO_BYTES32 = "0x0000000000000000000000000000000000000000000000000000000000000000";
 const DEFAULT_REQUEST_TIMEOUT_MS = parseInt(process.env.REQUEST_TIMEOUT_MS || "10000", 10);
@@ -227,8 +233,7 @@ export class KeeperBot {
       this.recordAction("reRequestVRF");
       console.log(`[KeeperBot] Re-requested VRF, tx: ${hash}`);
     } catch (error) {
-      const errorMsg = String(error);
-      if (errorMsg.includes("VRF timeout not reached")) {
+      if (isVrfAlreadyReRequested(error)) {
         // Race condition: someone else already re-requested
         console.log("[KeeperBot] VRF already re-requested by another keeper");
       } else {
@@ -258,8 +263,7 @@ export class KeeperBot {
       this.recordAction("startHand");
       console.log(`[KeeperBot] Started new hand, tx: ${hash}`);
     } catch (error) {
-      const errorMsg = String(error);
-      if (!errorMsg.includes("Cannot start hand now")) {
+      if (!isCannotStartHand(error)) {
         console.error("[KeeperBot] Failed to start hand:", error);
         this.stats.errors++;
       }
@@ -285,12 +289,8 @@ export class KeeperBot {
       this.recordAction("settleShowdown");
       console.log(`[KeeperBot] Settled showdown (winner determined by card evaluation), tx: ${hash}`);
     } catch (error) {
-      const errorMsg = String(error);
-      // Reveal window still open or no reveals yet: retry later.
-      if (
-        errorMsg.includes("No revealed hole cards") ||
-        errorMsg.includes("Showdown reveal window open")
-      ) {
+      if (isSettleShowdownRetriable(error)) {
+        // Reveal window still open or no reveals yet: retry later.
         console.log("[KeeperBot] Waiting for hole card reveals before settlement...");
       } else {
         console.error("[KeeperBot] Failed to settle showdown:", error);
@@ -332,8 +332,7 @@ export class KeeperBot {
           `[KeeperBot] Submitted hole commit hand=${state.currentHandId} seat=${seatIndex}, tx: ${hash}`
         );
       } catch (error) {
-        const errorMsg = String(error);
-        if (!errorMsg.includes("Commitment already exists")) {
+        if (!isCommitmentAlreadyExists(error)) {
           throw error;
         }
       }

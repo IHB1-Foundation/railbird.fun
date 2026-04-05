@@ -3,6 +3,13 @@
 import { test, describe } from "node:test";
 import assert from "node:assert";
 import { GameState } from "./chain/client.js";
+import {
+  CONTRACT_ERRORS,
+  isVrfAlreadyReRequested,
+  isCannotStartHand,
+  isSettleShowdownRetriable,
+  isCommitmentAlreadyExists,
+} from "./contractErrors.js";
 
 describe("GameState enum", () => {
   test("has correct values", () => {
@@ -275,5 +282,39 @@ describe("Keeper decision logic", () => {
         `Should re-request VRF in state ${GameState[state]}`
       );
     }
+  });
+});
+
+describe("contractErrors — error matching helpers", () => {
+  test("isVrfAlreadyReRequested matches the VRF_TIMEOUT_NOT_REACHED string", () => {
+    const err = new Error(`execution reverted: ${CONTRACT_ERRORS.VRF_TIMEOUT_NOT_REACHED}`);
+    assert.strictEqual(isVrfAlreadyReRequested(err), true);
+    assert.strictEqual(isVrfAlreadyReRequested(new Error("some other error")), false);
+  });
+
+  test("isVrfAlreadyReRequested works on string errors", () => {
+    assert.strictEqual(isVrfAlreadyReRequested("VRF timeout not reached"), true);
+    assert.strictEqual(isVrfAlreadyReRequested("random error"), false);
+  });
+
+  test("isCannotStartHand matches the CANNOT_START_HAND string", () => {
+    const err = new Error(`execution reverted: ${CONTRACT_ERRORS.CANNOT_START_HAND}`);
+    assert.strictEqual(isCannotStartHand(err), true);
+    assert.strictEqual(isCannotStartHand(new Error("random error")), false);
+  });
+
+  test("isSettleShowdownRetriable matches both retry conditions", () => {
+    const errNoCards = new Error(`execution reverted: ${CONTRACT_ERRORS.NO_REVEALED_HOLE_CARDS}`);
+    const errWindow = new Error(`execution reverted: ${CONTRACT_ERRORS.SHOWDOWN_REVEAL_WINDOW_OPEN}`);
+    const errOther = new Error("random error");
+    assert.strictEqual(isSettleShowdownRetriable(errNoCards), true);
+    assert.strictEqual(isSettleShowdownRetriable(errWindow), true);
+    assert.strictEqual(isSettleShowdownRetriable(errOther), false);
+  });
+
+  test("isCommitmentAlreadyExists matches the COMMITMENT_ALREADY_EXISTS string", () => {
+    const err = new Error(`execution reverted: ${CONTRACT_ERRORS.COMMITMENT_ALREADY_EXISTS}`);
+    assert.strictEqual(isCommitmentAlreadyExists(err), true);
+    assert.strictEqual(isCommitmentAlreadyExists(new Error("something else")), false);
   });
 });

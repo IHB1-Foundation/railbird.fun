@@ -39,8 +39,8 @@ describe("Event ABIs", () => {
   });
 
   describe("GAME_STATES constant", () => {
-    it("should have 11 states", () => {
-      assert.strictEqual(GAME_STATES.length, 11);
+    it("should have 12 states", () => {
+      assert.strictEqual(GAME_STATES.length, 12);
     });
 
     it("should match contract enum order", () => {
@@ -57,6 +57,7 @@ describe("Event ABIs", () => {
         "BETTING_RIVER",
         "SHOWDOWN",
         "SETTLED",
+        "TOURNAMENT_OVER",
       ];
 
       for (let i = 0; i < expectedStates.length; i++) {

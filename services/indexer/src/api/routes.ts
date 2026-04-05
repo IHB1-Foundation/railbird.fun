@@ -17,6 +17,7 @@ import {
   getAgentSettlementsInPeriod,
 } from "../db/index.js";
 import { getWsManager } from "../ws/index.js";
+import { getListenerHealth } from "../events/listenerState.js";
 import type {
   TableResponse,
   SeatResponse,
@@ -218,7 +219,10 @@ router.get("/health", async (_req, res) => {
     process.env.RPC_URL
   );
 
-  const allReady = dbReady && chainReady;
+  const listenerHealth = getListenerHealth();
+  const listenerReady =
+    listenerHealth.status === "running" || listenerHealth.status === "disabled";
+  const allReady = dbReady && chainReady && listenerReady;
 
   res.status(allReady ? 200 : 503).json({
     status: allReady ? "ready" : "degraded",
@@ -226,6 +230,7 @@ router.get("/health", async (_req, res) => {
     dependencies: {
       database: dbReady ? "ready" : "unavailable",
       chain: chainReady ? "ready" : "unavailable",
+      eventListener: listenerHealth,
     },
     websocket: wsStats,
   });

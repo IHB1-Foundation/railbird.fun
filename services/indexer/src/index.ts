@@ -3,6 +3,7 @@
 import { VERSION } from "@playerco/shared";
 import { createApp } from "./api/index.js";
 import { EventListener } from "./events/index.js";
+import { setListenerStatus } from "./events/listenerState.js";
 import { getPool, closePool } from "./db/index.js";
 import { createWsServer, getWsManager } from "./ws/index.js";
 import type { Address } from "viem";
@@ -101,10 +102,27 @@ async function main(): Promise<void> {
       logBlockRange: parseInt(process.env.LOG_BLOCK_RANGE || "90", 10),
     });
 
-    // Don't block on listener start - run in background
-    listener.start().catch((err) => {
-      console.error("Event listener error:", err);
-    });
+    // Start event listener — fail fast on fatal error so the orchestrator can restart
+    setListenerStatus("starting");
+    listener.start()
+      .then(() => {
+        setListenerStatus("running");
+      })
+      .catch((err: unknown) => {
+        const reason = err instanceof Error ? err.message : String(err);
+        console.error(
+          JSON.stringify({
+            level: "error",
+            service: "indexer",
+            event: "event_listener_fatal",
+            message: "Event listener encountered a fatal error — exiting",
+            reason,
+            timestamp: new Date().toISOString(),
+          })
+        );
+        setListenerStatus("failed", reason);
+        process.exit(1);
+      });
 
     // Graceful shutdown
     const shutdown = async () => {

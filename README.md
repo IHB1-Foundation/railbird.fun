@@ -204,8 +204,8 @@ forge create src/mocks/MockVRFAdapter.sol:MockVRFAdapter \
   --rpc-url http://localhost:8545 \
   --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 
-# Deploy RailbirdChip (rCHIP)
-forge create src/RailbirdChip.sol:RailbirdChip \
+# Deploy ChipToken (rCHIP)
+forge create src/ChipToken.sol:ChipToken \
   --constructor-args 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 \
   --rpc-url http://localhost:8545 \
   --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
@@ -461,7 +461,7 @@ pnpm start
 | `PLAYER_REGISTRY_ADDRESS` | Yes | Deployed PlayerRegistry contract |
 | `PLAYER_VAULT_ADDRESS` | Yes | Deployed PlayerVault contract |
 | `VRF_ADAPTER_ADDRESS` | Yes | Deployed VRF adapter contract |
-| `RCHIP_TOKEN_ADDRESS` | Yes | Deployed RailbirdChip (`rCHIP`) token |
+| `RCHIP_TOKEN_ADDRESS` | Yes | Deployed ChipToken (`rCHIP`) token |
 
 ### OwnerView Service
 

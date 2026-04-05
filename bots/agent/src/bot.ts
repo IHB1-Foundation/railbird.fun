@@ -53,7 +53,9 @@ export class AgentBot {
   private waitingTurnKey: string | null = null;
   private currentBackoffMs: number = 0;
   private encryptionPrivKey: Uint8Array | null = null;
-  private encryptionKeyRegistered: boolean = false;
+  // 'unregistered' → 'registering' → 'registered' prevents double-registration
+  // when consecutive ticks overlap while a tx is in-flight.
+  private encryptionKeyState: "unregistered" | "registering" | "registered" = "unregistered";
 
   constructor(config: AgentBotConfig) {
     this.config = config;
@@ -173,19 +175,26 @@ export class AgentBot {
         console.log(`[AgentBot] Found my seat: ${this.mySeatIndex}`);
         this.lastStack = state.seats[this.mySeatIndex].stack;
 
-        // Auto-register encryption key on-chain (once per session)
-        if (!this.encryptionKeyRegistered && this.encryptionPrivKey) {
+        // Auto-register encryption key on-chain (once per session).
+        // Guard with 'registering' state to prevent double-submission if a
+        // subsequent tick fires while the registration tx is in-flight.
+        if (this.encryptionKeyState === "unregistered" && this.encryptionPrivKey) {
+          this.encryptionKeyState = "registering";
           const { secp256k1 } = await import("@noble/curves/secp256k1.js");
           const pubKey = secp256k1.getPublicKey(this.encryptionPrivKey, true);
           try {
+            // registerEncryptionKey already does an on-chain read and skips
+            // if the same key is already set (returns null).
             const txHash = await this.chainClient.registerEncryptionKey(this.mySeatIndex, pubKey);
             if (txHash) {
               console.log(`[AgentBot] Encryption key registered: ${txHash}`);
             } else {
-              console.log("[AgentBot] Encryption key already registered, skipping");
+              console.log("[AgentBot] Encryption key already registered on-chain, skipping");
             }
-            this.encryptionKeyRegistered = true;
+            this.encryptionKeyState = "registered";
           } catch (error) {
+            // Roll back to unregistered so the next tick can retry.
+            this.encryptionKeyState = "unregistered";
             console.warn("[AgentBot] Failed to register encryption key:", error);
           }
         }

@@ -95,6 +95,7 @@ CREATE TABLE IF NOT EXISTS actions (
 
 CREATE INDEX IF NOT EXISTS idx_actions_hand ON actions(table_id, hand_id);
 CREATE INDEX IF NOT EXISTS idx_actions_block ON actions(block_number);
+CREATE INDEX IF NOT EXISTS idx_actions_created_at ON actions(created_at DESC);
 
 -- ============ VRF Requests ============
 
@@ -127,6 +128,7 @@ CREATE TABLE IF NOT EXISTS agents (
 
 CREATE INDEX IF NOT EXISTS idx_agents_owner ON agents(owner_address);
 CREATE INDEX IF NOT EXISTS idx_agents_table ON agents(table_address);
+CREATE INDEX IF NOT EXISTS idx_agents_vault ON agents(vault_address);
 
 -- ============ Vault Snapshots ============
 

@@ -17,7 +17,12 @@ contract PokerTable {
     using SafeTransfer for address;
 
     // ============ Constants ============
+    /// @dev Maximum array size — arrays are always sized to 9; unused slots are ignored.
     uint8 public constant MAX_SEATS = 9;
+
+    // ============ Immutable Seat Config ============
+    /// @notice Active seat count for this table (2–MAX_SEATS). Set at deploy.
+    uint8 public immutable numSeats;
 
     // ============ Immutable Timeout Config ============
     /// @notice Per-action deadline (set at deploy). Range: 1 min – 60 min.
@@ -310,7 +315,7 @@ contract PokerTable {
 
     // ============ Modifiers ============
     function _checkOperator(uint8 seatIndex) internal view {
-        require(seatIndex < MAX_SEATS, "Invalid seat");
+        require(seatIndex < numSeats, "Invalid seat");
         require(
             msg.sender == seats[seatIndex].operator || msg.sender == seats[seatIndex].owner,
             "Not operator"
@@ -369,7 +374,8 @@ contract PokerTable {
         address _kycSBT,
         uint256 _actionTimeout,
         uint256 _vrfTimeout,
-        uint256 _showdownTimeout
+        uint256 _showdownTimeout,
+        uint8 _numSeats
     ) {
         require(_tableId > 0, "Table ID must be > 0");
         require(_smallBlind > 0, "Small blind must be > 0");
@@ -379,6 +385,7 @@ contract PokerTable {
         require(_actionTimeout >= 1 minutes && _actionTimeout <= 60 minutes, "actionTimeout out of range");
         require(_vrfTimeout >= 30 seconds && _vrfTimeout <= 30 minutes, "vrfTimeout out of range");
         require(_showdownTimeout >= 1 minutes && _showdownTimeout <= 60 minutes, "showdownTimeout out of range");
+        require(_numSeats >= 2 && _numSeats <= MAX_SEATS, "numSeats out of range (2-9)");
         tableId = _tableId;
         smallBlind = _smallBlind;
         bigBlind = _bigBlind;
@@ -388,6 +395,7 @@ contract PokerTable {
         ACTION_TIMEOUT = _actionTimeout;
         VRF_TIMEOUT = _vrfTimeout;
         SHOWDOWN_TIMEOUT = _showdownTimeout;
+        numSeats = _numSeats;
         gameState = GameState.WAITING_FOR_SEATS;
     }
 
@@ -405,7 +413,7 @@ contract PokerTable {
         address operator,
         uint256 buyIn
     ) external {
-        require(seatIndex < MAX_SEATS, "Invalid seat index");
+        require(seatIndex < numSeats, "Invalid seat index");
         require(seats[seatIndex].owner == address(0), "Seat already taken");
         require(owner != address(0), "Owner cannot be zero");
         require(buyIn >= bigBlind * 10, "Buy-in too small");
@@ -443,7 +451,7 @@ contract PokerTable {
             gameState == GameState.WAITING_FOR_SEATS || gameState == GameState.SETTLED,
             "Top-up only between hands"
         );
-        require(seatIndex < MAX_SEATS, "Invalid seat index");
+        require(seatIndex < numSeats, "Invalid seat index");
 
         Seat storage seat = seats[seatIndex];
         require(seat.owner != address(0), "Seat not occupied");
@@ -466,7 +474,7 @@ contract PokerTable {
             gameState == GameState.WAITING_FOR_SEATS || gameState == GameState.SETTLED,
             "Cash-out only between hands"
         );
-        require(seatIndex < MAX_SEATS, "Invalid seat index");
+        require(seatIndex < numSeats, "Invalid seat index");
         require(amount > 0, "Cash-out amount is zero");
 
         Seat storage seat = seats[seatIndex];
@@ -491,7 +499,7 @@ contract PokerTable {
             gameState == GameState.WAITING_FOR_SEATS || gameState == GameState.SETTLED,
             "Cannot leave during hand"
         );
-        require(seatIndex < MAX_SEATS, "Invalid seat index");
+        require(seatIndex < numSeats, "Invalid seat index");
 
         Seat memory seat = seats[seatIndex];
         require(seat.owner != address(0), "Seat not occupied");
@@ -515,7 +523,7 @@ contract PokerTable {
      * @notice Check if all seats are filled
      */
     function allSeatsFilled() public view returns (bool) {
-        for (uint8 i = 0; i < MAX_SEATS; i++) {
+        for (uint8 i = 0; i < numSeats; i++) {
             if (seats[i].owner == address(0)) return false;
         }
         return true;
@@ -530,7 +538,7 @@ contract PokerTable {
      * @param pubKey Compressed (33 bytes) or uncompressed (65 bytes) secp256k1 public key
      */
     function registerEncryptionKey(uint8 seatIndex, bytes calldata pubKey) external {
-        require(seatIndex < MAX_SEATS, "Invalid seat");
+        require(seatIndex < numSeats, "Invalid seat");
         require(
             msg.sender == seats[seatIndex].owner || msg.sender == seats[seatIndex].operator,
             "Not owner or operator"
@@ -552,7 +560,7 @@ contract PokerTable {
      * @notice Get the encryption public key registered for a seat.
      */
     function getEncryptionKey(uint8 seatIndex) external view returns (bytes memory) {
-        require(seatIndex < MAX_SEATS, "Invalid seat");
+        require(seatIndex < numSeats, "Invalid seat");
         return encryptionKeys[seatIndex];
     }
 
@@ -681,7 +689,7 @@ contract PokerTable {
         currentHandId++;
 
         // Reset seats for new hand
-        for (uint8 i = 0; i < MAX_SEATS; i++) {
+        for (uint8 i = 0; i < numSeats; i++) {
             seats[i].isActive = _isSeatPlayable(i);
             seats[i].currentBet = 0;
             seats[i].isAllIn = false;
@@ -714,7 +722,7 @@ contract PokerTable {
 
         // Post blinds for mid-game joiners (live blind = BB, counts as currentBet)
         // BB/SB seats already posted their blinds, so skip them.
-        for (uint8 i = 0; i < MAX_SEATS; i++) {
+        for (uint8 i = 0; i < numSeats; i++) {
             if (needsPostBlind[i] && seats[i].isActive && i != bbSeat && i != sbSeat) {
                 uint256 postAmount = bigBlind < seats[i].stack ? bigBlind : seats[i].stack;
                 seats[i].stack -= postAmount;
@@ -923,7 +931,7 @@ contract PokerTable {
         }
 
         // Reset all other active players' hasActed since they need to respond
-        for (uint8 i = 0; i < MAX_SEATS; i++) {
+        for (uint8 i = 0; i < numSeats; i++) {
             if (i != seatIndex && seats[i].isActive) {
                 currentHand.hasActed[i] = false;
             }
@@ -1020,7 +1028,7 @@ contract PokerTable {
         } else {
             // Pass action to next active, non-all-in player
             uint8 next = _nextActiveSeat(actorSeat);
-            if (next == MAX_SEATS) {
+            if (next == numSeats) {
                 // All remaining active players are all-in → round is complete
                 _completeBettingRound();
             } else {
@@ -1035,7 +1043,7 @@ contract PokerTable {
      *      Round is complete when all non-all-in active players have acted and matched currentBet.
      */
     function _isBettingRoundComplete() internal view returns (bool) {
-        for (uint8 i = 0; i < MAX_SEATS; i++) {
+        for (uint8 i = 0; i < numSeats; i++) {
             if (seats[i].isActive && !seats[i].isAllIn) {
                 if (!currentHand.hasActed[i]) return false;
                 if (seats[i].currentBet != currentHand.currentBet) return false;
@@ -1049,20 +1057,20 @@ contract PokerTable {
      * @dev Returns MAX_SEATS (invalid) if no such seat exists (all remaining are all-in).
      */
     function _nextActiveSeat(uint8 fromSeat) internal view returns (uint8) {
-        for (uint8 i = 1; i <= MAX_SEATS; i++) {
-            uint8 next = (fromSeat + i) % MAX_SEATS;
+        for (uint8 i = 1; i <= numSeats; i++) {
+            uint8 next = (fromSeat + i) % numSeats;
             if (seats[next].isActive && !seats[next].isAllIn) {
                 return next;
             }
         }
-        return MAX_SEATS; // sentinel: no eligible actor
+        return numSeats; // sentinel: no eligible actor
     }
 
     /**
      * @notice Count active players and track the last active seat index.
      */
     function _countActivePlayers() internal view returns (uint8 count, uint8 lastActive) {
-        for (uint8 i = 0; i < MAX_SEATS; i++) {
+        for (uint8 i = 0; i < numSeats; i++) {
             if (seats[i].isActive) {
                 count++;
                 lastActive = i;
@@ -1074,7 +1082,7 @@ contract PokerTable {
      * @notice Count active players who can still act (not all-in).
      */
     function _countNonAllInActivePlayers() internal view returns (uint8 count) {
-        for (uint8 i = 0; i < MAX_SEATS; i++) {
+        for (uint8 i = 0; i < numSeats; i++) {
             if (seats[i].isActive && !seats[i].isAllIn) count++;
         }
     }
@@ -1090,7 +1098,7 @@ contract PokerTable {
         uint256[MAX_SEATS] memory levels;
         uint8 levelCount = 0;
 
-        for (uint8 i = 0; i < MAX_SEATS; i++) {
+        for (uint8 i = 0; i < numSeats; i++) {
             if (seats[i].isActive && seats[i].isAllIn && seats[i].totalHandBet > 0) {
                 levels[levelCount++] = seats[i].totalHandBet;
             }
@@ -1118,7 +1126,7 @@ contract PokerTable {
 
         // Add the maximum totalHandBet as the final level (captures non-all-in bets)
         uint256 maxBet = 0;
-        for (uint8 i = 0; i < MAX_SEATS; i++) {
+        for (uint8 i = 0; i < numSeats; i++) {
             if (seats[i].totalHandBet > maxBet) maxBet = seats[i].totalHandBet;
         }
         if (maxBet > 0 && (uniqueCount == 0 || uniqueLevels[uniqueCount - 1] < maxBet)) {
@@ -1134,7 +1142,7 @@ contract PokerTable {
             uint256 potAmount = 0;
             bool[MAX_SEATS] memory eligible;
 
-            for (uint8 i = 0; i < MAX_SEATS; i++) {
+            for (uint8 i = 0; i < numSeats; i++) {
                 uint256 bet = seats[i].totalHandBet;
                 if (bet > prevLevel) {
                     uint256 cap = bet < curLevel ? bet : curLevel;
@@ -1231,7 +1239,7 @@ contract PokerTable {
         _dealCommunityCards(randomness);
 
         // Reset betting round state
-        for (uint8 i = 0; i < MAX_SEATS; i++) {
+        for (uint8 i = 0; i < numSeats; i++) {
             seats[i].currentBet = 0;
             currentHand.hasActed[i] = false;
         }
@@ -1332,13 +1340,13 @@ contract PokerTable {
      * @dev Used for post-flop action order. Returns MAX_SEATS if everyone is all-in.
      */
     function _firstActiveAfterButton() internal view returns (uint8) {
-        for (uint8 i = 1; i <= MAX_SEATS; i++) {
-            uint8 seat = (buttonSeat + i) % MAX_SEATS;
+        for (uint8 i = 1; i <= numSeats; i++) {
+            uint8 seat = (buttonSeat + i) % numSeats;
             if (seats[seat].isActive && !seats[seat].isAllIn) {
                 return seat;
             }
         }
-        return MAX_SEATS; // sentinel: all players are all-in
+        return numSeats; // sentinel: all players are all-in
     }
 
     /**
@@ -1403,7 +1411,7 @@ contract PokerTable {
     }
 
     function _settleHand(uint8 winnerSeat) internal {
-        require(winnerSeat < MAX_SEATS, "Invalid winner");
+        require(winnerSeat < numSeats, "Invalid winner");
 
         // T4.2: Soft enforcement — emit ShuffleUnverified if dealer seed was never revealed
         uint256 handId = currentHandId;
@@ -1425,7 +1433,7 @@ contract PokerTable {
         // Reset hand state
         currentHand.pot = 0;
         currentHand.sidePotCount = 0;
-        for (uint8 i = 0; i < MAX_SEATS; i++) {
+        for (uint8 i = 0; i < numSeats; i++) {
             seats[i].currentBet = 0;
             seats[i].isActive = false;
             seats[i].isAllIn = false;
@@ -1451,7 +1459,7 @@ contract PokerTable {
         uint8 revealedCount;
         uint8[MAX_SEATS] memory revSeats; // sequential list
 
-        for (uint8 i = 0; i < MAX_SEATS; i++) {
+        for (uint8 i = 0; i < numSeats; i++) {
             if (seats[i].isActive && isHoleCardsRevealed[handId][i]) {
                 uint8 c1 = _revealedHoleCards[handId][i][0];
                 uint8 c2 = _revealedHoleCards[handId][i][1];
@@ -1523,7 +1531,7 @@ contract PokerTable {
         uint8 fallbackWinner
     ) internal {
         uint8 potCount = currentHand.sidePotCount;
-        uint8 firstWinner = MAX_SEATS;
+        uint8 firstWinner = numSeats;
 
         for (uint8 p = 0; p < potCount; p++) {
             uint256 potAmount = sidePots[p].amount;
@@ -1533,7 +1541,7 @@ contract PokerTable {
             uint8 eligCount = 0;
             uint256 bestScore = 0;
 
-            for (uint8 i = 0; i < MAX_SEATS; i++) {
+            for (uint8 i = 0; i < numSeats; i++) {
                 if (eligible[i] && revealedBySeat[i]) {
                     eligCount++;
                     if (scoresBySeat[i] > bestScore) bestScore = scoresBySeat[i];
@@ -1544,7 +1552,7 @@ contract PokerTable {
 
             // Count tied winners
             uint8 winnerCount = 0;
-            for (uint8 i = 0; i < MAX_SEATS; i++) {
+            for (uint8 i = 0; i < numSeats; i++) {
                 if (eligible[i] && revealedBySeat[i] && scoresBySeat[i] == bestScore) winnerCount++;
             }
 
@@ -1552,26 +1560,26 @@ contract PokerTable {
             uint256 remainder = potAmount % winnerCount;
 
             // Primary winner for remainder: first clockwise from button
-            uint8 primaryWinner = MAX_SEATS;
-            for (uint8 i = 1; i <= MAX_SEATS; i++) {
-                uint8 seat = (buttonSeat + i) % MAX_SEATS;
+            uint8 primaryWinner = numSeats;
+            for (uint8 i = 1; i <= numSeats; i++) {
+                uint8 seat = (buttonSeat + i) % numSeats;
                 if (eligible[seat] && revealedBySeat[seat] && scoresBySeat[seat] == bestScore) {
                     primaryWinner = seat;
                     break;
                 }
             }
 
-            for (uint8 i = 0; i < MAX_SEATS; i++) {
+            for (uint8 i = 0; i < numSeats; i++) {
                 if (eligible[i] && revealedBySeat[i] && scoresBySeat[i] == bestScore) {
                     uint256 amount = share + (i == primaryWinner ? remainder : 0);
                     seats[i].stack += amount;
-                    if (firstWinner == MAX_SEATS) firstWinner = i;
+                    if (firstWinner == numSeats) firstWinner = i;
                     emit SeatUpdated(i, seats[i].owner, seats[i].operator, seats[i].stack);
                 }
             }
         }
 
-        if (firstWinner == MAX_SEATS) firstWinner = fallbackWinner;
+        if (firstWinner == numSeats) firstWinner = fallbackWinner;
 
         emit HandSettled(currentHandId, firstWinner, currentHand.pot);
 
@@ -1580,7 +1588,7 @@ contract PokerTable {
         _advanceButton();
         currentHand.pot = 0;
         currentHand.sidePotCount = 0;
-        for (uint8 i = 0; i < MAX_SEATS; i++) {
+        for (uint8 i = 0; i < numSeats; i++) {
             seats[i].currentBet = 0;
             seats[i].isActive = false;
             seats[i].isAllIn = false;
@@ -1606,8 +1614,8 @@ contract PokerTable {
 
         // Primary winner: first clockwise from button among tied seats
         uint8 primaryWinner = 255;
-        for (uint8 i = 1; i <= MAX_SEATS; i++) {
-            uint8 seat = (buttonSeat + i) % MAX_SEATS;
+        for (uint8 i = 1; i <= numSeats; i++) {
+            uint8 seat = (buttonSeat + i) % numSeats;
             for (uint8 j = 0; j < revealedCount; j++) {
                 if (revSeats[j] == seat && scores[j] == bestScore) {
                     primaryWinner = seat;
@@ -1640,7 +1648,7 @@ contract PokerTable {
         _advanceButton();
         currentHand.pot = 0;
         currentHand.sidePotCount = 0;
-        for (uint8 i = 0; i < MAX_SEATS; i++) {
+        for (uint8 i = 0; i < numSeats; i++) {
             seats[i].currentBet = 0;
             seats[i].isActive = false;
             seats[i].isAllIn = false;
@@ -1657,7 +1665,7 @@ contract PokerTable {
     function _settleUnrevealedShowdown() internal {
         uint8 activeCount;
         uint8[MAX_SEATS] memory activeSeats;
-        for (uint8 i = 0; i < MAX_SEATS; i++) {
+        for (uint8 i = 0; i < numSeats; i++) {
             if (seats[i].isActive) {
                 activeSeats[activeCount] = i;
                 activeCount++;
@@ -1676,8 +1684,8 @@ contract PokerTable {
         uint256 remainder = potAmount % uint256(activeCount);
 
         uint8 primaryWinner = 255;
-        for (uint8 i = 1; i <= MAX_SEATS; i++) {
-            uint8 seat = (buttonSeat + i) % MAX_SEATS;
+        for (uint8 i = 1; i <= numSeats; i++) {
+            uint8 seat = (buttonSeat + i) % numSeats;
             for (uint8 j = 0; j < activeCount; j++) {
                 if (activeSeats[j] == seat) {
                     primaryWinner = seat;
@@ -1711,7 +1719,7 @@ contract PokerTable {
         _advanceButton();
         currentHand.pot = 0;
         currentHand.sidePotCount = 0;
-        for (uint8 i = 0; i < MAX_SEATS; i++) {
+        for (uint8 i = 0; i < numSeats; i++) {
             seats[i].currentBet = 0;
             seats[i].isActive = false;
             seats[i].isAllIn = false;
@@ -1734,7 +1742,7 @@ contract PokerTable {
         uint8 seatIndex,
         bytes32 commitment
     ) external {
-        require(seatIndex < MAX_SEATS, "Invalid seat");
+        require(seatIndex < numSeats, "Invalid seat");
         require(handId > 0 && handId <= currentHandId, "Invalid hand ID");
         require(commitment != bytes32(0), "Empty commitment");
         require(holeCommits[handId][seatIndex] == bytes32(0), "Commitment already exists");
@@ -1770,7 +1778,7 @@ contract PokerTable {
         uint8 card2,
         bytes32 salt
     ) external {
-        require(seatIndex < MAX_SEATS, "Invalid seat");
+        require(seatIndex < numSeats, "Invalid seat");
         require(handId > 0 && handId <= currentHandId, "Invalid hand ID");
         require(card1 < 52 && card2 < 52, "Invalid card value");
         require(card1 != card2, "Duplicate cards");
@@ -1824,7 +1832,7 @@ contract PokerTable {
         uint256 handId,
         uint8 seatIndex
     ) external view returns (uint8 card1, uint8 card2) {
-        require(seatIndex < MAX_SEATS, "Invalid seat");
+        require(seatIndex < numSeats, "Invalid seat");
 
         if (!isHoleCardsRevealed[handId][seatIndex]) {
             return (255, 255);
@@ -1845,7 +1853,7 @@ contract PokerTable {
     }
 
     function getSeat(uint8 seatIndex) external view returns (Seat memory) {
-        require(seatIndex < MAX_SEATS, "Invalid seat");
+        require(seatIndex < numSeats, "Invalid seat");
         return seats[seatIndex];
     }
 
@@ -1901,22 +1909,22 @@ contract PokerTable {
     }
 
     function _countPlayableSeats() internal view returns (uint8 count) {
-        for (uint8 i = 0; i < MAX_SEATS; i++) {
+        for (uint8 i = 0; i < numSeats; i++) {
             if (_isSeatPlayable(i)) count++;
         }
     }
 
     function _nextPlayableSeat(uint8 fromSeat) internal view returns (uint8) {
-        for (uint8 i = 1; i <= MAX_SEATS; i++) {
-            uint8 next = (fromSeat + i) % MAX_SEATS;
+        for (uint8 i = 1; i <= numSeats; i++) {
+            uint8 next = (fromSeat + i) % numSeats;
             if (_isSeatPlayable(next)) return next;
         }
         revert("No playable seat found");
     }
 
     function _nextOccupiedSeat(uint8 fromSeat) internal view returns (uint8) {
-        for (uint8 i = 1; i <= MAX_SEATS; i++) {
-            uint8 next = (fromSeat + i) % MAX_SEATS;
+        for (uint8 i = 1; i <= numSeats; i++) {
+            uint8 next = (fromSeat + i) % numSeats;
             if (_isSeatOccupied(next)) return next;
         }
         return fromSeat;
@@ -1927,7 +1935,7 @@ contract PokerTable {
     }
 
     function _evictBustedSeats() internal {
-        for (uint8 i = 0; i < MAX_SEATS; i++) {
+        for (uint8 i = 0; i < numSeats; i++) {
             if (seats[i].owner != address(0) && seats[i].stack == 0) {
                 address owner = seats[i].owner;
                 delete seats[i];
@@ -1940,7 +1948,7 @@ contract PokerTable {
         // Tournament winner check: exactly 1 player with chips remains
         uint8 playableCount = _countPlayableSeats();
         if (playableCount == 1) {
-            for (uint8 i = 0; i < MAX_SEATS; i++) {
+            for (uint8 i = 0; i < numSeats; i++) {
                 if (_isSeatPlayable(i)) {
                     gameState = GameState.TOURNAMENT_OVER;
                     emit TournamentWinner(seats[i].owner, i, seats[i].stack);

@@ -37,11 +37,11 @@ contract DeployKaiaTestnet is Script {
         console.log("VRF Adapter:", vrfAdapter);
 
         // --- Table 1: low-stakes ---
-        PokerTable table1 = new PokerTable(1, 0.1 ether, 0.2 ether, vrfAdapter, address(chip), address(0), 30 minutes, 5 minutes, 10 minutes);
+        PokerTable table1 = new PokerTable(1, 0.1 ether, 0.2 ether, vrfAdapter, address(chip), address(0), 30 minutes, 5 minutes, 10 minutes, 9);
         console.log("Table 1 (low):", address(table1));
 
         // --- Table 2: high-stakes ---
-        PokerTable table2 = new PokerTable(2, 1 ether, 2 ether, vrfAdapter, address(chip), address(0), 30 minutes, 5 minutes, 10 minutes);
+        PokerTable table2 = new PokerTable(2, 1 ether, 2 ether, vrfAdapter, address(chip), address(0), 30 minutes, 5 minutes, 10 minutes, 9);
         console.log("Table 2 (high):", address(table2));
 
         // --- Shared contracts ---

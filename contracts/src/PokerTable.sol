@@ -6,6 +6,7 @@ import "./interfaces/IERC20.sol";
 import "./interfaces/IKYCSBTChecker.sol";
 import "./HandEvaluator.sol";
 import { ShuffleVerifier, SeatReveal } from "./ShuffleVerifier.sol";
+import { SafeTransfer } from "./lib/SafeTransfer.sol";
 
 /**
  * @title PokerTable
@@ -13,6 +14,8 @@ import { ShuffleVerifier, SeatReveal } from "./ShuffleVerifier.sol";
  * @dev Supports up to 9 seats, fixed blinds, simplified betting rounds.
  */
 contract PokerTable {
+    using SafeTransfer for address;
+
     // ============ Constants ============
     uint8 public constant MAX_SEATS = 9;
     uint256 public constant ACTION_TIMEOUT = 30 minutes;
@@ -396,7 +399,7 @@ contract PokerTable {
             require(IKYCSBTChecker(kycSBT).isHuman(msg.sender), "KYC required");
             emit KYCCheckPassed(msg.sender, seatIndex);
         }
-        require(chipToken.transferFrom(msg.sender, address(this), buyIn), "Transfer failed");
+        address(chipToken).safeTransferFrom(msg.sender, address(this), buyIn);
 
         seats[seatIndex] = Seat({
             owner: owner,
@@ -432,7 +435,7 @@ contract PokerTable {
         require(seat.owner != address(0), "Seat not occupied");
         require(msg.sender == seat.owner, "Not seat owner");
         require(amount > 0, "Top-up amount is zero");
-        require(chipToken.transferFrom(msg.sender, address(this), amount), "Transfer failed");
+        address(chipToken).safeTransferFrom(msg.sender, address(this), amount);
 
         seat.stack += amount;
 
@@ -459,7 +462,7 @@ contract PokerTable {
 
         seat.stack -= amount;
         address payoutRecipient = recipient == address(0) ? seat.owner : recipient;
-        require(chipToken.transfer(payoutRecipient, amount), "Cash-out transfer failed");
+        address(chipToken).safeTransfer(payoutRecipient, amount);
 
         emit SeatUpdated(seatIndex, seat.owner, seat.operator, seat.stack);
         emit SeatCashOut(seatIndex, seat.owner, payoutRecipient, amount, seat.stack);
@@ -487,7 +490,7 @@ contract PokerTable {
         needsPostBlind[seatIndex] = false;
 
         if (payoutAmount > 0) {
-            require(chipToken.transfer(payoutRecipient, payoutAmount), "Leave transfer failed");
+            address(chipToken).safeTransfer(payoutRecipient, payoutAmount);
         }
 
         emit SeatUpdated(seatIndex, address(0), address(0), 0);

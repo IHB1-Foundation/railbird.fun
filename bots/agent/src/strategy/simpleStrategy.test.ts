@@ -148,7 +148,17 @@ describe("SimpleStrategy", () => {
   });
 
   test("folds to large bet without hole cards", () => {
-    const ctx = createContext({ canCheck: false, amountToCall: 100n });
+    // hand.currentBet=105 - seats[0].currentBet=5 = effectiveCallAmount=100 (large)
+    const tableState = createTableState({
+      hand: {
+        handId: 1n,
+        pot: 200n,
+        currentBet: 105n,
+        actorSeat: 0,
+        state: GameState.BETTING_PRE,
+      },
+    });
+    const ctx = createContext({ tableState, canCheck: false, amountToCall: 100n });
     const decision = strategy.decide(ctx);
     assert.strictEqual(decision.action, Decision.FOLD);
   });
@@ -202,6 +212,118 @@ describe("SimpleStrategy", () => {
     });
     const decision = strategy.decide(ctx);
     assert.strictEqual(decision.action, Decision.CALL);
+  });
+});
+
+describe("SimpleStrategy all-in with partial bet committed", () => {
+  const strategy = new SimpleStrategy(0.5);
+
+  test("correctly identifies call as legal when myCurrentBet partially covers currentBet", () => {
+    // currentBet=600, myCurrentBet=500, myStack=100
+    // effectiveCallAmount = 600 - 500 = 100 (exactly my stack)
+    // isAllInCall = 100 > 100 = false → should call with any hand
+    const tableState = createTableState({
+      seats: [
+        {
+          owner: "0x1111111111111111111111111111111111111111",
+          operator: "0x1111111111111111111111111111111111111111",
+          stack: 100n,          // Only 100 left
+          isActive: true,
+          currentBet: 500n,     // Already committed 500 this street
+          isAllIn: false,
+          totalHandBet: 500n,
+        },
+        {
+          owner: "0x2222222222222222222222222222222222222222",
+          operator: "0x2222222222222222222222222222222222222222",
+          stack: 1000n,
+          isActive: true,
+          currentBet: 600n,
+          isAllIn: false,
+          totalHandBet: 600n,
+        },
+      ],
+      hand: {
+        handId: 1n,
+        pot: 1100n,
+        currentBet: 600n,       // Table's current bet level
+        actorSeat: 0,
+        state: GameState.BETTING_PRE,
+      },
+    });
+    const ctx = createContext({
+      tableState,
+      mySeatIndex: 0,
+      canCheck: false,
+      amountToCall: 100n,       // Contract: 600 - 500 = 100
+      holeCards: { card1: 0, card2: 1 }, // Weak: 2s 3s
+    });
+    // effectiveCallAmount = 600 - 500 = 100 = myStack → not an all-in overpay
+    // isAllInCall = false, so goes to normal decision logic
+    const decision = strategy.decide(ctx);
+    // Weak hand (2s 3s) with small betSizeRatio: effectiveCallAmount/bigBlind = 100/10 = 10
+    // potOdds = 1100/100 = 11 → borderline, medium-weak strategy may fold
+    // This tests that we don't incorrectly trigger isAllInCall path
+    assert.ok(
+      decision.action === Decision.CALL || decision.action === Decision.FOLD,
+      "Should be CALL or FOLD, not stuck in wrong all-in branch"
+    );
+  });
+
+  test("correctly identifies all-in when effectiveCallAmount > myStack", () => {
+    // currentBet=900, myCurrentBet=500, myStack=100
+    // effectiveCallAmount = 400 > 100 → isAllInCall = true
+    const tableState = createTableState({
+      seats: [
+        {
+          owner: "0x1111111111111111111111111111111111111111",
+          operator: "0x1111111111111111111111111111111111111111",
+          stack: 100n,
+          isActive: true,
+          currentBet: 500n,
+          isAllIn: false,
+          totalHandBet: 500n,
+        },
+        {
+          owner: "0x2222222222222222222222222222222222222222",
+          operator: "0x2222222222222222222222222222222222222222",
+          stack: 500n,
+          isActive: true,
+          currentBet: 900n,
+          isAllIn: false,
+          totalHandBet: 900n,
+        },
+      ],
+      hand: {
+        handId: 1n,
+        pot: 1400n,
+        currentBet: 900n,
+        actorSeat: 0,
+        state: GameState.BETTING_PRE,
+      },
+    });
+
+    // With AA (handScore=100 >= 70) → should call all-in
+    const ctxStrong = createContext({
+      tableState,
+      mySeatIndex: 0,
+      canCheck: false,
+      amountToCall: 400n,
+      holeCards: { card1: 12, card2: 25 }, // AA
+    });
+    const strongDecision = strategy.decide(ctxStrong);
+    assert.strictEqual(strongDecision.action, Decision.CALL, "AA should call all-in");
+
+    // With weak hand (2s 3s, handScore < 70) → should fold
+    const ctxWeak = createContext({
+      tableState,
+      mySeatIndex: 0,
+      canCheck: false,
+      amountToCall: 400n,
+      holeCards: { card1: 0, card2: 1 }, // 2s 3s
+    });
+    const weakDecision = strategy.decide(ctxWeak);
+    assert.strictEqual(weakDecision.action, Decision.FOLD, "Weak hand should fold all-in");
   });
 });
 

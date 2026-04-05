@@ -100,12 +100,22 @@ export class SimpleStrategy implements Strategy {
   decide(context: DecisionContext): ActionDecision {
     const { tableState, mySeatIndex, holeCards, canCheck, amountToCall } = context;
     const myStack = tableState.seats[mySeatIndex].stack;
+    const myCurrentBet = tableState.seats[mySeatIndex].currentBet;
     const pot = tableState.hand.pot;
     const bigBlind = tableState.bigBlind;
 
-    // All-in scenario: if amountToCall > myStack, calling means going all-in.
-    // Contract handles the actual all-in; we just need to decide call vs fold.
-    const isAllInCall = amountToCall > myStack && myStack > 0n;
+    // Compute the effective amount still needed to call from this seat,
+    // using the table state (consistent snapshot) rather than the raw
+    // amountToCall which may have been read at a slightly different time.
+    // effectiveCallAmount = max(0, currentBet - myCurrentBet)
+    const effectiveCallAmount = tableState.hand.currentBet > myCurrentBet
+      ? tableState.hand.currentBet - myCurrentBet
+      : 0n;
+
+    // All-in scenario: if the net call amount exceeds my remaining stack,
+    // calling means going all-in for myStack chips.
+    // The contract accepts partial all-in calls, so this is always legal.
+    const isAllInCall = effectiveCallAmount > myStack && myStack > 0n;
 
     // If we don't have hole cards, play very conservatively
     if (!holeCards) {
@@ -118,14 +128,14 @@ export class SimpleStrategy implements Strategy {
         return { action: Decision.FOLD };
       }
       // Call small bets, fold large ones
-      if (amountToCall <= bigBlind) {
+      if (effectiveCallAmount <= bigBlind) {
         return { action: Decision.CALL };
       }
       return { action: Decision.FOLD };
     }
 
     const handScore = scoreHoleCards(holeCards);
-    const potOdds = amountToCall > 0n ? Number(pot) / Number(amountToCall) : 999;
+    const potOdds = effectiveCallAmount > 0n ? Number(pot) / Number(effectiveCallAmount) : 999;
 
     // All-in call: use a higher threshold (commit entire stack only with strong hands)
     if (isAllInCall) {
@@ -150,7 +160,7 @@ export class SimpleStrategy implements Strategy {
     }
 
     // Must call or fold
-    const betSizeRatio = Number(amountToCall) / Number(bigBlind);
+    const betSizeRatio = Number(effectiveCallAmount) / Number(bigBlind);
 
     // Strong hand (60+): usually call, sometimes raise
     if (handScore >= 60) {
@@ -171,7 +181,7 @@ export class SimpleStrategy implements Strategy {
       return { action: Decision.FOLD };
     }
 
-    // Weak hand (<40): fold unless very small bet
+    // Weak hand (<40): fold unless very small bet (or free call from small effectiveCallAmount)
     if (betSizeRatio <= 1 && potOdds >= 4) {
       return { action: Decision.CALL };
     }

@@ -23,8 +23,7 @@ function makeRecord(overrides: Partial<HoleCardRecord> = {}): HoleCardRecord {
     salt: "0x" + "aa".repeat(32),
     commitment: "0x" + "bb".repeat(32),
     createdAt: Date.now(),
-    vrfRandomness: "12345678",
-    dealerSeed: "0x" + "cc".repeat(32),
+    vrfRandomness: "12345678" + "cc".repeat(32),
     ...overrides,
   };
 }

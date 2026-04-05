@@ -4,6 +4,7 @@ import { AuthService } from "./auth/index.js";
 import { ChainService } from "./chain/index.js";
 import { HoleCardStore } from "./holecards/index.js";
 import { DealerService, HandStartedEventListener } from "./dealer/index.js";
+import { DealerSeedStore } from "./dealer/dealerSeedStore.js";
 import { createAuthMiddleware } from "./middleware/index.js";
 import { createAuthRoutes, createOwnerRoutes, createDealerRoutes } from "./routes/index.js";
 
@@ -104,8 +105,16 @@ export function createApp(config: AppConfig): AppContext {
   // Hole card store: file-backed if dataDir provided, in-memory otherwise
   const holeCardStore = new HoleCardStore(config.dataDir);
 
+  // Dealer seed store: stored in a SEPARATE directory from hole cards.
+  // This ensures that an attacker who gains read access to hole card files
+  // cannot reconstruct cards without also breaching the seed store.
+  const seedDataDir = config.dataDir
+    ? config.dataDir.replace(/\/holecards\/?$/, "") + "/seeds"
+    : undefined;
+  const dealerSeedStore = new DealerSeedStore(seedDataDir);
+
   // Dealer service (generates and stores hole cards)
-  const dealerService = new DealerService(holeCardStore);
+  const dealerService = new DealerService(holeCardStore, dealerSeedStore);
 
   // Chain service (optional - required for owner routes)
   let chainService: ChainService | undefined;

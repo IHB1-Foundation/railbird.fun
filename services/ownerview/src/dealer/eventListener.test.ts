@@ -1,6 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { HandStartedEventListener } from "./eventListener.js";
+import { DealerSeedStore } from "./dealerSeedStore.js";
 import { DealerService } from "./dealerService.js";
 import { HoleCardStore } from "../holecards/index.js";
 
@@ -25,7 +26,7 @@ function buildListenerWithMockClient() {
   };
 
   const store = new HoleCardStore();
-  const dealerService = new DealerService(store);
+  const dealerService = new DealerService(store, new DealerSeedStore());
   const listener = new HandStartedEventListener(
     {
       rpcUrl: "http://localhost:8545",

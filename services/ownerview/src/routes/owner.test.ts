@@ -199,8 +199,7 @@ describe("Owner Routes - Hole Cards ACL Logic", () => {
         salt: "0x" + "aa".repeat(32),
         commitment: "0xabc123",
         createdAt: Date.now(),
-        vrfRandomness: "12345",
-        dealerSeed: "0x" + "cc".repeat(32),
+        vrfRandomness: "12345" + "cc".repeat(32),
       });
 
       const result = await getHoleCardsLogic(chainService, holeCardStore, {
@@ -225,8 +224,7 @@ describe("Owner Routes - Hole Cards ACL Logic", () => {
         salt: "0x" + "aa".repeat(32),
         commitment: "0xdef456",
         createdAt: Date.now(),
-        vrfRandomness: "12345",
-        dealerSeed: "0x" + "cc".repeat(32),
+        vrfRandomness: "12345" + "cc".repeat(32),
       });
 
       // Owner of seat 0 tries to get hole cards
@@ -252,8 +250,7 @@ describe("Owner Routes - Hole Cards ACL Logic", () => {
           salt: "0x" + "aa".repeat(32),
           commitment: `0x${seat.toString().padStart(64, "0")}`,
           createdAt: Date.now(),
-          vrfRandomness: "12345",
-          dealerSeed: "0x" + "cc".repeat(32),
+          vrfRandomness: "12345" + "cc".repeat(32),
         });
       }
 
@@ -282,8 +279,7 @@ describe("Owner Routes - Hole Cards ACL Logic", () => {
         salt: "0x" + "aa".repeat(32),
         commitment: "0xcommitment",
         createdAt: Date.now(),
-        vrfRandomness: "12345",
-        dealerSeed: "0x" + "cc".repeat(32),
+        vrfRandomness: "12345" + "cc".repeat(32),
       });
 
       const result = await getHoleCardsLogic(chainService, holeCardStore, {
@@ -309,8 +305,7 @@ describe("Owner Routes - Hole Cards ACL Logic", () => {
         salt: "0x" + "aa".repeat(32),
         commitment: "0xabc",
         createdAt: Date.now(),
-        vrfRandomness: "12345",
-        dealerSeed: "0x" + "cc".repeat(32),
+        vrfRandomness: "12345" + "cc".repeat(32),
       });
 
       // Use uppercase address
@@ -340,8 +335,7 @@ describe("Owner Routes - Hole Cards ACL Logic", () => {
           salt: "0x" + "aa".repeat(32),
           commitment: `0x${seat.toString().padStart(64, "0")}`,
           createdAt: Date.now(),
-          vrfRandomness: "12345",
-          dealerSeed: "0x" + "cc".repeat(32),
+          vrfRandomness: "12345" + "cc".repeat(32),
         });
       }
 
@@ -369,8 +363,7 @@ describe("Owner Routes - Hole Cards ACL Logic", () => {
         salt: "0x" + "aa".repeat(32),
         commitment: "0xabc",
         createdAt: Date.now(),
-        vrfRandomness: "12345",
-        dealerSeed: "0x" + "cc".repeat(32),
+        vrfRandomness: "12345" + "cc".repeat(32),
       });
 
       // Owner of seat 0 cannot access seat 3's cards

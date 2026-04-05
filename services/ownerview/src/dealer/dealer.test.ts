@@ -9,6 +9,7 @@ import {
   cardToString,
   CardGeneratorError,
 } from "./cardGenerator.js";
+import { DealerSeedStore } from "./dealerSeedStore.js";
 import { DealerService, DealerError } from "./dealerService.js";
 import { decryptHoleCards } from "./eciesEncrypt.js";
 import { HoleCardStore } from "../holecards/index.js";
@@ -162,7 +163,7 @@ describe("DealerService", () => {
 
   beforeEach(() => {
     holeCardStore = new HoleCardStore();
-    dealerService = new DealerService(holeCardStore, { testDealerSeed: TEST_DEALER_SEED });
+    dealerService = new DealerService(holeCardStore, new DealerSeedStore(), { testDealerSeed: TEST_DEALER_SEED });
   });
 
   describe("deal", () => {
@@ -364,7 +365,7 @@ describe("DealerService", () => {
 describe("Dealer Integration", () => {
   it("deal → fetch encrypted → decrypt → verify commitment", async () => {
     const holeCardStore = new HoleCardStore();
-    const dealerService = new DealerService(holeCardStore, { testDealerSeed: TEST_DEALER_SEED });
+    const dealerService = new DealerService(holeCardStore, new DealerSeedStore(), { testDealerSeed: TEST_DEALER_SEED });
 
     const { keys, privKeys } = buildEncryptionKeys(4);
 

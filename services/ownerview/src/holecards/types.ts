@@ -26,11 +26,13 @@ export interface EncryptedPayloadSerialized {
 }
 
 /**
- * Stored hole card record — no plaintext cards.
+ * Stored hole card record — no plaintext cards, no dealer seed.
  *
  * Cards are stored exclusively in ECIES-encrypted form.
  * At showdown, plaintext is reconstructed from vrfRandomness + dealerSeed
- * using the deterministic verifiable shuffle.
+ * via verifiableShuffle(). The dealerSeed is stored SEPARATELY in
+ * DealerSeedStore so that breaching this file alone is insufficient to
+ * reconstruct hole cards before showdown.
  */
 export interface HoleCardRecord {
   tableId: string;
@@ -41,5 +43,5 @@ export interface HoleCardRecord {
   commitment: string;     // keccak256(handId, seatIndex, card1, card2, salt)
   createdAt: number;
   vrfRandomness: string;  // bigint as decimal string (for showdown reconstruction)
-  dealerSeed: string;     // 0x-prefixed hex bytes32 (for showdown reconstruction)
+  // NOTE: dealerSeed intentionally absent — stored separately in DealerSeedStore.
 }

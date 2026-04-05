@@ -7,6 +7,7 @@ import { generateSalt, generateCommitment } from "./cardGenerator.js";
 import { verifiableShuffle, extractHoleCards } from "./verifiableShuffle.js";
 import { encryptHoleCards } from "./eciesEncrypt.js";
 import type { EncryptedPayload } from "./eciesEncrypt.js";
+import { DealerSeedStore } from "./dealerSeedStore.js";
 
 /**
  * Serialize EncryptedPayload (Uint8Array fields) to JSON-safe hex strings.
@@ -45,10 +46,12 @@ export class DealerError extends Error {
  */
 export class DealerService {
   private holeCardStore: HoleCardStore;
+  private seedStore: DealerSeedStore;
   private config: DealerConfig;
 
-  constructor(holeCardStore: HoleCardStore, config: DealerConfig = {}) {
+  constructor(holeCardStore: HoleCardStore, seedStore: DealerSeedStore, config: DealerConfig = {}) {
     this.holeCardStore = holeCardStore;
+    this.seedStore = seedStore;
     this.config = config;
   }
 
@@ -89,6 +92,10 @@ export class DealerService {
     // Compute the on-chain commitment to the dealer seed
     const dealerSeedCommit = keccak256(resolvedDealerSeed);
 
+    // Store dealer seed in the SEPARATE seed store before doing anything else.
+    // This ensures the seed is persisted even if the deal process is interrupted.
+    this.seedStore.set(tableId, handId, resolvedDealerSeed);
+
     // Deterministic shuffle: deck[0..51] derived from VRF + dealer seed
     const deck = verifiableShuffle(vrfRandomness, resolvedDealerSeed);
 
@@ -118,7 +125,8 @@ export class DealerService {
       const salt = generateSalt();
       const commitment = generateCommitment(tableId, handId, seatIndex, cards, salt);
 
-      // Store only encrypted form — no plaintext
+      // Store only encrypted form — no plaintext, no dealer seed.
+      // The dealer seed is stored separately in DealerSeedStore.
       this.holeCardStore.set({
         tableId,
         handId,
@@ -128,7 +136,6 @@ export class DealerService {
         commitment,
         createdAt: Date.now(),
         vrfRandomness: vrfRandomness.toString(),
-        dealerSeed: resolvedDealerSeed,
       });
 
       resultSeats.push({ seatIndex, encryptedCards, commitment });
@@ -162,9 +169,12 @@ export class DealerService {
     const record = this.holeCardStore.get(tableId, handId, seatIndex);
     if (!record) return null;
 
+    // Retrieve dealer seed from the separate seed store.
+    const dealerSeed = this.seedStore.get(tableId, handId) as `0x${string}` | null;
+    if (!dealerSeed) return null;
+
     // Reconstruct plaintext cards from shuffle (no plaintext stored)
     const vrfRandomness = BigInt(record.vrfRandomness);
-    const dealerSeed = record.dealerSeed as `0x${string}`;
     const deck = verifiableShuffle(vrfRandomness, dealerSeed);
 
     // Find position of this seat in the stored records (by order of seatIndexes)
@@ -174,7 +184,7 @@ export class DealerService {
 
     const cards: [Card, Card] = [deck[seatPosition * 2], deck[seatPosition * 2 + 1]];
 
-    return { cards, salt: record.salt, dealerSeed: record.dealerSeed, vrfRandomness: record.vrfRandomness };
+    return { cards, salt: record.salt, dealerSeed, vrfRandomness: record.vrfRandomness };
   }
 
   /**

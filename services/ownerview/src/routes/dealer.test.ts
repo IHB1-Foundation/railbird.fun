@@ -2,6 +2,7 @@ import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import { secp256k1 } from "@noble/curves/secp256k1.js";
 import { HoleCardStore } from "../holecards/index.js";
+import { DealerSeedStore } from "../dealer/dealerSeedStore.js";
 import { DealerService, DealerError } from "../dealer/index.js";
 
 // ============ Test helpers ============
@@ -90,7 +91,7 @@ describe("Dealer Routes", () => {
 
   beforeEach(() => {
     holeCardStore = new HoleCardStore();
-    dealerService = new DealerService(holeCardStore, { testDealerSeed: TEST_DEALER_SEED });
+    dealerService = new DealerService(holeCardStore, new DealerSeedStore(), { testDealerSeed: TEST_DEALER_SEED });
   });
 
   describe("POST /dealer/deal", () => {

@@ -25,12 +25,19 @@ export interface VrfOperatorStats {
   lastFulfilledTxHash: string;
 }
 
+/** Maximum pending VRF requests tracked at any time. */
+const MAX_PENDING_REQUESTS = 1_000;
+/** Auto-expire pending requests after this many ms (1 hour). */
+const PENDING_STALE_AFTER_MS = 60 * 60 * 1000;
+
 export class VrfOperatorBot {
   private readonly chainClient: ChainClient;
   private readonly config: VrfOperatorBotConfig;
   private running: boolean = false;
   private lastSeenRequestId: bigint = 1n;
   private readonly pendingRequestIds: Set<bigint> = new Set();
+  /** Tracks when each request was added to pendingRequestIds (for stale cleanup). */
+  private readonly pendingAddedAt: Map<bigint, number> = new Map();
 
   private readonly stats: VrfOperatorStats = {
     scannedRequests: 0,
@@ -128,10 +135,36 @@ export class VrfOperatorBot {
     console.log(`[VRFOperator] stats=${JSON.stringify(this.stats)}`);
   }
 
+  /** Remove stale pending requests and enforce max size. */
+  private cleanPendingRequests(): void {
+    const now = Date.now();
+    let staleRemoved = 0;
+
+    // Remove requests that have been pending too long
+    for (const [id, addedAt] of this.pendingAddedAt) {
+      if (now - addedAt > PENDING_STALE_AFTER_MS) {
+        this.pendingRequestIds.delete(id);
+        this.pendingAddedAt.delete(id);
+        staleRemoved++;
+      }
+    }
+    if (staleRemoved > 0) {
+      console.warn(`[VRFOperator] Removed ${staleRemoved} stale pending requests (>1h old). Pending: ${this.pendingRequestIds.size}`);
+    }
+  }
+
   private async tick(minConfirmations: bigint): Promise<void> {
+    // Clean stale requests before each tick
+    this.cleanPendingRequests();
+
     const nextRequestId = await this.chainClient.getNextRequestId();
     for (let id = this.lastSeenRequestId; id < nextRequestId; id += 1n) {
+      if (this.pendingRequestIds.size >= MAX_PENDING_REQUESTS) {
+        console.warn(`[VRFOperator] pendingRequestIds reached limit (${MAX_PENDING_REQUESTS}). Skipping id=${id}`);
+        break;
+      }
       this.pendingRequestIds.add(id);
+      this.pendingAddedAt.set(id, Date.now());
       this.stats.scannedRequests += 1;
     }
     this.lastSeenRequestId = nextRequestId;
@@ -139,6 +172,8 @@ export class VrfOperatorBot {
     if (this.pendingRequestIds.size === 0) {
       return;
     }
+
+    console.log(`[VRFOperator] pending=${this.pendingRequestIds.size} heapUsedMB=${(process.memoryUsage().heapUsed / 1024 / 1024).toFixed(1)}`);
 
     const currentBlock = await this.chainClient.getBlockNumber();
     const latestBlock = await this.chainClient.getLatestBlock();
@@ -149,6 +184,7 @@ export class VrfOperatorBot {
 
       if (request.table === "0x0000000000000000000000000000000000000000" || request.fulfilled) {
         this.pendingRequestIds.delete(requestId);
+        this.pendingAddedAt.delete(requestId);
         continue;
       }
 
@@ -164,6 +200,7 @@ export class VrfOperatorBot {
       try {
         const hash = await this.chainClient.fulfillRandomness(requestId, randomness);
         this.pendingRequestIds.delete(requestId);
+        this.pendingAddedAt.delete(requestId);
         this.stats.fulfilledRequests += 1;
         this.stats.lastFulfilledRequestId = requestId;
         this.stats.lastFulfilledTxHash = hash;
@@ -176,6 +213,7 @@ export class VrfOperatorBot {
         const refreshed = await this.chainClient.getRequest(requestId);
         if (refreshed.fulfilled) {
           this.pendingRequestIds.delete(requestId);
+          this.pendingAddedAt.delete(requestId);
         }
       }
     }

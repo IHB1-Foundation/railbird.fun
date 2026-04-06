@@ -8,6 +8,18 @@ import "./HandEvaluator.sol";
 import { ShuffleVerifier, SeatReveal } from "./ShuffleVerifier.sol";
 import { SafeTransfer } from "./lib/SafeTransfer.sol";
 
+/// @dev Minimal interface for PlayerRegistry ownership/operator lookups.
+interface IPlayerRegistry {
+    function agents(address agent) external view returns (
+        address vault,
+        address table,
+        address owner,
+        address operator,
+        string memory metaURI,
+        bool isRegistered
+    );
+}
+
 /**
  * @title PokerTable
  * @notice 9-player Hold'em table with on-chain betting and VRF-driven community cards.
@@ -285,6 +297,9 @@ contract PokerTable {
     /// @notice Emitted when the VRF adapter is updated
     event VRFAdapterUpdated(address indexed oldAdapter, address indexed newAdapter);
 
+    /// @notice Emitted when the player registry is updated
+    event PlayerRegistryUpdated(address indexed oldRegistry, address indexed newRegistry);
+
     /// @notice Emitted when blind levels are updated
     event BlindsUpdated(uint256 oldSmallBlind, uint256 oldBigBlind, uint256 newSmallBlind, uint256 newBigBlind);
 
@@ -341,6 +356,8 @@ contract PokerTable {
 
     /// @notice HashKey Chain KYC SBT checker. address(0) = KYC gate disabled.
     address public kycSBT;
+    /// @notice Optional PlayerRegistry for cross-contract auth. address(0) = disabled.
+    address public playerRegistry;
 
     /// @notice Admin address — can update dealer and other params.
     address public admin;
@@ -358,10 +375,13 @@ contract PokerTable {
     // ============ Modifiers ============
     function _checkOperator(uint8 seatIndex) internal view {
         require(seatIndex < numSeats, "Invalid seat");
-        require(
-            msg.sender == seats[seatIndex].operator || msg.sender == seats[seatIndex].owner,
-            "Not operator"
-        );
+        if (msg.sender == seats[seatIndex].operator || msg.sender == seats[seatIndex].owner) return;
+        // If registry is set, also accept the operator registered there for this seat owner.
+        if (playerRegistry != address(0)) {
+            (,,, address regOperator, , bool isRegistered) = IPlayerRegistry(playerRegistry).agents(seats[seatIndex].owner);
+            if (isRegistered && msg.sender == regOperator) return;
+        }
+        revert("Not operator");
     }
     modifier onlyOperator(uint8 seatIndex) {
         _checkOperator(seatIndex);
@@ -483,6 +503,12 @@ contract PokerTable {
         vrfAdapter = _newAdapter;
     }
 
+    /// @notice Update the PlayerRegistry address used for seat registration auth (address(0) to disable).
+    function setPlayerRegistry(address _registry) external onlyAdmin {
+        emit PlayerRegistryUpdated(playerRegistry, _registry);
+        playerRegistry = _registry;
+    }
+
     /// @notice Update blind levels. Only allowed between hands (WAITING_FOR_SEATS or SETTLED).
     function setBlinds(uint256 _newSmallBlind, uint256 _newBigBlind) external onlyAdmin {
         require(
@@ -577,6 +603,10 @@ contract PokerTable {
         require(seats[seatIndex].owner == address(0), "Seat already taken");
         require(owner != address(0), "Owner cannot be zero");
         require(buyIn >= bigBlind * 10, "Buy-in too small");
+        if (playerRegistry != address(0)) {
+            (,,, , , bool isRegistered) = IPlayerRegistry(playerRegistry).agents(owner);
+            require(isRegistered, "Agent not registered in PlayerRegistry");
+        }
         if (kycSBT != address(0)) {
             require(IKYCSBTChecker(kycSBT).isHuman(msg.sender), "KYC required");
             emit KYCCheckPassed(msg.sender, seatIndex);

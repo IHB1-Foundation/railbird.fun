@@ -3578,3 +3578,105 @@ contract MockKYCSBT {
         return _humans[account];
     }
 }
+
+// ============ T-M1-04: PlayerRegistry Integration Tests ============
+
+import "../src/PlayerRegistry.sol";
+
+contract PlayerRegistryIntegrationTest is Test {
+    PokerTable public pokerTable;
+    PlayerRegistry public registry;
+    MockVRFAdapter public mockVRF;
+    ChipToken public chipToken;
+
+    address public owner1 = address(0x1001);
+    address public owner2 = address(0x1002);
+    address public operator1 = address(0x2001);
+
+    uint256 constant SMALL_BLIND = 10;
+    uint256 constant BIG_BLIND   = 20;
+    uint256 constant BUY_IN      = 1000;
+
+    function setUp() public {
+        mockVRF   = new MockVRFAdapter();
+        chipToken = new ChipToken("TestChip", "TCHIP");
+        registry  = new PlayerRegistry();
+        pokerTable = new PokerTable(
+            1, SMALL_BLIND, BIG_BLIND, address(mockVRF), address(chipToken),
+            address(0), 30 minutes, 5 minutes, 10 minutes, 2, address(this)
+        );
+        chipToken.mint(owner1, BUY_IN * 100);
+        chipToken.mint(owner2, BUY_IN * 100);
+
+        // Point table at registry
+        pokerTable.setPlayerRegistry(address(registry));
+    }
+
+    function test_RegisterSeat_RevertIfNotInRegistry() public {
+        vm.prank(owner1);
+        chipToken.approve(address(pokerTable), BUY_IN);
+        vm.prank(owner1);
+        vm.expectRevert("Agent not registered in PlayerRegistry");
+        pokerTable.registerSeat(0, owner1, operator1, BUY_IN);
+    }
+
+    function test_RegisterSeat_SuccessIfRegistered() public {
+        // Register in PlayerRegistry first
+        vm.prank(owner1);
+        registry.registerAgent(address(0x5), address(pokerTable), operator1, "");
+
+        vm.prank(owner1);
+        chipToken.approve(address(pokerTable), BUY_IN);
+        vm.prank(owner1);
+        pokerTable.registerSeat(0, owner1, operator1, BUY_IN);
+
+        PokerTable.Seat memory s = pokerTable.getSeat(0);
+        assertEq(s.owner, owner1);
+    }
+
+    function test_RegisterSeat_NoRegistryCheck_WhenRegistryUnset() public {
+        // Disable registry
+        pokerTable.setPlayerRegistry(address(0));
+
+        // owner1 is NOT in registry but should succeed
+        vm.prank(owner1);
+        chipToken.approve(address(pokerTable), BUY_IN);
+        vm.prank(owner1);
+        pokerTable.registerSeat(0, owner1, operator1, BUY_IN);
+
+        PokerTable.Seat memory s = pokerTable.getSeat(0);
+        assertEq(s.owner, owner1);
+    }
+
+    function test_RegistryOperator_AllowedToAct() public {
+        address regOperator = address(0x3333);
+        vm.prank(owner1);
+        registry.registerAgent(address(0x5), address(pokerTable), regOperator, "");
+        vm.prank(owner2);
+        registry.registerAgent(address(0x5), address(pokerTable), address(0), "");
+
+        // Register both seats without registry check (disable temporarily)
+        pokerTable.setPlayerRegistry(address(0));
+        vm.prank(owner1);
+        chipToken.approve(address(pokerTable), BUY_IN);
+        vm.prank(owner1);
+        pokerTable.registerSeat(0, owner1, address(0xDEAD), BUY_IN); // table operator ≠ registry operator
+        vm.prank(owner2);
+        chipToken.approve(address(pokerTable), BUY_IN);
+        vm.prank(owner2);
+        pokerTable.registerSeat(1, owner2, owner2, BUY_IN);
+        pokerTable.setPlayerRegistry(address(registry));
+
+        // Start hand and advance
+        pokerTable.startHand();
+        mockVRF.fulfillLastRequest(99);
+        pokerTable.submitHoleCommit(1, 0, bytes32(uint256(1)));
+        pokerTable.submitHoleCommit(1, 1, bytes32(uint256(2)));
+        pokerTable.advanceToPreflop();
+
+        // registry operator (regOperator) should be allowed to act for seat 0
+        vm.roll(block.number + 1);
+        vm.prank(regOperator);
+        pokerTable.fold(0); // Should not revert
+    }
+}

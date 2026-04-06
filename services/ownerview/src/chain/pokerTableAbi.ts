@@ -35,6 +35,20 @@ export const PokerTableABI = [
     outputs: [{ type: "uint8" }],
   },
   {
+    name: "holeCardVRFRandomness",
+    type: "function",
+    stateMutability: "view",
+    inputs: [{ name: "handId", type: "uint256" }],
+    outputs: [{ type: "uint256" }],
+  },
+  {
+    name: "getEncryptionKey",
+    type: "function",
+    stateMutability: "view",
+    inputs: [{ name: "seatIndex", type: "uint8" }],
+    outputs: [{ type: "bytes" }],
+  },
+  {
     name: "CardIntegrityViolation",
     type: "event",
     inputs: [

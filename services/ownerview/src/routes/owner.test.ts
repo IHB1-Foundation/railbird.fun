@@ -86,7 +86,7 @@ async function getHoleCardsLogic(
   }
 
   // Get hole cards for this seat only
-  const record = holeCardStore.get(tableId, handId, seatIndex);
+  const record = await holeCardStore.get(tableId, handId, seatIndex);
 
   if (!record) {
     return {
@@ -191,7 +191,7 @@ describe("Owner Routes - Hole Cards ACL Logic", () => {
 
     it("should return encrypted hole cards for authenticated seat owner", async () => {
       // Store encrypted hole cards for seat 0
-      holeCardStore.set({
+      await holeCardStore.set({
         tableId: "1",
         handId: "1",
         seatIndex: 0,
@@ -216,7 +216,7 @@ describe("Owner Routes - Hole Cards ACL Logic", () => {
 
     it("should NOT return hole cards for a different seat (ACL check)", async () => {
       // Store encrypted hole cards for seat 1 (owned by ownerAddress1)
-      holeCardStore.set({
+      await holeCardStore.set({
         tableId: "1",
         handId: "1",
         seatIndex: 1,
@@ -242,7 +242,7 @@ describe("Owner Routes - Hole Cards ACL Logic", () => {
     it("should return correct seat's encrypted cards based on ownership (4 seats)", async () => {
       // Store encrypted hole cards for all 4 seats
       for (let seat = 0; seat < 4; seat++) {
-        holeCardStore.set({
+        await holeCardStore.set({
           tableId: "1",
           handId: "1",
           seatIndex: seat,
@@ -271,7 +271,7 @@ describe("Owner Routes - Hole Cards ACL Logic", () => {
     });
 
     it("should NOT return salt or commitment in response", async () => {
-      holeCardStore.set({
+      await holeCardStore.set({
         tableId: "1",
         handId: "1",
         seatIndex: 0,
@@ -297,7 +297,7 @@ describe("Owner Routes - Hole Cards ACL Logic", () => {
     });
 
     it("should handle case-insensitive address matching", async () => {
-      holeCardStore.set({
+      await holeCardStore.set({
         tableId: "1",
         handId: "1",
         seatIndex: 0,
@@ -327,7 +327,7 @@ describe("Owner Routes - Hole Cards ACL Logic", () => {
     it("owner cannot access other owner's hole cards even if they know handId", async () => {
       // All 4 players have hole cards
       for (let seat = 0; seat < 4; seat++) {
-        holeCardStore.set({
+        await holeCardStore.set({
           tableId: "1",
           handId: "1",
           seatIndex: seat,
@@ -355,7 +355,7 @@ describe("Owner Routes - Hole Cards ACL Logic", () => {
 
     it("ownership is determined by on-chain lookup, not request params", async () => {
       // Store cards for seat 3
-      holeCardStore.set({
+      await holeCardStore.set({
         tableId: "1",
         handId: "1",
         seatIndex: 3,

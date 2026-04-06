@@ -70,7 +70,7 @@ const DEFAULT_RETENTION_INTERVAL_MS = 5 * 60 * 1000;
 /**
  * Create the OwnerView Express app
  */
-export function createApp(config: AppConfig): AppContext {
+export async function createApp(config: AppConfig): Promise<AppContext> {
   const app = express();
   app.set("trust proxy", true);
   const allowedOrigins = getAllowedOrigins();
@@ -104,6 +104,7 @@ export function createApp(config: AppConfig): AppContext {
 
   // Hole card store: file-backed if dataDir provided, in-memory otherwise
   const holeCardStore = new HoleCardStore(config.dataDir);
+  await holeCardStore.init();
 
   // Dealer seed store: stored in a SEPARATE directory from hole cards.
   // This ensures that an attacker who gains read access to hole card files
@@ -171,10 +172,13 @@ export function createApp(config: AppConfig): AppContext {
 
   if (retentionInterval > 0) {
     retentionTimer = setInterval(() => {
-      const deleted = holeCardStore.deleteOlderThan(retentionMaxAge);
-      if (deleted > 0) {
-        console.log(`[Retention] Cleaned up ${deleted} expired hole card records`);
-      }
+      holeCardStore.deleteOlderThan(retentionMaxAge).then((deleted) => {
+        if (deleted > 0) {
+          console.log(`[Retention] Cleaned up ${deleted} expired hole card records`);
+        }
+      }).catch((err) => {
+        console.error("[Retention] Error during cleanup:", err);
+      });
     }, retentionInterval);
   }
 

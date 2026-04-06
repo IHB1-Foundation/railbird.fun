@@ -57,7 +57,7 @@ export function createOwnerRoutes(
       }
 
       // Get hole cards for this seat only
-      const record = holeCardStore.get(tableId, handId, seatIndex);
+      const record = await holeCardStore.get(tableId, handId, seatIndex);
 
       if (!record) {
         res.status(404).json({

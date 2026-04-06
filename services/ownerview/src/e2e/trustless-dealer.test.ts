@@ -80,7 +80,7 @@ describe("E2E Trustless Dealer", () => {
       const deck = verifiableShuffle(TEST_VRF, TEST_DEALER_SEED);
 
       for (let seat = 0; seat < 2; seat++) {
-        const record = store.get("T1", "1", seat);
+        const record = await store.get("T1", "1", seat);
         assert.ok(record, `seat ${seat} record must exist`);
         assert.ok(record.encryptedCards, `seat ${seat} must have encryptedCards`);
         assert.ok(!("cards" in record), `seat ${seat} must NOT have plaintext cards`);
@@ -101,7 +101,7 @@ describe("E2E Trustless Dealer", () => {
         assert.equal(decrypted[1], deck[seat * 2 + 1], `seat ${seat} card2 must match shuffle`);
 
         // Verify commitment
-        const revealData = service.getRevealData("T1", "1", seat);
+        const revealData = await service.getRevealData("T1", "1", seat);
         assert.ok(revealData);
         const recomputed = generateCommitment("T1", "1", seat, decrypted, revealData.salt);
         assert.equal(recomputed, result.seats[seat].commitment, `seat ${seat} commitment must verify`);
@@ -121,7 +121,7 @@ describe("E2E Trustless Dealer", () => {
         encryptionKeys: keys,
       });
 
-      const record = store.get("T2", "1", 0)!;
+      const record = (await store.get("T2", "1", 0))!;
       const payload = {
         ephemeralPubKey: hexToBytes(record.encryptedCards.ephemeralPubKey),
         iv: hexToBytes(record.encryptedCards.iv),
@@ -165,7 +165,7 @@ describe("E2E Trustless Dealer", () => {
       });
 
       // Decrypt correctly
-      const record = store.get("T3", "1", 0)!;
+      const record = (await store.get("T3", "1", 0))!;
       const payload = {
         ephemeralPubKey: hexToBytes(record.encryptedCards.ephemeralPubKey),
         iv: hexToBytes(record.encryptedCards.iv),
@@ -198,7 +198,7 @@ describe("E2E Trustless Dealer", () => {
         encryptionKeys: keys,
       });
 
-      const revealData = service.getRevealData("T4", "1", 0);
+      const revealData = await service.getRevealData("T4", "1", 0);
       assert.ok(revealData);
 
       // Try to verify with tampered cards
@@ -257,7 +257,7 @@ describe("E2E Trustless Dealer", () => {
         encryptionKeys: keys,
       });
 
-      const revealData = service.getRevealData("T6", "1", 0);
+      const revealData = await service.getRevealData("T6", "1", 0);
       assert.ok(revealData, "reveal data must be available");
       assert.equal(revealData.dealerSeed, TEST_DEALER_SEED);
       assert.equal(revealData.vrfRandomness, TEST_VRF.toString());
@@ -293,7 +293,7 @@ describe("E2E Trustless Dealer", () => {
       });
 
       // Decrypt hand 1 with key v1
-      const rec1 = store.get("T7", "1", 0)!;
+      const rec1 = (await store.get("T7", "1", 0))!;
       const payload1 = {
         ephemeralPubKey: hexToBytes(rec1.encryptedCards.ephemeralPubKey),
         iv: hexToBytes(rec1.encryptedCards.iv),
@@ -304,7 +304,7 @@ describe("E2E Trustless Dealer", () => {
       assert.equal(decrypted1.length, 2);
 
       // Decrypt hand 2 with key v2
-      const rec2 = store.get("T7", "2", 0)!;
+      const rec2 = (await store.get("T7", "2", 0))!;
       const payload2 = {
         ephemeralPubKey: hexToBytes(rec2.encryptedCards.ephemeralPubKey),
         iv: hexToBytes(rec2.encryptedCards.iv),
@@ -346,7 +346,7 @@ describe("E2E Trustless Dealer", () => {
         encryptionKeys: newKeys,
       });
 
-      const rec2 = store.get("T8", "2", 0)!;
+      const rec2 = (await store.get("T8", "2", 0))!;
       const payload = {
         ephemeralPubKey: hexToBytes(rec2.encryptedCards.ephemeralPubKey),
         iv: hexToBytes(rec2.encryptedCards.iv),
@@ -425,7 +425,7 @@ describe("E2E Trustless Dealer", () => {
       assert.ok(!resultStr.includes('"cards"'), "deal result must not contain 'cards' field");
 
       for (let seat = 0; seat < 4; seat++) {
-        const record = store.get("SEC", "1", seat)!;
+        const record = (await store.get("SEC", "1", seat))!;
         const recordStr = JSON.stringify(record);
         assert.ok(!recordStr.includes('"cards"'), `seat ${seat} record must not contain plaintext cards`);
         assert.ok(recordStr.includes("encryptedCards"), `seat ${seat} must have encryptedCards`);
@@ -463,7 +463,7 @@ describe("E2E Trustless Dealer", () => {
       });
 
       // Seat 0 can decrypt their own cards
-      const rec0 = store.get("SEC3", "1", 0)!;
+      const rec0 = (await store.get("SEC3", "1", 0))!;
       const payload0 = {
         ephemeralPubKey: hexToBytes(rec0.encryptedCards.ephemeralPubKey),
         iv: hexToBytes(rec0.encryptedCards.iv),

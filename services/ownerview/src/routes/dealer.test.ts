@@ -56,15 +56,15 @@ async function simulateDealEndpoint(
   }
 }
 
-function simulateCommitmentsEndpoint(
+async function simulateCommitmentsEndpoint(
   dealerService: DealerService,
   params: { tableId: string; handId: string }
-): { status: number; body: Record<string, unknown> } {
+): Promise<{ status: number; body: Record<string, unknown> }> {
   const { tableId, handId } = params;
   if (!tableId) return { status: 400, body: { code: "INVALID_TABLE_ID" } };
   if (!handId) return { status: 400, body: { code: "INVALID_HAND_ID" } };
 
-  const commitments = dealerService.getCommitments(tableId, handId);
+  const commitments = await dealerService.getCommitments(tableId, handId);
   if (!commitments) return { status: 404, body: { code: "NOT_FOUND" } };
   return { status: 200, body: { tableId, handId, commitments } };
 }
@@ -137,15 +137,15 @@ describe("Dealer Routes", () => {
   describe("GET /dealer/commitments", () => {
     it("should return commitments for all 4 seats of a dealt hand", async () => {
       await simulateDealEndpoint(dealerService, { tableId: "1", handId: "1" });
-      const result = simulateCommitmentsEndpoint(dealerService, { tableId: "1", handId: "1" });
+      const result = await simulateCommitmentsEndpoint(dealerService, { tableId: "1", handId: "1" });
 
       assert.equal(result.status, 200);
       const commitments = result.body.commitments as Array<{ seatIndex: number; commitment: string }>;
       assert.equal(commitments.length, 4);
     });
 
-    it("should return 404 for undealt hand", () => {
-      const result = simulateCommitmentsEndpoint(dealerService, { tableId: "1", handId: "999" });
+    it("should return 404 for undealt hand", async () => {
+      const result = await simulateCommitmentsEndpoint(dealerService, { tableId: "1", handId: "999" });
       assert.equal(result.status, 404);
     });
   });
@@ -158,7 +158,7 @@ describe("Dealer Routes", () => {
       assert.ok(!bodyStr.includes('"salt"'), "No salt");
 
       // Stored records must also not have plaintext cards
-      const stored = holeCardStore.get("1", "1", 0);
+      const stored = await holeCardStore.get("1", "1", 0);
       assert.ok(stored, "record must be stored");
       assert.ok(stored.encryptedCards, "encryptedCards must be present");
       assert.ok(!("cards" in stored), "stored record must not have plaintext cards");
@@ -166,7 +166,7 @@ describe("Dealer Routes", () => {
 
     it("commitments endpoint never exposes cards or salts", async () => {
       await simulateDealEndpoint(dealerService, { tableId: "1", handId: "1" });
-      const result = simulateCommitmentsEndpoint(dealerService, { tableId: "1", handId: "1" });
+      const result = await simulateCommitmentsEndpoint(dealerService, { tableId: "1", handId: "1" });
       const bodyStr = JSON.stringify(result.body);
       assert.ok(!bodyStr.includes('"cards"'), "No cards field");
       assert.ok(!bodyStr.includes('"salt"'), "No salt field");
@@ -202,7 +202,7 @@ describe("Dealer Routes", () => {
       await simulateDealEndpoint(dealerService, { tableId: "1", handId: "1" });
 
       for (let seat = 0; seat < 4; seat++) {
-        const record = holeCardStore.get("1", "1", seat);
+        const record = await holeCardStore.get("1", "1", seat);
         assert.ok(record, `Seat ${seat} must have a record`);
         assert.ok(record.encryptedCards, `Seat ${seat} must have encryptedCards`);
         assert.ok(!("cards" in record), `Seat ${seat} must NOT have plaintext cards`);
@@ -214,7 +214,7 @@ describe("Dealer Routes", () => {
 
       const commitments = new Set<string>();
       for (let seat = 0; seat < 4; seat++) {
-        const record = holeCardStore.get("1", "1", seat);
+        const record = await holeCardStore.get("1", "1", seat);
         assert.ok(record);
         commitments.add(record.commitment);
       }

@@ -79,7 +79,7 @@ export class DealerService {
     }
 
     // Check if already dealt (idempotency)
-    if (this.holeCardStore.getHand(tableId, handId).length > 0) {
+    if ((await this.holeCardStore.getHand(tableId, handId)).length > 0) {
       throw new DealerError(
         `Hole cards already dealt for table=${tableId}, hand=${handId}`,
         "ALREADY_DEALT"
@@ -127,7 +127,7 @@ export class DealerService {
 
       // Store only encrypted form — no plaintext, no dealer seed.
       // The dealer seed is stored separately in DealerSeedStore.
-      this.holeCardStore.set({
+      await this.holeCardStore.set({
         tableId,
         handId,
         seatIndex,
@@ -147,8 +147,8 @@ export class DealerService {
   /**
    * Get commitments for a hand (for on-chain submission).
    */
-  getCommitments(tableId: string, handId: string): Array<{ seatIndex: number; commitment: string }> | null {
-    const records = this.holeCardStore.getHand(tableId, handId);
+  async getCommitments(tableId: string, handId: string): Promise<Array<{ seatIndex: number; commitment: string }> | null> {
+    const records = await this.holeCardStore.getHand(tableId, handId);
     if (records.length === 0) return null;
     return records.map((r) => ({ seatIndex: r.seatIndex, commitment: r.commitment }));
   }
@@ -161,12 +161,12 @@ export class DealerService {
    *
    * @returns { cards, salt, dealerSeed, vrfRandomness } or null if not found
    */
-  getRevealData(
+  async getRevealData(
     tableId: string,
     handId: string,
     seatIndex: number
-  ): { cards: [Card, Card]; salt: string; dealerSeed: string; vrfRandomness: string } | null {
-    const record = this.holeCardStore.get(tableId, handId, seatIndex);
+  ): Promise<{ cards: [Card, Card]; salt: string; dealerSeed: string; vrfRandomness: string } | null> {
+    const record = await this.holeCardStore.get(tableId, handId, seatIndex);
     if (!record) return null;
 
     // Retrieve dealer seed from the separate seed store.
@@ -178,7 +178,7 @@ export class DealerService {
     const deck = verifiableShuffle(vrfRandomness, dealerSeed);
 
     // Find position of this seat in the stored records (by order of seatIndexes)
-    const handRecords = this.holeCardStore.getHand(tableId, handId);
+    const handRecords = await this.holeCardStore.getHand(tableId, handId);
     const seatPosition = handRecords.findIndex((r) => r.seatIndex === seatIndex);
     if (seatPosition === -1) return null;
 
@@ -190,26 +190,26 @@ export class DealerService {
   /**
    * Get the encrypted cards for a seat (for owner retrieval).
    */
-  getEncryptedCards(
+  async getEncryptedCards(
     tableId: string,
     handId: string,
     seatIndex: number
-  ): EncryptedPayloadSerialized | null {
-    const record = this.holeCardStore.get(tableId, handId, seatIndex);
+  ): Promise<EncryptedPayloadSerialized | null> {
+    const record = await this.holeCardStore.get(tableId, handId, seatIndex);
     return record?.encryptedCards ?? null;
   }
 
   /**
    * Check if a hand has been dealt.
    */
-  isHandDealt(tableId: string, handId: string): boolean {
-    return this.holeCardStore.getHand(tableId, handId).length > 0;
+  async isHandDealt(tableId: string, handId: string): Promise<boolean> {
+    return (await this.holeCardStore.getHand(tableId, handId)).length > 0;
   }
 
   /**
    * Clean up hole cards for a completed hand.
    */
-  cleanupHand(tableId: string, handId: string): number {
+  async cleanupHand(tableId: string, handId: string): Promise<number> {
     return this.holeCardStore.deleteHand(tableId, handId);
   }
 

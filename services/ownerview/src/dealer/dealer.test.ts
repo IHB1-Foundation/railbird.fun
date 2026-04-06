@@ -194,7 +194,7 @@ describe("DealerService", () => {
       });
 
       for (let seat = 0; seat < 4; seat++) {
-        const record = holeCardStore.get("1", "1", seat);
+        const record = await holeCardStore.get("1", "1", seat);
         assert.ok(record, `Seat ${seat} should be stored`);
         assert.ok(record.encryptedCards, "must have encryptedCards");
         assert.ok(record.encryptedCards.ciphertext, "must have ciphertext");
@@ -285,7 +285,7 @@ describe("DealerService", () => {
         tableId: "1", handId: "1",
         vrfRandomness: TEST_VRF, dealerSeed: TEST_DEALER_SEED, encryptionKeys: keys,
       });
-      const commitments = dealerService.getCommitments("1", "1");
+      const commitments = await dealerService.getCommitments("1", "1");
       assert.ok(commitments);
       assert.equal(commitments.length, 4);
       for (const c of commitments) {
@@ -293,8 +293,8 @@ describe("DealerService", () => {
       }
     });
 
-    it("should return null for undealt hand", () => {
-      assert.equal(dealerService.getCommitments("1", "1"), null);
+    it("should return null for undealt hand", async () => {
+      assert.equal(await dealerService.getCommitments("1", "1"), null);
     });
   });
 
@@ -305,15 +305,15 @@ describe("DealerService", () => {
         tableId: "1", handId: "1",
         vrfRandomness: TEST_VRF, dealerSeed: TEST_DEALER_SEED, encryptionKeys: keys,
       });
-      const revealData = dealerService.getRevealData("1", "1", 0);
+      const revealData = await dealerService.getRevealData("1", "1", 0);
       assert.ok(revealData);
       assert.equal(revealData.cards.length, 2);
       assert.ok(revealData.salt.length > 0);
       assert.ok(revealData.dealerSeed.startsWith("0x"));
     });
 
-    it("should return null for undealt seat", () => {
-      assert.equal(dealerService.getRevealData("1", "1", 0), null);
+    it("should return null for undealt seat", async () => {
+      assert.equal(await dealerService.getRevealData("1", "1", 0), null);
     });
 
     it("reconstructed cards for each seat are unique", async () => {
@@ -325,7 +325,7 @@ describe("DealerService", () => {
 
       const allCards: number[] = [];
       for (let seat = 0; seat < 4; seat++) {
-        const data = dealerService.getRevealData("1", "1", seat);
+        const data = await dealerService.getRevealData("1", "1", seat);
         assert.ok(data);
         allCards.push(...data.cards);
       }
@@ -334,8 +334,8 @@ describe("DealerService", () => {
   });
 
   describe("isHandDealt", () => {
-    it("returns false for undealt hand", () => {
-      assert.equal(dealerService.isHandDealt("1", "1"), false);
+    it("returns false for undealt hand", async () => {
+      assert.equal(await dealerService.isHandDealt("1", "1"), false);
     });
 
     it("returns true for dealt hand", async () => {
@@ -344,7 +344,7 @@ describe("DealerService", () => {
         tableId: "1", handId: "1",
         vrfRandomness: TEST_VRF, dealerSeed: TEST_DEALER_SEED, encryptionKeys: keys,
       });
-      assert.equal(dealerService.isHandDealt("1", "1"), true);
+      assert.equal(await dealerService.isHandDealt("1", "1"), true);
     });
   });
 
@@ -355,9 +355,9 @@ describe("DealerService", () => {
         tableId: "1", handId: "1",
         vrfRandomness: TEST_VRF, dealerSeed: TEST_DEALER_SEED, encryptionKeys: keys,
       });
-      const deleted = dealerService.cleanupHand("1", "1");
+      const deleted = await dealerService.cleanupHand("1", "1");
       assert.equal(deleted, 4);
-      assert.equal(dealerService.isHandDealt("1", "1"), false);
+      assert.equal(await dealerService.isHandDealt("1", "1"), false);
     });
   });
 });
@@ -382,7 +382,7 @@ describe("Dealer Integration", () => {
 
     // 2. Each owner fetches and decrypts their encrypted cards
     for (let seat = 0; seat < 4; seat++) {
-      const record = holeCardStore.get("100", "50", seat);
+      const record = await holeCardStore.get("100", "50", seat);
       assert.ok(record, `Seat ${seat} must have a record`);
 
       // Deserialize hex → Uint8Array
@@ -401,7 +401,7 @@ describe("Dealer Integration", () => {
       const decrypted = await decryptHoleCards(privKey, payload);
 
       // 3. Verify decrypted cards match the commitment
-      const revealData = dealerService.getRevealData("100", "50", seat);
+      const revealData = await dealerService.getRevealData("100", "50", seat);
       assert.ok(revealData, `Seat ${seat} must have reveal data`);
       assert.deepEqual(decrypted, revealData.cards, `Seat ${seat} decrypted cards must match`);
 
@@ -414,6 +414,6 @@ describe("Dealer Integration", () => {
     }
 
     // 4. Cleanup
-    assert.equal(dealerService.cleanupHand("100", "50"), 4);
+    assert.equal(await dealerService.cleanupHand("100", "50"), 4);
   });
 });

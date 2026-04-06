@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync, readdirSync } from "node:fs";
+import { mkdir, readFile, writeFile, unlink, readdir, access } from "node:fs/promises";
 import { join, resolve, sep } from "node:path";
 import type { HoleCardRecord } from "./types.js";
 
@@ -34,8 +34,11 @@ export class HoleCardStore {
 
   constructor(dataDir?: string) {
     this.dataDir = dataDir ?? null;
+  }
+
+  async init(): Promise<void> {
     if (this.dataDir) {
-      mkdirSync(this.dataDir, { recursive: true });
+      await mkdir(this.dataDir, { recursive: true });
     }
   }
 
@@ -57,25 +60,34 @@ export class HoleCardStore {
     return resolved;
   }
 
-  private readHandFile(tableId: string, handId: string): HoleCardRecord[] {
+  private async fileExists(path: string): Promise<boolean> {
+    try {
+      await access(path);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  private async readHandFile(tableId: string, handId: string): Promise<HoleCardRecord[]> {
     if (!this.dataDir) return [];
     const filePath = this.handFilePath(tableId, handId);
-    if (!existsSync(filePath)) return [];
-    const data = readFileSync(filePath, "utf-8");
+    if (!(await this.fileExists(filePath))) return [];
+    const data = await readFile(filePath, "utf-8");
     return JSON.parse(data) as HoleCardRecord[];
   }
 
-  private writeHandFile(tableId: string, handId: string, records: HoleCardRecord[]): void {
+  private async writeHandFile(tableId: string, handId: string, records: HoleCardRecord[]): Promise<void> {
     if (!this.dataDir) return;
     const filePath = this.handFilePath(tableId, handId);
     if (records.length === 0) {
-      if (existsSync(filePath)) unlinkSync(filePath);
+      if (await this.fileExists(filePath)) await unlink(filePath);
       return;
     }
-    writeFileSync(filePath, JSON.stringify(records, null, 2), "utf-8");
+    await writeFile(filePath, JSON.stringify(records, null, 2), "utf-8");
   }
 
-  set(record: HoleCardRecord): void {
+  async set(record: HoleCardRecord): Promise<void> {
     // Validate required encrypted payload fields
     if (!record.encryptedCards ||
         !record.encryptedCards.ephemeralPubKey ||
@@ -88,7 +100,7 @@ export class HoleCardStore {
     const key = this.makeKey(record.tableId, record.handId, record.seatIndex);
 
     if (this.dataDir) {
-      const records = this.readHandFile(record.tableId, record.handId);
+      const records = await this.readHandFile(record.tableId, record.handId);
       if (records.some((r) => r.seatIndex === record.seatIndex)) {
         throw new HoleCardError(
           `Hole cards already exist for table=${record.tableId}, hand=${record.handId}, seat=${record.seatIndex}`,
@@ -96,7 +108,7 @@ export class HoleCardStore {
         );
       }
       records.push(record);
-      this.writeHandFile(record.tableId, record.handId, records);
+      await this.writeHandFile(record.tableId, record.handId, records);
     } else {
       if (this.memStore.has(key)) {
         throw new HoleCardError(
@@ -108,35 +120,35 @@ export class HoleCardStore {
     }
   }
 
-  get(tableId: string, handId: string, seatIndex: number): HoleCardRecord | null {
+  async get(tableId: string, handId: string, seatIndex: number): Promise<HoleCardRecord | null> {
     if (this.dataDir) {
-      const records = this.readHandFile(tableId, handId);
+      const records = await this.readHandFile(tableId, handId);
       return records.find((r) => r.seatIndex === seatIndex) ?? null;
     }
     const key = this.makeKey(tableId, handId, seatIndex);
     return this.memStore.get(key) ?? null;
   }
 
-  has(tableId: string, handId: string, seatIndex: number): boolean {
-    return this.get(tableId, handId, seatIndex) !== null;
+  async has(tableId: string, handId: string, seatIndex: number): Promise<boolean> {
+    return (await this.get(tableId, handId, seatIndex)) !== null;
   }
 
-  delete(tableId: string, handId: string, seatIndex: number): boolean {
+  async delete(tableId: string, handId: string, seatIndex: number): Promise<boolean> {
     if (this.dataDir) {
-      const records = this.readHandFile(tableId, handId);
+      const records = await this.readHandFile(tableId, handId);
       const filtered = records.filter((r) => r.seatIndex !== seatIndex);
       if (filtered.length === records.length) return false;
-      this.writeHandFile(tableId, handId, filtered);
+      await this.writeHandFile(tableId, handId, filtered);
       return true;
     }
     const key = this.makeKey(tableId, handId, seatIndex);
     return this.memStore.delete(key);
   }
 
-  deleteHand(tableId: string, handId: string): number {
+  async deleteHand(tableId: string, handId: string): Promise<number> {
     if (this.dataDir) {
-      const records = this.readHandFile(tableId, handId);
-      this.writeHandFile(tableId, handId, []);
+      const records = await this.readHandFile(tableId, handId);
+      await this.writeHandFile(tableId, handId, []);
       return records.length;
     }
 
@@ -151,7 +163,7 @@ export class HoleCardStore {
     return deleted;
   }
 
-  getHand(tableId: string, handId: string): HoleCardRecord[] {
+  async getHand(tableId: string, handId: string): Promise<HoleCardRecord[]> {
     if (this.dataDir) {
       return this.readHandFile(tableId, handId);
     }
@@ -169,24 +181,30 @@ export class HoleCardStore {
   /**
    * Delete records older than maxAgeMs. Returns count of deleted records.
    */
-  deleteOlderThan(maxAgeMs: number): number {
+  async deleteOlderThan(maxAgeMs: number): Promise<number> {
     const cutoff = Date.now() - maxAgeMs;
     let deleted = 0;
 
     if (this.dataDir) {
-      const files = existsSync(this.dataDir) ? readdirSync(this.dataDir) : [];
+      let files: string[] = [];
+      try {
+        files = await readdir(this.dataDir);
+      } catch {
+        return 0;
+      }
       for (const file of files) {
         if (!file.endsWith(".json")) continue;
         const filePath = join(this.dataDir, file);
         try {
-          const records = JSON.parse(readFileSync(filePath, "utf-8")) as HoleCardRecord[];
+          const data = await readFile(filePath, "utf-8");
+          const records = JSON.parse(data) as HoleCardRecord[];
           if (records.length > 0 && records[0].createdAt < cutoff) {
-            unlinkSync(filePath);
+            await unlink(filePath);
             deleted += records.length;
           }
         } catch {
           // Corrupt file, remove it
-          unlinkSync(filePath);
+          await unlink(filePath).catch(() => undefined);
         }
       }
     } else {
@@ -200,27 +218,38 @@ export class HoleCardStore {
     return deleted;
   }
 
-  clear(): void {
+  async clear(): Promise<void> {
     if (this.dataDir) {
-      const files = existsSync(this.dataDir) ? readdirSync(this.dataDir) : [];
-      for (const file of files) {
-        if (file.endsWith(".json")) {
-          unlinkSync(join(this.dataDir, file));
-        }
+      let files: string[] = [];
+      try {
+        files = await readdir(this.dataDir);
+      } catch {
+        return;
       }
+      await Promise.all(
+        files
+          .filter((f) => f.endsWith(".json"))
+          .map((f) => unlink(join(this.dataDir!, f)))
+      );
     } else {
       this.memStore.clear();
     }
   }
 
-  size(): number {
+  async size(): Promise<number> {
     if (this.dataDir) {
       let count = 0;
-      const files = existsSync(this.dataDir) ? readdirSync(this.dataDir) : [];
+      let files: string[] = [];
+      try {
+        files = await readdir(this.dataDir);
+      } catch {
+        return 0;
+      }
       for (const file of files) {
         if (!file.endsWith(".json")) continue;
         try {
-          const records = JSON.parse(readFileSync(join(this.dataDir, file), "utf-8")) as HoleCardRecord[];
+          const data = await readFile(join(this.dataDir, file), "utf-8");
+          const records = JSON.parse(data) as HoleCardRecord[];
           count += records.length;
         } catch {
           // skip

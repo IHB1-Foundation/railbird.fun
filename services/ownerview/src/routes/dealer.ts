@@ -124,7 +124,7 @@ export function createDealerRoutes(dealerService: DealerService, dealerApiKey?: 
    *
    * Query: tableId, handId
    */
-  router.get("/commitments", (req: Request, res: Response) => {
+  router.get("/commitments", async (req: Request, res: Response) => {
     const { tableId, handId } = req.query;
 
     if (!tableId || typeof tableId !== "string") {
@@ -143,7 +143,7 @@ export function createDealerRoutes(dealerService: DealerService, dealerApiKey?: 
       return;
     }
 
-    const commitments = dealerService.getCommitments(tableId, handId);
+    const commitments = await dealerService.getCommitments(tableId, handId);
 
     if (!commitments) {
       res.status(404).json({
@@ -166,7 +166,7 @@ export function createDealerRoutes(dealerService: DealerService, dealerApiKey?: 
    *
    * Query: tableId, handId, seatIndex (uint8)
    */
-  router.get("/reveal", (req: Request, res: Response) => {
+  router.get("/reveal", async (req: Request, res: Response) => {
     const { tableId, handId, seatIndex } = req.query;
 
     if (!tableId || typeof tableId !== "string") {
@@ -194,7 +194,7 @@ export function createDealerRoutes(dealerService: DealerService, dealerApiKey?: 
       return;
     }
 
-    const revealData = dealerService.getRevealData(tableId, handId, seatIdx);
+    const revealData = await dealerService.getRevealData(tableId, handId, seatIdx);
 
     if (!revealData) {
       res.status(404).json({
@@ -218,7 +218,7 @@ export function createDealerRoutes(dealerService: DealerService, dealerApiKey?: 
    *
    * Body: { tableId: string, handId: string }
    */
-  router.delete("/hand", (req: Request, res: Response) => {
+  router.delete("/hand", async (req: Request, res: Response) => {
     const { tableId, handId } = req.body;
 
     if (!tableId || typeof tableId !== "string") {
@@ -237,7 +237,7 @@ export function createDealerRoutes(dealerService: DealerService, dealerApiKey?: 
       return;
     }
 
-    const deleted = dealerService.cleanupHand(tableId, handId);
+    const deleted = await dealerService.cleanupHand(tableId, handId);
 
     res.json({
       tableId,

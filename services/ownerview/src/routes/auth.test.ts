@@ -44,8 +44,8 @@ async function request(
 describe("Auth Routes", () => {
   let ctx: AppContext;
 
-  beforeEach(() => {
-    ctx = createApp({ jwtSecret: TEST_JWT_SECRET });
+  beforeEach(async () => {
+    ctx = await createApp({ jwtSecret: TEST_JWT_SECRET });
   });
 
   afterEach(() => {

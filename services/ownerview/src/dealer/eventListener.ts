@@ -214,7 +214,7 @@ export class HandStartedEventListener {
     }
 
     // Check if already dealt (idempotency)
-    if (this.dealerService.isHandDealt(this.tableId, handIdStr)) {
+    if (await this.dealerService.isHandDealt(this.tableId, handIdStr)) {
       console.log(
         `[DealerEventListener] Hand ${handIdStr} already dealt, skipping`
       );

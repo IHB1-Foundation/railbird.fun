@@ -69,7 +69,7 @@ logger.info(
     : "Trustless dealer protocol DISABLED (legacy mode)"
 );
 
-const { app, authService, chainService, stopRetention } = createApp({
+const { app, authService, chainService, stopRetention } = await createApp({
   jwtSecret: JWT_SECRET,
   rpcUrl: RPC_URL,
   pokerTableAddress: POKER_TABLE_ADDRESS,

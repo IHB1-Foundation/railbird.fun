@@ -1,5 +1,22 @@
 // @playerco/shared - Common utility functions
 
+/**
+ * Read a required environment variable. Throws on missing or placeholder values.
+ * Recognises values starting with "replace-with-" as placeholder sentinels.
+ */
+export function requireEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(`Missing required environment variable: ${name}`);
+  }
+  if (value.startsWith("replace-with-")) {
+    throw new Error(
+      `Environment variable ${name} still contains a placeholder value. Replace "${value}" with the actual secret before starting.`
+    );
+  }
+  return value;
+}
+
 const DEFAULT_REQUEST_TIMEOUT_MS = 10_000;
 
 /**

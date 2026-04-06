@@ -107,9 +107,9 @@ if [ -z "$VRF_ADDR" ]; then
 fi
 pass "MockVRFAdapter deployed at $VRF_ADDR"
 
-# Deploy ChipToken (rCHIP)
+# Deploy ChipToken (rCHIP) — constructor takes (string name, string symbol)
 RCHIP_ADDR=$(forge create contracts/src/ChipToken.sol:ChipToken \
-  --constructor-args $DEPLOYER_ADDR \
+  --constructor-args "TestChip" "TCHIP" \
   --rpc-url $RPC_URL \
   --private-key $DEPLOYER_KEY \
   --json 2>/dev/null | node -e "const d=require('fs').readFileSync('/dev/stdin','utf8');console.log(JSON.parse(d).deployedTo)")

@@ -1,6 +1,6 @@
 // @playerco/ownerview - Wallet-sign auth + hole card ACL service
 import { join } from "node:path";
-import { VERSION, type Address, createLogger } from "@playerco/shared";
+import { VERSION, type Address, createLogger, requireEnv } from "@playerco/shared";
 import { createApp } from "./app.js";
 
 const logger = createLogger({ service: "ownerview" });
@@ -10,9 +10,11 @@ const CHAIN_ENV = process.env.CHAIN_ENV || "local";
 const isLocal = CHAIN_ENV === "local";
 
 // JWT_SECRET: required explicitly in non-local environments (no insecure default)
-const JWT_SECRET = process.env.JWT_SECRET;
-if (!JWT_SECRET) {
-  logger.error({ env: CHAIN_ENV }, "JWT_SECRET is not set. Set JWT_SECRET (min 32 characters) to start the service.");
+let JWT_SECRET: string;
+try {
+  JWT_SECRET = requireEnv("JWT_SECRET");
+} catch (err) {
+  logger.error({ env: CHAIN_ENV }, `${(err as Error).message}. Set JWT_SECRET (min 32 characters) to start the service.`);
   process.exit(1);
 }
 

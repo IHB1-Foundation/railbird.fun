@@ -1,0 +1,114 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ── Foundry (Solidity) ─────────────────────────────────────────────────────
+  contracts:
+    name: Contracts (Foundry)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Build contracts
+        run: cd contracts && forge build --sizes
+
+      - name: Run contract tests
+        run: cd contracts && forge test -vvv
+
+      - name: Run Slither static analysis
+        uses: crytic/slither-action@v0.4.0
+        with:
+          target: contracts/
+          slither-args: "--filter-paths contracts/lib/ --exclude-dependencies"
+          fail-on: high
+        continue-on-error: true   # advisory — don't block merges yet
+
+  # ── TypeScript / Node.js ───────────────────────────────────────────────────
+  typescript:
+    name: TypeScript Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared package (includes ABI generation)
+        run: pnpm --filter @playerco/shared build
+
+      - name: Run all TypeScript tests
+        run: pnpm test
+
+  # ── Linting ───────────────────────────────────────────────────────────────
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint TypeScript packages
+        run: pnpm lint
+
+      - name: Lint Solidity contracts
+        run: |
+          cd contracts
+          npm install --global solhint 2>/dev/null || true
+          forge build --silent
+          # Run solhint; advisory only until rules are tuned
+          solhint 'src/**/*.sol' --ignore-path .solhintignore || true
+
+  # ── Security audit ────────────────────────────────────────────────────────
+  audit:
+    name: Dependency Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Audit dependencies
+        # Advisory only — known false positives in dev deps shouldn't block PRs
+        run: pnpm audit --audit-level high || true

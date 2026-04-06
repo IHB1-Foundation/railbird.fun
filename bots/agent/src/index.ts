@@ -3,15 +3,12 @@
 
 import { AgentBot } from "./bot.js";
 import { GeminiStrategy, SimpleStrategy, type Strategy } from "./strategy/index.js";
+import { requireEnv as sharedRequireEnv } from "@playerco/shared";
 
 const VERSION = "0.0.1";
 
 function requireEnv(name: string): string {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`Missing required environment variable: ${name}`);
-  }
-  return value;
+  return sharedRequireEnv(name);
 }
 
 function optionalEnv(name: string, defaultValue: string): string {

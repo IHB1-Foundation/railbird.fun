@@ -29,7 +29,7 @@ export { CircuitBreaker, CircuitOpenError } from "./circuitBreaker.js";
 export type { CircuitState, CircuitBreakerOptions } from "./circuitBreaker.js";
 
 // Utilities
-export { hexToBytes, fetchWithTimeout } from "./utils.js";
+export { hexToBytes, fetchWithTimeout, requireEnv } from "./utils.js";
 
 // Nonce manager
 export { NonceManager } from "./nonceManager.js";

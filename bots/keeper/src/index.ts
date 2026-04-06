@@ -2,15 +2,12 @@
 // Entry point that reads configuration from environment variables
 
 import { KeeperBot } from "./bot.js";
+import { requireEnv as sharedRequireEnv } from "@playerco/shared";
 
 const VERSION = "0.0.1";
 
 function requireEnv(name: string): string {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`Missing required environment variable: ${name}`);
-  }
-  return value;
+  return sharedRequireEnv(name);
 }
 
 function optionalEnv(name: string, defaultValue: string): string {

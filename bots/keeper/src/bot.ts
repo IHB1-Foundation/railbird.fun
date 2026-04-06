@@ -9,7 +9,7 @@ import {
   isCommitmentAlreadyExists,
   isDuplicateKeeperAction,
 } from "./contractErrors.js";
-import { CircuitBreaker, CircuitOpenError, fetchWithTimeout } from "@playerco/shared";
+import { CircuitBreaker, CircuitOpenError, fetchWithTimeout, createLogger } from "@playerco/shared";
 
 const ZERO_BYTES32 = "0x0000000000000000000000000000000000000000000000000000000000000000";
 const DEFAULT_REQUEST_TIMEOUT_MS = parseInt(process.env.REQUEST_TIMEOUT_MS || "10000", 10);
@@ -75,6 +75,7 @@ export class KeeperBot {
   private commitSyncedHands: Set<bigint> = new Set();
   // Tracks hands where /dealer/deal has already been POSTed (avoid redundant requests)
   private dealtHands: Set<bigint> = new Set();
+  private readonly log = createLogger({ service: "keeper" });
 
   constructor(config: KeeperBotConfig) {
     this.config = config;
@@ -102,29 +103,25 @@ export class KeeperBot {
       this.tableId = await this.chainClient.getTableId();
     }
 
-    console.log(`[KeeperBot] Starting keeper for address: ${this.address}`);
-    console.log(`[KeeperBot] Table: ${this.config.pokerTableAddress}`);
-    console.log(`[KeeperBot] Poll interval: ${pollInterval}ms`);
-    console.log(`[KeeperBot] Dealer integration: ${this.hasDealerIntegration() ? "enabled" : "disabled"}`);
+    this.log.info({ address: this.address, table: this.config.pokerTableAddress, pollIntervalMs: pollInterval, dealerEnabled: this.hasDealerIntegration() }, "KeeperBot starting");
 
     while (this.running) {
       try {
         await this.tick();
         this.currentBackoffMs = pollInterval;
       } catch (error) {
-        console.error("[KeeperBot] Error in tick:", error);
+        this.log.error({ err: error }, "Error in tick");
         this.stats.errors++;
         if (this.isRateLimitError(error)) {
           this.currentBackoffMs = Math.min(this.currentBackoffMs * 2, 15000);
-          console.warn(`[KeeperBot] RPC rate-limited. Backing off to ${this.currentBackoffMs}ms`);
+          this.log.warn({ backoffMs: this.currentBackoffMs }, "RPC rate-limited, backing off");
         }
       }
 
       await this.sleep(this.currentBackoffMs);
     }
 
-    console.log("[KeeperBot] Keeper stopped");
-    console.log(`[KeeperBot] Stats: ${JSON.stringify(this.stats)}`);
+    this.log.info({ stats: this.stats }, "KeeperBot stopped");
   }
 
   stop(): void {
@@ -138,18 +135,18 @@ export class KeeperBot {
 
     // Track state changes
     if (state.currentHandId !== this.lastHandId) {
-      console.log(`[KeeperBot] New hand detected: ${state.currentHandId}`);
+      this.log.info({ handId: state.currentHandId.toString() }, "New hand detected");
       this.lastHandId = state.currentHandId;
     }
 
     if (state.gameState !== this.lastGameState) {
-      console.log(`[KeeperBot] State changed: ${GameState[this.lastGameState]} -> ${GameState[state.gameState]}`);
+      this.log.info({ from: GameState[this.lastGameState], to: GameState[state.gameState] }, "State changed");
       this.lastGameState = state.gameState;
     }
 
     // Tournament over: log and stop looping
     if (state.gameState === GameState.TOURNAMENT_OVER) {
-      console.log(`[KeeperBot] TOURNAMENT_OVER — tournament has ended. Keeper stopping.`);
+      this.log.info("TOURNAMENT_OVER — tournament has ended. Keeper stopping.");
       this.running = false;
       return;
     }
@@ -185,9 +182,7 @@ export class KeeperBot {
       return;
     }
 
-    console.log(
-      `[KeeperBot] Timeout detected! Deadline: ${state.actionDeadline}, Current: ${currentTimestamp}`
-    );
+    this.log.info({ deadline: state.actionDeadline.toString(), current: currentTimestamp.toString() }, "Timeout detected");
 
     // Jitter before acting to reduce collision with other keeper instances
     await this.coordinationJitter();
@@ -196,12 +191,12 @@ export class KeeperBot {
       const hash = await this.chainClient.forceTimeout();
       this.stats.timeoutsForced++;
       this.recordAction("forceTimeout");
-      console.log(`[KeeperBot] Forced timeout, tx: ${hash}`);
+      this.log.info({ tx: hash }, "Forced timeout");
     } catch (error) {
       if (isDuplicateKeeperAction(error)) {
         this.handleCoordinationRace("forceTimeout", error);
       } else {
-        console.error("[KeeperBot] Failed to force timeout:", error);
+        this.log.error({ err: error }, "Failed to force timeout");
         this.stats.errors++;
       }
     }
@@ -230,10 +225,7 @@ export class KeeperBot {
       return;
     }
 
-    console.log(
-      `[KeeperBot] VRF fulfillment delayed! Request timestamp: ${state.vrfRequestTimestamp}, ` +
-        `Current: ${currentTimestamp}, Requesting new VRF...`
-    );
+    this.log.info({ vrfRequestTs: state.vrfRequestTimestamp.toString(), current: currentTimestamp.toString() }, "VRF fulfillment delayed, re-requesting");
 
     // Jitter before acting to reduce collision with other keeper instances
     await this.coordinationJitter();
@@ -242,13 +234,13 @@ export class KeeperBot {
       const hash = await this.chainClient.reRequestVRF();
       this.stats.vrfReRequests++;
       this.recordAction("reRequestVRF");
-      console.log(`[KeeperBot] Re-requested VRF, tx: ${hash}`);
+      this.log.info({ tx: hash }, "Re-requested VRF");
     } catch (error) {
       if (isVrfAlreadyReRequested(error)) {
         // Race condition: someone else already re-requested
         this.handleCoordinationRace("reRequestVRF", error);
       } else {
-        console.error("[KeeperBot] Failed to re-request VRF:", error);
+        this.log.error({ err: error }, "Failed to re-request VRF");
         this.stats.errors++;
       }
     }
@@ -266,7 +258,7 @@ export class KeeperBot {
       return;
     }
 
-    console.log("[KeeperBot] Table is ready, starting new hand...");
+    this.log.info("Table is ready, starting new hand");
 
     // Jitter before acting to reduce collision with other keeper instances
     await this.coordinationJitter();
@@ -275,12 +267,12 @@ export class KeeperBot {
       const hash = await this.chainClient.startHand();
       this.stats.handsStarted++;
       this.recordAction("startHand");
-      console.log(`[KeeperBot] Started new hand, tx: ${hash}`);
+      this.log.info({ tx: hash }, "Started new hand");
     } catch (error) {
       if (isCannotStartHand(error)) {
         this.handleCoordinationRace("startHand", error);
       } else {
-        console.error("[KeeperBot] Failed to start hand:", error);
+        this.log.error({ err: error }, "Failed to start hand");
         this.stats.errors++;
       }
     }
@@ -296,7 +288,7 @@ export class KeeperBot {
       return;
     }
 
-    console.log("[KeeperBot] Showdown detected, triggering card-based settlement...");
+    this.log.info("Showdown detected, triggering card-based settlement");
 
     // Jitter before acting to reduce collision with other keeper instances
     await this.coordinationJitter();
@@ -306,15 +298,15 @@ export class KeeperBot {
       const hash = await this.chainClient.settleShowdown();
       this.stats.showdownsSettled++;
       this.recordAction("settleShowdown");
-      console.log(`[KeeperBot] Settled showdown (winner determined by card evaluation), tx: ${hash}`);
+      this.log.info({ tx: hash }, "Settled showdown (winner by card evaluation)");
     } catch (error) {
       if (isSettleShowdownRetriable(error)) {
         // Reveal window still open or no reveals yet: retry later.
-        console.log("[KeeperBot] Waiting for hole card reveals before settlement...");
+        this.log.info("Waiting for hole card reveals before settlement");
       } else if (isDuplicateKeeperAction(error)) {
         this.handleCoordinationRace("settleShowdown", error);
       } else {
-        console.error("[KeeperBot] Failed to settle showdown:", error);
+        this.log.error({ err: error }, "Failed to settle showdown");
         this.stats.errors++;
       }
     }
@@ -348,7 +340,7 @@ export class KeeperBot {
         // Dealer API unavailable; skip silently
         return;
       }
-      console.error("[KeeperBot] Failed to get dealer commitments:", error);
+      this.log.error({ err: error }, "Failed to get dealer commitments");
       this.stats.apiErrors++;
       return;
     }
@@ -362,9 +354,7 @@ export class KeeperBot {
       try {
         const hash = await this.chainClient.submitHoleCommit(state.currentHandId, seatIndex, commitment);
         submitted++;
-        console.log(
-          `[KeeperBot] Submitted hole commit hand=${state.currentHandId} seat=${seatIndex}, tx: ${hash}`
-        );
+        this.log.info({ handId: state.currentHandId.toString(), seatIndex, tx: hash }, "Submitted hole commit");
       } catch (error) {
         if (!isCommitmentAlreadyExists(error)) {
           throw error;
@@ -397,7 +387,7 @@ export class KeeperBot {
       if (error instanceof CircuitOpenError) {
         return;
       }
-      console.error("[KeeperBot] Failed to get dealer commitments for reveal:", error);
+      this.log.error({ err: error }, "Failed to get dealer commitments for reveal");
       this.stats.apiErrors++;
       return;
     }
@@ -422,7 +412,7 @@ export class KeeperBot {
         if (error instanceof CircuitOpenError) {
           return;
         }
-        console.error(`[KeeperBot] Failed to get dealer reveal hand=${handId} seat=${seatIndex}:`, error);
+        this.log.error({ err: error, handId: handId.toString(), seatIndex }, "Failed to get dealer reveal");
         this.stats.apiErrors++;
         continue;
       }
@@ -435,9 +425,7 @@ export class KeeperBot {
           reveal.salt
         );
         revealedCount++;
-        console.log(
-          `[KeeperBot] Revealed hole cards hand=${handId} seat=${seatIndex}, tx: ${hash}`
-        );
+        this.log.info({ handId: handId.toString(), seatIndex, tx: hash }, "Revealed hole cards");
       } catch (error) {
         const errorMsg = String(error);
         if (
@@ -555,7 +543,7 @@ export class KeeperBot {
    */
   private handleCoordinationRace(context: string, error: unknown): void {
     this.stats.coordinationSkips++;
-    console.info(`[KeeperBot] Coordination skip in ${context} (another keeper acted first):`, String(error).split("\n")[0]);
+    this.log.info({ context, reason: String(error).split("\n")[0] }, "Coordination skip — another keeper acted first");
   }
 
   private isRateLimitError(error: unknown): boolean {

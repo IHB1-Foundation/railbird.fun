@@ -1,6 +1,7 @@
 import { randomBytes } from "crypto";
 import { bytesToHex, encodePacked, keccak256, stringToHex } from "viem";
 import { ChainClient, type VrfRequest } from "./chain/client.js";
+import { createLogger } from "@playerco/shared";
 
 export interface VrfOperatorBotConfig {
   rpcUrl: string;
@@ -39,6 +40,7 @@ export class VrfOperatorBot {
   private readonly pendingRequestIds: Set<bigint> = new Set();
   /** Tracks when each request was added to pendingRequestIds (for stale cleanup). */
   private readonly pendingAddedAt: Map<bigint, number> = new Map();
+  private readonly log = createLogger({ service: "vrf-operator" });
 
   private readonly stats: VrfOperatorStats = {
     scannedRequests: 0,
@@ -103,23 +105,23 @@ export class VrfOperatorBot {
             `but bot is configured with VRF_ADAPTER_ADDRESS=${this.config.vrfAdapterAddress}`
         );
       }
-      console.log(`[VRFOperator] verified table=${tableAddress} uses adapter=${tableAdapter}`);
+      this.log.info({ table: tableAddress, adapter: tableAdapter }, "Verified table VRF adapter");
     }
 
     this.lastSeenRequestId =
       this.config.rescanFromRequestId ??
       (nextRequestId > rescanWindow ? nextRequestId - rescanWindow : 1n);
 
-    console.log(`[VRFOperator] starting with address=${this.address}`);
-    console.log(`[VRFOperator] adapter=${this.config.vrfAdapterAddress}`);
-    console.log(`[VRFOperator] pollIntervalMs=${pollInterval}`);
-    console.log(`[VRFOperator] minConfirmations=${minConfirmations}`);
-    console.log(`[VRFOperator] initialScanFrom=${this.lastSeenRequestId}`);
-    if (tablesToValidate.length > 0) {
-      console.log(`[VRFOperator] tables=${tablesToValidate.join(", ")}`);
-    }
+    this.log.info({
+      address: this.address,
+      adapter: this.config.vrfAdapterAddress,
+      pollIntervalMs: pollInterval,
+      minConfirmations: minConfirmations.toString(),
+      initialScanFrom: this.lastSeenRequestId.toString(),
+      tables: tablesToValidate,
+    }, "VRFOperator starting");
     if (this.config.fixedRandomness !== undefined) {
-      console.warn(`[VRFOperator] fixed randomness mode enabled: ${this.config.fixedRandomness}`);
+      this.log.warn({ fixedRandomness: this.config.fixedRandomness.toString() }, "Fixed randomness mode enabled");
     }
 
     while (this.running) {
@@ -127,13 +129,12 @@ export class VrfOperatorBot {
         await this.tick(minConfirmations);
       } catch (error) {
         this.stats.errors += 1;
-        console.error("[VRFOperator] tick error:", error);
+        this.log.error({ err: error }, "Tick error");
       }
       await this.sleep(pollInterval);
     }
 
-    console.log("[VRFOperator] stopped");
-    console.log(`[VRFOperator] stats=${JSON.stringify(this.stats)}`);
+    this.log.info({ stats: this.stats }, "VRFOperator stopped");
   }
 
   /** Remove stale pending requests and enforce max size. */
@@ -150,7 +151,7 @@ export class VrfOperatorBot {
       }
     }
     if (staleRemoved > 0) {
-      console.warn(`[VRFOperator] Removed ${staleRemoved} stale pending requests (>1h old). Pending: ${this.pendingRequestIds.size}`);
+      this.log.warn({ staleRemoved, pendingCount: this.pendingRequestIds.size }, "Removed stale pending VRF requests");
     }
   }
 
@@ -161,7 +162,7 @@ export class VrfOperatorBot {
     const nextRequestId = await this.chainClient.getNextRequestId();
     for (let id = this.lastSeenRequestId; id < nextRequestId; id += 1n) {
       if (this.pendingRequestIds.size >= MAX_PENDING_REQUESTS) {
-        console.warn(`[VRFOperator] pendingRequestIds reached limit (${MAX_PENDING_REQUESTS}). Skipping id=${id}`);
+        this.log.warn({ limit: MAX_PENDING_REQUESTS, id: id.toString() }, "Pending request limit reached, skipping");
         break;
       }
       this.pendingRequestIds.add(id);
@@ -174,7 +175,7 @@ export class VrfOperatorBot {
       return;
     }
 
-    console.log(`[VRFOperator] pending=${this.pendingRequestIds.size} heapUsedMB=${(process.memoryUsage().heapUsed / 1024 / 1024).toFixed(1)}`);
+    this.log.debug({ pendingCount: this.pendingRequestIds.size, heapUsedMB: (process.memoryUsage().heapUsed / 1024 / 1024).toFixed(1) }, "Processing pending requests");
 
     const currentBlock = await this.chainClient.getBlockNumber();
     const latestBlock = await this.chainClient.getLatestBlock();
@@ -205,10 +206,10 @@ export class VrfOperatorBot {
         this.stats.fulfilledRequests += 1;
         this.stats.lastFulfilledRequestId = requestId;
         this.stats.lastFulfilledTxHash = hash;
-        console.log(`[VRFOperator] fulfilled requestId=${requestId} tx=${hash}`);
+        this.log.info({ requestId: requestId.toString(), tx: hash }, "Fulfilled VRF request");
       } catch (error) {
         this.stats.errors += 1;
-        console.error(`[VRFOperator] fulfill failed for requestId=${requestId}:`, error);
+        this.log.error({ err: error, requestId: requestId.toString() }, "Fulfill failed");
 
         // Remove only when already fulfilled by another operator/process.
         const refreshed = await this.chainClient.getRequest(requestId);

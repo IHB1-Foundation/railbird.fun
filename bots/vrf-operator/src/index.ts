@@ -1,5 +1,7 @@
-import { ENV_VARS } from "@playerco/shared";
+import { ENV_VARS, createLogger } from "@playerco/shared";
 import { VrfOperatorBot } from "./bot.js";
+
+const log = createLogger({ service: "vrf-operator" });
 
 const VERSION = "0.0.1";
 
@@ -30,7 +32,7 @@ function parseOptionalBigInt(name: string): bigint | undefined {
 }
 
 async function main(): Promise<void> {
-  console.log(`VRF operator bot v${VERSION}`);
+  log.info({ version: VERSION }, "VRF operator bot starting");
 
   // Support POKER_TABLE_ADDRESSES (comma-separated, preferred) or POKER_TABLE_ADDRESS (single)
   // The VRF operator processes all requests on the adapter regardless of source table.
@@ -62,7 +64,7 @@ async function main(): Promise<void> {
   const bot = new VrfOperatorBot(config);
 
   const shutdown = (): void => {
-    console.log("\n[VRFOperator] shutdown requested");
+    log.info("Shutdown requested");
     bot.stop();
   };
 
@@ -73,7 +75,7 @@ async function main(): Promise<void> {
 }
 
 main().catch((error) => {
-  console.error("[VRFOperator] fatal error:", error);
+  log.error({ err: error }, "Fatal error");
   process.exit(1);
 });
 

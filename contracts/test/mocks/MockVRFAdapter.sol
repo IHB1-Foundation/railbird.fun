@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "../interfaces/IVRFAdapter.sol";
+import "../../src/interfaces/IVRFAdapter.sol";
 
 /**
  * @title MockVRFAdapter

@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 import "../src/PokerTable.sol";
 import "../src/ChipToken.sol";
-import "../src/mocks/MockVRFAdapter.sol";
+import "./mocks/MockVRFAdapter.sol";
 
 /**
  * @title TrustlessDealerTest

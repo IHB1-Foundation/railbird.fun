@@ -19,6 +19,10 @@ contract PokerTable {
     // ============ Constants ============
     /// @dev Maximum array size — arrays are always sized to 9; unused slots are ignored.
     uint8 public constant MAX_SEATS = 9;
+    /// @dev Sentinel value for an undealt card slot.
+    uint8 public constant UNDEALT = 255;
+    /// @dev Standard 52-card deck size.
+    uint8 public constant DECK_SIZE = 52;
 
     // ============ Immutable Seat Config ============
     /// @notice Active seat count for this table (2–MAX_SEATS). Set at deploy.
@@ -852,7 +856,7 @@ contract PokerTable {
 
         // Reset community cards (255 = not dealt)
         for (uint8 i = 0; i < 5; i++) {
-            communityCards[i] = 255;
+            communityCards[i] = UNDEALT;
         }
         pendingVRFRequestId = 0;
         pendingHoleCardVRFRequestId = 0;
@@ -1521,17 +1525,17 @@ contract PokerTable {
      */
     function _dealCommunityCards(uint256 randomness) internal {
         // Build deck of 52 cards
-        uint8[52] memory deck;
-        for (uint8 i = 0; i < 52; i++) deck[i] = i;
+        uint8[DECK_SIZE] memory deck;
+        for (uint8 i = 0; i < DECK_SIZE; i++) deck[i] = i;
 
         // Move already-dealt community cards to the front (indices 0..alreadyDealt-1)
         uint8 alreadyDealt = 0;
         for (uint8 i = 0; i < 5; i++) {
-            if (communityCards[i] != 255) {
+            if (communityCards[i] != UNDEALT) {
                 // Swap communityCards[i] to deck[alreadyDealt]
                 uint8 cardVal = communityCards[i];
                 // Find cardVal in deck (it's still at its natural position since we only swap forward)
-                for (uint8 j = alreadyDealt; j < 52; j++) {
+                for (uint8 j = alreadyDealt; j < DECK_SIZE; j++) {
                     if (deck[j] == cardVal) {
                         deck[j] = deck[alreadyDealt];
                         deck[alreadyDealt] = cardVal;
@@ -1561,7 +1565,7 @@ contract PokerTable {
         uint8[] memory newCards = new uint8[](newCount);
         for (uint8 i = 0; i < newCount; i++) {
             uint256 hash = uint256(keccak256(abi.encodePacked(randomness, i)));
-            uint8 available = 52 - deckStart - i;
+            uint8 available = DECK_SIZE - deckStart - i;
             uint8 pick = uint8(hash % available);
             uint8 j = deckStart + i + pick;
             // Swap deck[deckStart+i] with deck[j]
@@ -1778,7 +1782,7 @@ contract PokerTable {
         uint256 remainder = potAmount % winnerCount;
 
         // Primary winner: first clockwise from button among tied seats
-        uint8 primaryWinner = 255;
+        uint8 primaryWinner = UNDEALT;
         for (uint8 i = 1; i <= numSeats; i++) {
             uint8 seat = (buttonSeat + i) % numSeats;
             for (uint8 j = 0; j < revealedCount; j++) {
@@ -1787,7 +1791,7 @@ contract PokerTable {
                     break;
                 }
             }
-            if (primaryWinner != 255) break;
+            if (primaryWinner != UNDEALT) break;
         }
 
         // Distribute shares
@@ -1848,7 +1852,7 @@ contract PokerTable {
         uint256 share = potAmount / uint256(activeCount);
         uint256 remainder = potAmount % uint256(activeCount);
 
-        uint8 primaryWinner = 255;
+        uint8 primaryWinner = UNDEALT;
         for (uint8 i = 1; i <= numSeats; i++) {
             uint8 seat = (buttonSeat + i) % numSeats;
             for (uint8 j = 0; j < activeCount; j++) {
@@ -1857,9 +1861,9 @@ contract PokerTable {
                     break;
                 }
             }
-            if (primaryWinner != 255) break;
+            if (primaryWinner != UNDEALT) break;
         }
-        require(primaryWinner != 255, "No active players");
+        require(primaryWinner != UNDEALT, "No active players");
 
         for (uint8 i = 0; i < activeCount; i++) {
             uint8 seatIndex = activeSeats[i];
@@ -1942,7 +1946,7 @@ contract PokerTable {
     ) external {
         require(seatIndex < numSeats, "Invalid seat");
         require(handId > 0 && handId <= currentHandId, "Invalid hand ID");
-        require(card1 < 52 && card2 < 52, "Invalid card value");
+        require(card1 < DECK_SIZE && card2 < DECK_SIZE, "Invalid card value");
         require(card1 != card2, "Duplicate cards");
 
         bytes32 commitment = holeCommits[handId][seatIndex];
@@ -1973,7 +1977,7 @@ contract PokerTable {
         // Emits CardIntegrityViolation if a conflict is found (dealer integrity violation).
         // Settlement proceeds regardless — this only provides an auditable signal.
         for (uint8 ci = 0; ci < 5; ci++) {
-            if (communityCards[ci] == 255) continue;
+            if (communityCards[ci] == UNDEALT) continue;
             if (card1 == communityCards[ci]) {
                 emit CardIntegrityViolation(handId, seatIndex, card1, ci);
             }
@@ -1997,7 +2001,7 @@ contract PokerTable {
         require(seatIndex < numSeats, "Invalid seat");
 
         if (!isHoleCardsRevealed[handId][seatIndex]) {
-            return (255, 255);
+            return (UNDEALT, UNDEALT);
         }
 
         return (_revealedHoleCards[handId][seatIndex][0], _revealedHoleCards[handId][seatIndex][1]);

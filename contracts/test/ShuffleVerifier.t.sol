@@ -5,7 +5,7 @@ import "forge-std/Test.sol";
 import "../src/ShuffleVerifier.sol";
 import "../src/PokerTable.sol";
 import "../src/ChipToken.sol";
-import "../src/mocks/MockVRFAdapter.sol";
+import "./mocks/MockVRFAdapter.sol";
 
 /**
  * @title ShuffleVerifierTest

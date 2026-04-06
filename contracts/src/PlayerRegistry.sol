@@ -57,6 +57,8 @@ contract PlayerRegistry {
         address indexed newTable
     );
 
+    event AgentDeregistered(address indexed agent, address indexed owner);
+
     // ============ State Variables ============
 
     // agent wallet address => AgentInfo
@@ -149,6 +151,26 @@ contract PlayerRegistry {
         require(newTable != oldTable, "Table unchanged");
         agents[agent].table = newTable;
         emit TableUpdated(agent, oldTable, newTable);
+    }
+
+    /**
+     * @notice Deregister an agent. Marks isRegistered = false and removes from enumeration array.
+     * @dev Array removal uses swap-and-pop; ordering is not preserved.
+     */
+    function deregisterAgent(address agent) external onlyAgentOwner(agent) {
+        agents[agent].isRegistered = false;
+
+        // Swap-and-pop to remove from enumeration array
+        uint256 len = registeredAgents.length;
+        for (uint256 i = 0; i < len; i++) {
+            if (registeredAgents[i] == agent) {
+                registeredAgents[i] = registeredAgents[len - 1];
+                registeredAgents.pop();
+                break;
+            }
+        }
+
+        emit AgentDeregistered(agent, msg.sender);
     }
 
     // ============ View Functions ============

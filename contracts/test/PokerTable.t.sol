@@ -5,7 +5,7 @@ import "forge-std/Test.sol";
 import "../src/PokerTable.sol";
 import "../src/ChipToken.sol";
 import "../src/HandEvaluator.sol";
-import "../src/mocks/MockVRFAdapter.sol";
+import "./mocks/MockVRFAdapter.sol";
 
 contract PokerTableTest is Test {
     PokerTable public pokerTable;

@@ -20,8 +20,10 @@ function getAllowedOrigins(): Set<string> {
 
 export function createApp(): express.Application {
   const app = express();
-  // Respect x-forwarded-* headers on Railway/reverse proxies (needed for absolute URLs).
-  app.set("trust proxy", true);
+  // Trust exactly one hop of proxy (e.g. Railway / nginx in front of this process).
+  // Setting to `true` trusts any proxy, which can allow IP spoofing via X-Forwarded-For.
+  const proxyCount = parseInt(process.env.TRUST_PROXY_HOPS || "1", 10);
+  app.set("trust proxy", Number.isNaN(proxyCount) ? 1 : proxyCount);
   const allowedOrigins = getAllowedOrigins();
 
   // Middleware

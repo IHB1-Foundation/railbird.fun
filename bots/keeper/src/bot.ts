@@ -393,6 +393,11 @@ export class KeeperBot {
     }
 
     this.commitSyncedHands.add(state.currentHandId);
+    // Prune entries to keep only the last 100 hand IDs to prevent unbounded growth
+    if (this.commitSyncedHands.size > 100) {
+      const oldest = this.commitSyncedHands.values().next().value;
+      if (oldest !== undefined) this.commitSyncedHands.delete(oldest);
+    }
     if (submitted > 0) {
       this.recordAction("submitHoleCommit");
     }

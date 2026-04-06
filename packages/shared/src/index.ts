@@ -9,7 +9,7 @@ export type {
   ChainConfig,
 } from "./types.js";
 
-export { ENV_VARS } from "./types.js";
+export { ENV_VARS, GameState } from "./types.js";
 
 // Chain config
 export {

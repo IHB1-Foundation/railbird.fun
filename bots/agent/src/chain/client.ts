@@ -13,24 +13,12 @@ import {
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { POKER_TABLE_ABI } from "./pokerTableAbi.js";
+import { GameState } from "@playerco/shared";
+
+export { GameState };
 
 const MAX_SEATS = 9;
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as Address;
-
-// Game state enum matching contract
-export enum GameState {
-  WAITING_FOR_SEATS = 0,
-  HAND_INIT = 1,
-  BETTING_PRE = 2,
-  WAITING_VRF_FLOP = 3,
-  BETTING_FLOP = 4,
-  WAITING_VRF_TURN = 5,
-  BETTING_TURN = 6,
-  WAITING_VRF_RIVER = 7,
-  BETTING_RIVER = 8,
-  SHOWDOWN = 9,
-  SETTLED = 10,
-}
 
 // Action type enum matching contract
 export enum ActionType {

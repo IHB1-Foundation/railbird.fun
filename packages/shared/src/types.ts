@@ -1,6 +1,27 @@
 // @playerco/shared - Type definitions
 
 /**
+ * On-chain PokerTable.GameState enum — single source of truth for all services.
+ * Values must stay in sync with contracts/src/PokerTable.sol:GameState.
+ */
+export enum GameState {
+  WAITING_FOR_SEATS  = 0,
+  HAND_INIT          = 1,
+  BETTING_PRE        = 2,
+  WAITING_VRF_FLOP   = 3,
+  BETTING_FLOP       = 4,
+  WAITING_VRF_TURN   = 5,
+  BETTING_TURN       = 6,
+  WAITING_VRF_RIVER  = 7,
+  BETTING_RIVER      = 8,
+  SHOWDOWN           = 9,
+  SETTLED            = 10,
+  TOURNAMENT_OVER    = 11,
+  WAITING_VRF_HOLECARDS = 12,
+  WAITING_FOR_HOLECARDS = 13,
+}
+
+/**
  * Supported chain environments
  */
 export type ChainEnv = "local" | "testnet" | "mainnet";

@@ -89,6 +89,8 @@ contract ChainlinkVRFAdapter is IVRFAdapter {
     mapping(uint256 => Request) public requestsByChainlinkId;
     /// internalRequestId → chainlinkRequestId (for logging / debugging)
     mapping(uint256 => uint256) public chainlinkIdByInternal;
+    /// chainlinkRequestId → internalRequestId (O(1) reverse lookup)
+    mapping(uint256 => uint256) public internalIdByChainlink;
 
     // ============ Events ============
     event RandomnessRequested(
@@ -169,6 +171,7 @@ contract ChainlinkVRFAdapter is IVRFAdapter {
             fulfilled: false
         });
         chainlinkIdByInternal[internalRequestId] = clRequestId;
+        internalIdByChainlink[clRequestId] = internalRequestId;
 
         emit RandomnessRequested(
             internalRequestId,
@@ -203,8 +206,9 @@ contract ChainlinkVRFAdapter is IVRFAdapter {
 
         uint256 randomness = randomWords[0];
 
-        // Find the internal ID for logging (linear scan is fine — low call frequency).
-        uint256 internalId = _findInternalId(chainlinkRequestId);
+        // O(1) reverse lookup — previously this was a linear scan through all requests.
+        uint256 internalId = internalIdByChainlink[chainlinkRequestId];
+        require(internalId != 0, "Internal ID not found");
 
         emit RandomnessFulfilled(internalId, chainlinkRequestId, req.table, randomness);
 
@@ -229,14 +233,4 @@ contract ChainlinkVRFAdapter is IVRFAdapter {
         return requestsByChainlinkId[chainlinkRequestId].fulfilled;
     }
 
-    // ============ Internal ============
-
-    /// @dev Reverse lookup chainlinkRequestId → internalRequestId.
-    ///      Works because nextInternalId is bounded by practical use.
-    function _findInternalId(uint256 clId) internal view returns (uint256) {
-        for (uint256 i = 1; i < nextInternalId; i++) {
-            if (chainlinkIdByInternal[i] == clId) return i;
-        }
-        return 0; // unreachable in normal flow
-    }
 }

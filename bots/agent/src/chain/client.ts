@@ -211,6 +211,7 @@ export class ChainClient {
       actionDeadline,
       lastActionBlock,
       handInfo,
+      communityCardsRaw,
     ] = await Promise.all([
       this.publicClient.readContract({
         address: this.pokerTableAddress,
@@ -236,6 +237,11 @@ export class ChainClient {
         address: this.pokerTableAddress,
         abi: POKER_TABLE_ABI,
         functionName: "getHandInfo",
+      }),
+      this.publicClient.readContract({
+        address: this.pokerTableAddress,
+        abi: POKER_TABLE_ABI,
+        functionName: "getCommunityCards",
       }),
     ]);
 
@@ -281,7 +287,7 @@ export class ChainClient {
         actorSeat: (handInfo as readonly [bigint, bigint, bigint, number, number])[3],
         state: (handInfo as readonly [bigint, bigint, bigint, number, number])[4] as GameState,
       },
-      communityCards: [],
+      communityCards: (communityCardsRaw as number[]).map(Number),
     };
   }
 

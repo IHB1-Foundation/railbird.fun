@@ -78,13 +78,15 @@ export class GeminiStrategy implements Strategy {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
     const url =
-      `${this.endpointBaseUrl}/models/${encodeURIComponent(this.model)}:generateContent` +
-      `?key=${encodeURIComponent(this.apiKey)}`;
+      `${this.endpointBaseUrl}/models/${encodeURIComponent(this.model)}:generateContent`;
 
     try {
       const response = await fetch(url, {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: {
+          "content-type": "application/json",
+          "x-goog-api-key": this.apiKey,
+        },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {

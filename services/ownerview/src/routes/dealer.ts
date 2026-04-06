@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "crypto";
 import { Router, type Request, type Response, type NextFunction } from "express";
 import { DealerService, DealerError } from "../dealer/index.js";
 
@@ -17,7 +18,12 @@ function createDealerAuthMiddleware(apiKey: string) {
     }
 
     const token = authHeader.slice(7);
-    if (token !== apiKey) {
+    const tokenBuf = Buffer.from(token);
+    const keyBuf = Buffer.from(apiKey);
+    const keysMatch =
+      tokenBuf.length === keyBuf.length &&
+      timingSafeEqual(tokenBuf, keyBuf);
+    if (!keysMatch) {
       res.status(403).json({
         error: "Invalid dealer API key",
         code: "FORBIDDEN",

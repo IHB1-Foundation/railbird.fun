@@ -18,6 +18,10 @@ import type { TableResponse } from "@/lib/types";
 import { GAME_STATES, ACTION_TYPES } from "@/lib/types";
 import { useWebSocket } from "@/lib/useWebSocket";
 import { getRevealedHolecards, type RevealedHolecardResponse } from "@/lib/api";
+import { PokerCard } from "@/components/poker/PokerCard";
+import { VrfStatusWidget } from "@/components/poker/VrfStatusWidget";
+import { SeatPanel } from "@/components/poker/SeatPanel";
+import { ShowdownResultsPanel } from "@/components/poker/ShowdownResultsPanel";
 const TABLE_MAX_SEATS = Number(process.env.NEXT_PUBLIC_TABLE_MAX_SEATS || "9");
 
 /** Lightweight structural guard against injected WebSocket payloads. */
@@ -91,6 +95,7 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
         stack: "0",
         isActive: false,
         currentBet: "0",
+        tokenAddress: null,
       };
     });
   }, [maxSeats, table.seats]);
@@ -589,200 +594,8 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
   );
 }
 
-// Hand rank labels for showdown display
-const HAND_RANK_NAMES = [
-  "High Card", "One Pair", "Two Pair", "Three of a Kind",
-  "Straight", "Flush", "Full House", "Four of a Kind", "Straight Flush", "Royal Flush",
-];
-
-function getCardRank(cardIndex: number): number { return cardIndex % 13; }
-function getCardSuit(cardIndex: number): number { return Math.floor(cardIndex / 13); }
-
-function evaluateHandRank(holeCards: [number, number], communityCards: number[]): string {
-  const allCards = [...holeCards, ...communityCards.filter((c) => c !== 255)];
-  if (allCards.length < 5) return "Incomplete Hand";
-
-  // Build rank/suit counts from best 5 cards (simplified evaluator)
-  const ranks = allCards.map(getCardRank).sort((a, b) => b - a);
-  const suits = allCards.map(getCardSuit);
-
-  const rankCounts: Record<number, number> = {};
-  for (const r of ranks) rankCounts[r] = (rankCounts[r] ?? 0) + 1;
-  const counts = Object.values(rankCounts).sort((a, b) => b - a);
-
-  const isFlush = suits.some(
-    (s) => suits.filter((x) => x === s).length >= 5
-  );
-
-  const uniqueRanks = [...new Set(ranks)].sort((a, b) => b - a);
-  let isStraight = false;
-  for (let i = 0; i <= uniqueRanks.length - 5; i++) {
-    if (uniqueRanks[i] - uniqueRanks[i + 4] === 4) { isStraight = true; break; }
-  }
-  // Ace-low straight: A,2,3,4,5
-  if (!isStraight && uniqueRanks.includes(12) && uniqueRanks.includes(0) &&
-      uniqueRanks.includes(1) && uniqueRanks.includes(2) && uniqueRanks.includes(3)) {
-    isStraight = true;
-  }
-
-  if (isFlush && isStraight) {
-    return uniqueRanks[0] === 12 && uniqueRanks[1] === 11 ? HAND_RANK_NAMES[9] : HAND_RANK_NAMES[8];
-  }
-  if (counts[0] === 4) return HAND_RANK_NAMES[7];
-  if (counts[0] === 3 && counts[1] === 2) return HAND_RANK_NAMES[6];
-  if (isFlush) return HAND_RANK_NAMES[5];
-  if (isStraight) return HAND_RANK_NAMES[4];
-  if (counts[0] === 3) return HAND_RANK_NAMES[3];
-  if (counts[0] === 2 && counts[1] === 2) return HAND_RANK_NAMES[2];
-  if (counts[0] === 2) return HAND_RANK_NAMES[1];
-  return HAND_RANK_NAMES[0];
-}
-
-// Showdown Results Panel
-function ShowdownResultsPanel({
-  revealedHolecards,
-  communityCards,
-  winnerSeat,
-  pot,
-  seats,
-}: {
-  revealedHolecards: RevealedHolecardResponse[];
-  communityCards: number[];
-  winnerSeat: number | null;
-  pot: string;
-  seats: TableResponse["seats"];
-}) {
-  const seatMap = new Map(seats.map((s) => [s.seatIndex, s]));
-  return (
-    <div className="card section-card">
-      <h3 className="section-title-sm">Showdown</h3>
-      {winnerSeat !== null && (
-        <div className="showdown-winner-banner">
-          Seat {winnerSeat} wins {formatChips(pot)} {CHIP_SYMBOL}
-        </div>
-      )}
-      <div className="showdown-grid">
-        {revealedHolecards.map((h) => {
-          const isWinner = winnerSeat === h.seatIndex;
-          const handRank = evaluateHandRank([h.card1, h.card2], communityCards);
-          const seat = seatMap.get(h.seatIndex);
-          return (
-            <div
-              key={h.seatIndex}
-              className={cn("showdown-seat-card", isWinner && "showdown-winner")}
-            >
-              <div className="showdown-seat-header">
-                <span className="showdown-seat-label">Seat {h.seatIndex}</span>
-                {isWinner && <span className="showdown-winner-badge">Winner</span>}
-              </div>
-              {seat && seat.ownerAddress.toLowerCase() !== "0x0000000000000000000000000000000000000000" && (
-                <div className="showdown-owner">{shortenAddress(seat.ownerAddress)}</div>
-              )}
-              <div className="hole-cards">
-                <PokerCard cardIndex={h.card1} />
-                <PokerCard cardIndex={h.card2} />
-              </div>
-              <div className="showdown-hand-rank">{handRank}</div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// VRF Status Widget — shown during WAITING_VRF_* states
-function VrfStatusWidget({ street }: { street: string }) {
-  return (
-    <div className="vrf-status-widget" role="status" aria-live="polite" aria-label={`Waiting for VRF randomness for ${street}`}>
-      <span className="vrf-spinner" aria-hidden="true" />
-      <span className="vrf-label">
-        Waiting for VRF ({street})
-      </span>
-    </div>
-  );
-}
-
-// Seat Panel Component
-function SeatPanel({
-  seat,
-  isActor,
-  isButton,
-  isOwner,
-  isHandActive,
-  holeCards,
-  turnTimeRemaining,
-}: {
-  seat: TableResponse["seats"][0];
-  isActor: boolean;
-  isButton: boolean;
-  isOwner: boolean;
-  isHandActive: boolean;
-  holeCards: HoleCardsResponse | null;
-  turnTimeRemaining: string;
-}) {
-  if (seat.ownerAddress.toLowerCase() === ZERO_ADDRESS) {
-    return (
-      <div className="seat-panel">
-        <div className="seat-label">Seat {seat.seatIndex}</div>
-        <div className="muted">Empty</div>
-      </div>
-    );
-  }
-
-  return (
-    <div className={cn("seat-panel", isActor && "active", isOwner && "owner", isHandActive && !seat.isActive && "folded")}>
-      <div className="seat-label">
-        <span>Seat {seat.seatIndex}</span>
-        {isButton && <span className="dealer-chip">D</span>}
-        {isOwner && <span className="you-pill">YOU</span>}
-      </div>
-      <div className="seat-address" title={seat.ownerAddress}>{shortenAddress(seat.ownerAddress)}</div>
-      <div className="seat-stack">{formatChips(seat.stack)} {CHIP_SYMBOL}</div>
-      <div className={cn("seat-bet", seat.currentBet === "0" && "zero")}>
-          <span className="seat-bet-chip" />
-          This Round: {formatChips(seat.currentBet)} {CHIP_SYMBOL}
-      </div>
-      {isActor && <div className="seat-action-badge">ACTING</div>}
-      {isActor && turnTimeRemaining !== "--" && (
-        <div className={cn("seat-turn-timer", turnTimeRemaining === "Expired" && "urgent")}>
-          {turnTimeRemaining}
-        </div>
-      )}
-      {/* Owner's hole cards - only shown to the seat owner */}
-      {isOwner && holeCards && (
-        <div className="seat-holecards">
-          <div className="hole-cards-label">Your Hand</div>
-          <div className="hole-cards">
-            <PokerCard cardIndex={holeCards.cards[0]} />
-            <PokerCard cardIndex={holeCards.cards[1]} />
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Poker Card Component
-const CARD_RANKS = ["2", "3", "4", "5", "6", "7", "8", "9", "T", "J", "Q", "K", "A"];
-const CARD_SUITS = ["s", "h", "d", "c"];
-const SUIT_NAMES: Record<string, string> = { s: "spades", h: "hearts", d: "diamonds", c: "clubs" };
-const SUIT_SYMBOLS: Record<string, string> = { s: "♠", h: "♥", d: "♦", c: "♣" };
-
-function PokerCard({ cardIndex }: { cardIndex: number }) {
-  if (cardIndex === 255 || cardIndex < 0 || cardIndex > 51) {
-    return <div className="poker-card unknown" aria-label="Hidden card">??</div>;
-  }
-
-  const rank = CARD_RANKS[cardIndex % 13];
-  const suit = CARD_SUITS[Math.floor(cardIndex / 13)];
-
-  return (
-    <div
-      className={cn("poker-card", suit === "h" || suit === "d" ? "heart" : "spade")}
-      aria-label={`${rank} of ${SUIT_NAMES[suit]}`}
-    >
-      {rank}{SUIT_SYMBOLS[suit]}
-    </div>
-  );
-}
+// Components extracted to separate files:
+// - PokerCard       → @/components/poker/PokerCard
+// - VrfStatusWidget → @/components/poker/VrfStatusWidget
+// - SeatPanel       → @/components/poker/SeatPanel
+// - ShowdownResultsPanel + evaluateHandRank → @/components/poker/ShowdownResultsPanel

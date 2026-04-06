@@ -37,7 +37,7 @@ contract TrustlessDealerTest is Test {
     event EncryptionKeyRegistered(uint8 indexed seatIndex, bytes pubKey);
     event DealerSeedCommitted(uint256 indexed handId, bytes32 commitment);
     event DealerSeedRevealed(uint256 indexed handId, bytes32 seed);
-    event HoleCardVRFFulfilled(uint256 indexed handId, uint256 randomness);
+    event HoleCardVRFFulfilled(uint256 indexed handId, bytes32 randomnessHash);
     event HoleCardVRFReRequested(uint256 indexed handId, uint256 oldRequestId, uint256 newRequestId);
     event VRFRequested(uint256 indexed handId, PokerTable.GameState street, uint256 requestId);
 
@@ -301,8 +301,9 @@ contract TrustlessDealerTest is Test {
 
         pokerTable.startHand();
 
+        bytes32 expectedHash = keccak256(abi.encodePacked(TEST_RANDOMNESS));
         vm.expectEmit(true, false, false, true);
-        emit HoleCardVRFFulfilled(1, TEST_RANDOMNESS);
+        emit HoleCardVRFFulfilled(1, expectedHash);
 
         mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
 
@@ -310,7 +311,7 @@ contract TrustlessDealerTest is Test {
             uint256(pokerTable.gameState()),
             uint256(PokerTable.GameState.WAITING_FOR_HOLECARDS)
         );
-        assertEq(pokerTable.holeCardVRFRandomness(1), TEST_RANDOMNESS);
+        assertEq(pokerTable.holeCardVRFRandomnessHash(1), expectedHash);
         assertEq(pokerTable.pendingHoleCardVRFRequestId(), 0);
     }
 
@@ -388,7 +389,7 @@ contract TrustlessDealerTest is Test {
         mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
         _submitDummyCommitsAndAdvance();
 
-        assertEq(pokerTable.holeCardVRFRandomness(1), TEST_RANDOMNESS);
+        assertEq(pokerTable.holeCardVRFRandomnessHash(1), keccak256(abi.encodePacked(TEST_RANDOMNESS)));
 
         // Fold to settle
         vm.prank(operator1);
@@ -400,9 +401,9 @@ contract TrustlessDealerTest is Test {
         mockVRF.fulfillLastRequest(TEST_RANDOMNESS + 1);
         _submitDummyCommitsAndAdvance();
 
-        assertEq(pokerTable.holeCardVRFRandomness(2), TEST_RANDOMNESS + 1);
-        // Hand 1 randomness unchanged
-        assertEq(pokerTable.holeCardVRFRandomness(1), TEST_RANDOMNESS);
+        assertEq(pokerTable.holeCardVRFRandomnessHash(2), keccak256(abi.encodePacked(TEST_RANDOMNESS + 1)));
+        // Hand 1 hash unchanged
+        assertEq(pokerTable.holeCardVRFRandomnessHash(1), keccak256(abi.encodePacked(TEST_RANDOMNESS)));
     }
 
     function test_ReRequestHoleCardVRF_AfterTimeout() public {

@@ -363,7 +363,7 @@ contract ShuffleVerifierIntegrationTest is Test {
         vm.expectEmit(true, false, false, true);
         emit ShuffleVerified(handId, seed);
 
-        pokerTable.verifyShuffleAtShowdown(handId, 2, reveals);
+        pokerTable.verifyShuffleAtShowdown(handId, 2, reveals, TEST_VRF);
     }
 
     function test_VerifyShuffleAtShowdown_EmitsShuffleIntegrityViolation_WhenTampered() public {
@@ -392,7 +392,7 @@ contract ShuffleVerifierIntegrationTest is Test {
         vm.expectEmit(true, false, false, true);
         emit ShuffleIntegrityViolation(handId, seed);
 
-        pokerTable.verifyShuffleAtShowdown(handId, 1, reveals);
+        pokerTable.verifyShuffleAtShowdown(handId, 1, reveals, TEST_VRF);
     }
 
     function test_VerifyShuffleAtShowdown_RevertIfSeedNotRevealed() public {
@@ -405,7 +405,7 @@ contract ShuffleVerifierIntegrationTest is Test {
         // No seed revealed — should revert
         SeatReveal[] memory reveals = new SeatReveal[](0);
         vm.expectRevert("Dealer seed not revealed yet");
-        pokerTable.verifyShuffleAtShowdown(1, 0, reveals);
+        pokerTable.verifyShuffleAtShowdown(1, 0, reveals, TEST_VRF);
     }
 
     // ============ Helpers ============

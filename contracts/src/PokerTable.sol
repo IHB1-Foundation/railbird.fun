@@ -241,8 +241,8 @@ contract PokerTable {
     /// @notice Emitted when the dealer reveals its seed at showdown
     event DealerSeedRevealed(uint256 indexed handId, bytes32 seed);
 
-    /// @notice Emitted when hole-card VRF randomness is received
-    event HoleCardVRFFulfilled(uint256 indexed handId, uint256 randomness);
+    /// @notice Emitted when hole-card VRF randomness is received; emits hash only (not raw value)
+    event HoleCardVRFFulfilled(uint256 indexed handId, bytes32 randomnessHash);
 
     /// @notice Emitted when VRF re-request is issued for hole cards
     event HoleCardVRFReRequested(
@@ -325,9 +325,9 @@ contract PokerTable {
     mapping(uint256 => bytes32) public dealerSeedCommits;  // handId => keccak256(seed)
     mapping(uint256 => bytes32) public dealerSeedReveals;  // handId => revealed seed
 
-    // T1.3: Hole card VRF randomness per hand
-    mapping(uint256 => uint256) public holeCardVRFRandomness;  // handId => randomness
-    uint256 public pendingHoleCardVRFRequestId;                // current pending hole-card VRF
+    // T1.3: Hole card VRF randomness per hand — hash only; raw value stays off-chain
+    mapping(uint256 => bytes32) public holeCardVRFRandomnessHash;  // handId => keccak256(randomness)
+    uint256 public pendingHoleCardVRFRequestId;                     // current pending hole-card VRF
 
     /// @notice HashKey Chain KYC SBT checker. address(0) = KYC gate disabled.
     address public kycSBT;
@@ -757,13 +757,15 @@ contract PokerTable {
     function verifyShuffleAtShowdown(
         uint256 handId,
         uint8 seatCount,
-        SeatReveal[] memory reveals
+        SeatReveal[] memory reveals,
+        uint256 vrfRandomness
     ) external {
         require(handId > 0 && handId <= currentHandId, "Invalid hand ID");
         require(dealerSeedReveals[handId] != bytes32(0), "Dealer seed not revealed yet");
 
-        uint256 vrfRandomness = holeCardVRFRandomness[handId];
-        require(vrfRandomness != 0, "VRF randomness not available");
+        bytes32 storedHash = holeCardVRFRandomnessHash[handId];
+        require(storedHash != bytes32(0), "VRF randomness not available");
+        require(keccak256(abi.encodePacked(vrfRandomness)) == storedHash, "VRF randomness mismatch");
 
         bytes32 dealerSeed = dealerSeedReveals[handId];
 
@@ -1347,10 +1349,11 @@ contract PokerTable {
         // Route: hole card VRF
         if (gameState == GameState.WAITING_VRF_HOLECARDS) {
             require(requestId == pendingHoleCardVRFRequestId, "Invalid request ID");
-            holeCardVRFRandomness[currentHandId] = randomness;
+            bytes32 randomnessHash = keccak256(abi.encodePacked(randomness));
+            holeCardVRFRandomnessHash[currentHandId] = randomnessHash;
             pendingHoleCardVRFRequestId = 0;
             gameState = GameState.WAITING_FOR_HOLECARDS;
-            emit HoleCardVRFFulfilled(currentHandId, randomness);
+            emit HoleCardVRFFulfilled(currentHandId, randomnessHash);
             return;
         }
 

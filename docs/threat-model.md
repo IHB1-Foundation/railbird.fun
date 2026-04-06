@@ -93,10 +93,16 @@ This document covers the threat model for Railbird's **Trustless Dealer** system
 **Mitigation:** The dealer commits to `dealerSeed` *before* VRF fulfillment. However, a colluding VRF provider can share its *upcoming* randomness with the dealer before the commitment is submitted.  
 **Status:** Open in MVP. P1 mitigation: require dealer commitment transaction to be mined *before* VRF request is issued; use strict transaction ordering enforcement.
 
-### RR-2: Side-Channel Attacks on Enclave
-**Risk:** (Layer 3 only) Timing side-channels, cache-timing, or speculative execution attacks may allow a privileged host process to partially recover enclave secrets.  
-**Mitigation:** AWS Nitro Enclaves mitigate most side-channels by design (dedicated vCPUs, no shared memory). Remaining risk is academic for the MVP threat level.  
-**Status:** Accepted for hackathon scope. Documented as known residual.
+### RR-2: Side-Channel Attacks (Future Work — TEE Layer)
+
+> **Note:** Layer 3 (TEE / AWS Nitro Enclave) is described as a *future upgrade path* and is **not deployed** in the current MVP. The content below describes what Layer 3 would add, and what risks remain even with it.
+
+**Current MVP (Layers 1+2 only):** The operator can observe plaintext hole cards in process memory during the `shuffle → encrypt` window (< 1 ms). The risk is real but narrow. Mitigated by: isolated process, access-controlled data directory, and ECIES encryption ensuring at-rest data is never plaintext.
+
+**If/when Layer 3 (TEE) is added:**
+- **Risk:** Timing side-channels, cache-timing, or speculative execution attacks may allow a privileged host process to partially recover enclave secrets.
+- **Mitigation:** AWS Nitro Enclaves mitigate most side-channels by design (dedicated vCPUs, no shared memory).
+- **Status:** Not deployed. Documented as a future mitigation path, not a current defense.
 
 ### RR-3: Client-Side Private Key Leakage
 **Risk:** The derived `encryptionPrivKey` lives in browser memory. XSS, malicious browser extensions, or a compromised browser could exfiltrate it.  
@@ -122,7 +128,9 @@ This document covers the threat model for Railbird's **Trustless Dealer** system
 
 ## Defense Layer Summary
 
-| Threat | Layer 1 (VRF) | Layer 2 (ECIES) | Layer 3 (TEE) |
+> **MVP deployment status:** Layers 1 and 2 are deployed. Layer 3 (TEE) is a future upgrade path — it is **not** currently deployed.
+
+| Threat | Layer 1 (VRF) | Layer 2 (ECIES) | Layer 3 (TEE) — Future |
 |--------|:---:|:---:|:---:|
 | Biased shuffle by dealer | ✓ | ✓ | ✓ |
 | Biased shuffle by VRF provider | ✓ | ✓ | ✓ |

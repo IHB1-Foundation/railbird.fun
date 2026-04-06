@@ -58,7 +58,17 @@ Before enabling `TRUSTLESS_DEALER_ENABLED=true`, ensure:
 
 ```bash
 cd contracts
-forge script script/Deploy.s.sol --broadcast --rpc-url $RPC_URL
+# Use forge create for each contract (no Foundry Script file yet)
+# Example: deploy PokerTable to testnet
+forge create src/PokerTable.sol:PokerTable \
+  --rpc-url $RPC_URL \
+  --private-key $DEPLOYER_KEY \
+  --constructor-args <tableId> <smallBlind> <bigBlind> <vrfAdapter> <chipToken> \
+                     <kycSbt> <actionTimeout> <vrfTimeout> <showdownTimeout> <numSeats>
+
+# For a full local deployment, use the e2e-smoke.sh script (against Anvil):
+./scripts/e2e-smoke.sh
+# Deployed addresses are written to deployments/31337.json
 ```
 
 Verify `registerEncryptionKey`, `holeCardVRFRandomness`, and `dealerSeedCommits` exist:

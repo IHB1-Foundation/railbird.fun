@@ -130,30 +130,58 @@ Maximum 9 seats → uses deck positions 0–17. Positions 18–51 are unused in 
 
 The following vectors **must** be reproduced exactly by any conforming implementation:
 
+These vectors are computed by `services/ownerview/src/dealer/verifiableShuffle.ts` and verified by `ShuffleVerifier.t.sol` in the Foundry test suite.
+
 **Vector 1**
 ```
-vrfRandomness = 0x0000000000000000000000000000000000000000000000000000000000000001
-dealerSeed    = 0x0000000000000000000000000000000000000000000000000000000000000001
-shuffleSeed   = keccak256(0x0000...0001 ++ 0x0000...0001)
-deck[0]       = (verify with implementation)
-deck[1]       = (verify with implementation)
+vrfRandomness  = 0x0000000000000000000000000000000000000000000000000000000000000001
+dealerSeed     = 0x0000000000000000000000000000000000000000000000000000000000000001
+shuffleSeed    = 0xcc69885fda6bcc1a4ace058b4a62bf5e179ea78fd58a1ccd71c22cc9b688792f
+deck[0]        = 8   (T♣)
+deck[1]        = 49  (K♠)
+deck[2]        = 10  (Q♣)
+deck[3]        = 9   (J♣)
+deck[4]        = 38  (K♥)
+deck[5]        = 51  (A♠)
+deck[6]        = 11  (K♣)
+deck[7]        = 35  (J♥)
+-- Seat 0 receives cards 8 and 49 (T♣ K♠)
+-- Seat 1 receives cards 10 and 9 (Q♣ J♣)
 ```
 
 **Vector 2**
 ```
-vrfRandomness = 0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef
-dealerSeed    = 0xcafebabecafebabecafebabecafebabecafebabecafebabecafebabecafebabe
-shuffleSeed   = keccak256(0xdeadbeef... ++ 0xcafebabe...)
+vrfRandomness  = 0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef
+dealerSeed     = 0xcafebabecafebabecafebabecafebabecafebabecafebabecafebabecafebabe
+shuffleSeed    = 0xffdcdad5a4be870628f991e2bfd6b4de0b2cd790d9a5085694c900523d99cfe0
+deck[0]        = 5   (7♣)
+deck[1]        = 19  (8♦)
+deck[2]        = 33  (9♥)
+deck[3]        = 44  (7♠)
+deck[4]        = 45  (8♠)
+deck[5]        = 2   (4♣)
+deck[6]        = 50  (K♠)
+deck[7]        = 34  (T♥)
+-- Seat 0 receives cards 5 and 19 (7♣ 8♦)
 ```
 
 **Vector 3** (zero inputs)
 ```
-vrfRandomness = 0x0000000000000000000000000000000000000000000000000000000000000000
-dealerSeed    = 0x0000000000000000000000000000000000000000000000000000000000000000
-shuffleSeed   = keccak256(0x0000...0000 ++ 0x0000...0000)
+vrfRandomness  = 0x0000000000000000000000000000000000000000000000000000000000000000
+dealerSeed     = 0x0000000000000000000000000000000000000000000000000000000000000000
+shuffleSeed    = 0xad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5
+deck[0]        = 6   (8♣)
+deck[1]        = 44  (7♠)
+deck[2]        = 37  (Q♥)
+deck[3]        = 28  (4♥)
+deck[4]        = 35  (J♥)
+deck[5]        = 4   (6♣)
+deck[6]        = 34  (T♥)
+deck[7]        = 16  (5♦)
+-- Seat 0 receives cards 6 and 44 (8♣ 7♠)
 ```
 
-Exact expected deck arrays are computed and fixed during T2.1 unit tests and must be committed alongside the implementation.
+Card encoding: rank = `card % 13` (0=2 .. 12=A), suit = `card / 13` (0=♣, 1=♦, 2=♥, 3=♠).
 
 ---
 

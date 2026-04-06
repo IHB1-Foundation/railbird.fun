@@ -3,7 +3,7 @@
 
 import { AgentBot } from "./bot.js";
 import { GeminiStrategy, SimpleStrategy, type Strategy } from "./strategy/index.js";
-import { requireEnv as sharedRequireEnv } from "@playerco/shared";
+import { requireEnv as sharedRequireEnv, startHealthServer } from "@playerco/shared";
 
 const VERSION = "0.0.1";
 
@@ -122,6 +122,9 @@ async function main() {
 
   // Create and run bot
   const bot = new AgentBot(config);
+  const healthPort = parseInt(process.env.HEALTH_PORT || "9100", 10);
+  const health = startHealthServer({ service: "agent-bot", port: healthPort });
+  console.log(`  Health endpoint: http://0.0.0.0:${healthPort}/health`);
 
   // Handle shutdown
   let shutdownRequested = false;
@@ -133,6 +136,7 @@ async function main() {
     shutdownRequested = true;
     console.log("\nShutdown requested, stopping bot...");
     bot.stop();
+    void health.close();
   };
 
   process.on("SIGINT", shutdown);

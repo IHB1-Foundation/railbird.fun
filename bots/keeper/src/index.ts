@@ -2,7 +2,7 @@
 // Entry point that reads configuration from environment variables
 
 import { KeeperBot } from "./bot.js";
-import { requireEnv as sharedRequireEnv } from "@playerco/shared";
+import { requireEnv as sharedRequireEnv, startHealthServer } from "@playerco/shared";
 
 const VERSION = "0.0.1";
 
@@ -90,6 +90,10 @@ async function main() {
     (pokerTableAddress) => new KeeperBot({ ...baseConfig, pokerTableAddress })
   );
 
+  const healthPort = parseInt(process.env.HEALTH_PORT || "9101", 10);
+  const health = startHealthServer({ service: "keeper-bot", port: healthPort });
+  console.log(`  Health endpoint: http://0.0.0.0:${healthPort}/health`);
+
   // Handle shutdown
   let shutdownRequested = false;
   const shutdown = () => {
@@ -102,6 +106,7 @@ async function main() {
     for (const bot of bots) {
       bot.stop();
     }
+    void health.close();
   };
 
   process.on("SIGINT", shutdown);

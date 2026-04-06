@@ -1,4 +1,4 @@
-import { ENV_VARS, createLogger } from "@playerco/shared";
+import { ENV_VARS, createLogger, startHealthServer } from "@playerco/shared";
 import { VrfOperatorBot } from "./bot.js";
 
 const log = createLogger({ service: "vrf-operator" });
@@ -63,9 +63,14 @@ async function main(): Promise<void> {
 
   const bot = new VrfOperatorBot(config);
 
+  const healthPort = parseInt(process.env.HEALTH_PORT || "9102", 10);
+  const health = startHealthServer({ service: "vrf-operator", port: healthPort });
+  log.info({ port: healthPort }, "Health endpoint listening");
+
   const shutdown = (): void => {
     log.info("Shutdown requested");
     bot.stop();
+    void health.close();
   };
 
   process.on("SIGINT", shutdown);

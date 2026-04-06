@@ -35,5 +35,9 @@ export { hexToBytes, fetchWithTimeout, requireEnv } from "./utils.js";
 export { NonceManager } from "./nonceManager.js";
 export type { NonceManagerOptions } from "./nonceManager.js";
 
+// Health server
+export { startHealthServer } from "./healthServer.js";
+export type { HealthServerOptions, HealthServer } from "./healthServer.js";
+
 // Contract ABIs (generated from Foundry artifacts)
 export { POKER_TABLE_ABI, PLAYER_REGISTRY_ABI, PLAYER_VAULT_ABI } from "./abis/index.js";

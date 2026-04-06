@@ -1,0 +1,49 @@
+// Minimal HTTP health-check server for bot processes.
+// Responds to GET /health with { status: "ok", uptime, service }.
+
+import http from "http";
+
+export interface HealthServerOptions {
+  port?: number;
+  service: string;
+}
+
+export interface HealthServer {
+  close: () => Promise<void>;
+}
+
+/**
+ * Start a tiny HTTP server on `port` (default: 9000 or HEALTH_PORT env var).
+ * Returns an object with a `close()` method for graceful shutdown.
+ *
+ * GET /health  → 200 { status: "ok", uptime: <seconds>, service: "<name>" }
+ * Anything else → 404
+ */
+export function startHealthServer(options: HealthServerOptions): HealthServer {
+  const port = options.port ?? parseInt(process.env.HEALTH_PORT || "9000", 10);
+  const startTime = Date.now();
+
+  const server = http.createServer((req, res) => {
+    if (req.method === "GET" && req.url === "/health") {
+      const body = JSON.stringify({
+        status: "ok",
+        uptime: Math.floor((Date.now() - startTime) / 1000),
+        service: options.service,
+      });
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(body);
+    } else {
+      res.writeHead(404);
+      res.end("Not found");
+    }
+  });
+
+  server.listen(port);
+
+  return {
+    close: () =>
+      new Promise((resolve) => {
+        server.close(() => resolve());
+      }),
+  };
+}

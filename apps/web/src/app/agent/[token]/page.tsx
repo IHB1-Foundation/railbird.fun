@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getAgent, getAgentSnapshots, getAgentRebalances, type RebalanceEventResponse } from "@/lib/api";
+import { NadFunTradingWidget } from "@/components/NadFunTradingWidget";
 import {
   formatMon,
   shortenAddress,
@@ -243,13 +244,11 @@ export default async function AgentPage({
         )}
       </div>
 
-      {/* Token Trading — only shown when nad.fun addresses are configured */}
-      {process.env.NEXT_PUBLIC_NADFUN_LENS_ADDRESS && (
-        <div className="card section-card">
-          <h3 className="section-title-sm">Token Trading</h3>
-          <div className="chart-placeholder">Trading widget not available on this network</div>
-        </div>
-      )}
+      {/* Token Trading — widget falls back to "Open on nad.fun" when not configured */}
+      <div className="card section-card">
+        <h3 className="section-title-sm">Token Trading</h3>
+        <NadFunTradingWidget tokenAddress={token} />
+      </div>
 
     </section>
   );

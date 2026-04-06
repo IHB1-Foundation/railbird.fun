@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { getLeaderboard } from "@/lib/api";
 import { LeaderboardTable } from "./LeaderboardTable";
 import type { LeaderboardMetric, LeaderboardPeriod } from "@/lib/types";
@@ -43,13 +44,14 @@ export default async function LeaderboardPage({ searchParams }: PageProps) {
         <span className="filter-label">Metric:</span>
         <div className="tabs">
           {VALID_METRICS.map((m) => (
-            <a
+            <Link
               key={m}
               href={`/leaderboard?metric=${m}&period=${period}`}
               className={`tab ${m === metric ? "active" : ""}`}
+              prefetch={false}
             >
               {m.toUpperCase()}
-            </a>
+            </Link>
           ))}
         </div>
       </div>
@@ -59,13 +61,14 @@ export default async function LeaderboardPage({ searchParams }: PageProps) {
         <span className="filter-label">Period:</span>
         <div className="tabs">
           {VALID_PERIODS.map((p) => (
-            <a
+            <Link
               key={p}
               href={`/leaderboard?metric=${metric}&period=${p}`}
               className={`tab ${p === period ? "active" : ""}`}
+              prefetch={false}
             >
               {p}
-            </a>
+            </Link>
           ))}
         </div>
       </div>

@@ -12,16 +12,46 @@ import type {
 
 const API_BASE = process.env.NEXT_PUBLIC_INDEXER_URL || "https://indexer.railbird.fun";
 
-async function fetchJson<T>(path: string): Promise<T> {
-  const res = await fetch(`${API_BASE}/api${path}`, {
-    cache: "no-store",
-  });
+const DEFAULT_TIMEOUT_MS = 10_000;
+const MAX_RETRIES = 2;
 
-  if (!res.ok) {
-    throw new Error(`API error: ${res.status} ${res.statusText}`);
+async function fetchJson<T>(path: string, timeoutMs = DEFAULT_TIMEOUT_MS): Promise<T> {
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const res = await fetch(`${API_BASE}/api${path}`, {
+        cache: "no-store",
+        signal: controller.signal,
+      });
+
+      if (!res.ok) {
+        throw new Error(`API error: ${res.status} ${res.statusText}`);
+      }
+
+      return await res.json();
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+      // Don't retry on definitive errors (4xx, abort on last attempt)
+      if (attempt === MAX_RETRIES || (err instanceof Error && !isRetryableError(err))) {
+        break;
+      }
+      // Exponential back-off before retry
+      await new Promise((r) => setTimeout(r, 200 * (attempt + 1)));
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
-  return res.json();
+  throw lastError ?? new Error("Unknown fetch error");
+}
+
+function isRetryableError(err: Error): boolean {
+  // Retry on network errors and timeouts, not on HTTP 4xx
+  return err.name === "AbortError" || !err.message.startsWith("API error: 4");
 }
 
 // Tables

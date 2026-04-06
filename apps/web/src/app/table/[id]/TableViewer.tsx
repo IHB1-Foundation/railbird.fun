@@ -20,6 +20,17 @@ import { getRevealedHolecards, type RevealedHolecardResponse } from "@/lib/api";
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 const TABLE_MAX_SEATS = Number(process.env.NEXT_PUBLIC_TABLE_MAX_SEATS || "9");
+
+/** Lightweight structural guard against injected WebSocket payloads. */
+function isValidTableResponse(data: unknown): data is TableResponse {
+  if (!data || typeof data !== "object") return false;
+  const d = data as Record<string, unknown>;
+  return (
+    typeof d.id === "string" &&
+    typeof d.contractAddress === "string" &&
+    Array.isArray(d.seats)
+  );
+}
 const INDEXER_BASE = process.env.NEXT_PUBLIC_INDEXER_URL || "https://indexer.railbird.fun";
 const STREET_LABELS = ["Pre-flop", "Flop", "Turn", "River", "Showdown"] as const;
 
@@ -110,8 +121,14 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
   const handleWsMessage = useCallback(
     (msg: { type: string; tableId: string; timestamp: string; data: unknown }) => {
       if (msg.type === "poll_update" || msg.type === "table_update") {
-        // Full table snapshot from either WS or fallback polling
-        setTable(msg.data as TableResponse);
+        // Validate the shape of the incoming data before applying it to state.
+        // A compromised WS server should not be able to inject arbitrary objects.
+        const data = msg.data;
+        if (!isValidTableResponse(data)) {
+          console.warn("[TableViewer] Received malformed table data over WebSocket, ignoring");
+          return;
+        }
+        setTable(data);
       }
     },
     []
@@ -175,7 +192,10 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
       (s) => s.ownerAddress.toLowerCase() !== ZERO_ADDRESS && s.ownerAddress.toLowerCase() === address.toLowerCase()
     )?.seatIndex) ?? null;
 
-  const availableSeats = normalizedSeats.filter((seat) => seat.ownerAddress.toLowerCase() === ZERO_ADDRESS);
+  const availableSeats = useMemo(
+    () => normalizedSeats.filter((seat) => seat.ownerAddress.toLowerCase() === ZERO_ADDRESS),
+    [normalizedSeats]
+  );
 
   useEffect(() => {
     if (availableSeats.length > 0) {

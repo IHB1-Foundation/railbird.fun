@@ -30,3 +30,7 @@ export type { CircuitState, CircuitBreakerOptions } from "./circuitBreaker.js";
 
 // Utilities
 export { hexToBytes, fetchWithTimeout } from "./utils.js";
+
+// Nonce manager
+export { NonceManager } from "./nonceManager.js";
+export type { NonceManagerOptions } from "./nonceManager.js";

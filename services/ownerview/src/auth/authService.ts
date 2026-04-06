@@ -39,10 +39,17 @@ export class AuthService {
   private nonceStore: NonceStore;
   private sessionManager: SessionManager;
 
-  constructor(config: Partial<AuthConfig> & { jwtSecret: string }) {
+  constructor(config: Partial<AuthConfig> & { jwtSecret: string; noncePersistPath?: string }) {
     const fullConfig = { ...DEFAULT_AUTH_CONFIG, ...config };
-    this.nonceStore = new NonceStore(fullConfig.nonceTtlMs);
+    this.nonceStore = new NonceStore(fullConfig.nonceTtlMs, config.noncePersistPath);
     this.sessionManager = new SessionManager(fullConfig);
+  }
+
+  /**
+   * Initialize persistent storage (async mkdir). Call after construction.
+   */
+  async init(): Promise<void> {
+    await this.nonceStore.init();
   }
 
   /**

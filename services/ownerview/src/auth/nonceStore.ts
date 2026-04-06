@@ -1,4 +1,7 @@
 import { randomBytes } from "crypto";
+import { readFileSync, writeFile } from "node:fs";
+import { mkdir } from "node:fs/promises";
+import { dirname } from "node:path";
 import type { Address } from "@playerco/shared";
 import type { NonceRecord } from "./types.js";
 
@@ -17,7 +20,9 @@ export class NonceRateLimitError extends Error {
 
 /**
  * In-memory nonce store for wallet auth challenges.
- * Production should use Redis or similar for horizontal scaling.
+ *
+ * When `persistPath` is provided, nonce state is persisted to a JSON file
+ * so pending challenges survive service restarts within their TTL window.
  */
 export class NonceStore {
   private nonces = new Map<string, NonceRecord>();
@@ -25,9 +30,26 @@ export class NonceStore {
   private perAddressNonces = new Map<string, Set<string>>();
   private ttlMs: number;
   private cleanupInterval: NodeJS.Timeout | null = null;
+  private readonly persistPath: string | null;
+  private persistPending = false;
 
-  constructor(ttlMs: number = 5 * 60 * 1000) {
+  constructor(ttlMs: number = 5 * 60 * 1000, persistPath?: string) {
     this.ttlMs = ttlMs;
+    this.persistPath = persistPath ?? null;
+
+    if (this.persistPath) {
+      this._loadSync();
+    }
+  }
+
+  /**
+   * Async init: ensure the persistence directory exists.
+   * Call this after construction when a persistPath is provided.
+   */
+  async init(): Promise<void> {
+    if (this.persistPath) {
+      await mkdir(dirname(this.persistPath), { recursive: true });
+    }
   }
 
   /**
@@ -83,6 +105,7 @@ export class NonceStore {
     }
     this.perAddressNonces.get(addr)!.add(nonce);
 
+    this._schedulePersist();
     return nonce;
   }
 
@@ -98,6 +121,7 @@ export class NonceStore {
     // Always delete the nonce (one-time use)
     this.nonces.delete(nonce);
     this._removeFromPerAddress(record.address, nonce);
+    this._schedulePersist();
 
     // Check expiration
     if (Date.now() > record.expiresAt) return null;
@@ -135,6 +159,7 @@ export class NonceStore {
         removed++;
       }
     }
+    if (removed > 0) this._schedulePersist();
     return removed;
   }
 
@@ -144,6 +169,7 @@ export class NonceStore {
   clear(): void {
     this.nonces.clear();
     this.perAddressNonces.clear();
+    this._schedulePersist();
   }
 
   /**
@@ -168,5 +194,43 @@ export class NonceStore {
         this.perAddressNonces.delete(address.toLowerCase());
       }
     }
+  }
+
+  /** Load nonces from disk synchronously (called during constructor). */
+  private _loadSync(): void {
+    try {
+      const raw = readFileSync(this.persistPath!, "utf-8");
+      const records = JSON.parse(raw) as NonceRecord[];
+      const now = Date.now();
+      for (const record of records) {
+        // Skip already-expired nonces
+        if (record.expiresAt <= now) continue;
+        this.nonces.set(record.nonce, record);
+        const addr = record.address.toLowerCase();
+        if (!this.perAddressNonces.has(addr)) {
+          this.perAddressNonces.set(addr, new Set());
+        }
+        this.perAddressNonces.get(addr)!.add(record.nonce);
+      }
+    } catch {
+      // File missing or corrupt — start fresh
+    }
+  }
+
+  /**
+   * Debounced async persist: coalesces multiple rapid mutations into one
+   * write. Best-effort — a crash between write and flush is acceptable
+   * (users re-request a new nonce on next visit).
+   */
+  private _schedulePersist(): void {
+    if (!this.persistPath || this.persistPending) return;
+    this.persistPending = true;
+    setImmediate(() => {
+      this.persistPending = false;
+      const records = Array.from(this.nonces.values());
+      writeFile(this.persistPath!, JSON.stringify(records), "utf-8", () => {
+        // Best-effort: ignore write errors
+      });
+    });
   }
 }

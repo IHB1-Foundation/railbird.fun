@@ -13,7 +13,7 @@ import {
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { POKER_TABLE_ABI } from "./pokerTableAbi.js";
-import { GameState } from "@playerco/shared";
+import { GameState, NonceManager } from "@playerco/shared";
 
 export { GameState };
 
@@ -83,6 +83,7 @@ export class ChainClient {
   private bigBlindCache: bigint | null = null;
   private actionTimeoutCache: bigint | null = null;
   private txTimeoutMs: number;
+  private nonceManager: NonceManager;
 
   constructor(config: ChainClientConfig) {
     this.chain = {
@@ -111,6 +112,11 @@ export class ChainClient {
       account: this.account,
       chain: this.chain,
       transport: http(config.rpcUrl),
+    });
+
+    this.nonceManager = new NonceManager({
+      getNonceFromChain: () =>
+        this.publicClient.getTransactionCount({ address: this.account.address }),
     });
   }
 
@@ -310,81 +316,99 @@ export class ChainClient {
 
   // Actions
   async fold(seatIndex: number): Promise<Hash> {
-    const hash = await this.walletClient.writeContract({
-      chain: this.chain,
-      account: this.account,
-      address: this.pokerTableAddress,
-      abi: POKER_TABLE_ABI,
-      functionName: "fold",
-      args: [seatIndex],
+    return this.nonceManager.withNonce(async (nonce) => {
+      const hash = await this.walletClient.writeContract({
+        chain: this.chain,
+        account: this.account,
+        address: this.pokerTableAddress,
+        abi: POKER_TABLE_ABI,
+        functionName: "fold",
+        args: [seatIndex],
+        nonce,
+      });
+      await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });
+      return hash;
     });
-    await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });
-    return hash;
   }
 
   async check(seatIndex: number): Promise<Hash> {
-    const hash = await this.walletClient.writeContract({
-      chain: this.chain,
-      account: this.account,
-      address: this.pokerTableAddress,
-      abi: POKER_TABLE_ABI,
-      functionName: "check",
-      args: [seatIndex],
+    return this.nonceManager.withNonce(async (nonce) => {
+      const hash = await this.walletClient.writeContract({
+        chain: this.chain,
+        account: this.account,
+        address: this.pokerTableAddress,
+        abi: POKER_TABLE_ABI,
+        functionName: "check",
+        args: [seatIndex],
+        nonce,
+      });
+      await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });
+      return hash;
     });
-    await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });
-    return hash;
   }
 
   async call(seatIndex: number): Promise<Hash> {
-    const hash = await this.walletClient.writeContract({
-      chain: this.chain,
-      account: this.account,
-      address: this.pokerTableAddress,
-      abi: POKER_TABLE_ABI,
-      functionName: "call",
-      args: [seatIndex],
+    return this.nonceManager.withNonce(async (nonce) => {
+      const hash = await this.walletClient.writeContract({
+        chain: this.chain,
+        account: this.account,
+        address: this.pokerTableAddress,
+        abi: POKER_TABLE_ABI,
+        functionName: "call",
+        args: [seatIndex],
+        nonce,
+      });
+      await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });
+      return hash;
     });
-    await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });
-    return hash;
   }
 
   async raise(seatIndex: number, raiseToAmount: bigint): Promise<Hash> {
-    const hash = await this.walletClient.writeContract({
-      chain: this.chain,
-      account: this.account,
-      address: this.pokerTableAddress,
-      abi: POKER_TABLE_ABI,
-      functionName: "raise",
-      args: [seatIndex, raiseToAmount],
+    return this.nonceManager.withNonce(async (nonce) => {
+      const hash = await this.walletClient.writeContract({
+        chain: this.chain,
+        account: this.account,
+        address: this.pokerTableAddress,
+        abi: POKER_TABLE_ABI,
+        functionName: "raise",
+        args: [seatIndex, raiseToAmount],
+        nonce,
+      });
+      await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });
+      return hash;
     });
-    await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });
-    return hash;
   }
 
   async startHand(): Promise<Hash> {
-    const hash = await this.walletClient.writeContract({
-      chain: this.chain,
-      account: this.account,
-      address: this.pokerTableAddress,
-      abi: POKER_TABLE_ABI,
-      functionName: "startHand",
-      args: [],
+    return this.nonceManager.withNonce(async (nonce) => {
+      const hash = await this.walletClient.writeContract({
+        chain: this.chain,
+        account: this.account,
+        address: this.pokerTableAddress,
+        abi: POKER_TABLE_ABI,
+        functionName: "startHand",
+        args: [],
+        nonce,
+      });
+      await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });
+      return hash;
     });
-    await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });
-    return hash;
   }
 
   async forceTimeout(): Promise<Hash> {
-    const hash = await this.walletClient.writeContract({
-      chain: this.chain,
-      account: this.account,
-      address: this.pokerTableAddress,
-      abi: POKER_TABLE_ABI,
-      functionName: "forceTimeout",
-      args: [],
+    return this.nonceManager.withNonce(async (nonce) => {
+      const hash = await this.walletClient.writeContract({
+        chain: this.chain,
+        account: this.account,
+        address: this.pokerTableAddress,
+        abi: POKER_TABLE_ABI,
+        functionName: "forceTimeout",
+        args: [],
+        nonce,
+      });
+      await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });
+      return hash;
     });
-    await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });
-    return hash;
   }
 
   /**
@@ -424,16 +448,19 @@ export class ChainClient {
       return null; // already registered
     }
 
-    const hash = await this.walletClient.writeContract({
-      chain: this.chain,
-      account: this.account,
-      address: this.pokerTableAddress,
-      abi: ENCRYPTION_ABI,
-      functionName: "registerEncryptionKey",
-      args: [seatIndex, newKeyHex as `0x${string}`],
+    return this.nonceManager.withNonce(async (nonce) => {
+      const hash = await this.walletClient.writeContract({
+        chain: this.chain,
+        account: this.account,
+        address: this.pokerTableAddress,
+        abi: ENCRYPTION_ABI,
+        functionName: "registerEncryptionKey",
+        args: [seatIndex, newKeyHex as `0x${string}`],
+        nonce,
+      });
+      await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });
+      return hash;
     });
-    await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });
-    return hash;
   }
 
   // Find agent's seat index based on operator address

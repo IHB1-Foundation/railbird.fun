@@ -13,7 +13,7 @@ import {
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { POKER_TABLE_ABI } from "./pokerTableAbi.js";
-import { GameState } from "@playerco/shared";
+import { GameState, NonceManager } from "@playerco/shared";
 
 export { GameState };
 
@@ -56,6 +56,7 @@ export class ChainClient {
   private chain: Chain;
   private tableIdCache: bigint | null = null;
   private txTimeoutMs: number;
+  private nonceManager: NonceManager;
 
   constructor(config: ChainClientConfig) {
     this.chain = {
@@ -84,6 +85,11 @@ export class ChainClient {
       account: this.account,
       chain: this.chain,
       transport: http(config.rpcUrl),
+    });
+
+    this.nonceManager = new NonceManager({
+      getNonceFromChain: () =>
+        this.publicClient.getTransactionCount({ address: this.account.address }),
     });
   }
 
@@ -193,68 +199,83 @@ export class ChainClient {
 
   // Keeper actions on PokerTable
   async forceTimeout(): Promise<Hash> {
-    const hash = await this.walletClient.writeContract({
-      chain: this.chain,
-      account: this.account,
-      address: this.pokerTableAddress,
-      abi: POKER_TABLE_ABI,
-      functionName: "forceTimeout",
-      args: [],
+    return this.nonceManager.withNonce(async (nonce) => {
+      const hash = await this.walletClient.writeContract({
+        chain: this.chain,
+        account: this.account,
+        address: this.pokerTableAddress,
+        abi: POKER_TABLE_ABI,
+        functionName: "forceTimeout",
+        args: [],
+        nonce,
+      });
+      await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });
+      return hash;
     });
-    await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });
-    return hash;
   }
 
   async startHand(): Promise<Hash> {
-    const hash = await this.walletClient.writeContract({
-      chain: this.chain,
-      account: this.account,
-      address: this.pokerTableAddress,
-      abi: POKER_TABLE_ABI,
-      functionName: "startHand",
-      args: [],
+    return this.nonceManager.withNonce(async (nonce) => {
+      const hash = await this.walletClient.writeContract({
+        chain: this.chain,
+        account: this.account,
+        address: this.pokerTableAddress,
+        abi: POKER_TABLE_ABI,
+        functionName: "startHand",
+        args: [],
+        nonce,
+      });
+      await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });
+      return hash;
     });
-    await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });
-    return hash;
   }
 
   async settleShowdown(): Promise<Hash> {
-    const hash = await this.walletClient.writeContract({
-      chain: this.chain,
-      account: this.account,
-      address: this.pokerTableAddress,
-      abi: POKER_TABLE_ABI,
-      functionName: "settleShowdown",
-      args: [],
+    return this.nonceManager.withNonce(async (nonce) => {
+      const hash = await this.walletClient.writeContract({
+        chain: this.chain,
+        account: this.account,
+        address: this.pokerTableAddress,
+        abi: POKER_TABLE_ABI,
+        functionName: "settleShowdown",
+        args: [],
+        nonce,
+      });
+      await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });
+      return hash;
     });
-    await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });
-    return hash;
   }
 
   async reRequestVRF(): Promise<Hash> {
-    const hash = await this.walletClient.writeContract({
-      chain: this.chain,
-      account: this.account,
-      address: this.pokerTableAddress,
-      abi: POKER_TABLE_ABI,
-      functionName: "reRequestVRF",
-      args: [],
+    return this.nonceManager.withNonce(async (nonce) => {
+      const hash = await this.walletClient.writeContract({
+        chain: this.chain,
+        account: this.account,
+        address: this.pokerTableAddress,
+        abi: POKER_TABLE_ABI,
+        functionName: "reRequestVRF",
+        args: [],
+        nonce,
+      });
+      await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });
+      return hash;
     });
-    await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });
-    return hash;
   }
 
   async submitHoleCommit(handId: bigint, seatIndex: number, commitment: `0x${string}`): Promise<Hash> {
-    const hash = await this.walletClient.writeContract({
-      chain: this.chain,
-      account: this.account,
-      address: this.pokerTableAddress,
-      abi: POKER_TABLE_ABI,
-      functionName: "submitHoleCommit",
-      args: [handId, seatIndex, commitment],
+    return this.nonceManager.withNonce(async (nonce) => {
+      const hash = await this.walletClient.writeContract({
+        chain: this.chain,
+        account: this.account,
+        address: this.pokerTableAddress,
+        abi: POKER_TABLE_ABI,
+        functionName: "submitHoleCommit",
+        args: [handId, seatIndex, commitment],
+        nonce,
+      });
+      await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });
+      return hash;
     });
-    await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });
-    return hash;
   }
 
   async revealHoleCards(
@@ -264,16 +285,19 @@ export class ChainClient {
     card2: number,
     salt: `0x${string}`
   ): Promise<Hash> {
-    const hash = await this.walletClient.writeContract({
-      chain: this.chain,
-      account: this.account,
-      address: this.pokerTableAddress,
-      abi: POKER_TABLE_ABI,
-      functionName: "revealHoleCards",
-      args: [handId, seatIndex, card1, card2, salt],
+    return this.nonceManager.withNonce(async (nonce) => {
+      const hash = await this.walletClient.writeContract({
+        chain: this.chain,
+        account: this.account,
+        address: this.pokerTableAddress,
+        abi: POKER_TABLE_ABI,
+        functionName: "revealHoleCards",
+        args: [handId, seatIndex, card1, card2, salt],
+        nonce,
+      });
+      await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });
+      return hash;
     });
-    await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });
-    return hash;
   }
 
   // Helper methods

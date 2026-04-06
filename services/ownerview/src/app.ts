@@ -94,13 +94,19 @@ export async function createApp(config: AppConfig): Promise<AppContext> {
   });
 
   // Create services - only pass defined values to preserve defaults
-  const authConfig: { jwtSecret: string; nonceTtlMs?: number; sessionTtlMs?: number } = {
+  const authConfig: { jwtSecret: string; nonceTtlMs?: number; sessionTtlMs?: number; noncePersistPath?: string } = {
     jwtSecret: config.jwtSecret,
   };
   if (config.nonceTtlMs !== undefined) authConfig.nonceTtlMs = config.nonceTtlMs;
   if (config.sessionTtlMs !== undefined) authConfig.sessionTtlMs = config.sessionTtlMs;
+  // Persist nonces to disk when dataDir is provided so in-flight auth
+  // challenges survive service restarts within their TTL window.
+  if (config.dataDir) {
+    authConfig.noncePersistPath = config.dataDir.replace(/\/holecards\/?$/, "") + "/nonces.json";
+  }
 
   const authService = new AuthService(authConfig);
+  await authService.init();
 
   // Hole card store: file-backed if dataDir provided, in-memory otherwise
   const holeCardStore = new HoleCardStore(config.dataDir);

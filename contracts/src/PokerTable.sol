@@ -278,6 +278,12 @@ contract PokerTable {
     /// @notice Emitted when an emergency withdrawal is executed
     event EmergencyWithdrawExecuted(uint8 indexed seatIndex, address indexed recipient, uint256 amount);
 
+    /// @notice Emitted when the VRF adapter is updated
+    event VRFAdapterUpdated(address indexed oldAdapter, address indexed newAdapter);
+
+    /// @notice Emitted when blind levels are updated
+    event BlindsUpdated(uint256 oldSmallBlind, uint256 oldBigBlind, uint256 newSmallBlind, uint256 newBigBlind);
+
     // ============ State Variables ============
     uint256 public tableId;
     uint256 public smallBlind;
@@ -464,6 +470,26 @@ contract PokerTable {
         require(_newDealer != address(0), "Invalid dealer");
         emit DealerUpdated(dealer, _newDealer);
         dealer = _newDealer;
+    }
+
+    /// @notice Update the VRF adapter (e.g., to migrate from ProductionVRFAdapter to Chainlink).
+    function setVRFAdapter(address _newAdapter) external onlyAdmin {
+        require(_newAdapter != address(0), "Invalid VRF adapter");
+        emit VRFAdapterUpdated(vrfAdapter, _newAdapter);
+        vrfAdapter = _newAdapter;
+    }
+
+    /// @notice Update blind levels. Only allowed between hands (WAITING_FOR_SEATS or SETTLED).
+    function setBlinds(uint256 _newSmallBlind, uint256 _newBigBlind) external onlyAdmin {
+        require(
+            gameState == GameState.WAITING_FOR_SEATS || gameState == GameState.SETTLED,
+            "Cannot update blinds mid-hand"
+        );
+        require(_newSmallBlind > 0, "Small blind must be > 0");
+        require(_newBigBlind >= _newSmallBlind, "Big blind must be >= small blind");
+        emit BlindsUpdated(smallBlind, bigBlind, _newSmallBlind, _newBigBlind);
+        smallBlind = _newSmallBlind;
+        bigBlind = _newBigBlind;
     }
 
     /// @notice Pause the table — prevents new hands from starting.

@@ -3516,6 +3516,54 @@ contract PauseEmergencyTest is Test {
         vm.expectRevert("Table not stuck or paused");
         pokerTable.requestEmergencyWithdraw(0);
     }
+
+    // ============ T-M1-10: Admin Parameter Updates ============
+
+    function test_SetVRFAdapter_UpdatesAdapter() public {
+        address newAdapter = address(0xABCD);
+        pokerTable.setVRFAdapter(newAdapter);
+        assertEq(pokerTable.vrfAdapter(), newAdapter);
+    }
+
+    function test_SetVRFAdapter_RevertIfNotAdmin() public {
+        vm.prank(address(0x9999));
+        vm.expectRevert("Not admin");
+        pokerTable.setVRFAdapter(address(0xABCD));
+    }
+
+    function test_SetVRFAdapter_RevertIfZeroAddress() public {
+        vm.expectRevert("Invalid VRF adapter");
+        pokerTable.setVRFAdapter(address(0));
+    }
+
+    function test_SetBlinds_UpdatesBlinds() public {
+        pokerTable.setBlinds(5, 10);
+        assertEq(pokerTable.smallBlind(), 5);
+        assertEq(pokerTable.bigBlind(), 10);
+    }
+
+    function test_SetBlinds_RevertIfNotAdmin() public {
+        vm.prank(address(0x9999));
+        vm.expectRevert("Not admin");
+        pokerTable.setBlinds(5, 10);
+    }
+
+    function test_SetBlinds_RevertIfMidHand() public {
+        _registerSeats();
+        pokerTable.startHand();
+        mockVRF.fulfillLastRequest(12345);
+        // submit dummy commits for both seats and advance to preflop
+        pokerTable.submitHoleCommit(1, 0, bytes32(uint256(1)));
+        pokerTable.submitHoleCommit(1, 1, bytes32(uint256(2)));
+        pokerTable.advanceToPreflop();
+        vm.expectRevert("Cannot update blinds mid-hand");
+        pokerTable.setBlinds(5, 10);
+    }
+
+    function test_SetBlinds_RevertIfBigBlindLtSmall() public {
+        vm.expectRevert("Big blind must be >= small blind");
+        pokerTable.setBlinds(20, 10);
+    }
 }
 
 /// @dev Configurable mock for IKYCSBTChecker used in KYC gate tests.

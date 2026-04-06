@@ -34,3 +34,6 @@ export { hexToBytes, fetchWithTimeout } from "./utils.js";
 // Nonce manager
 export { NonceManager } from "./nonceManager.js";
 export type { NonceManagerOptions } from "./nonceManager.js";
+
+// Contract ABIs (generated from Foundry artifacts)
+export { POKER_TABLE_ABI, PLAYER_REGISTRY_ABI, PLAYER_VAULT_ABI } from "./abis/index.js";

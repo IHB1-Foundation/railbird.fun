@@ -8,6 +8,7 @@ import {
   type Chain,
   type Hash,
 } from "viem";
+import { POKER_TABLE_ABI } from "@playerco/shared";
 
 function getRpcUrl(): string {
   return process.env.NEXT_PUBLIC_RPC_URL || "https://testnet.hsk.xyz";
@@ -29,43 +30,6 @@ const HASHKEY_TESTNET: Chain = {
 const CHAIN: Chain = HASHKEY_TESTNET;
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as Address;
 
-const POKER_TABLE_ABI = [
-  {
-    name: "MAX_SEATS",
-    type: "function",
-    stateMutability: "view",
-    inputs: [],
-    outputs: [{ type: "uint8" }],
-  },
-  {
-    name: "registerSeat",
-    type: "function",
-    stateMutability: "payable",
-    inputs: [
-      { name: "seatIndex", type: "uint8" },
-      { name: "owner", type: "address" },
-      { name: "operator", type: "address" },
-    ],
-    outputs: [],
-  },
-  {
-    name: "registerEncryptionKey",
-    type: "function",
-    stateMutability: "nonpayable",
-    inputs: [
-      { name: "seatIndex", type: "uint8" },
-      { name: "pubKey", type: "bytes" },
-    ],
-    outputs: [],
-  },
-  {
-    name: "getEncryptionKey",
-    type: "function",
-    stateMutability: "view",
-    inputs: [{ name: "seatIndex", type: "uint8" }],
-    outputs: [{ type: "bytes" }],
-  },
-] as const;
 
 function getPublicClient() {
   return createPublicClient({

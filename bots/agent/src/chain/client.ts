@@ -12,8 +12,7 @@ import {
   type Hash,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { POKER_TABLE_ABI } from "./pokerTableAbi.js";
-import { GameState, NonceManager } from "@playerco/shared";
+import { GameState, NonceManager, POKER_TABLE_ABI } from "@playerco/shared";
 
 export { GameState };
 

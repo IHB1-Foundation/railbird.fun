@@ -15,7 +15,8 @@
     "build": "tsc",
     "clean": "rm -rf dist",
     "test": "node --test --import tsx src/*.test.ts",
-    "lint": "echo 'lint not configured yet'"
+    "lint": "echo 'lint not configured yet'",
+    "generate-abis": "tsx scripts/generateAbis.ts && tsc"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",

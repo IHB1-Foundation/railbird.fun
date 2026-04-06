@@ -353,6 +353,18 @@ contract ProductionVRFAdapterTest is Test {
         return operator4;
     }
 
+    function _submitDummyCommitsAndAdvance() internal {
+        uint256 handId = pokerTable.currentHandId();
+        uint8 n = pokerTable.numSeats();
+        for (uint8 i = 0; i < n; i++) {
+            PokerTable.Seat memory s = pokerTable.getSeat(i);
+            if (s.isActive && pokerTable.holeCommits(handId, i) == bytes32(0)) {
+                pokerTable.submitHoleCommit(handId, i, bytes32(uint256(i + 100)));
+            }
+        }
+        pokerTable.advanceToPreflop();
+    }
+
     function _startHandAndGetToVRF() internal {
         pokerTable.startHand();
 
@@ -361,8 +373,8 @@ contract ProductionVRFAdapterTest is Test {
         vm.prank(vrfOperator);
         adapter.fulfillRandomness(hcReqId, 99999);
 
-        // Advance to BETTING_PRE
-        pokerTable.advanceToPreflop();
+        // Advance to BETTING_PRE (submit dummy commits for all active seats first)
+        _submitDummyCommitsAndAdvance();
 
         // Complete pre-flop: UTG(3) calls, BTN(0) calls, SB(1) calls, BB(2) checks
         vm.prank(operator4);

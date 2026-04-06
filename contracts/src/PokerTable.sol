@@ -72,6 +72,7 @@ contract PokerTable {
         uint256 handId;
         uint256 pot;
         uint256 currentBet;          // Largest bet in current round
+        uint256 lastRaiseSize;       // Size of the last raise (for min-raise enforcement)
         uint8 actorSeat;             // Seat index that must act next
         uint8 lastAggressor;         // Last seat that raised (for betting round logic)
         uint8 actionsInRound;        // Number of actions in current betting round
@@ -870,7 +871,8 @@ contract PokerTable {
         currentHand = Hand({
             handId: currentHandId,
             pot: initialPot,
-            currentBet: bigBlind,
+            currentBet: bbPost,   // actual amount posted (may be less than bigBlind if BB is all-in)
+            lastRaiseSize: bigBlind, // initial min-raise size is one big blind
             actorSeat: firstActor,
             lastAggressor: bbSeat, // BB is considered the aggressor (posted blind)
             actionsInRound: 0,
@@ -1029,8 +1031,8 @@ contract PokerTable {
 
         if (!isAllInRaise) {
             require(raiseToAmount > currentHand.currentBet, "Raise must exceed current bet");
-            // Minimum raise is the big blind or the last raise amount
-            uint256 minRaise = currentHand.currentBet == 0 ? bigBlind * 2 : currentHand.currentBet * 2;
+            // Minimum raise: previous bet + last raise size (standard poker rules)
+            uint256 minRaise = currentHand.currentBet + currentHand.lastRaiseSize;
             require(raiseToAmount >= minRaise, "Raise too small");
             require(stack >= additional, "Insufficient stack");
         } else {
@@ -1042,11 +1044,13 @@ contract PokerTable {
 
         _recordAction();
 
+        uint256 prevCurrentBet = currentHand.currentBet;
         seats[seatIndex].stack -= additional;
         seats[seatIndex].currentBet = raiseToAmount;
         seats[seatIndex].totalHandBet += additional;
         currentHand.pot += additional;
         currentHand.currentBet = raiseToAmount;
+        currentHand.lastRaiseSize = raiseToAmount - prevCurrentBet;
         currentHand.lastAggressor = seatIndex;
         currentHand.hasActed[seatIndex] = true;
 
@@ -1369,6 +1373,7 @@ contract PokerTable {
             currentHand.hasActed[i] = false;
         }
         currentHand.currentBet = 0;
+        currentHand.lastRaiseSize = bigBlind;
         currentHand.actionsInRound = 0;
 
         // Post-flop: first active, non-all-in player after button acts first
@@ -1453,6 +1458,12 @@ contract PokerTable {
      */
     function advanceToPreflop() external {
         require(gameState == GameState.WAITING_FOR_HOLECARDS, "Not waiting for hole cards");
+        // All active seats must have hole card commitments before betting begins
+        for (uint8 i = 0; i < numSeats; i++) {
+            if (seats[i].isActive) {
+                require(holeCommits[currentHandId][i] != bytes32(0), "Missing hole commit");
+            }
+        }
         gameState = GameState.BETTING_PRE;
         // If all players are all-in from blind posting, skip pre-flop betting
         if (_countNonAllInActivePlayers() == 0) {
@@ -2000,12 +2011,12 @@ contract PokerTable {
     }
 
     function canCheck(uint8 seatIndex) external view returns (bool) {
-        if (seatIndex >= MAX_SEATS) return false;
+        if (seatIndex >= numSeats) return false;
         return seats[seatIndex].currentBet == currentHand.currentBet;
     }
 
     function getAmountToCall(uint8 seatIndex) external view returns (uint256) {
-        if (seatIndex >= MAX_SEATS) return 0;
+        if (seatIndex >= numSeats) return 0;
         if (seats[seatIndex].currentBet >= currentHand.currentBet) return 0;
         return currentHand.currentBet - seats[seatIndex].currentBet;
     }

@@ -285,7 +285,7 @@ contract ShuffleVerifierIntegrationTest is Test {
         pokerTable.startHand();
         pokerTable.submitDealerSeedCommit(1, commitment);
         mockVRF.fulfillLastRequest(TEST_VRF);
-        pokerTable.advanceToPreflop();
+        _submitDummyCommitsAndAdvance();
 
         // Fold without revealing dealer seed → ShuffleUnverified
         vm.expectEmit(true, false, false, false);
@@ -305,7 +305,7 @@ contract ShuffleVerifierIntegrationTest is Test {
         pokerTable.startHand();
         pokerTable.submitDealerSeedCommit(1, commitment);
         mockVRF.fulfillLastRequest(TEST_VRF);
-        pokerTable.advanceToPreflop();
+        _submitDummyCommitsAndAdvance();
 
         // Check through to showdown
         _playToShowdown();
@@ -331,7 +331,7 @@ contract ShuffleVerifierIntegrationTest is Test {
         pokerTable.startHand();
         pokerTable.submitDealerSeedCommit(handId, commitment);
         mockVRF.fulfillLastRequest(TEST_VRF);
-        pokerTable.advanceToPreflop();
+        _submitDummyCommitsAndAdvance();
 
         _playToShowdown();
         pokerTable.revealDealerSeed(handId, seed);
@@ -374,7 +374,7 @@ contract ShuffleVerifierIntegrationTest is Test {
         pokerTable.startHand();
         pokerTable.submitDealerSeedCommit(handId, commitment);
         mockVRF.fulfillLastRequest(TEST_VRF);
-        pokerTable.advanceToPreflop();
+        _submitDummyCommitsAndAdvance();
 
         _playToShowdown();
         pokerTable.revealDealerSeed(handId, seed);
@@ -398,7 +398,7 @@ contract ShuffleVerifierIntegrationTest is Test {
     function test_VerifyShuffleAtShowdown_RevertIfSeedNotRevealed() public {
         pokerTable.startHand();
         mockVRF.fulfillLastRequest(TEST_VRF);
-        pokerTable.advanceToPreflop();
+        _submitDummyCommitsAndAdvance();
 
         _playToShowdown();
 
@@ -409,6 +409,18 @@ contract ShuffleVerifierIntegrationTest is Test {
     }
 
     // ============ Helpers ============
+
+    function _submitDummyCommitsAndAdvance() internal {
+        uint256 handId = pokerTable.currentHandId();
+        uint8 n = pokerTable.numSeats();
+        for (uint8 i = 0; i < n; i++) {
+            PokerTable.Seat memory s = pokerTable.getSeat(i);
+            if (s.isActive && pokerTable.holeCommits(handId, i) == bytes32(0)) {
+                pokerTable.submitHoleCommit(handId, i, bytes32(uint256(i + 100)));
+            }
+        }
+        pokerTable.advanceToPreflop();
+    }
 
     function _registerSeat(uint8 seatIndex, address owner, address operator, uint256 buyIn) internal {
         vm.prank(owner);

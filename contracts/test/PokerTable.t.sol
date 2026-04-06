@@ -547,15 +547,16 @@ contract PokerTableTest is Test {
 
     function test_FullHandToShowdown() public {
         _setupAllSeats();
-        _startHandFull();
+        _startHandToWFHC();
 
-        // Commit cards for all seats
+        // Commit cards for all seats during WAITING_FOR_HOLECARDS
         uint8[4] memory h1 = [uint8(12), uint8(0), uint8(2), uint8(4)];
         uint8[4] memory h2 = [uint8(25), uint8(14), uint8(16), uint8(18)];
         bytes32[4] memory salts = [bytes32("s0"), bytes32("s1"), bytes32("s2"), bytes32("s3")];
         for (uint8 i = 0; i < 4; i++) {
             _commitCards(1, i, h1[i], h2[i], salts[i]);
         }
+        pokerTable.advanceToPreflop();
 
         _playToShowdown();
 
@@ -940,7 +941,7 @@ contract PokerTableTest is Test {
 
     function test_Settlement_ShowdownDistributesPot() public {
         _setupAllSeats();
-        _startHandFull();
+        _startHandToWFHC();
 
         uint8[4] memory h1 = [uint8(12), uint8(0), uint8(2), uint8(4)];
         uint8[4] memory h2 = [uint8(25), uint8(14), uint8(16), uint8(18)];
@@ -948,6 +949,7 @@ contract PokerTableTest is Test {
         for (uint8 i = 0; i < 4; i++) {
             _commitCards(1, i, h1[i], h2[i], salts[i]);
         }
+        pokerTable.advanceToPreflop();
 
         // UTG raises to 100
         vm.prank(operator4);
@@ -997,7 +999,7 @@ contract PokerTableTest is Test {
 
     function test_Settlement_ShowdownEmitsEvent() public {
         _setupAllSeats();
-        _startHandFull();
+        _startHandToWFHC();
 
         uint8[4] memory h1 = [uint8(0), uint8(12), uint8(2), uint8(4)];
         uint8[4] memory h2 = [uint8(14), uint8(25), uint8(16), uint8(18)];
@@ -1005,6 +1007,7 @@ contract PokerTableTest is Test {
         for (uint8 i = 0; i < 4; i++) {
             _commitCards(1, i, h1[i], h2[i], salts[i]);
         }
+        pokerTable.advanceToPreflop();
 
         _playToShowdown();
 
@@ -1406,7 +1409,7 @@ contract PokerTableTest is Test {
 
     function test_SubmitHoleCommit_Success() public {
         _setupAllSeats();
-        _startHandFull();
+        _startHandToWFHC();
 
         bytes32 commitment = keccak256(abi.encodePacked(uint256(1), uint8(0), uint8(10), uint8(25), bytes32("salt123")));
 
@@ -1416,22 +1419,26 @@ contract PokerTableTest is Test {
         pokerTable.submitHoleCommit(1, 0, commitment);
 
         assertEq(pokerTable.holeCommits(1, 0), commitment);
+        // Clean up: submit dummy commits for remaining seats and advance
+        _submitDummyCommits(1);
+        pokerTable.advanceToPreflop();
     }
 
     function test_SubmitHoleCommit_AllFourSeats() public {
         _setupAllSeats();
-        _startHandFull();
+        _startHandToWFHC();
 
         for (uint8 i = 0; i < 4; i++) {
             bytes32 commit = keccak256(abi.encodePacked(uint256(1), i, uint8(i * 10), uint8(i * 10 + 5), bytes32("salt")));
             pokerTable.submitHoleCommit(1, i, commit);
             assertEq(pokerTable.holeCommits(1, i), commit);
         }
+        pokerTable.advanceToPreflop();
     }
 
     function test_SubmitHoleCommit_RevertIfAlreadySubmitted() public {
         _setupAllSeats();
-        _startHandFull();
+        _startHandToWFHC();
 
         bytes32 commitment = keccak256("test");
         pokerTable.submitHoleCommit(1, 0, commitment);
@@ -1486,15 +1493,17 @@ contract PokerTableTest is Test {
 
     function test_RevealHoleCards_Success() public {
         _setupAllSeats();
-        _startHandFull();
-
-        _playToShowdown();
+        _startHandToWFHC();
 
         uint8 card1 = 10;
         uint8 card2 = 25;
         bytes32 salt = bytes32("test-salt-12345678901234567890");
         bytes32 commitment = keccak256(abi.encodePacked(uint256(1), uint8(0), card1, card2, salt));
         pokerTable.submitHoleCommit(1, 0, commitment);
+        _submitDummyCommits(1);
+        pokerTable.advanceToPreflop();
+
+        _playToShowdown();
 
         vm.expectEmit(true, true, false, true);
         emit HoleCardsRevealed(1, 0, card1, card2);
@@ -1510,15 +1519,17 @@ contract PokerTableTest is Test {
 
     function test_RevealHoleCards_RevertWithWrongCards() public {
         _setupAllSeats();
-        _startHandFull();
-
-        _playToShowdown();
+        _startHandToWFHC();
 
         uint8 card1 = 10;
         uint8 card2 = 25;
         bytes32 salt = bytes32("salt");
         bytes32 commitment = keccak256(abi.encodePacked(uint256(1), uint8(0), card1, card2, salt));
         pokerTable.submitHoleCommit(1, 0, commitment);
+        _submitDummyCommits(1);
+        pokerTable.advanceToPreflop();
+
+        _playToShowdown();
 
         vm.expectRevert("Invalid reveal");
         pokerTable.revealHoleCards(1, 0, 11, 25, salt);
@@ -1529,41 +1540,46 @@ contract PokerTableTest is Test {
 
     function test_RevealHoleCards_RevertWithWrongSalt() public {
         _setupAllSeats();
-        _startHandFull();
-
-        _playToShowdown();
+        _startHandToWFHC();
 
         uint8 card1 = 10;
         uint8 card2 = 25;
         bytes32 salt = bytes32("correct-salt");
         bytes32 commitment = keccak256(abi.encodePacked(uint256(1), uint8(0), card1, card2, salt));
         pokerTable.submitHoleCommit(1, 0, commitment);
+        _submitDummyCommits(1);
+        pokerTable.advanceToPreflop();
+
+        _playToShowdown();
 
         vm.expectRevert("Invalid reveal");
         pokerTable.revealHoleCards(1, 0, card1, card2, bytes32("wrong-salt"));
     }
 
     function test_RevealHoleCards_RevertIfNoCommitment() public {
-        _setupAllSeats();
-        _startHandFull();
+        _setupAllSeats(); // registers seats 0-3 (numSeats=9 so seats 4-8 exist but are unregistered)
+        _startHandFull(); // advances to BETTING_PRE with dummy commits for seats 0-3
 
         _playToShowdown();
 
+        // Seat 4 was never active and has no commitment
         vm.expectRevert("No commitment found");
-        pokerTable.revealHoleCards(1, 0, 10, 25, bytes32("salt"));
+        pokerTable.revealHoleCards(1, 4, 10, 25, bytes32("salt"));
     }
 
     function test_RevealHoleCards_RevertIfAlreadyRevealed() public {
         _setupAllSeats();
-        _startHandFull();
-
-        _playToShowdown();
+        _startHandToWFHC();
 
         uint8 card1 = 10;
         uint8 card2 = 25;
         bytes32 salt = bytes32("salt");
         bytes32 commitment = keccak256(abi.encodePacked(uint256(1), uint8(0), card1, card2, salt));
         pokerTable.submitHoleCommit(1, 0, commitment);
+        _submitDummyCommits(1);
+        pokerTable.advanceToPreflop();
+
+        _playToShowdown();
 
         pokerTable.revealHoleCards(1, 0, card1, card2, salt);
 
@@ -1573,13 +1589,15 @@ contract PokerTableTest is Test {
 
     function test_RevealHoleCards_RevertIfNotAtShowdown() public {
         _setupAllSeats();
-        _startHandFull();
+        _startHandToWFHC();
 
         uint8 card1 = 10;
         uint8 card2 = 25;
         bytes32 salt = bytes32("salt");
         bytes32 commitment = keccak256(abi.encodePacked(uint256(1), uint8(0), card1, card2, salt));
         pokerTable.submitHoleCommit(1, 0, commitment);
+        _submitDummyCommits(1);
+        pokerTable.advanceToPreflop();
 
         // Still in BETTING_PRE state
         vm.expectRevert("Not at showdown");
@@ -1588,13 +1606,15 @@ contract PokerTableTest is Test {
 
     function test_RevealHoleCards_RevertIfInvalidCards() public {
         _setupAllSeats();
-        _startHandFull();
-
-        _playToShowdown();
+        _startHandToWFHC();
 
         bytes32 salt = bytes32("salt");
         bytes32 commitment = keccak256(abi.encodePacked(uint256(1), uint8(0), uint8(52), uint8(25), salt));
         pokerTable.submitHoleCommit(1, 0, commitment);
+        _submitDummyCommits(1);
+        pokerTable.advanceToPreflop();
+
+        _playToShowdown();
 
         vm.expectRevert("Invalid card value");
         pokerTable.revealHoleCards(1, 0, 52, 25, salt);
@@ -1602,13 +1622,15 @@ contract PokerTableTest is Test {
 
     function test_RevealHoleCards_RevertIfDuplicateCards() public {
         _setupAllSeats();
-        _startHandFull();
-
-        _playToShowdown();
+        _startHandToWFHC();
 
         bytes32 salt = bytes32("salt");
         bytes32 commitment = keccak256(abi.encodePacked(uint256(1), uint8(0), uint8(10), uint8(10), salt));
         pokerTable.submitHoleCommit(1, 0, commitment);
+        _submitDummyCommits(1);
+        pokerTable.advanceToPreflop();
+
+        _playToShowdown();
 
         vm.expectRevert("Duplicate cards");
         pokerTable.revealHoleCards(1, 0, 10, 10, salt);
@@ -1625,13 +1647,15 @@ contract PokerTableTest is Test {
 
     function test_RevealHoleCards_CanRevealAfterSettlement() public {
         _setupAllSeats();
-        _startHandFull();
+        _startHandToWFHC();
 
         uint8 card1 = 10;
         uint8 card2 = 25;
         bytes32 salt = bytes32("salt");
         bytes32 commitment = keccak256(abi.encodePacked(uint256(1), uint8(0), card1, card2, salt));
         pokerTable.submitHoleCommit(1, 0, commitment);
+        _submitDummyCommits(1);
+        pokerTable.advanceToPreflop();
 
         // All fold to BB
         vm.prank(operator4);
@@ -1655,9 +1679,9 @@ contract PokerTableTest is Test {
 
     function test_FullShowdownWithReveal_AllFourSeats() public {
         _setupAllSeats();
-        _startHandFull();
+        _startHandToWFHC();
 
-        // Submit commitments for all 4 seats (distinct cards)
+        // Submit commitments for all 4 seats (distinct cards) during WAITING_FOR_HOLECARDS
         uint8[4] memory c1 = [uint8(10), uint8(20), uint8(30), uint8(40)];
         uint8[4] memory c2 = [uint8(15), uint8(25), uint8(35), uint8(45)];
         bytes32[4] memory salts;
@@ -1670,6 +1694,7 @@ contract PokerTableTest is Test {
             bytes32 commitment = keccak256(abi.encodePacked(uint256(1), i, c1[i], c2[i], salts[i]));
             pokerTable.submitHoleCommit(1, i, commitment);
         }
+        pokerTable.advanceToPreflop();
 
         _playToShowdown();
 
@@ -1960,10 +1985,13 @@ contract PokerTableTest is Test {
 
     function test_Showdown_SingleRevealWinsByDefault() public {
         _setupAllSeats();
-        _startHandFull();
+        _startHandToWFHC();
 
         // Only seat 2 reveals
         _commitCards(1, 2, 0, 14, bytes32("s2"));
+        // Dummy commits for other active seats (they won't reveal)
+        _submitDummyCommits(1);
+        pokerTable.advanceToPreflop();
 
         _playToShowdown();
 
@@ -1978,7 +2006,7 @@ contract PokerTableTest is Test {
 
     function test_Showdown_StrongerHandWins() public {
         _setupAllSeats();
-        _startHandFull();
+        _startHandToWFHC();
 
         // Give each seat different cards; evaluator picks winner
         uint8[4] memory h1 = [uint8(12), uint8(0), uint8(2), uint8(4)];
@@ -1987,6 +2015,7 @@ contract PokerTableTest is Test {
         for (uint8 i = 0; i < 4; i++) {
             _commitCards(1, i, h1[i], h2[i], salts[i]);
         }
+        pokerTable.advanceToPreflop();
 
         _playToShowdown();
 
@@ -2005,7 +2034,7 @@ contract PokerTableTest is Test {
 
     function test_Showdown_LoserDoesNotGain() public {
         _setupAllSeats();
-        _startHandFull();
+        _startHandToWFHC();
 
         uint8[4] memory h1 = [uint8(0), uint8(12), uint8(2), uint8(4)];
         uint8[4] memory h2 = [uint8(14), uint8(25), uint8(16), uint8(18)];
@@ -2013,6 +2042,7 @@ contract PokerTableTest is Test {
         for (uint8 i = 0; i < 4; i++) {
             _commitCards(1, i, h1[i], h2[i], salts[i]);
         }
+        pokerTable.advanceToPreflop();
 
         _playToShowdown();
 
@@ -2042,7 +2072,7 @@ contract PokerTableTest is Test {
 
     function test_Showdown_TieSplitsPot() public {
         _setupAllSeats();
-        _startHandFull();
+        _startHandToWFHC();
 
         // Fisher-Yates board (TEST_RANDOMNESS): 5♣(3), 5♠(42), 5♥(29), 7♥(31), K♦(24)
         // Board has three 5s + K♦. Players with a K pair with the board K → full house 5-5-5-K-K.
@@ -2054,6 +2084,7 @@ contract PokerTableTest is Test {
         _commitCards(1, 1, 37, 38, bytes32("s1"));
         _commitCards(1, 2, 0, 14, bytes32("s2"));
         _commitCards(1, 3, 2, 20, bytes32("s3"));
+        pokerTable.advanceToPreflop();
 
         _playToShowdown();
 
@@ -2084,13 +2115,16 @@ contract PokerTableTest is Test {
 
     function test_Showdown_UnrevealedSeatForfeits() public {
         _setupAllSeats();
-        _startHandFull();
+        _startHandToWFHC();
 
         // Seat 0 has stronger cards but doesn't reveal
         // Seat 0: A♣ A♦ (doesn't reveal)
         _commitCards(1, 0, 12, 25, bytes32("s0"));
         // Seat 1: 2♣ 3♦ (reveals - wins by default since only revealer)
         _commitCards(1, 1, 0, 14, bytes32("s1"));
+        // Dummy commits for other active seats
+        _submitDummyCommits(1);
+        pokerTable.advanceToPreflop();
 
         _playToShowdown();
 
@@ -2115,7 +2149,7 @@ contract PokerTableTest is Test {
 
     function test_Showdown_WinnerDeterminedByCards_NotPosition() public {
         _setupAllSeats();
-        _startHandFull();
+        _startHandToWFHC();
 
         // Give all seats different cards
         uint8[4] memory h1 = [uint8(0), uint8(2), uint8(4), uint8(12)];
@@ -2124,6 +2158,7 @@ contract PokerTableTest is Test {
         for (uint8 i = 0; i < 4; i++) {
             _commitCards(1, i, h1[i], h2[i], salts[i]);
         }
+        pokerTable.advanceToPreflop();
 
         _playToShowdown();
 
@@ -2146,6 +2181,21 @@ contract PokerTableTest is Test {
     }
 
     // ============ Helper Functions ============
+
+    /**
+     * @dev Submit dummy commits for all active seats that don't yet have a commit.
+     *      Used to satisfy advanceToPreflop's "all active seats must have commits" requirement
+     *      when a test only cares about specific seats' commits.
+     */
+    function _submitDummyCommits(uint256 handId) internal {
+        uint8 n = pokerTable.numSeats();
+        for (uint8 i = 0; i < n; i++) {
+            PokerTable.Seat memory s = pokerTable.getSeat(i);
+            if (s.isActive && pokerTable.holeCommits(handId, i) == bytes32(0)) {
+                pokerTable.submitHoleCommit(handId, i, bytes32(uint256(i + 100)));
+            }
+        }
+    }
 
     /**
      * @dev Submit a hole card commitment for testing convenience.
@@ -2636,7 +2686,18 @@ contract PokerTableTest is Test {
         _registerSeat(2, owner3, operator3, BUY_IN);
         _setSeatStack(1, 200);
 
-        _startHandFull();
+        // Community cards from (TEST_RANDOMNESS, TEST_RANDOMNESS+1, TEST_RANDOMNESS+2):
+        // {3(5♣), 29(5♥), 31(7♥), 42(5♠), 24(K♦)} — so cards 0,1,2,4 are safe
+        bytes32 salt1 = bytes32("salt1");
+        bytes32 salt2 = bytes32("salt2");
+        uint8 s1c1 = 0; uint8 s1c2 = 1; // seat1 hole cards
+        uint8 s2c1 = 2; uint8 s2c2 = 4; // seat2 hole cards (skip 3 which is community)
+
+        _startHandToWFHC();
+        pokerTable.submitHoleCommit(1, 1, keccak256(abi.encodePacked(uint256(1), uint8(1), s1c1, s1c2, salt1)));
+        pokerTable.submitHoleCommit(1, 2, keccak256(abi.encodePacked(uint256(1), uint8(2), s2c1, s2c2, salt2)));
+        pokerTable.advanceToPreflop();
+
         vm.prank(operator2); vm.roll(block.number + 1);
         pokerTable.raise(1, 200);
         vm.prank(operator3); vm.roll(block.number + 1);
@@ -2651,38 +2712,15 @@ contract PokerTableTest is Test {
         uint256 handId = pokerTable.currentHandId();
         uint8[5] memory comm = pokerTable.getCommunityCards();
 
-        // Give seat1 the best possible hand: royal flush if possible.
-        // For simplicity, use cards 0,1 (Ace of Spades, 2 of Spades)
-        // and seat2 gets cards 2,3 — seat1 wins by having higher hole cards
-        // Actually we need to avoid community card overlaps — just use any valid distinct pair
-        // Community cards are already dealt. Use hole cards that don't overlap with community.
-        bytes32 salt1 = bytes32("salt1");
-        bytes32 salt2 = bytes32("salt2");
-
-        // Find cards not in community
-        uint8[4] memory freeCards;
-        uint8 freeIdx = 0;
-        for (uint8 c = 0; c < 52 && freeIdx < 4; c++) {
-            bool inComm = false;
-            for (uint8 j = 0; j < 5; j++) {
-                if (comm[j] == c) { inComm = true; break; }
-            }
-            if (!inComm) freeCards[freeIdx++] = c;
-        }
-
-        // seat1 gets freeCards[0], freeCards[1]; seat2 gets freeCards[2], freeCards[3]
-        _buildShowdownCommit(handId, 1, freeCards[0], freeCards[1], salt1);
-        _buildShowdownCommit(handId, 2, freeCards[2], freeCards[3], salt2);
+        // Reveal using the pre-committed cards (committed before advanceToPreflop above)
+        pokerTable.revealHoleCards(handId, 1, s1c1, s1c2, salt1);
+        pokerTable.revealHoleCards(handId, 2, s2c1, s2c2, salt2);
 
         // Use hand evaluator to determine winner
         uint8[5] memory commArr;
         for (uint8 i = 0; i < 5; i++) commArr[i] = comm[i];
-        uint256 score1 = HandEvaluator.evaluate(commArr, freeCards[0], freeCards[1]);
-        uint256 score2 = HandEvaluator.evaluate(commArr, freeCards[2], freeCards[3]);
-
-        // Reveal both
-        pokerTable.revealHoleCards(handId, 1, freeCards[0], freeCards[1], salt1);
-        pokerTable.revealHoleCards(handId, 2, freeCards[2], freeCards[3], salt2);
+        uint256 score1 = HandEvaluator.evaluate(commArr, s1c1, s1c2);
+        uint256 score2 = HandEvaluator.evaluate(commArr, s2c1, s2c2);
 
         uint256 seat1StackBefore = pokerTable.getSeat(1).stack;
         uint256 seat2StackBefore = pokerTable.getSeat(2).stack;
@@ -2726,7 +2764,14 @@ contract PokerTableTest is Test {
         _registerSeat(2, owner3, operator3, BUY_IN);
         _setSeatStack(1, 300); // seat1 (SB) short stack
 
-        _startHandFull();
+        // Pre-commit with known safe cards (community = {3,29,31,42,24})
+        bytes32 salt1u = bytes32("s1"); bytes32 salt2u = bytes32("s2");
+        uint8 u1c1 = 0; uint8 u1c2 = 1; // seat1 hole cards
+        uint8 u2c1 = 2; uint8 u2c2 = 4; // seat2 hole cards
+        _startHandToWFHC();
+        pokerTable.submitHoleCommit(1, 1, keccak256(abi.encodePacked(uint256(1), uint8(1), u1c1, u1c2, salt1u)));
+        pokerTable.submitHoleCommit(1, 2, keccak256(abi.encodePacked(uint256(1), uint8(2), u2c1, u2c2, salt2u)));
+        pokerTable.advanceToPreflop();
         // seat1 SB posts 10, stack=290. seat2 BB posts 20, stack=980.
         // seat1 acts first (2-player, heads-up). seat1 calls all-in (goes all-in via raise)
         (,,, uint8 actor,) = pokerTable.getHandInfo();
@@ -2780,21 +2825,11 @@ contract PokerTableTest is Test {
         assertTrue(eligible1[2], "Only seat2 eligible for pot1");
         assertFalse(eligible1[1], "Seat1 NOT eligible for pot1");
 
-        // Settle with hole cards
+        // Settle with hole cards (pre-committed above)
         uint256 handId = pokerTable.currentHandId();
         uint8[5] memory comm = pokerTable.getCommunityCards();
-        uint8[4] memory freeCards;
-        uint8 fi = 0;
-        for (uint8 c = 0; c < 52 && fi < 4; c++) {
-            bool inC = false;
-            for (uint8 j = 0; j < 5; j++) if (comm[j] == c) { inC = true; break; }
-            if (!inC) freeCards[fi++] = c;
-        }
-        bytes32 s1 = bytes32("s1"); bytes32 s2 = bytes32("s2");
-        pokerTable.submitHoleCommit(handId, 1, keccak256(abi.encodePacked(handId, uint8(1), freeCards[0], freeCards[1], s1)));
-        pokerTable.submitHoleCommit(handId, 2, keccak256(abi.encodePacked(handId, uint8(2), freeCards[2], freeCards[3], s2)));
-        pokerTable.revealHoleCards(handId, 1, freeCards[0], freeCards[1], s1);
-        pokerTable.revealHoleCards(handId, 2, freeCards[2], freeCards[3], s2);
+        pokerTable.revealHoleCards(handId, 1, u1c1, u1c2, salt1u);
+        pokerTable.revealHoleCards(handId, 2, u2c1, u2c2, salt2u);
 
         uint256 s2StackBefore = pokerTable.getSeat(2).stack;
         pokerTable.settleShowdown();
@@ -2805,8 +2840,8 @@ contract PokerTableTest is Test {
         // seat2 ALWAYS gets 700 back (unmatched excess)
         // Plus either the main pot (if seat2 wins) or not
         uint8[5] memory commArr; for (uint8 i=0;i<5;i++) commArr[i]=comm[i];
-        uint256 sc1 = HandEvaluator.evaluate(commArr, freeCards[0], freeCards[1]);
-        uint256 sc2 = HandEvaluator.evaluate(commArr, freeCards[2], freeCards[3]);
+        uint256 sc1 = HandEvaluator.evaluate(commArr, u1c1, u1c2);
+        uint256 sc2 = HandEvaluator.evaluate(commArr, u2c1, u2c2);
 
         if (sc1 > sc2) {
             // seat1 wins main pot (600), seat2 gets back unmatched (700)
@@ -2880,7 +2915,7 @@ contract PokerTableTest is Test {
 
     function test_CardIntegrity_NoViolation() public {
         _setupAllSeats();
-        _startHandFull();
+        _startHandToWFHC();
 
         // Hole cards deliberately chosen to NOT overlap with Fisher-Yates community cards:
         // Community = {3(5♣), 29(5♥), 31(7♥), 42(5♠), 24(K♦)}
@@ -2892,6 +2927,7 @@ contract PokerTableTest is Test {
         _commitCards(1, 1, 2, 4, bytes32("s1"));
         _commitCards(1, 2, 5, 6, bytes32("s2"));
         _commitCards(1, 3, 7, 8, bytes32("s3"));
+        pokerTable.advanceToPreflop();
 
         _playToShowdown();
 
@@ -2926,7 +2962,7 @@ contract PokerTableTest is Test {
 
     function test_CardIntegrity_ViolationDetected() public {
         _setupAllSeats();
-        _startHandFull();
+        _startHandToWFHC();
 
         // Community card[2] = 5♣(3) from Fisher-Yates flop (communityCards index 2).
         // Deliberately give seat 0 a hole card = 3 (5♣) to simulate dealer cheating.
@@ -2935,6 +2971,7 @@ contract PokerTableTest is Test {
         _commitCards(1, 1, 2, 4, bytes32("s1"));
         _commitCards(1, 2, 5, 6, bytes32("s2"));
         _commitCards(1, 3, 7, 8, bytes32("s3"));
+        pokerTable.advanceToPreflop();
 
         _playToShowdown();
 
@@ -3322,15 +3359,36 @@ contract PokerTableTest is Test {
     // ============ Trustless Dealer Test Helpers ============
 
     /**
-     * @dev Full hand start: startHand() + fulfill hole-card VRF + advanceToPreflop().
-     *      Reaches BETTING_PRE through the new WAITING_VRF_HOLECARDS → WAITING_FOR_HOLECARDS
-     *      → BETTING_PRE flow without submitting mock commits (so tests can submit their own).
+     * @dev Partial hand start: startHand() + fulfill hole-card VRF.
+     *      Stops at WAITING_FOR_HOLECARDS so the caller can submit specific hole commits
+     *      before calling advanceToPreflop().
+     */
+    function _startHandToWFHC() internal {
+        pokerTable.startHand();
+        if (pokerTable.gameState() != PokerTable.GameState.WAITING_VRF_HOLECARDS) return;
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
+    }
+
+    /**
+     * @dev Full hand start: startHand() + fulfill hole-card VRF + submit hole commits
+     *      for all active seats + advanceToPreflop().
+     *      Reaches BETTING_PRE through the WAITING_VRF_HOLECARDS → WAITING_FOR_HOLECARDS
+     *      → BETTING_PRE flow with dummy commits so advanceToPreflop does not revert.
      */
     function _startHandFull() internal {
         pokerTable.startHand();
         // If tournament ended during startHand() (eviction), stop here.
         if (pokerTable.gameState() != PokerTable.GameState.WAITING_VRF_HOLECARDS) return;
         mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
+        // Submit a non-zero hole commit for every active seat (required before advanceToPreflop)
+        uint256 handId = pokerTable.currentHandId();
+        uint8 seats = pokerTable.numSeats();
+        for (uint8 i = 0; i < seats; i++) {
+            PokerTable.Seat memory seat = pokerTable.getSeat(i);
+            if (seat.isActive && pokerTable.holeCommits(handId, i) == bytes32(0)) {
+                pokerTable.submitHoleCommit(handId, i, bytes32(uint256(i + 1)));
+            }
+        }
         pokerTable.advanceToPreflop();
     }
 }

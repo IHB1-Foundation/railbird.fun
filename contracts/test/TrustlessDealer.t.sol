@@ -96,7 +96,7 @@ contract TrustlessDealerTest is Test {
         // Start and complete a hand
         pokerTable.startHand();
         mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
-        pokerTable.advanceToPreflop();
+        _submitDummyCommitsAndAdvance();
 
         // SB (seat0 in heads-up) folds
         vm.prank(operator1);
@@ -216,7 +216,7 @@ contract TrustlessDealerTest is Test {
         pokerTable.startHand();
         pokerTable.submitDealerSeedCommit(1, commitment);
         mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
-        pokerTable.advanceToPreflop();
+        _submitDummyCommitsAndAdvance();
 
         _playHeadsUpToShowdown();
 
@@ -238,7 +238,7 @@ contract TrustlessDealerTest is Test {
         pokerTable.startHand();
         pokerTable.submitDealerSeedCommit(1, commitment);
         mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
-        pokerTable.advanceToPreflop();
+        _submitDummyCommitsAndAdvance();
 
         _playHeadsUpToShowdown();
 
@@ -256,7 +256,7 @@ contract TrustlessDealerTest is Test {
         pokerTable.startHand();
         pokerTable.submitDealerSeedCommit(1, commitment);
         mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
-        pokerTable.advanceToPreflop();
+        _submitDummyCommitsAndAdvance();
 
         // Still in BETTING_PRE — not showdown yet
         vm.expectRevert("DealerSeed: not in showdown");
@@ -269,7 +269,7 @@ contract TrustlessDealerTest is Test {
 
         pokerTable.startHand();
         mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
-        pokerTable.advanceToPreflop();
+        _submitDummyCommitsAndAdvance();
 
         _playHeadsUpToShowdown();
 
@@ -326,7 +326,7 @@ contract TrustlessDealerTest is Test {
             uint256(PokerTable.GameState.WAITING_FOR_HOLECARDS)
         );
 
-        pokerTable.advanceToPreflop();
+        _submitDummyCommitsAndAdvance();
 
         assertEq(
             uint256(pokerTable.gameState()),
@@ -344,6 +344,18 @@ contract TrustlessDealerTest is Test {
         pokerTable.advanceToPreflop();
     }
 
+    function test_AdvanceToPreflop_RevertIfMissingHoleCommit() public {
+        _registerSeat(0, owner1, operator1, BUY_IN);
+        _registerSeat(1, owner2, operator2, BUY_IN);
+
+        pokerTable.startHand();
+        mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
+        // Only submit commit for seat 0, not seat 1
+        pokerTable.submitHoleCommit(1, 0, bytes32(uint256(42)));
+        vm.expectRevert("Missing hole commit");
+        pokerTable.advanceToPreflop();
+    }
+
     function test_HoleCardVRF_DoesNotAffectCommunityCardVRF() public {
         _registerSeat(0, owner1, operator1, BUY_IN);
         _registerSeat(1, owner2, operator2, BUY_IN);
@@ -353,7 +365,7 @@ contract TrustlessDealerTest is Test {
         assertEq(pokerTable.pendingVRFRequestId(), 0); // community card VRF not pending yet
 
         mockVRF.fulfillLastRequest(TEST_RANDOMNESS); // fulfill hole card VRF
-        pokerTable.advanceToPreflop();
+        _submitDummyCommitsAndAdvance();
 
         // Community card VRF still not pending
         assertEq(pokerTable.pendingVRFRequestId(), 0);
@@ -374,7 +386,7 @@ contract TrustlessDealerTest is Test {
         // Hand 1
         pokerTable.startHand();
         mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
-        pokerTable.advanceToPreflop();
+        _submitDummyCommitsAndAdvance();
 
         assertEq(pokerTable.holeCardVRFRandomness(1), TEST_RANDOMNESS);
 
@@ -386,7 +398,7 @@ contract TrustlessDealerTest is Test {
         // Hand 2
         pokerTable.startHand();
         mockVRF.fulfillLastRequest(TEST_RANDOMNESS + 1);
-        pokerTable.advanceToPreflop();
+        _submitDummyCommitsAndAdvance();
 
         assertEq(pokerTable.holeCardVRFRandomness(2), TEST_RANDOMNESS + 1);
         // Hand 1 randomness unchanged
@@ -458,6 +470,22 @@ contract TrustlessDealerTest is Test {
         chipToken.approve(address(pokerTable), buyIn);
         vm.prank(owner);
         pokerTable.registerSeat(seatIndex, owner, operator, buyIn);
+    }
+
+    /**
+     * @dev Submit dummy hole commits for all active seats that lack a commit, then advance to preflop.
+     *      Required because advanceToPreflop now mandates commits for all active seats (T-M1-08).
+     */
+    function _submitDummyCommitsAndAdvance() internal {
+        uint256 handId = pokerTable.currentHandId();
+        uint8 n = pokerTable.numSeats();
+        for (uint8 i = 0; i < n; i++) {
+            PokerTable.Seat memory s = pokerTable.getSeat(i);
+            if (s.isActive && pokerTable.holeCommits(handId, i) == bytes32(0)) {
+                pokerTable.submitHoleCommit(handId, i, bytes32(uint256(i + 100)));
+            }
+        }
+        pokerTable.advanceToPreflop();
     }
 
     /**

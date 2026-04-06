@@ -221,6 +221,8 @@ contract ChainlinkVRFAdapter is IVRFAdapter {
 
     // ============ Admin ============
 
+    /// @notice Transfer ownership of this adapter to a new address.
+    /// @param newOwner New owner address (must be non-zero).
     function transferOwnership(address newOwner) external onlyOwner {
         require(newOwner != address(0), "Zero address");
         emit OwnerTransferred(owner, newOwner);
@@ -229,6 +231,9 @@ contract ChainlinkVRFAdapter is IVRFAdapter {
 
     // ============ View Helpers ============
 
+    /// @notice Check whether a Chainlink VRF request has been fulfilled.
+    /// @param chainlinkRequestId The Chainlink-assigned request ID.
+    /// @return True if the randomness has been delivered.
     function isRequestFulfilled(uint256 chainlinkRequestId) external view returns (bool) {
         return requestsByChainlinkId[chainlinkRequestId].fulfilled;
     }

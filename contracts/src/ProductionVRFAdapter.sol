@@ -115,6 +115,8 @@ contract ProductionVRFAdapter is IVRFAdapter {
 
     // ============ Admin Functions ============
 
+    /// @notice Update the authorized operator address that may call fulfillVRF.
+    /// @param _operator New operator address (must be non-zero).
     function setOperator(address _operator) external onlyOwner {
         require(_operator != address(0), "Operator cannot be zero");
         address old = operator;
@@ -122,6 +124,8 @@ contract ProductionVRFAdapter is IVRFAdapter {
         emit OperatorUpdated(old, _operator);
     }
 
+    /// @notice Transfer ownership of this adapter to a new address.
+    /// @param _newOwner New owner address (must be non-zero).
     function transferOwnership(address _newOwner) external onlyOwner {
         require(_newOwner != address(0), "Owner cannot be zero");
         address old = owner;
@@ -131,6 +135,15 @@ contract ProductionVRFAdapter is IVRFAdapter {
 
     // ============ View Functions ============
 
+    /// @notice Return all fields of a VRF request.
+    /// @param requestId Internal request ID assigned when the request was made.
+    /// @return table          Poker table that triggered the request.
+    /// @return tableId        Table ID stored with the request.
+    /// @return handId         Hand ID stored with the request.
+    /// @return purpose        Purpose byte (street identifier).
+    /// @return requestedAt    Block timestamp when the request was made.
+    /// @return requestedBlock Block number when the request was made.
+    /// @return fulfilled      True if randomness has been delivered.
     function getRequest(uint256 requestId) external view returns (
         address table,
         uint256 tableId,
@@ -152,11 +165,18 @@ contract ProductionVRFAdapter is IVRFAdapter {
         );
     }
 
+    /// @notice Check whether a VRF request is pending (issued but not yet fulfilled).
+    /// @param requestId Internal request ID.
+    /// @return True if the request exists and has not been fulfilled.
     function isRequestPending(uint256 requestId) external view returns (bool) {
         VRFRequest storage req = requests[requestId];
         return req.table != address(0) && !req.fulfilled;
     }
 
+    /// @notice Check whether a VRF request has exceeded its timeout.
+    /// @param requestId Internal request ID.
+    /// @param timeout   Allowed duration in seconds from request time.
+    /// @return True if pending and `block.timestamp > requestedAt + timeout`.
     function isRequestTimedOut(uint256 requestId, uint256 timeout) external view returns (bool) {
         VRFRequest storage req = requests[requestId];
         if (req.table == address(0) || req.fulfilled) return false;

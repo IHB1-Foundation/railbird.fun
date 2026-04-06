@@ -1,11 +1,10 @@
 import Link from "next/link";
 import Image from "next/image";
 import { getTable, getTables } from "@/lib/api";
-import { CHIP_SYMBOL, formatChips, shortenAddress } from "@/lib/utils";
+import { CHIP_SYMBOL, formatChips, shortenAddress, ZERO_ADDRESS } from "@/lib/utils";
 import { GAME_STATES } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
-const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 const MAX_SEATS = Number(process.env.NEXT_PUBLIC_TABLE_MAX_SEATS || "9");
 
 function getStatusClass(gameState: string): string {

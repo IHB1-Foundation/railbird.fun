@@ -125,7 +125,10 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
     }
   }, []);
 
+  // Only poll while a hand is in progress — stops wasting RPC budget between hands.
   useEffect(() => {
+    if (!marketOpen) return;
+
     const id = setInterval(async () => {
       try {
         const res = await fetch(`${INDEXER_BASE}/api/tables/${table.tableId}`, { cache: "no-store" });
@@ -138,7 +141,7 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
     }, 5000);
 
     return () => clearInterval(id);
-  }, [table.tableId]);
+  }, [marketOpen, table.tableId]);
 
   useEffect(() => {
     if (!handId || winnerSeat === null) return;
@@ -269,13 +272,13 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
           <div className="bet-bankroll-value">
             {formatChips(bankrollWei)} {CHIP_SYMBOL}
           </div>
-          <button className="ghost-btn" onClick={resetBook} type="button">
+          <button className="ghost-btn" onClick={resetBook} type="button" aria-label="Reset virtual bankroll to default">
             Reset
           </button>
         </div>
       </div>
 
-      <div className={`bet-market-state ${marketOpen ? "open" : "closed"}`}>
+      <div className={`bet-market-state ${marketOpen ? "open" : "closed"}`} aria-live="polite" aria-atomic="true">
         {marketOpen ? `Hand #${handId} market open` : "Market closed (waiting for next hand)"}
       </div>
 
@@ -311,6 +314,8 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
                 type="button"
                 className="bet-select-btn"
                 onClick={() => setSelectedSeat(entry.seatIndex)}
+                aria-pressed={selectedSeat === entry.seatIndex}
+                aria-label={`Bet on ${entry.profile.codename} at seat ${entry.seatIndex}`}
               >
                 {selectedSeat === entry.seatIndex ? "Selected" : "Bet on this agent"}
               </button>
@@ -363,6 +368,8 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
             className="bet-place-btn"
             onClick={placeBet}
             disabled={!marketOpen}
+            aria-disabled={!marketOpen}
+            aria-label={marketOpen ? "Place bet on selected agent" : "Betting is closed — wait for next hand"}
           >
             Place Bet
           </button>

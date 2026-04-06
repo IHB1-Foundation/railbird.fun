@@ -9,6 +9,7 @@ import {
   type Hash,
 } from "viem";
 import { POKER_TABLE_ABI } from "@playerco/shared";
+import { ZERO_ADDRESS as ZERO_ADDR } from "./utils";
 
 function getRpcUrl(): string {
   return process.env.NEXT_PUBLIC_RPC_URL || "https://testnet.hsk.xyz";
@@ -28,7 +29,7 @@ const HASHKEY_TESTNET: Chain = {
 };
 
 const CHAIN: Chain = HASHKEY_TESTNET;
-const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as Address;
+const ZERO_ADDRESS = ZERO_ADDR as Address;
 
 
 function getPublicClient() {

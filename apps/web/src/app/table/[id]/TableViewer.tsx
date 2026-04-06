@@ -12,13 +12,12 @@ import {
   formatTime,
   formatTimeRemaining,
   cn,
+  ZERO_ADDRESS,
 } from "@/lib/utils";
 import type { TableResponse } from "@/lib/types";
 import { GAME_STATES, ACTION_TYPES } from "@/lib/types";
 import { useWebSocket } from "@/lib/useWebSocket";
 import { getRevealedHolecards, type RevealedHolecardResponse } from "@/lib/api";
-
-const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 const TABLE_MAX_SEATS = Number(process.env.NEXT_PUBLIC_TABLE_MAX_SEATS || "9");
 
 /** Lightweight structural guard against injected WebSocket payloads. */
@@ -509,8 +508,9 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
                             </span>
                           ) : null}
                         </div>
-                        <span className="action-time">
-                          {formatTime(action.timestamp)}
+                        <span className="action-time" title={`Block #${action.blockNumber}`}>
+                          {formatTime(action.timestamp)}{" "}
+                          <span className="action-block">#{action.blockNumber}</span>
                         </span>
                       </div>
                     );
@@ -694,8 +694,8 @@ function ShowdownResultsPanel({
 // VRF Status Widget — shown during WAITING_VRF_* states
 function VrfStatusWidget({ street }: { street: string }) {
   return (
-    <div className="vrf-status-widget">
-      <span className="vrf-spinner" />
+    <div className="vrf-status-widget" role="status" aria-live="polite" aria-label={`Waiting for VRF randomness for ${street}`}>
+      <span className="vrf-spinner" aria-hidden="true" />
       <span className="vrf-label">
         Waiting for VRF ({street})
       </span>
@@ -764,26 +764,25 @@ function SeatPanel({
 }
 
 // Poker Card Component
+const CARD_RANKS = ["2", "3", "4", "5", "6", "7", "8", "9", "T", "J", "Q", "K", "A"];
+const CARD_SUITS = ["s", "h", "d", "c"];
+const SUIT_NAMES: Record<string, string> = { s: "spades", h: "hearts", d: "diamonds", c: "clubs" };
+const SUIT_SYMBOLS: Record<string, string> = { s: "♠", h: "♥", d: "♦", c: "♣" };
+
 function PokerCard({ cardIndex }: { cardIndex: number }) {
   if (cardIndex === 255 || cardIndex < 0 || cardIndex > 51) {
-    return <div className="poker-card unknown">??</div>;
+    return <div className="poker-card unknown" aria-label="Hidden card">??</div>;
   }
 
-  const ranks = ["2", "3", "4", "5", "6", "7", "8", "9", "T", "J", "Q", "K", "A"];
-  const suits = ["s", "h", "d", "c"];
-  const suitSymbols: Record<string, string> = {
-    s: "♠",
-    h: "♥",
-    d: "♦",
-    c: "♣",
-  };
-
-  const rank = ranks[cardIndex % 13];
-  const suit = suits[Math.floor(cardIndex / 13)];
+  const rank = CARD_RANKS[cardIndex % 13];
+  const suit = CARD_SUITS[Math.floor(cardIndex / 13)];
 
   return (
-    <div className={cn("poker-card", suit === "h" || suit === "d" ? "heart" : "spade")}>
-      {rank}{suitSymbols[suit]}
+    <div
+      className={cn("poker-card", suit === "h" || suit === "d" ? "heart" : "spade")}
+      aria-label={`${rank} of ${SUIT_NAMES[suit]}`}
+    >
+      {rank}{SUIT_SYMBOLS[suit]}
     </div>
   );
 }

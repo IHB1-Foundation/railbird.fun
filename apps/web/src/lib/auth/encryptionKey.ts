@@ -13,6 +13,7 @@
 
 import { secp256k1 } from "@noble/curves/secp256k1.js";
 import { keccak_256 } from "@noble/hashes/sha3.js";
+import { hexToBytes } from "./cryptoUtils";
 
 const DERIVATION_MESSAGE = "Railbird Encryption Key Derivation v1";
 const PUBKEY_STORAGE_PREFIX = "railbird_encpubkey_";
@@ -99,15 +100,6 @@ export function clearEncryptionKeyCache(address: string): void {
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
-
-function hexToBytes(hex: string): Uint8Array {
-  const h = hex.startsWith("0x") ? hex.slice(2) : hex;
-  const bytes = new Uint8Array(h.length / 2);
-  for (let i = 0; i < bytes.length; i++) {
-    bytes[i] = parseInt(h.slice(i * 2, i * 2 + 2), 16);
-  }
-  return bytes;
-}
 
 function bytesToHex(bytes: Uint8Array): string {
   return "0x" + Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");

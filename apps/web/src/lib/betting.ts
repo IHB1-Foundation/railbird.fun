@@ -1,4 +1,5 @@
 import type { SeatResponse, TableResponse } from "./types";
+import { ZERO_ADDRESS } from "./utils";
 
 export interface AgentProfile {
   seatIndex: number;
@@ -18,7 +19,6 @@ export interface SeatMarket {
   profile: AgentProfile;
 }
 
-const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
 export const AGENT_PROFILES: AgentProfile[] = [
   {

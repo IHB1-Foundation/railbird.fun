@@ -23,6 +23,8 @@ export function WalletButton() {
         disabled={isLoading}
         className="wallet-button"
         title={error || undefined}
+        aria-busy={isLoading}
+        aria-label={isLoading ? "Connecting wallet…" : "Connect wallet"}
       >
         {isLoading ? "Connecting..." : "Connect Wallet"}
       </button>
@@ -32,8 +34,8 @@ export function WalletButton() {
   // Connected but not authenticated
   if (!isAuthenticated) {
     return (
-      <div className="wallet-status">
-        <span className="wallet-address" title={address || undefined}>
+      <div className="wallet-status" role="group" aria-label="Wallet status">
+        <span className="wallet-address" title={address || undefined} aria-label={`Connected address: ${address || ""}`}>
           {shortenAddress(address || "")}
         </span>
         <button
@@ -41,6 +43,8 @@ export function WalletButton() {
           disabled={isLoading}
           className="wallet-button sign"
           title={error || "Sign to authenticate"}
+          aria-busy={isLoading}
+          aria-label={isLoading ? "Signing in…" : "Sign in with wallet"}
         >
           {isLoading ? "Signing..." : "Sign In"}
         </button>
@@ -48,6 +52,7 @@ export function WalletButton() {
           onClick={disconnect}
           className="wallet-button disconnect"
           title="Disconnect wallet"
+          aria-label="Disconnect wallet"
         >
           X
         </button>
@@ -57,15 +62,16 @@ export function WalletButton() {
 
   // Fully authenticated
   return (
-    <div className="wallet-status authenticated">
-      <span className="wallet-address" title={address || undefined}>
+    <div className="wallet-status authenticated" role="group" aria-label="Authenticated wallet">
+      <span className="wallet-address" title={address || undefined} aria-label={`Signed-in address: ${address || ""}`}>
         {shortenAddress(address || "")}
       </span>
-      <span className="auth-badge">Signed In</span>
+      <span className="auth-badge" aria-live="polite">Signed In</span>
       <button
         onClick={disconnect}
         className="wallet-button disconnect"
         title="Sign out"
+        aria-label="Sign out and disconnect wallet"
       >
         X
       </button>

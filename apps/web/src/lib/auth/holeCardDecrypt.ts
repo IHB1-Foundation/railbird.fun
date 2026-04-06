@@ -11,6 +11,7 @@
 import { secp256k1 } from "@noble/curves/secp256k1.js";
 import { hkdf } from "@noble/hashes/hkdf.js";
 import { sha256 } from "@noble/hashes/sha2.js";
+import { hexToBytes } from "./cryptoUtils";
 
 const AES_KEY_LEN = 32; // AES-256
 const TAG_LEN = 16;     // AES-GCM authentication tag
@@ -111,14 +112,4 @@ export class DecryptionError extends Error {
   }
 }
 
-// ─── Helpers ───────────────────────────────────────────────────────────────
-
-function hexToBytes(hex: string): Uint8Array {
-  const h = hex.startsWith("0x") ? hex.slice(2) : hex;
-  if (h.length % 2 !== 0) throw new Error(`Invalid hex string: ${hex}`);
-  const bytes = new Uint8Array(h.length / 2);
-  for (let i = 0; i < bytes.length; i++) {
-    bytes[i] = parseInt(h.slice(i * 2, i * 2 + 2), 16);
-  }
-  return bytes;
-}
+// ─── Helpers (hexToBytes imported from cryptoUtils) ────────────────────────

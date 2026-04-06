@@ -2,6 +2,9 @@
 
 import type { CardInfo } from "./types";
 
+/** Canonical zero address — import this instead of redeclaring locally. */
+export const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
+
 export const CHIP_SYMBOL = process.env.NEXT_PUBLIC_CHIP_SYMBOL || "RCHIP";
 
 // Card conversion (0-51 to display)

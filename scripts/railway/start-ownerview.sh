@@ -8,9 +8,19 @@ print_runtime_header "ownerview"
 
 require_env CHAIN_ENV
 require_env RPC_URL
-require_env POKER_TABLE_ADDRESS
 require_env JWT_SECRET
 require_env DEALER_API_KEY
+
+# Accept POKER_TABLE_ADDRESSES (preferred, comma-separated) or legacy POKER_TABLE_ADDRESS.
+if [ -n "${POKER_TABLE_ADDRESSES:-}" ]; then
+  export POKER_TABLE_ADDRESSES
+elif [ -n "${POKER_TABLE_ADDRESS:-}" ]; then
+  echo "[ownerview] WARNING: POKER_TABLE_ADDRESS is deprecated. Use POKER_TABLE_ADDRESSES instead." >&2
+  export POKER_TABLE_ADDRESSES="$POKER_TABLE_ADDRESS"
+else
+  echo "[ownerview] ERROR: POKER_TABLE_ADDRESSES is required." >&2
+  exit 1
+fi
 
 export PORT="${PORT:-3001}"
 export HOLECARD_DATA_DIR="${HOLECARD_DATA_DIR:-/data/holecards}"

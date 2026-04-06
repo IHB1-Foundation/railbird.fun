@@ -27,6 +27,12 @@ if (JWT_SECRET.length < 32) {
 // Supports POKER_TABLE_ADDRESSES (comma-separated, preferred) or legacy POKER_TABLE_ADDRESS.
 const RPC_URL = process.env.RPC_URL;
 
+if (process.env.POKER_TABLE_ADDRESS && !process.env.POKER_TABLE_ADDRESSES) {
+  logger.warn(
+    "POKER_TABLE_ADDRESS is deprecated — use POKER_TABLE_ADDRESSES (comma-separated) instead. " +
+    "Support for the singular form will be removed in a future release."
+  );
+}
 const _rawAddresses = process.env.POKER_TABLE_ADDRESSES || process.env.POKER_TABLE_ADDRESS || "";
 const POKER_TABLE_ADDRESSES: Address[] = _rawAddresses
   .split(",")

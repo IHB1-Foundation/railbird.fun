@@ -39,6 +39,9 @@ dist/
 contracts/out/
 contracts/cache/
 contracts/broadcast/
+
+# Deployment manifests (generated, not committed)
+deployments/*.json
 scripts/nadfun-agents.generated.env
 
 # Persistent data (hole cards, etc.)

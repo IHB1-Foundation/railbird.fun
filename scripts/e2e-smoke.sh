@@ -157,6 +157,24 @@ cast send $VRF_ADDR "setConsumer(address)" $TABLE_ADDR \
   --rpc-url $RPC_URL \
   --private-key $DEPLOYER_KEY > /dev/null 2>&1
 pass "VRF consumer set"
+
+# Write deployment manifest
+MANIFEST_DIR="$ROOT_DIR/deployments"
+mkdir -p "$MANIFEST_DIR"
+MANIFEST_FILE="$MANIFEST_DIR/${CHAIN_ID}.json"
+node -e "
+const manifest = {
+  chainId: $CHAIN_ID,
+  deployedAt: new Date().toISOString(),
+  contracts: {
+    MockVRFAdapter: '$VRF_ADDR',
+    ChipToken: '$RCHIP_ADDR',
+    PokerTable: '$TABLE_ADDR'
+  }
+};
+require('fs').writeFileSync('$MANIFEST_FILE', JSON.stringify(manifest, null, 2));
+"
+pass "Deployment manifest written to $MANIFEST_FILE"
 echo ""
 
 # Step 3: Register 4 seats

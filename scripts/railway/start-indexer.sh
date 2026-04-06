@@ -8,8 +8,18 @@ print_runtime_header "indexer"
 
 require_env CHAIN_ENV
 require_env RPC_URL
-require_env POKER_TABLE_ADDRESS
 require_env PLAYER_REGISTRY_ADDRESS
+
+# Accept POKER_TABLE_ADDRESSES (preferred, comma-separated) or legacy POKER_TABLE_ADDRESS.
+if [ -n "${POKER_TABLE_ADDRESSES:-}" ]; then
+  export POKER_TABLE_ADDRESSES
+elif [ -n "${POKER_TABLE_ADDRESS:-}" ]; then
+  echo "[indexer] WARNING: POKER_TABLE_ADDRESS is deprecated. Use POKER_TABLE_ADDRESSES instead." >&2
+  export POKER_TABLE_ADDRESSES="$POKER_TABLE_ADDRESS"
+else
+  echo "[indexer] ERROR: POKER_TABLE_ADDRESSES is required." >&2
+  exit 1
+fi
 
 hydrate_db_env() {
   export DB_HOST="${DB_HOST:-${PGHOST:-}}"

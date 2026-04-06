@@ -265,6 +265,18 @@ contract PokerTable {
     /// @notice Emitted when dealer address is updated
     event DealerUpdated(address indexed oldDealer, address indexed newDealer);
 
+    /// @notice Emitted when the table is paused
+    event TablePaused(address indexed by);
+
+    /// @notice Emitted when the table is unpaused
+    event TableUnpaused(address indexed by);
+
+    /// @notice Emitted when an emergency withdrawal is requested (starts timelock)
+    event EmergencyWithdrawRequested(uint8 indexed seatIndex, uint256 unlockAt);
+
+    /// @notice Emitted when an emergency withdrawal is executed
+    event EmergencyWithdrawExecuted(uint8 indexed seatIndex, address indexed recipient, uint256 amount);
+
     // ============ State Variables ============
     uint256 public tableId;
     uint256 public smallBlind;
@@ -323,6 +335,14 @@ contract PokerTable {
     address public admin;
     /// @notice Authorized dealer address — the only address that may submit hole commits and seed commits.
     address public dealer;
+
+    // ============ Pause / Emergency State ============
+    /// @notice When true, new hands cannot be started but settlements and withdrawals proceed.
+    bool public paused;
+    /// @notice Emergency withdrawal timelock delay (7 days).
+    uint256 public constant EMERGENCY_TIMELOCK = 7 days;
+    /// @notice Per-seat emergency withdrawal request timestamp. 0 = not requested.
+    mapping(uint8 => uint256) public emergencyWithdrawRequestedAt;
 
     // ============ Modifiers ============
     function _checkOperator(uint8 seatIndex) internal view {
@@ -385,6 +405,11 @@ contract PokerTable {
         _;
     }
 
+    modifier whenNotPaused() {
+        require(!paused, "Table paused");
+        _;
+    }
+
     // ============ Constructor ============
     constructor(
         uint256 _tableId,
@@ -438,6 +463,69 @@ contract PokerTable {
         require(_newDealer != address(0), "Invalid dealer");
         emit DealerUpdated(dealer, _newDealer);
         dealer = _newDealer;
+    }
+
+    /// @notice Pause the table — prevents new hands from starting.
+    /// @dev Existing hands continue to run and settle normally.
+    function pause() external onlyAdmin {
+        require(!paused, "Already paused");
+        paused = true;
+        emit TablePaused(msg.sender);
+    }
+
+    /// @notice Resume normal operation after a pause.
+    function unpause() external onlyAdmin {
+        require(paused, "Not paused");
+        paused = false;
+        emit TableUnpaused(msg.sender);
+    }
+
+    /**
+     * @notice Request an emergency withdrawal for a seat (starts 7-day timelock).
+     * @dev May only be called by the seat owner. Table must be paused or stuck
+     *      (no active hand progressing for more than the action timeout).
+     * @param seatIndex Seat to withdraw from.
+     */
+    function requestEmergencyWithdraw(uint8 seatIndex) external {
+        require(seatIndex < numSeats, "Invalid seat");
+        require(seats[seatIndex].owner == msg.sender, "Not seat owner");
+        require(seats[seatIndex].stack > 0, "Nothing to withdraw");
+        require(
+            paused ||
+            (actionDeadline > 0 && block.timestamp > actionDeadline + EMERGENCY_TIMELOCK),
+            "Table not stuck or paused"
+        );
+        require(emergencyWithdrawRequestedAt[seatIndex] == 0, "Already requested");
+
+        uint256 unlockAt = block.timestamp + EMERGENCY_TIMELOCK;
+        emergencyWithdrawRequestedAt[seatIndex] = block.timestamp;
+        emit EmergencyWithdrawRequested(seatIndex, unlockAt);
+    }
+
+    /**
+     * @notice Execute a previously requested emergency withdrawal after the timelock.
+     * @param seatIndex Seat to withdraw from.
+     * @param recipient Address to receive the chips.
+     */
+    function executeEmergencyWithdraw(uint8 seatIndex, address recipient) external {
+        require(seatIndex < numSeats, "Invalid seat");
+        require(seats[seatIndex].owner == msg.sender, "Not seat owner");
+        require(emergencyWithdrawRequestedAt[seatIndex] > 0, "Not requested");
+        require(
+            block.timestamp >= emergencyWithdrawRequestedAt[seatIndex] + EMERGENCY_TIMELOCK,
+            "Timelock not expired"
+        );
+        require(recipient != address(0), "Invalid recipient");
+
+        uint256 amount = seats[seatIndex].stack;
+        require(amount > 0, "Nothing to withdraw");
+
+        // Clear state before transfer
+        seats[seatIndex].stack = 0;
+        emergencyWithdrawRequestedAt[seatIndex] = 0;
+
+        address(chipToken).safeTransfer(recipient, amount);
+        emit EmergencyWithdrawExecuted(seatIndex, recipient, amount);
     }
 
     // ============ Seat Management ============
@@ -698,7 +786,7 @@ contract PokerTable {
     /**
      * @notice Start a new hand. Can be called by anyone when conditions are met.
      */
-    function startHand() external {
+    function startHand() external whenNotPaused {
         require(
             gameState == GameState.WAITING_FOR_SEATS || gameState == GameState.SETTLED,
             "Cannot start hand now"

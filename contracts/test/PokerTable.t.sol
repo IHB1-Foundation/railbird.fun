@@ -3335,6 +3335,131 @@ contract PokerTableTest is Test {
     }
 }
 
+// ============ Pause & Emergency Tests ============
+
+contract PauseEmergencyTest is Test {
+    PokerTable public pokerTable;
+    MockVRFAdapter public mockVRF;
+    ChipToken public chipToken;
+
+    address public owner1 = address(0x1);
+    address public owner2 = address(0x2);
+    address public admin = address(this); // test contract is admin
+
+    uint256 constant SMALL_BLIND = 10;
+    uint256 constant BIG_BLIND = 20;
+    uint256 constant BUY_IN = 1000;
+
+    function setUp() public {
+        mockVRF = new MockVRFAdapter();
+        chipToken = new ChipToken("TestChip", "TCHIP");
+        pokerTable = new PokerTable(
+            1, SMALL_BLIND, BIG_BLIND, address(mockVRF), address(chipToken),
+            address(0), 30 minutes, 5 minutes, 10 minutes, 2, address(this)
+        );
+        chipToken.mint(owner1, BUY_IN * 100);
+        chipToken.mint(owner2, BUY_IN * 100);
+    }
+
+    function _registerSeats() internal {
+        vm.prank(owner1);
+        chipToken.approve(address(pokerTable), BUY_IN);
+        vm.prank(owner1);
+        pokerTable.registerSeat(0, owner1, owner1, BUY_IN);
+
+        vm.prank(owner2);
+        chipToken.approve(address(pokerTable), BUY_IN);
+        vm.prank(owner2);
+        pokerTable.registerSeat(1, owner2, owner2, BUY_IN);
+    }
+
+    // --- Pause Tests ---
+
+    function test_Pause_BlocksStartHand() public {
+        _registerSeats();
+        pokerTable.pause();
+        assertTrue(pokerTable.paused(), "Table should be paused");
+
+        vm.expectRevert("Table paused");
+        pokerTable.startHand();
+    }
+
+    function test_Pause_RevertIfNotAdmin() public {
+        vm.prank(address(0xBEEF));
+        vm.expectRevert("Not admin");
+        pokerTable.pause();
+    }
+
+    function test_Unpause_RestoresStartHand() public {
+        _registerSeats();
+        pokerTable.pause();
+        pokerTable.unpause();
+        assertFalse(pokerTable.paused(), "Table should be unpaused");
+
+        // Should be able to start a hand
+        pokerTable.startHand();
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.WAITING_VRF_HOLECARDS));
+    }
+
+    function test_Pause_AlreadyPausedReverts() public {
+        pokerTable.pause();
+        vm.expectRevert("Already paused");
+        pokerTable.pause();
+    }
+
+    function test_Unpause_NotPausedReverts() public {
+        vm.expectRevert("Not paused");
+        pokerTable.unpause();
+    }
+
+    // --- Emergency Withdraw Tests ---
+
+    function test_EmergencyWithdraw_WhenPaused() public {
+        _registerSeats();
+        pokerTable.pause();
+
+        // Request emergency withdraw
+        vm.prank(owner1);
+        vm.expectEmit(true, false, false, false);
+        emit PokerTable.EmergencyWithdrawRequested(0, block.timestamp + 7 days);
+        pokerTable.requestEmergencyWithdraw(0);
+
+        assertEq(pokerTable.emergencyWithdrawRequestedAt(0), block.timestamp);
+
+        // Attempt before timelock — should revert
+        vm.prank(owner1);
+        vm.expectRevert("Timelock not expired");
+        pokerTable.executeEmergencyWithdraw(0, owner1);
+
+        // Advance past timelock
+        vm.warp(block.timestamp + 7 days + 1);
+
+        uint256 balanceBefore = chipToken.balanceOf(owner1);
+        vm.prank(owner1);
+        pokerTable.executeEmergencyWithdraw(0, owner1);
+
+        assertEq(chipToken.balanceOf(owner1) - balanceBefore, BUY_IN, "Owner1 should receive full buy-in");
+        assertEq(pokerTable.getSeat(0).stack, 0, "Stack should be 0 after withdraw");
+    }
+
+    function test_EmergencyWithdraw_RevertIfNotSeatOwner() public {
+        _registerSeats();
+        pokerTable.pause();
+
+        vm.prank(address(0xBEEF));
+        vm.expectRevert("Not seat owner");
+        pokerTable.requestEmergencyWithdraw(0);
+    }
+
+    function test_EmergencyWithdraw_RevertIfTableNotStuckOrPaused() public {
+        _registerSeats();
+        // Table is active (WAITING_FOR_SEATS), not paused, not stuck
+        vm.prank(owner1);
+        vm.expectRevert("Table not stuck or paused");
+        pokerTable.requestEmergencyWithdraw(0);
+    }
+}
+
 /// @dev Configurable mock for IKYCSBTChecker used in KYC gate tests.
 contract MockKYCSBT {
     mapping(address => bool) private _humans;

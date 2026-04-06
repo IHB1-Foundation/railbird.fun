@@ -128,6 +128,8 @@ export interface SeatResponse {
   stack: string;
   isActive: boolean;
   currentBet: string;
+  /** Agent token address, if the seat owner is a registered agent. */
+  tokenAddress: string | null;
 }
 
 export interface HandResponse {

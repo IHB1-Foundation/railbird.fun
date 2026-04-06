@@ -726,6 +726,7 @@ function formatSeatResponse(seat: any): SeatResponse {
     stack: seat.stack,
     isActive: seat.is_active,
     currentBet: seat.current_bet,
+    tokenAddress: seat.token_address ?? null,
   };
 }
 

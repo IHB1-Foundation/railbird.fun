@@ -42,20 +42,33 @@ export function formatCards(cards: number[]): string {
 }
 
 // Format MON amount (wei to display)
+// Uses BigInt arithmetic to preserve precision for large values (>= ~9007 MON).
 export function formatMon(wei: string | bigint): string {
+  const WEI = 10n ** 18n;
   const value = typeof wei === "string" ? BigInt(wei) : wei;
-  const formatted = Number(value) / 1e18;
+  const whole = value / WEI;
+  const frac = value < 0n ? -((-value) % WEI) : value % WEI;
 
-  if (formatted >= 1000) {
-    return `${(formatted / 1000).toFixed(2)}K`;
+  // Build decimal string without floating-point rounding errors
+  const fracStr = frac.toString().replace("-", "").padStart(18, "0");
+
+  if (whole >= 1_000_000n) {
+    const m = Number(whole) / 1_000_000;
+    return `${m.toFixed(2)}M`;
   }
-  if (formatted >= 1) {
-    return formatted.toFixed(2);
+  if (whole >= 1_000n) {
+    const k = Number(whole) / 1_000;
+    return `${k.toFixed(2)}K`;
   }
-  if (formatted >= 0.001) {
-    return formatted.toFixed(4);
+  if (whole >= 1n) {
+    return `${whole}.${fracStr.slice(0, 2)}`;
   }
-  return formatted.toFixed(8);
+  if (value >= WEI / 1_000n) {
+    // 0.001 ≤ x < 1 — 4 decimal places
+    return `0.${fracStr.slice(0, 4)}`;
+  }
+  // < 0.001 — 8 decimal places (matching original behaviour)
+  return `0.${fracStr.slice(0, 8)}`;
 }
 
 export function formatChips(amount: string | bigint): string {

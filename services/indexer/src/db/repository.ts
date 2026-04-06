@@ -178,7 +178,10 @@ export async function updateSeatStack(
 
 export async function getSeats(tableId: bigint): Promise<Seat[]> {
   const result = await query<Seat>(
-    `SELECT * FROM seats WHERE table_id = $1 ORDER BY seat_index`,
+    `SELECT s.*, a.token_address
+     FROM seats s
+     LEFT JOIN agents a ON a.owner_address = s.owner_address
+     WHERE s.table_id = $1 ORDER BY s.seat_index`,
     [tableId.toString()]
   );
   return result.rows;

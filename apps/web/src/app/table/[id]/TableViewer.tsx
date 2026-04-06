@@ -548,12 +548,14 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
                     This Round: {formatChips(seat.currentBet)} {CHIP_SYMBOL}
                   </div>
                   <div className="player-actions">
-                    <Link
-                      href={`/agent/${seat.ownerAddress}`}
-                      className="inline-link"
-                    >
-                      View Agent
-                    </Link>
+                    {seat.tokenAddress ? (
+                      <Link
+                        href={`/agent/${seat.tokenAddress}`}
+                        className="inline-link"
+                      >
+                        View Agent
+                      </Link>
+                    ) : null}
                   </div>
                 </>
               ) : (

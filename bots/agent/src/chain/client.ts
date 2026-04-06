@@ -275,7 +275,7 @@ export class ChainClient {
         actorSeat: (handInfo as readonly [bigint, bigint, bigint, number, number])[3],
         state: (handInfo as readonly [bigint, bigint, bigint, number, number])[4] as GameState,
       },
-      communityCards: (communityCardsRaw as number[]).map(Number),
+      communityCards: (communityCardsRaw as readonly number[]).map(Number),
     };
   }
 

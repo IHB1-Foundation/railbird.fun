@@ -95,6 +95,8 @@ export class KeeperBot {
   private currentBackoffMs: number = 0;
   private tableId: bigint | null = null;
   private commitSyncedHands: Set<bigint> = new Set();
+  // Tracks hands where /dealer/deal has already been POSTed (avoid redundant requests)
+  private dealtHands: Set<bigint> = new Set();
 
   constructor(config: KeeperBotConfig) {
     this.config = config;
@@ -483,17 +485,26 @@ export class KeeperBot {
     const handIdStr = handId.toString();
     const authHeader = { Authorization: `Bearer ${this.config.dealerApiKey!}` };
 
-    const dealRes = await fetchWithTimeout(
-      `${baseUrl}/dealer/deal`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json", ...authHeader },
-        body: JSON.stringify({ tableId, handId: handIdStr }),
+    // Only POST /dealer/deal for hands that haven't been dealt yet
+    if (!this.dealtHands.has(handId)) {
+      const dealRes = await fetchWithTimeout(
+        `${baseUrl}/dealer/deal`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json", ...authHeader },
+          body: JSON.stringify({ tableId, handId: handIdStr }),
+        }
+      );
+      if (!dealRes.ok && dealRes.status !== 409) {
+        const body = await dealRes.text().catch(() => "");
+        throw new Error(`dealer/deal failed (${dealRes.status}): ${body}`);
       }
-    );
-    if (!dealRes.ok && dealRes.status !== 409) {
-      const body = await dealRes.text().catch(() => "");
-      throw new Error(`dealer/deal failed (${dealRes.status}): ${body}`);
+      this.dealtHands.add(handId);
+      // Prune dealtHands to the last 100 entries
+      if (this.dealtHands.size > 100) {
+        const oldest = this.dealtHands.values().next().value;
+        if (oldest !== undefined) this.dealtHands.delete(oldest);
+      }
     }
 
     const commitmentsRes = await fetchWithTimeout(

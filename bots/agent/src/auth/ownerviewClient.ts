@@ -159,8 +159,8 @@ export class OwnerViewClient {
    */
   isAuthenticated(): boolean {
     if (!this.token) return false;
-    // Add 60 seconds buffer for safety
-    return Date.now() < (this.tokenExpiresAt - 60) * 1000;
+    // tokenExpiresAt is in ms; subtract 60s buffer
+    return Date.now() < this.tokenExpiresAt - 60_000;
   }
 
   /**

@@ -21,16 +21,28 @@ if (JWT_SECRET.length < 32) {
   process.exit(1);
 }
 
-// RPC_URL and POKER_TABLE_ADDRESS: required in non-local environments
+// RPC_URL + table addresses: required in non-local environments
+// Supports POKER_TABLE_ADDRESSES (comma-separated, preferred) or legacy POKER_TABLE_ADDRESS.
 const RPC_URL = process.env.RPC_URL;
-const POKER_TABLE_ADDRESS = process.env.POKER_TABLE_ADDRESS as Address | undefined;
 
-if (!isLocal && (!RPC_URL || !POKER_TABLE_ADDRESS)) {
+const _rawAddresses = process.env.POKER_TABLE_ADDRESSES || process.env.POKER_TABLE_ADDRESS || "";
+const POKER_TABLE_ADDRESSES: Address[] = _rawAddresses
+  .split(",")
+  .map(s => s.trim())
+  .filter(Boolean) as Address[];
+// Primary address used by chain service (first in list)
+const POKER_TABLE_ADDRESS: Address | undefined = POKER_TABLE_ADDRESSES[0];
+
+if (!isLocal && (!RPC_URL || POKER_TABLE_ADDRESSES.length === 0)) {
   logger.error(
     { env: CHAIN_ENV },
-    "RPC_URL and POKER_TABLE_ADDRESS are required. OwnerView cannot verify seat ownership without chain access."
+    "RPC_URL and POKER_TABLE_ADDRESSES are required. OwnerView cannot verify seat ownership without chain access."
   );
   process.exit(1);
+}
+
+if (POKER_TABLE_ADDRESSES.length > 1) {
+  logger.info({ tableCount: POKER_TABLE_ADDRESSES.length, tables: POKER_TABLE_ADDRESSES }, "Multiple poker table addresses configured");
 }
 
 // DEALER_API_KEY: required in non-local environments to protect dealer endpoints

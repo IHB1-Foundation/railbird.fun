@@ -1,6 +1,6 @@
 // REST API routes
 
-import { Router, type Request, type Response } from "express";
+import { Router, type Request, type Response, type NextFunction } from "express";
 import type { Router as RouterType } from "express";
 import {
   getTable,
@@ -33,6 +33,32 @@ import type {
   LeaderboardMetric,
   LeaderboardPeriod,
 } from "../db/types.js";
+
+// ============ Simple in-memory rate limiter ============
+interface RateLimitBucket { count: number; resetAt: number }
+const _rateLimitStore = new Map<string, RateLimitBucket>();
+
+function makeRateLimiter(maxPerMin: number) {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    const ip = (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0].trim() ?? req.socket.remoteAddress ?? "unknown";
+    const key = `${ip}`;
+    const now = Date.now();
+    const bucket = _rateLimitStore.get(key);
+    if (!bucket || now >= bucket.resetAt) {
+      _rateLimitStore.set(key, { count: 1, resetAt: now + 60_000 });
+    } else {
+      bucket.count++;
+      if (bucket.count > maxPerMin) {
+        res.status(429).json({ error: "Too many requests", code: "RATE_LIMITED" });
+        return;
+      }
+    }
+    next();
+  };
+}
+
+const globalRateLimit = makeRateLimiter(100);
+const leaderboardRateLimit = makeRateLimiter(10);
 
 export const router: RouterType = Router();
 const CONFIGURED_TABLE_ADDRESSES = new Set(
@@ -201,6 +227,9 @@ function buildTokenSvg(profile: TokenProfile): string {
 }
 
 // ============ Health Check ============
+
+// Apply global rate limit to all routes
+router.use(globalRateLimit);
 
 router.get("/health", async (_req, res) => {
   const wsStats = getWsManager().getStats();
@@ -531,7 +560,7 @@ function getPeriodStartDate(period: LeaderboardPeriod): Date | null {
   }
 }
 
-router.get("/leaderboard", async (req, res) => {
+router.get("/leaderboard", leaderboardRateLimit, async (req, res) => {
   try {
     // Parse and validate query params
     const metric = (req.query.metric as string || "roi").toLowerCase() as LeaderboardMetric;

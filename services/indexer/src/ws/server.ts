@@ -9,21 +9,67 @@ import type { WsConnectedData, WsErrorData } from "./types.js";
 export interface WsServerConfig {
   httpServer: Server;
   path?: string;
+  /** Max concurrent connections per IP (default 10) */
+  maxConnectionsPerIp?: number;
+  /** Heartbeat interval in ms (default 30000) */
+  heartbeatIntervalMs?: number;
+  /** Allowed origins (CSV); empty = allow all */
+  allowedOrigins?: string;
 }
 
+const MAX_CONNECTIONS_PER_IP = 10;
+const HEARTBEAT_INTERVAL_MS = 30_000;
+const MISSED_PONGS_LIMIT = 2;
+
 export function createWsServer(config: WsServerConfig): WebSocketServer {
+  const maxConnsPerIp = config.maxConnectionsPerIp ?? MAX_CONNECTIONS_PER_IP;
+  const heartbeatMs = config.heartbeatIntervalMs ?? HEARTBEAT_INTERVAL_MS;
+  const allowedOrigins = config.allowedOrigins
+    ? new Set(config.allowedOrigins.split(",").map(s => s.trim()).filter(Boolean))
+    : null;
+
   const wss = new WebSocketServer({
     server: config.httpServer,
     path: config.path ?? "/ws",
   });
 
+  // Track active connections per IP
+  const connsByIp = new Map<string, Set<WebSocket>>();
+
+  function getClientIp(req: IncomingMessage): string {
+    const fwd = req.headers["x-forwarded-for"];
+    if (typeof fwd === "string") return fwd.split(",")[0].trim();
+    return req.socket.remoteAddress ?? "unknown";
+  }
+
   wss.on("connection", (ws: WebSocket, req: IncomingMessage) => {
+    // Origin validation
+    if (allowedOrigins) {
+      const origin = req.headers.origin ?? "";
+      if (!allowedOrigins.has(origin)) {
+        sendError(ws, "FORBIDDEN_ORIGIN", "Origin not allowed");
+        ws.close(4403, "Forbidden origin");
+        return;
+      }
+    }
+
+    const ip = getClientIp(req);
+    const ipConns = connsByIp.get(ip) ?? new Set<WebSocket>();
+    if (ipConns.size >= maxConnsPerIp) {
+      sendError(ws, "TOO_MANY_CONNECTIONS", `Max ${maxConnsPerIp} connections per IP`);
+      ws.close(4029, "Too many connections");
+      return;
+    }
+    ipConns.add(ws);
+    connsByIp.set(ip, ipConns);
+
     const url = req.url ?? "";
     const tableId = parseTableId(url);
 
     if (!tableId) {
       sendError(ws, "INVALID_PATH", "Invalid WebSocket path. Use /ws/tables/:id");
       ws.close(4000, "Invalid path");
+      ipConns.delete(ws);
       return;
     }
 
@@ -32,6 +78,24 @@ export function createWsServer(config: WsServerConfig): WebSocketServer {
 
     // Send connected confirmation
     sendConnected(ws, tableId);
+
+    // Heartbeat: ping every heartbeatMs, close if missed MISSED_PONGS_LIMIT pongs
+    let missedPongs = 0;
+    const heartbeat = setInterval(() => {
+      if (ws.readyState !== WebSocket.OPEN) {
+        clearInterval(heartbeat);
+        return;
+      }
+      if (missedPongs >= MISSED_PONGS_LIMIT) {
+        clearInterval(heartbeat);
+        ws.terminate();
+        return;
+      }
+      missedPongs++;
+      ws.ping();
+    }, heartbeatMs);
+
+    ws.on("pong", () => { missedPongs = 0; });
 
     // Handle client messages (ping/pong, etc.)
     ws.on("message", (data) => {
@@ -45,12 +109,18 @@ export function createWsServer(config: WsServerConfig): WebSocketServer {
 
     // Handle disconnect
     ws.on("close", () => {
+      clearInterval(heartbeat);
+      ipConns.delete(ws);
+      if (ipConns.size === 0) connsByIp.delete(ip);
       manager.unsubscribe(tableId, ws);
     });
 
     // Handle errors
     ws.on("error", (error) => {
       console.error(`[WS] Client error:`, error);
+      clearInterval(heartbeat);
+      ipConns.delete(ws);
+      if (ipConns.size === 0) connsByIp.delete(ip);
       manager.unsubscribe(tableId, ws);
     });
   });

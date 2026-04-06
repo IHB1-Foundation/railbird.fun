@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync, readdirSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve, sep } from "node:path";
 import type { HoleCardRecord } from "./types.js";
 
 /**
@@ -44,7 +44,17 @@ export class HoleCardStore {
   }
 
   private handFilePath(tableId: string, handId: string): string {
-    return join(this.dataDir!, `${tableId}_${handId}.json`);
+    // Reject inputs containing path separators or traversal sequences
+    if (!tableId || !handId || /[/\\.]/.test(tableId) || /[/\\.]/.test(handId)) {
+      throw new Error(`Invalid tableId or handId: path traversal not allowed`);
+    }
+    const resolved = resolve(this.dataDir!, `${tableId}_${handId}.json`);
+    // Ensure the resolved path stays within dataDir
+    const dataDirResolved = resolve(this.dataDir!) + sep;
+    if (!resolved.startsWith(dataDirResolved)) {
+      throw new Error(`Path traversal detected for tableId=${tableId} handId=${handId}`);
+    }
+    return resolved;
   }
 
   private readHandFile(tableId: string, handId: string): HoleCardRecord[] {

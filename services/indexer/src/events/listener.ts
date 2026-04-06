@@ -120,6 +120,12 @@ export class EventListener {
 
     console.log(`Resuming from block ${fromBlock}`);
 
+    const CIRCUIT_BREAKER_THRESHOLD = 10;
+    const BACKOFF_BASE_MS = 5_000;
+    const BACKOFF_MAX_MS = 5 * 60_000; // 5 minutes
+    let consecutiveErrors = 0;
+    let backoffMs = BACKOFF_BASE_MS;
+
     while (this.running) {
       try {
         const latestBlock = await this.client.getBlockNumber();
@@ -137,13 +143,32 @@ export class EventListener {
           processedAny = true;
         }
 
+        // Successful iteration — reset error tracking
+        consecutiveErrors = 0;
+        backoffMs = BACKOFF_BASE_MS;
+
         // Wait before next poll only when caught up.
         if (!processedAny) {
           await this.sleep(this.config.pollIntervalMs!);
         }
       } catch (error) {
-        console.error("Error in event listener:", error);
-        await this.sleep(5000); // Back off on error
+        consecutiveErrors++;
+        console.error(
+          { consecutiveErrors, backoffMs, error },
+          "Error in event listener"
+        );
+
+        if (consecutiveErrors >= CIRCUIT_BREAKER_THRESHOLD) {
+          // Circuit breaker: log at elevated severity and hold at max backoff
+          console.error(
+            { consecutiveErrors, maxBackoffMs: BACKOFF_MAX_MS },
+            "CIRCUIT BREAKER: event listener exceeded consecutive error threshold — manual investigation required"
+          );
+        }
+
+        await this.sleep(backoffMs);
+        // Exponential backoff capped at BACKOFF_MAX_MS
+        backoffMs = Math.min(backoffMs * 2, BACKOFF_MAX_MS);
       }
     }
   }

@@ -97,7 +97,24 @@ async function main(): Promise<void> {
       logBlockRange: parseInt(process.env.LOG_BLOCK_RANGE || "90", 10),
     });
 
-    // Start event listener — fail fast on fatal error so the orchestrator can restart
+    // Graceful shutdown — defined before starting the listener so the error
+    // handler can trigger the same cleanup path.
+    let shutdownCalled = false;
+    const shutdown = async (exitCode = 0) => {
+      if (shutdownCalled) return;
+      shutdownCalled = true;
+      logger.info({ exitCode }, "Shutting down...");
+      listener.stop();
+      wss.close();
+      server.close();
+      await closePool();
+      process.exit(exitCode);
+    };
+
+    process.on("SIGINT", () => void shutdown(0));
+    process.on("SIGTERM", () => void shutdown(0));
+
+    // Start event listener — on fatal error, perform graceful cleanup before exit
     setListenerStatus("starting");
     listener.start()
       .then(() => {
@@ -105,28 +122,18 @@ async function main(): Promise<void> {
       })
       .catch((err: unknown) => {
         const reason = err instanceof Error ? err.message : String(err);
-        logger.error({ reason }, "Event listener encountered a fatal error — exiting");
+        logger.error({ reason }, "Event listener encountered a fatal error — shutting down");
         setListenerStatus("failed", reason);
-        process.exit(1);
+        void shutdown(1);
       });
-
-    // Graceful shutdown
-    const shutdown = async () => {
-      logger.info("Shutting down...");
-      listener.stop();
-      wss.close();
-      server.close();
-      await closePool();
-      process.exit(0);
-    };
-
-    process.on("SIGINT", shutdown);
-    process.on("SIGTERM", shutdown);
   } else {
     // Only reachable in local mode (non-local already exited above)
     logger.info("Chain config not provided - event listener disabled (local dev mode)");
 
+    let shutdownCalled = false;
     const shutdown = async () => {
+      if (shutdownCalled) return;
+      shutdownCalled = true;
       logger.info("Shutting down...");
       wss.close();
       server.close();
@@ -134,8 +141,8 @@ async function main(): Promise<void> {
       process.exit(0);
     };
 
-    process.on("SIGINT", shutdown);
-    process.on("SIGTERM", shutdown);
+    process.on("SIGINT", () => void shutdown());
+    process.on("SIGTERM", () => void shutdown());
   }
 }
 

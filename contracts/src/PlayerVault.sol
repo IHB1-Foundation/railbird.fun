@@ -2,14 +2,33 @@
 pragma solidity ^0.8.24;
 
 import "./interfaces/IPlayerVault.sol";
+import "./interfaces/IERC20.sol";
+import "./interfaces/INadfunRouter.sol";
 
 /**
  * @title PlayerVault
- * @notice Simple vault that holds native KAIA for a poker agent.
- * @dev Holds native token, provides buy-in funding, receives settlements, emits snapshots.
+ * @notice Vault that holds native MON for a poker agent and executes per-hand
+ *         NAV-accretive rebalancing via the nad.fun bonding-curve router.
+ *
+ * Treasury accounting (PROJECT.md §7.1):
+ *   A = external assets  = address(this).balance - totalEscrow
+ *   T = agent token total supply
+ *   B = vault balance of own token (contra-equity, NOT an asset)
+ *   N = outstanding shares = T - B
+ *   P = NAV per share = A / N  (in wei-per-token-wei, scaled ×1e18 for precision)
+ *
+ * Rebalancing constraints (PROJECT.md §7.2):
+ *   Buy:  q_buy  = monIn  / tokenOut ≤ P  →  monIn  × N ≤ A × tokenOut
+ *   Sell: q_sell = monOut / tokenIn  ≥ P  →  monOut × N ≥ A × tokenIn
+ *   If either condition is violated the transaction reverts.
  */
 contract PlayerVault is IPlayerVault {
-    // ============ State Variables ============
+    // ─── Constants ────────────────────────────────────────────────────────────
+
+    uint256 private constant MAX_BPS = 10_000;
+    uint256 private constant REBALANCE_DEADLINE_BUFFER = 5 minutes;
+
+    // ─── State Variables ──────────────────────────────────────────────────────
 
     address public owner;
     mapping(address => bool) public authorizedTables;
@@ -21,7 +40,17 @@ contract PlayerVault is IPlayerVault {
     bool public initialized;
     bool private _entered;
 
-    // ============ Modifiers ============
+    // Rebalancing config
+    address public agentToken;
+    address public nadfunRouter;
+    /// @notice Max basis points of external assets that may be spent in a single buy.
+    uint256 public rebalanceMaxMonBps;
+    /// @notice Max basis points of treasury-owned tokens that may be sold in a single sell.
+    uint256 public rebalanceMaxTokenBps;
+    /// @notice Hand ID for which rebalancing was last executed (at most once per hand).
+    uint256 public lastRebalanceHandId;
+
+    // ─── Modifiers ────────────────────────────────────────────────────────────
 
     modifier onlyOwner() {
         require(msg.sender == owner, "Not owner");
@@ -40,7 +69,7 @@ contract PlayerVault is IPlayerVault {
         _entered = false;
     }
 
-    // ============ Constructor ============
+    // ─── Constructor ──────────────────────────────────────────────────────────
 
     constructor(address _owner) {
         require(_owner != address(0), "Invalid owner");
@@ -53,13 +82,13 @@ contract PlayerVault is IPlayerVault {
         emit VaultInitialized(owner, getExternalAssets());
     }
 
-    // ============ Receive ============
+    // ─── Receive ──────────────────────────────────────────────────────────────
 
     receive() external payable {
         emit Deposited(msg.sender, msg.value);
     }
 
-    // ============ External Functions ============
+    // ─── External Functions ───────────────────────────────────────────────────
 
     function deposit() external payable override {
         require(msg.value > 0, "Zero deposit");
@@ -115,7 +144,160 @@ contract PlayerVault is IPlayerVault {
         }
     }
 
-    // ============ Admin Functions ============
+    // ─── Rebalancing ──────────────────────────────────────────────────────────
+
+    /**
+     * @notice Configure the agent token and nad.fun router for rebalancing.
+     * @param _agentToken       ERC-20 agent token address.
+     * @param _router           nad.fun bonding-curve router address.
+     * @param _maxMonBps        Max buy size in basis points of external assets (0–10000).
+     * @param _maxTokenBps      Max sell size in basis points of vault-owned tokens (0–10000).
+     */
+    function setRebalanceConfig(
+        address _agentToken,
+        address _router,
+        uint256 _maxMonBps,
+        uint256 _maxTokenBps
+    ) external onlyOwner {
+        require(_agentToken != address(0), "Invalid token");
+        require(_router != address(0), "Invalid router");
+        require(_maxMonBps <= MAX_BPS, "maxMonBps > 100%");
+        require(_maxTokenBps <= MAX_BPS, "maxTokenBps > 100%");
+        agentToken = _agentToken;
+        nadfunRouter = _router;
+        rebalanceMaxMonBps = _maxMonBps;
+        rebalanceMaxTokenBps = _maxTokenBps;
+    }
+
+    /**
+     * @notice Execute a NAV-accretive buy of the agent token using external assets.
+     *
+     * Constraint enforced on-chain:
+     *   monIn × N ≤ A × tokenOut   (equivalent to q_buy ≤ P)
+     *
+     * @param handId      Must equal the most recently settled hand (per-hand policy).
+     * @param monIn       Native MON to spend (must satisfy size limit).
+     * @param minTokenOut Minimum tokens to accept (slippage guard passed to router).
+     */
+    function rebalanceBuy(
+        uint256 handId,
+        uint256 monIn,
+        uint256 minTokenOut
+    ) external onlyOwner nonReentrant {
+        _checkRebalanceEligibility(handId);
+        require(monIn > 0, "Zero monIn");
+
+        address token = agentToken;
+        address router = nadfunRouter;
+        require(token != address(0), "Agent token not set");
+        require(router != address(0), "Router not set");
+
+        // Snapshot NAV state before trade.
+        uint256 A = getExternalAssets();
+        uint256 B = IERC20(token).balanceOf(address(this));
+        uint256 T = IERC20(token).totalSupply();
+        require(T > B, "No outstanding shares");
+        uint256 N = T - B;
+
+        // Enforce size limit: monIn ≤ A × rebalanceMaxMonBps / MAX_BPS.
+        require(A > 0, "No external assets");
+        require(monIn <= (A * rebalanceMaxMonBps) / MAX_BPS, "Buy exceeds size limit");
+        require(monIn <= A, "monIn exceeds available assets");
+
+        // Execute the buy via nad.fun router.
+        uint256 tokensBefore = B;
+        INadfunBondingRouter(router).buyTokens{value: monIn}(
+            token,
+            minTokenOut,
+            block.timestamp + REBALANCE_DEADLINE_BUFFER
+        );
+        uint256 tokensAfter = IERC20(token).balanceOf(address(this));
+        uint256 tokenOut = tokensAfter - tokensBefore;
+        require(tokenOut > 0, "No tokens received");
+
+        // Accretive-only check: monIn × N ≤ A × tokenOut  ↔  q_buy ≤ P.
+        require(monIn * N <= A * tokenOut, "Buy would dilute NAV");
+
+        // Mark this hand as rebalanced.
+        lastRebalanceHandId = handId;
+
+        // Emit with scaled NAV (×1e18) so callers can interpret as wei-per-token-wei.
+        uint256 navBefore = (A * 1e18) / N;
+        uint256 A2 = getExternalAssets(); // A − monIn
+        uint256 N2 = N - tokenOut;
+        uint256 navAfter = N2 > 0 ? (A2 * 1e18) / N2 : 0;
+        emit RebalanceBuy(handId, monIn, tokenOut, navBefore, navAfter);
+    }
+
+    /**
+     * @notice Execute a NAV-accretive sell of treasury-owned agent tokens for external assets.
+     *
+     * Constraint enforced on-chain:
+     *   monOut × N ≥ A × tokenIn   (equivalent to q_sell ≥ P)
+     *
+     * @param handId     Must equal the most recently settled hand (per-hand policy).
+     * @param tokenIn    Amount of agent tokens to sell (must satisfy size limit).
+     * @param minMonOut  Minimum MON to accept (slippage guard passed to router).
+     */
+    function rebalanceSell(
+        uint256 handId,
+        uint256 tokenIn,
+        uint256 minMonOut
+    ) external onlyOwner nonReentrant {
+        _checkRebalanceEligibility(handId);
+        require(tokenIn > 0, "Zero tokenIn");
+
+        address token = agentToken;
+        address router = nadfunRouter;
+        require(token != address(0), "Agent token not set");
+        require(router != address(0), "Router not set");
+
+        // Snapshot NAV state before trade.
+        uint256 A = getExternalAssets();
+        uint256 B = IERC20(token).balanceOf(address(this));
+        uint256 T = IERC20(token).totalSupply();
+        require(T > B, "No outstanding shares");
+        uint256 N = T - B;
+
+        // Enforce size limit: tokenIn ≤ B × rebalanceMaxTokenBps / MAX_BPS.
+        require(B > 0, "No treasury tokens");
+        require(tokenIn <= (B * rebalanceMaxTokenBps) / MAX_BPS, "Sell exceeds size limit");
+        require(tokenIn <= B, "tokenIn exceeds vault balance");
+
+        // Approve router for exact amount, reset first to handle non-standard tokens.
+        IERC20(token).approve(router, 0);
+        IERC20(token).approve(router, tokenIn);
+
+        // Execute the sell via nad.fun router.
+        uint256 monBefore = address(this).balance;
+        INadfunBondingRouter(router).sellTokens(
+            token,
+            tokenIn,
+            minMonOut,
+            block.timestamp + REBALANCE_DEADLINE_BUFFER
+        );
+        uint256 monAfter = address(this).balance;
+        require(monAfter > monBefore, "No MON received");
+        uint256 monOut = monAfter - monBefore;
+
+        // Accretive-only check: monOut × N ≥ A × tokenIn  ↔  q_sell ≥ P.
+        require(monOut * N >= A * tokenIn, "Sell would dilute NAV");
+
+        // Reset approval to zero after use.
+        IERC20(token).approve(router, 0);
+
+        // Mark this hand as rebalanced.
+        lastRebalanceHandId = handId;
+
+        // Emit with scaled NAV (×1e18).
+        uint256 navBefore = (A * 1e18) / N;
+        uint256 A2 = getExternalAssets(); // A + monOut
+        uint256 N2 = N + tokenIn;
+        uint256 navAfter = (A2 * 1e18) / N2;
+        emit RebalanceSell(handId, tokenIn, monOut, navBefore, navAfter);
+    }
+
+    // ─── Admin Functions ──────────────────────────────────────────────────────
 
     function authorizeTable(address table) external onlyOwner {
         require(table != address(0), "Invalid table");
@@ -131,7 +313,7 @@ contract PlayerVault is IPlayerVault {
         owner = newOwner;
     }
 
-    // ============ View Functions ============
+    // ─── View Functions ───────────────────────────────────────────────────────
 
     function getExternalAssets() public view override returns (uint256) {
         return address(this).balance > totalEscrow ? address(this).balance - totalEscrow : 0;
@@ -154,25 +336,11 @@ contract PlayerVault is IPlayerVault {
         emit VaultSnapshot(0, getExternalAssets(), cumulativePnl);
     }
 
-    /// @dev Called by the keeper/operator after executing a NAV-accretive buy on nad.fun
-    function recordRebalanceBuy(
-        uint256 handId,
-        uint256 monIn,
-        uint256 tokenOut,
-        uint256 navBefore,
-        uint256 navAfter
-    ) external onlyOwner {
-        emit RebalanceBuy(handId, monIn, tokenOut, navBefore, navAfter);
-    }
+    // ─── Internal Helpers ─────────────────────────────────────────────────────
 
-    /// @dev Called by the keeper/operator after executing a NAV-accretive sell on nad.fun
-    function recordRebalanceSell(
-        uint256 handId,
-        uint256 tokenIn,
-        uint256 monOut,
-        uint256 navBefore,
-        uint256 navAfter
-    ) external onlyOwner {
-        emit RebalanceSell(handId, tokenIn, monOut, navBefore, navAfter);
+    function _checkRebalanceEligibility(uint256 handId) internal view {
+        require(lastSnapshotHandId > 0, "No settled hand yet");
+        require(handId == lastSnapshotHandId, "Not current settled hand");
+        require(handId != lastRebalanceHandId, "Already rebalanced this hand");
     }
 }

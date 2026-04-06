@@ -24,6 +24,9 @@ interface IPlayerVault {
     function withdraw(uint256 amount, address recipient) external;
     function fundBuyIn(address table, uint256 amount) external;
     function onSettlement(uint256 handId, int256 pnl) external;
+    function setRebalanceConfig(address agentToken, address router, uint256 maxMonBps, uint256 maxTokenBps) external;
+    function rebalanceBuy(uint256 handId, uint256 monIn, uint256 minTokenOut) external;
+    function rebalanceSell(uint256 handId, uint256 tokenIn, uint256 minMonOut) external;
     function getExternalAssets() external view returns (uint256);
     function getCumulativePnl() external view returns (int256);
     function getHandCount() external view returns (uint256);

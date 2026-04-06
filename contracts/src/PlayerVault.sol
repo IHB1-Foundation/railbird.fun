@@ -19,6 +19,7 @@ contract PlayerVault is IPlayerVault {
     int256 public cumulativePnl;
     uint256 public handCount;
     bool public initialized;
+    bool private _entered;
 
     // ============ Modifiers ============
 
@@ -30,6 +31,13 @@ contract PlayerVault is IPlayerVault {
     modifier onlyAuthorizedTable() {
         require(authorizedTables[msg.sender], "Not authorized table");
         _;
+    }
+
+    modifier nonReentrant() {
+        require(!_entered, "Reentrant call");
+        _entered = true;
+        _;
+        _entered = false;
     }
 
     // ============ Constructor ============
@@ -58,7 +66,7 @@ contract PlayerVault is IPlayerVault {
         emit Deposited(msg.sender, msg.value);
     }
 
-    function withdraw(uint256 amount, address recipient) external override onlyOwner {
+    function withdraw(uint256 amount, address recipient) external override onlyOwner nonReentrant {
         require(recipient != address(0), "Invalid recipient");
         require(amount > 0, "Zero amount");
         uint256 available = address(this).balance - totalEscrow;
@@ -82,13 +90,18 @@ contract PlayerVault is IPlayerVault {
         require(amount <= tableEscrow[table], "Exceeds escrow");
         tableEscrow[table] -= amount;
         totalEscrow -= amount;
+        emit EscrowReleased(table, amount);
     }
 
     function onSettlement(uint256 handId, int256 pnl) external override onlyAuthorizedTable {
         cumulativePnl += pnl;
         handCount++;
         lastSnapshotHandId = handId;
-        emit SettlementReceived(msg.sender, handId, pnl >= 0 ? uint256(pnl) : 0);
+        if (pnl >= 0) {
+            emit SettlementReceived(msg.sender, handId, uint256(pnl));
+        } else {
+            emit SettlementLoss(msg.sender, handId, uint256(-pnl));
+        }
         emit VaultSnapshot(handId, getExternalAssets(), cumulativePnl);
     }
 
@@ -121,7 +134,7 @@ contract PlayerVault is IPlayerVault {
     // ============ View Functions ============
 
     function getExternalAssets() public view override returns (uint256) {
-        return address(this).balance;
+        return address(this).balance > totalEscrow ? address(this).balance - totalEscrow : 0;
     }
 
     function getAvailableBalance() public view returns (uint256) {

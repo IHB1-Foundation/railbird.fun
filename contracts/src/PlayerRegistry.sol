@@ -89,6 +89,8 @@ contract PlayerRegistry {
         string calldata metaURI
     ) external {
         require(!agents[msg.sender].isRegistered, "Agent already registered");
+        require(vault != address(0), "Invalid vault address");
+        require(table != address(0), "Invalid table address");
 
         address effectiveOperator = operator == address(0) ? msg.sender : operator;
 

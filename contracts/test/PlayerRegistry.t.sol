@@ -52,7 +52,7 @@ contract PlayerRegistryTest is Test {
         vm.prank(agent1);
         registry.registerAgent(vaultAddr1, pokerTable1, operatorAddr1, metaURI1);
         vm.prank(agent2);
-        registry.registerAgent(address(0), address(0), address(0), "");
+        registry.registerAgent(vaultAddr1, pokerTable1, address(0), "");
 
         assertEq(registry.getRegisteredCount(), 2);
         assertEq(registry.getRegisteredAgentAt(0), agent1);

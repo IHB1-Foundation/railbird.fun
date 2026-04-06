@@ -16,6 +16,7 @@ import { secp256k1 } from "@noble/curves/secp256k1.js";
 import { keccak_256 } from "@noble/hashes/sha3.js";
 import { signMessage } from "viem/accounts";
 import { createPublicClient, http, toHex, type Address, type Chain } from "viem";
+import { hexToBytes } from "@playerco/shared";
 
 const DERIVATION_MESSAGE = "Railbird Encryption Key Derivation v1";
 
@@ -126,13 +127,3 @@ export async function ensureEncryptionKeyRegistered(params: {
   return txHash;
 }
 
-// ─── Helpers ───────────────────────────────────────────────────────────────
-
-function hexToBytes(hex: string): Uint8Array {
-  const h = hex.startsWith("0x") ? hex.slice(2) : hex;
-  const bytes = new Uint8Array(h.length / 2);
-  for (let i = 0; i < bytes.length; i++) {
-    bytes[i] = parseInt(h.slice(i * 2, i * 2 + 2), 16);
-  }
-  return bytes;
-}

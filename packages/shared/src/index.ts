@@ -27,3 +27,6 @@ export type { LoggerOptions, LogLevel } from "./logger.js";
 // Circuit breaker
 export { CircuitBreaker, CircuitOpenError } from "./circuitBreaker.js";
 export type { CircuitState, CircuitBreakerOptions } from "./circuitBreaker.js";
+
+// Utilities
+export { hexToBytes, fetchWithTimeout } from "./utils.js";

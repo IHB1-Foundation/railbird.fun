@@ -4,6 +4,7 @@ import { type Address } from "viem";
 import { secp256k1 } from "@noble/curves/secp256k1.js";
 import { hkdf } from "@noble/hashes/hkdf.js";
 import { sha256 } from "@noble/hashes/sha2.js";
+import { hexToBytes, fetchWithTimeout } from "@playerco/shared";
 
 export interface NonceResponse {
   nonce: string;
@@ -50,28 +51,6 @@ export interface OwnerViewClientConfig {
 }
 
 const DEFAULT_REQUEST_TIMEOUT_MS = parseInt(process.env.REQUEST_TIMEOUT_MS || "10000", 10);
-
-/**
- * Fetch wrapper with AbortController timeout.
- */
-async function fetchWithTimeout(
-  url: string,
-  options: RequestInit = {},
-  timeoutMs: number = DEFAULT_REQUEST_TIMEOUT_MS
-): Promise<Response> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    return await fetch(url, { ...options, signal: controller.signal });
-  } catch (err) {
-    if (err instanceof Error && err.name === "AbortError") {
-      throw new Error(`Request timed out after ${timeoutMs}ms: ${url}`);
-    }
-    throw err;
-  } finally {
-    clearTimeout(timer);
-  }
-}
 
 const AES_KEY_LEN = 32;
 const TAG_LEN = 16;
@@ -282,11 +261,3 @@ export class OwnerViewClient {
   }
 }
 
-function hexToBytes(hex: string): Uint8Array {
-  const h = hex.startsWith("0x") ? hex.slice(2) : hex;
-  const bytes = new Uint8Array(h.length / 2);
-  for (let i = 0; i < bytes.length; i++) {
-    bytes[i] = parseInt(h.slice(i * 2, i * 2 + 2), 16);
-  }
-  return bytes;
-}

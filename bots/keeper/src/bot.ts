@@ -9,32 +9,10 @@ import {
   isCommitmentAlreadyExists,
   isDuplicateKeeperAction,
 } from "./contractErrors.js";
-import { CircuitBreaker, CircuitOpenError } from "@playerco/shared";
+import { CircuitBreaker, CircuitOpenError, fetchWithTimeout } from "@playerco/shared";
 
 const ZERO_BYTES32 = "0x0000000000000000000000000000000000000000000000000000000000000000";
 const DEFAULT_REQUEST_TIMEOUT_MS = parseInt(process.env.REQUEST_TIMEOUT_MS || "10000", 10);
-
-/**
- * Fetch wrapper with AbortController timeout.
- */
-async function fetchWithTimeout(
-  url: string,
-  options: RequestInit = {},
-  timeoutMs: number = DEFAULT_REQUEST_TIMEOUT_MS
-): Promise<Response> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    return await fetch(url, { ...options, signal: controller.signal });
-  } catch (err) {
-    if (err instanceof Error && err.name === "AbortError") {
-      throw new Error(`Request timed out after ${timeoutMs}ms: ${url}`);
-    }
-    throw err;
-  } finally {
-    clearTimeout(timer);
-  }
-}
 
 export interface KeeperBotConfig {
   rpcUrl: string;
@@ -493,7 +471,8 @@ export class KeeperBot {
           method: "POST",
           headers: { "content-type": "application/json", ...authHeader },
           body: JSON.stringify({ tableId, handId: handIdStr }),
-        }
+        },
+        DEFAULT_REQUEST_TIMEOUT_MS
       );
       if (!dealRes.ok && dealRes.status !== 409) {
         const body = await dealRes.text().catch(() => "");
@@ -509,7 +488,8 @@ export class KeeperBot {
 
     const commitmentsRes = await fetchWithTimeout(
       `${baseUrl}/dealer/commitments?tableId=${encodeURIComponent(tableId)}&handId=${encodeURIComponent(handIdStr)}`,
-      { headers: authHeader }
+      { headers: authHeader },
+      DEFAULT_REQUEST_TIMEOUT_MS
     );
     if (!commitmentsRes.ok) {
       const body = await commitmentsRes.text().catch(() => "");
@@ -533,7 +513,8 @@ export class KeeperBot {
 
     const res = await fetchWithTimeout(
       `${baseUrl}/dealer/reveal?tableId=${encodeURIComponent(tableId)}&handId=${encodeURIComponent(handIdStr)}&seatIndex=${seatIndex}`,
-      { headers: authHeader }
+      { headers: authHeader },
+      DEFAULT_REQUEST_TIMEOUT_MS
     );
     if (!res.ok) {
       const body = await res.text().catch(() => "");

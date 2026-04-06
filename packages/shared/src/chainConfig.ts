@@ -220,13 +220,16 @@ export function getChainConfig(forceReload = false): ChainConfig {
   // Validate VRF adapter is production-safe for non-local envs
   validateVRFAdapterConfig(env);
 
-  cachedConfig = {
+  cachedConfig = Object.freeze({
     env,
     chainId: CHAIN_IDS[env],
     rpcUrl,
     blockExplorerUrl: BLOCK_EXPLORERS[env],
-    contracts,
-  };
+    contracts: Object.freeze({
+      ...contracts,
+      pokerTables: Object.freeze([...contracts.pokerTables]),
+    }),
+  }) as ChainConfig;
 
   return cachedConfig;
 }

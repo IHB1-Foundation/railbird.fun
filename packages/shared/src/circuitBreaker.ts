@@ -1,6 +1,8 @@
 // Circuit breaker pattern for external service calls.
 // States: CLOSED (normal) → OPEN (failing) → HALF_OPEN (testing recovery)
 
+import { createLogger } from "./logger.js";
+
 export type CircuitState = "CLOSED" | "OPEN" | "HALF_OPEN";
 
 export interface CircuitBreakerOptions {
@@ -29,11 +31,13 @@ export class CircuitBreaker {
   private readonly failureThreshold: number;
   private readonly recoveryTimeoutMs: number;
   private readonly name: string;
+  private readonly log: ReturnType<typeof createLogger>;
 
   constructor(opts: CircuitBreakerOptions = {}) {
     this.failureThreshold = opts.failureThreshold ?? 5;
     this.recoveryTimeoutMs = opts.recoveryTimeoutMs ?? 30_000;
     this.name = opts.name ?? "CircuitBreaker";
+    this.log = createLogger({ service: this.name });
   }
 
   get circuitState(): CircuitState {
@@ -64,12 +68,12 @@ export class CircuitBreaker {
   reset(): void {
     this.state = "CLOSED";
     this.consecutiveFailures = 0;
-    console.info(`[${this.name}] Circuit manually reset to CLOSED`);
+    this.log.info("Circuit manually reset to CLOSED");
   }
 
   private onSuccess(): void {
     if (this.state === "HALF_OPEN") {
-      console.info(`[${this.name}] Probe succeeded — circuit CLOSED`);
+      this.log.info("Probe succeeded — circuit CLOSED");
     }
     this.state = "CLOSED";
     this.consecutiveFailures = 0;
@@ -81,12 +85,13 @@ export class CircuitBreaker {
       // Probe failed: back to OPEN
       this.state = "OPEN";
       this.lastOpenedAt = Date.now();
-      console.warn(`[${this.name}] Probe failed — circuit re-OPENED`);
+      this.log.warn("Probe failed — circuit re-OPENED");
     } else if (this.consecutiveFailures >= this.failureThreshold) {
       this.state = "OPEN";
       this.lastOpenedAt = Date.now();
-      console.warn(
-        `[${this.name}] ${this.consecutiveFailures} consecutive failures — circuit OPENED`
+      this.log.warn(
+        { consecutiveFailures: this.consecutiveFailures },
+        "Consecutive failures threshold reached — circuit OPENED"
       );
     }
   }
@@ -94,7 +99,7 @@ export class CircuitBreaker {
   private maybeTransitionToHalfOpen(): void {
     if (this.state === "OPEN" && Date.now() - this.lastOpenedAt >= this.recoveryTimeoutMs) {
       this.state = "HALF_OPEN";
-      console.info(`[${this.name}] Recovery timeout elapsed — circuit HALF_OPEN (probing)`);
+      this.log.info("Recovery timeout elapsed — circuit HALF_OPEN (probing)");
     }
   }
 

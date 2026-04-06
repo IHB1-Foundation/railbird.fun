@@ -1,0 +1,175 @@
+version: "3.9"
+
+# ─── PlayerCo local development stack ─────────────────────────────────────────
+#
+# Prerequisites:
+#   1. Copy .env.example to .env and fill in required values
+#   2. pnpm build (builds all TypeScript packages)
+#   3. docker compose up
+#
+# Services:
+#   anvil      — local EVM node (Foundry Anvil)
+#   postgres   — PostgreSQL database for the indexer
+#   ownerview  — wallet-sign auth + hole card ACL service
+#   indexer    — event indexer + REST/WS API
+#   keeper     — liveness keeper bot
+#   vrf-operator — off-chain VRF fulfillment bot
+#   agent      — poker-playing agent bot (one instance)
+
+services:
+  # ── Local EVM node ──────────────────────────────────────────────────────────
+  anvil:
+    image: ghcr.io/foundry-rs/foundry:latest
+    entrypoint: ["anvil", "--host", "0.0.0.0", "--chain-id", "31337", "--block-time", "1"]
+    ports:
+      - "8545:8545"
+    healthcheck:
+      test: ["CMD", "cast", "block-number", "--rpc-url", "http://localhost:8545"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ── PostgreSQL ──────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: playerco
+      POSTGRES_USER: playerco
+      POSTGRES_PASSWORD: playerco_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U playerco"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ── OwnerView service ───────────────────────────────────────────────────────
+  ownerview:
+    build:
+      context: .
+      dockerfile: services/ownerview/Dockerfile
+    environment:
+      CHAIN_ENV: local
+      PORT: "3001"
+      RPC_URL: http://anvil:8545
+      POKER_TABLE_ADDRESSES: "${POKER_TABLE_ADDRESSES:-}"
+      JWT_SECRET: "${JWT_SECRET:-dev-jwt-secret-32-chars-minimum}"
+      DEALER_API_KEY: "${DEALER_API_KEY:-dev-dealer-key}"
+      HOLECARD_DATA_DIR: /data/holecards
+      TRUSTLESS_DEALER_ENABLED: "true"
+    volumes:
+      - ownerview_data:/data/holecards
+    ports:
+      - "3001:3001"
+    depends_on:
+      anvil:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Indexer ─────────────────────────────────────────────────────────────────
+  indexer:
+    build:
+      context: .
+      dockerfile: services/indexer/Dockerfile
+    environment:
+      CHAIN_ENV: local
+      PORT: "3002"
+      RPC_URL: http://anvil:8545
+      POKER_TABLE_ADDRESSES: "${POKER_TABLE_ADDRESSES:-}"
+      PLAYER_REGISTRY_ADDRESS: "${PLAYER_REGISTRY_ADDRESS:-}"
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: playerco
+      DB_USER: playerco
+      DB_PASSWORD: playerco_dev
+      START_BLOCK: "0"
+      POLL_INTERVAL_MS: "1000"
+      LOG_BLOCK_RANGE: "100"
+      INDEXER_FLUSH_ON_START: "false"
+      CORS_ALLOWED_ORIGINS: "http://localhost:3000"
+      TRUST_PROXY_HOPS: "0"
+    ports:
+      - "3002:3002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      anvil:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3002/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Keeper bot ──────────────────────────────────────────────────────────────
+  keeper:
+    build:
+      context: .
+      dockerfile: bots/keeper/Dockerfile
+    environment:
+      CHAIN_ENV: local
+      RPC_URL: http://anvil:8545
+      KEEPER_PRIVATE_KEY: "${KEEPER_PRIVATE_KEY:-0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80}"
+      POKER_TABLE_ADDRESSES: "${POKER_TABLE_ADDRESSES:-}"
+      OWNERVIEW_URL: http://ownerview:3001
+      DEALER_API_KEY: "${DEALER_API_KEY:-dev-dealer-key}"
+      CHAIN_ID: "31337"
+      POLL_INTERVAL_MS: "1000"
+      HEALTH_PORT: "9101"
+    ports:
+      - "9101:9101"
+    depends_on:
+      ownerview:
+        condition: service_healthy
+
+  # ── VRF operator bot ────────────────────────────────────────────────────────
+  vrf-operator:
+    build:
+      context: .
+      dockerfile: bots/vrf-operator/Dockerfile
+    environment:
+      CHAIN_ENV: local
+      RPC_URL: http://anvil:8545
+      VRF_OPERATOR_PRIVATE_KEY: "${VRF_OPERATOR_PRIVATE_KEY:-0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d}"
+      VRF_ADAPTER_ADDRESS: "${VRF_ADAPTER_ADDRESS:-}"
+      POKER_TABLE_ADDRESSES: "${POKER_TABLE_ADDRESSES:-}"
+      CHAIN_ID: "31337"
+      VRF_OPERATOR_POLL_INTERVAL_MS: "1000"
+      HEALTH_PORT: "9102"
+    ports:
+      - "9102:9102"
+    depends_on:
+      anvil:
+        condition: service_healthy
+
+  # ── Agent bot (one instance, seat 0) ────────────────────────────────────────
+  agent:
+    build:
+      context: .
+      dockerfile: bots/agent/Dockerfile
+    environment:
+      CHAIN_ENV: local
+      RPC_URL: http://anvil:8545
+      OPERATOR_PRIVATE_KEY: "${AGENT_PRIVATE_KEY:-0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a}"
+      POKER_TABLE_ADDRESS: "${POKER_TABLE_ADDRESS:-}"
+      OWNERVIEW_URL: http://ownerview:3001
+      CHAIN_ID: "31337"
+      POLL_INTERVAL_MS: "1000"
+      AGENT_DECISION_ENGINE: simple
+      HEALTH_PORT: "9100"
+    ports:
+      - "9100:9100"
+    depends_on:
+      ownerview:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  ownerview_data:

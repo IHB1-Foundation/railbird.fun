@@ -12,4 +12,9 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  esbuild: {
+    // Enable the automatic React JSX transform so components don't need
+    // explicit `import React from 'react'` statements in test builds.
+    jsx: "automatic",
+  },
 });

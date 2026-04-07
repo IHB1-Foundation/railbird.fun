@@ -126,7 +126,12 @@ export function useWebSocket({
         const msg = JSON.parse(event.data as string) as WsMessage;
         onMessageRef.current(msg);
       } catch {
-        // ignore malformed messages
+        // Log malformed messages so production issues are debuggable.
+        const preview =
+          typeof event.data === "string"
+            ? event.data.slice(0, 120)
+            : "(non-string)";
+        console.warn(`[useWebSocket] Malformed WS message for table ${tableId}:`, preview);
       }
     };
 

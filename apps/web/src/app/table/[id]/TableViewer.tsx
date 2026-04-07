@@ -26,15 +26,39 @@ import styles from "./TableViewer.module.css";
 
 const TABLE_MAX_SEATS = Number(process.env.NEXT_PUBLIC_TABLE_MAX_SEATS || "9");
 
+/** Set of valid action type strings from the indexer. */
+const VALID_ACTION_TYPES = new Set(Object.keys(ACTION_TYPES));
+
+/** Sanitize an actionType to only allowed values; returns 'UNKNOWN' otherwise. */
+function sanitizeActionType(raw: unknown): string {
+  if (typeof raw === "string" && VALID_ACTION_TYPES.has(raw)) return raw;
+  return "UNKNOWN";
+}
+
+/** Sanitize a seatIndex to a safe integer in [0, maxSeats). */
+function sanitizeSeatIndex(raw: unknown, maxSeats: number): number {
+  const n = Number(raw);
+  return Number.isInteger(n) && n >= 0 && n < maxSeats ? n : 0;
+}
+
 /** Lightweight structural guard against injected WebSocket payloads. */
 function isValidTableResponse(data: unknown): data is TableResponse {
   if (!data || typeof data !== "object") return false;
   const d = data as Record<string, unknown>;
-  return (
-    typeof d.id === "string" &&
-    typeof d.contractAddress === "string" &&
-    Array.isArray(d.seats)
-  );
+  if (typeof d.id !== "string") return false;
+  if (typeof d.contractAddress !== "string") return false;
+  if (!Array.isArray(d.seats)) return false;
+  // Validate action log entries if present
+  if (Array.isArray(d.actions)) {
+    for (const action of d.actions) {
+      if (!action || typeof action !== "object") return false;
+      const a = action as Record<string, unknown>;
+      if (typeof a.seatIndex !== "number") return false;
+      if (typeof a.actionType !== "string") return false;
+      if (typeof a.amount !== "string") return false;
+    }
+  }
+  return true;
 }
 const INDEXER_BASE = process.env.NEXT_PUBLIC_INDEXER_URL || "https://indexer.railbird.fun";
 const STREET_LABELS = ["Pre-flop", "Flop", "Turn", "River", "Showdown"] as const;
@@ -497,7 +521,9 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
                 <div key={section.street} className={styles.streetBlock}>
                   <div className={styles.streetTitle}>{section.street}</div>
                   {section.actions.map((action, i) => {
-                    const seat = seatByIndex.get(action.seatIndex);
+                    const safeActionType = sanitizeActionType(action.actionType);
+                    const safeSeatIndex = sanitizeSeatIndex(action.seatIndex, TABLE_MAX_SEATS);
+                    const seat = seatByIndex.get(safeSeatIndex);
                     const hasOwner =
                       !!seat && seat.ownerAddress.toLowerCase() !== ZERO_ADDRESS;
 
@@ -505,8 +531,8 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
                       <div key={`${section.street}-${i}`} className={styles.actionItem}>
                         <div className={styles.actionMain}>
                           <span>
-                            <strong>Seat {action.seatIndex}</strong>{" "}
-                            {ACTION_TYPES[action.actionType] || action.actionType}
+                            <strong>Seat {safeSeatIndex}</strong>{" "}
+                            {ACTION_TYPES[safeActionType] ?? "UNKNOWN"}
                             {action.amount !== "0" && ` ${formatChips(action.amount)} ${CHIP_SYMBOL}`}
                           </span>
                           {hasOwner ? (

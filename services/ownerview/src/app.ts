@@ -72,7 +72,9 @@ const DEFAULT_RETENTION_INTERVAL_MS = 5 * 60 * 1000;
  */
 export async function createApp(config: AppConfig): Promise<AppContext> {
   const app = express();
-  app.set("trust proxy", true);
+  // Use a numeric hop count, not boolean true, to avoid trusting all proxies.
+  // Matches the indexer's TRUST_PROXY_HOPS pattern. Default: 1 (single reverse proxy).
+  app.set("trust proxy", parseInt(process.env.TRUST_PROXY_HOPS || "1", 10));
   const allowedOrigins = getAllowedOrigins();
 
   // Middleware

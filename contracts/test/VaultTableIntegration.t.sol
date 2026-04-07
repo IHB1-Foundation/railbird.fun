@@ -631,3 +631,222 @@ contract RebalancingIntegrationTest is Test {
         vault1.rebalanceSell(handId, 100e18, 0);
     }
 }
+
+// ─── T-R17-02: Vault rebalancing boundary tests ────────────────────────────
+// Tests edge cases near the NAV breakeven, zero-balance conditions,
+// max BPS limits, and "locked" token scenarios.
+//
+// Accounting setup:
+//   T = 1_000_000e18 (total supply)        N = T - B (outstanding shares)
+//   A = 10e18 (vault ETH, no escrow)       P = A/N (NAV per share)
+//
+// Buy NAV boundary: tokensPerMonScaled_min = N*1e18/A
+//   With B=0: N=1e24, boundary = 1e23 tokens/ETH
+//
+// Sell NAV boundary: monPerTokenScaled_min = A*1e18/N
+//   We seed vault with B=5e23 tokens so N=5e23:
+//   boundary = 10e18*1e18/5e23 = 2e13 wei/token
+
+contract VaultRebalancingBoundaryTest is Test {
+    PlayerVault     public vault;
+    NadfunCompatToken public agentToken;
+    MockNadfunRouter  public router;
+
+    address public owner = address(0xAA);
+
+    uint256 constant TOTAL_SUPPLY    = 1_000_000e18;  // T = 1e24
+    uint256 constant VAULT_ETH       = 10 ether;       // A = 10e18
+    // Buy tests: B=0, N=T=1e24. boundary rate = N*1e18/A = 1e23
+    uint256 constant BUY_RATE_EXACT  = 1e23;
+    // Sell tests: seed vault with B=5e23 → N=5e23. boundary = A*1e18/N = 2e13
+    uint256 constant SELL_TOKEN_SEED = 5e23;           // B for sell tests
+    uint256 constant SELL_N          = 5e23;           // N = T - B
+    uint256 constant SELL_RATE_EXACT = 2e13;           // monPerTokenScaled at NAV
+
+    uint256 public settledHandId = 1;
+
+    function setUp() public {
+        // All TOTAL_SUPPLY goes to address(this) (the test contract)
+        agentToken = new NadfunCompatToken("BoundaryToken", "BDT", "", TOTAL_SUPPLY, address(this), address(this));
+        router = new MockNadfunRouter();
+
+        vault = new PlayerVault(owner);
+        vm.deal(address(vault), VAULT_ETH);
+        // Router needs ETH for sell payouts and tokens for buy fills
+        vm.deal(address(router), 100 ether);
+        // Give router half the supply for buy test fills (test contract keeps half for sell tests)
+        agentToken.transfer(address(router), TOTAL_SUPPLY / 2);  // 5e23 each
+
+        // Configure vault for rebalancing: 10% max each
+        vm.prank(owner);
+        vault.setRebalanceConfig(address(agentToken), address(router), 1000, 1000);
+
+        // Authorize a dummy table and record a settled hand so rebalancing is eligible
+        address dummyTable = address(0xBEEF);
+        vm.prank(owner);
+        vault.authorizeTable(dummyTable);
+        vm.prank(dummyTable);
+        vault.onSettlement(settledHandId, 0);
+    }
+
+    // ─── Buy boundary tests ────────────────────────────────────────────────────
+
+    /**
+     * rebalanceBuy at exactly NAV price should succeed.
+     * tokensPerMonScaled = N*1e18/A = 1e23. Check: monIn*N == A*tokenOut (equality).
+     */
+    function test_BuyAtExactlyNAV_Succeeds() public {
+        router.setRates(BUY_RATE_EXACT, 5e17);
+        uint256 A = vault.getExternalAssets();      // 10e18
+        uint256 monIn = (A * 1000) / 10000;         // 10% of A = 1e18
+
+        vm.prank(owner);
+        vault.rebalanceBuy(settledHandId, monIn, 0);  // must not revert
+
+        assertEq(vault.lastRebalanceHandId(), settledHandId, "Hand rebalanced at exact NAV");
+    }
+
+    /**
+     * rebalanceBuy one tick below the exact NAV rate — dilutive, must revert.
+     * tokensPerMonScaled = 1e23 - 1 → tokenOut one unit fewer → check fails.
+     */
+    function test_BuyOneTick_BelowNAV_Reverts() public {
+        router.setRates(BUY_RATE_EXACT - 1, 5e17);
+        uint256 A = vault.getExternalAssets();
+        uint256 monIn = (A * 1000) / 10000;
+
+        vm.prank(owner);
+        vm.expectRevert("Buy would dilute NAV");
+        vault.rebalanceBuy(settledHandId, monIn, 0);
+    }
+
+    /**
+     * rebalanceBuy with zero external assets must revert with "No external assets".
+     */
+    function test_BuyWithZeroAssets_Reverts() public {
+        // Lock all ETH as escrow so getExternalAssets() returns 0
+        address dummyTable2 = address(0xCAFE);
+        vm.prank(owner);
+        vault.authorizeTable(dummyTable2);
+        vm.prank(owner);
+        vault.fundBuyIn(dummyTable2, VAULT_ETH);
+
+        assertEq(vault.getExternalAssets(), 0, "No external assets");
+
+        router.setRates(BUY_RATE_EXACT, 5e17);
+        vm.prank(owner);
+        vm.expectRevert("No external assets");
+        vault.rebalanceBuy(settledHandId, 1, 0);
+    }
+
+    /**
+     * rebalanceBuy at exactly the 1% max BPS size limit should succeed.
+     */
+    function test_BuyAtMaxBpsLimit_Succeeds() public {
+        vm.prank(owner);
+        vault.setRebalanceConfig(address(agentToken), address(router), 100, 1000);  // 1% max
+
+        uint256 A = vault.getExternalAssets();      // 10e18
+        uint256 maxBuy = (A * 100) / 10000;         // 1e17 wei
+
+        router.setRates(BUY_RATE_EXACT, 5e17);
+        vm.prank(owner);
+        vault.rebalanceBuy(settledHandId, maxBuy, 0);
+        assertEq(vault.lastRebalanceHandId(), settledHandId, "Rebalanced at max BPS");
+    }
+
+    /**
+     * rebalanceBuy above the 1% max BPS size limit must revert.
+     */
+    function test_BuyAboveMaxBpsLimit_Reverts() public {
+        vm.prank(owner);
+        vault.setRebalanceConfig(address(agentToken), address(router), 100, 1000);  // 1% max
+
+        uint256 A = vault.getExternalAssets();
+        uint256 overLimit = (A * 100) / 10000 + 1;
+
+        router.setRates(BUY_RATE_EXACT, 5e17);
+        vm.prank(owner);
+        vm.expectRevert("Buy exceeds size limit");
+        vault.rebalanceBuy(settledHandId, overLimit, 0);
+    }
+
+    /**
+     * rebalanceBuy when the router returns zero tokens (simulates locked/untradeable state).
+     * Must revert gracefully with "No tokens received".
+     */
+    function test_BuyWhenTokenLocked_Reverts() public {
+        router.setRates(0, 5e17);  // zero tokens out = locked stage
+        uint256 A = vault.getExternalAssets();
+        uint256 monIn = (A * 1000) / 10000;
+
+        vm.prank(owner);
+        vm.expectRevert("No tokens received");
+        vault.rebalanceBuy(settledHandId, monIn, 0);
+    }
+
+    // ─── Sell boundary tests ────────────────────────────────────────────────────
+    // Seed vault with SELL_TOKEN_SEED=5e23 tokens → B=5e23, N=5e23, A=10e18.
+    // SELL_RATE_EXACT = A*1e18/N = 10e18*1e18/5e23 = 2e13.
+    // Check: tokenIn * 2e13 / 1e18 * 5e23 == 10e18 * tokenIn → 1e19*tokenIn == 1e19*tokenIn ✓
+
+    /**
+     * rebalanceSell at exactly NAV price should succeed.
+     */
+    function test_SellAtExactlyNAV_Succeeds() public {
+        agentToken.transfer(address(vault), SELL_TOKEN_SEED);
+        router.setRates(BUY_RATE_EXACT, SELL_RATE_EXACT);
+
+        uint256 B = agentToken.balanceOf(address(vault));  // 5e23
+        uint256 tokenIn = (B * 1000) / 10000;              // 10% of B = 5e22
+
+        vm.prank(owner);
+        vault.rebalanceSell(settledHandId, tokenIn, 0);    // must not revert
+
+        assertEq(vault.lastRebalanceHandId(), settledHandId, "Sell rebalanced at NAV");
+    }
+
+    /**
+     * rebalanceSell one tick below the exact NAV rate — dilutive, must revert.
+     */
+    function test_SellOneTick_BelowNAV_Reverts() public {
+        agentToken.transfer(address(vault), SELL_TOKEN_SEED);
+        router.setRates(BUY_RATE_EXACT, SELL_RATE_EXACT - 1);
+
+        uint256 B = agentToken.balanceOf(address(vault));
+        uint256 tokenIn = (B * 1000) / 10000;
+
+        vm.prank(owner);
+        vm.expectRevert("Sell would dilute NAV");
+        vault.rebalanceSell(settledHandId, tokenIn, 0);
+    }
+
+    /**
+     * rebalanceSell when vault holds no treasury tokens must revert.
+     */
+    function test_SellWithNoTreasuryTokens_Reverts() public {
+        assertEq(agentToken.balanceOf(address(vault)), 0, "Vault has no tokens");
+
+        router.setRates(BUY_RATE_EXACT, SELL_RATE_EXACT);
+        vm.prank(owner);
+        vm.expectRevert("No treasury tokens");
+        vault.rebalanceSell(settledHandId, 1, 0);
+    }
+
+    /**
+     * rebalanceSell at exactly the 1% max BPS token limit should succeed.
+     */
+    function test_SellAtMaxBpsLimit_Succeeds() public {
+        agentToken.transfer(address(vault), SELL_TOKEN_SEED);
+        vm.prank(owner);
+        vault.setRebalanceConfig(address(agentToken), address(router), 1000, 100);  // 1% max sell
+
+        uint256 B = agentToken.balanceOf(address(vault));  // 5e23
+        uint256 maxSell = (B * 100) / 10000;               // 1% of B = 5e21
+
+        router.setRates(BUY_RATE_EXACT, SELL_RATE_EXACT);
+        vm.prank(owner);
+        vault.rebalanceSell(settledHandId, maxSell, 0);
+        assertEq(vault.lastRebalanceHandId(), settledHandId, "Sell at max BPS succeeded");
+    }
+}

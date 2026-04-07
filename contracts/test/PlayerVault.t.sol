@@ -77,6 +77,33 @@ contract PlayerVaultTest is Test {
         assertEq(vault.getAvailableBalance(), 3 ether);
     }
 
+    /// @notice T-R15-03: fundBuyIn from non-authorized address reverts
+    function test_FundBuyIn_RevertIfNotAuthorized() public {
+        vault.deposit{value: 5 ether}();
+        vm.prank(randomUser);
+        vm.expectRevert("Not authorized");
+        vault.fundBuyIn(tbl, 1 ether);
+    }
+
+    /// @notice T-R15-03: authorized table can call fundBuyIn
+    function test_FundBuyIn_AuthorizedTable() public {
+        vm.prank(vaultOwner);
+        vault.authorizeTable(tbl);
+        vm.prank(tbl);
+        vault.fundBuyIn(tbl, 1 ether);
+        assertEq(vault.totalEscrow(), 1 ether);
+    }
+
+    /// @notice T-R15-03: revokeTable removes authorization
+    function test_RevokeTable() public {
+        vm.prank(vaultOwner);
+        vault.authorizeTable(tbl);
+        assertTrue(vault.authorizedTables(tbl));
+        vm.prank(vaultOwner);
+        vault.revokeTable(tbl);
+        assertFalse(vault.authorizedTables(tbl));
+    }
+
     function test_ReleaseEscrow() public {
         vault.deposit{value: 5 ether}();
         vm.prank(vaultOwner);

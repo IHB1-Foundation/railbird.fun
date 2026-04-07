@@ -58,7 +58,7 @@ interface IVRFCoordinatorV2 {
  *
  * @dev Production deployment checklist (all items verifiable pre-deploy):
  *   1. Coordinator guard: this stub uses an explicit `onlyVRFCoordinator` modifier.
- *      When migrating to the official @chainlink/contracts package, replace with
+ *      When migrating to the official chainlink/contracts package, replace with
  *      `VRFConsumerBaseV2(coordinatorAddress)` and override `fulfillRandomWords`.
  *   2. Subscription funding: `requestRandomWords` will revert at the coordinator
  *      level if the subscription is underfunded — no additional guard is needed

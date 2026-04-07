@@ -1,4 +1,4 @@
-import { ENV_VARS, createLogger, startHealthServer } from "@playerco/shared";
+import { ENV_VARS, createLogger, startHealthServer, parsePositiveInt } from "@playerco/shared";
 import { VrfOperatorBot } from "./bot.js";
 
 const log = createLogger({ service: "vrf-operator" });
@@ -10,14 +10,6 @@ function requireEnv(name: string): string {
   if (!value) {
     throw new Error(`Missing required environment variable: ${name}`);
   }
-  return value;
-}
-
-function parsePositiveInt(name: string, fallback: number): number {
-  const raw = process.env[name];
-  if (!raw) return fallback;
-  const value = Number.parseInt(raw, 10);
-  if (Number.isNaN(value) || value < 0) return fallback;
   return value;
 }
 

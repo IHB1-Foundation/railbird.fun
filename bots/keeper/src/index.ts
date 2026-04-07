@@ -2,63 +2,17 @@
 // Entry point that reads configuration from environment variables
 
 import { KeeperBot } from "./bot.js";
-import { requireEnv as sharedRequireEnv, startHealthServer, validateChainIdWithRpc } from "@playerco/shared";
+import {
+  startHealthServer,
+  validateChainIdWithRpc,
+  validatePrivateKey,
+  parseTableAddresses,
+  parsePositiveInt,
+  optionalEnv,
+  requireEnv,
+} from "@playerco/shared";
 
 const VERSION = "0.0.1";
-
-function requireEnv(name: string): string {
-  return sharedRequireEnv(name);
-}
-
-function optionalEnv(name: string, defaultValue: string): string {
-  return process.env[name] || defaultValue;
-}
-
-/**
- * Validates that a private key string is a properly-formatted 32-byte hex key.
- * Exits with a descriptive error if invalid.
- */
-function validatePrivateKey(name: string, key: string): void {
-  if (!key) {
-    console.error(`[KeeperBot] ${name} is empty. Set a valid 32-byte hex private key.`);
-    process.exit(1);
-  }
-  const stripped = key.startsWith("0x") ? key.slice(2) : key;
-  if (!/^[0-9a-fA-F]+$/.test(stripped) || stripped.length !== 64) {
-    console.error(
-      `[KeeperBot] ${name} is invalid: must be a 32-byte hex string (64 hex chars, optionally prefixed with 0x). Got length ${stripped.length}.`
-    );
-    process.exit(1);
-  }
-}
-
-function parsePositiveInt(name: string, fallback: number): number {
-  const raw = process.env[name];
-  if (!raw) return fallback;
-  const value = Number.parseInt(raw, 10);
-  if (Number.isNaN(value) || value < 0) return fallback;
-  return value;
-}
-
-function parseTableAddresses(): `0x${string}`[] {
-  // Support both POKER_TABLE_ADDRESSES (comma-separated, preferred) and POKER_TABLE_ADDRESS (single)
-  const multi = process.env.POKER_TABLE_ADDRESSES;
-  if (multi) {
-    const addresses = multi
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean) as `0x${string}`[];
-    if (addresses.length === 0) {
-      throw new Error("POKER_TABLE_ADDRESSES is set but contains no valid addresses");
-    }
-    return addresses;
-  }
-  const single = process.env.POKER_TABLE_ADDRESS;
-  if (single) {
-    return [single as `0x${string}`];
-  }
-  throw new Error("Missing required environment variable: POKER_TABLE_ADDRESSES (or POKER_TABLE_ADDRESS)");
-}
 
 async function main() {
   console.log(`Keeper bot v${VERSION}`);
@@ -82,12 +36,11 @@ async function main() {
     return;
   }
 
-  const keeperKey = requireEnv("KEEPER_PRIVATE_KEY");
-  validatePrivateKey("KEEPER_PRIVATE_KEY", keeperKey);
+  const keeperKey = validatePrivateKey("KEEPER_PRIVATE_KEY");
 
   const baseConfig = {
     rpcUrl,
-    privateKey: keeperKey as `0x${string}`,
+    privateKey: keeperKey,
     ownerviewUrl: process.env.OWNERVIEW_URL,
     dealerApiKey: process.env.DEALER_API_KEY,
     chainId: parseInt(optionalEnv("CHAIN_ID", "133")),

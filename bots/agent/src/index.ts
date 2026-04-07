@@ -3,17 +3,16 @@
 
 import { AgentBot } from "./bot.js";
 import { GeminiStrategy, SimpleStrategy, type Strategy } from "./strategy/index.js";
-import { requireEnv as sharedRequireEnv, startHealthServer, validateChainIdWithRpc } from "@playerco/shared";
+import {
+  startHealthServer,
+  validateChainIdWithRpc,
+  validatePrivateKey,
+  parsePositiveInt,
+  optionalEnv,
+  requireEnv,
+} from "@playerco/shared";
 
 const VERSION = "0.0.1";
-
-function requireEnv(name: string): string {
-  return sharedRequireEnv(name);
-}
-
-function optionalEnv(name: string, defaultValue: string): string {
-  return process.env[name] || defaultValue;
-}
 
 function parseBoundedFloat(name: string, fallback: number): number {
   const raw = process.env[name];
@@ -21,32 +20,6 @@ function parseBoundedFloat(name: string, fallback: number): number {
   const value = Number(raw);
   if (Number.isNaN(value)) return fallback;
   return Math.max(0, Math.min(1, value));
-}
-
-/**
- * Validates that a private key string is a properly-formatted 32-byte hex key.
- * Exits with a descriptive error if invalid.
- */
-function validatePrivateKey(name: string, key: string): void {
-  if (!key) {
-    console.error(`[AgentBot] ${name} is empty. Set a valid 32-byte hex private key.`);
-    process.exit(1);
-  }
-  const stripped = key.startsWith("0x") ? key.slice(2) : key;
-  if (!/^[0-9a-fA-F]+$/.test(stripped) || stripped.length !== 64) {
-    console.error(
-      `[AgentBot] ${name} is invalid: must be a 32-byte hex string (64 hex chars, optionally prefixed with 0x). Got length ${stripped.length}.`
-    );
-    process.exit(1);
-  }
-}
-
-function parsePositiveInt(name: string, fallback: number): number {
-  const raw = process.env[name];
-  if (!raw) return fallback;
-  const value = Number.parseInt(raw, 10);
-  if (Number.isNaN(value) || value < 0) return fallback;
-  return value;
 }
 
 type DecisionEngine = "simple" | "gemini";
@@ -110,13 +83,12 @@ async function main() {
     throw new Error("Missing required environment variable: POKER_TABLE_ADDRESS");
   }
 
-  const operatorKey = requireEnv("OPERATOR_PRIVATE_KEY");
-  validatePrivateKey("OPERATOR_PRIVATE_KEY", operatorKey);
+  const operatorKey = validatePrivateKey("OPERATOR_PRIVATE_KEY");
 
   // Load configuration from environment
   const config = {
     rpcUrl,
-    privateKey: operatorKey as `0x${string}`,
+    privateKey: operatorKey,
     pokerTableAddress: tableAddress as `0x${string}`,
     ownerviewUrl: optionalEnv("OWNERVIEW_URL", "http://localhost:3001"),
     chainId: parseInt(optionalEnv("CHAIN_ID", "31337")),

@@ -6,6 +6,9 @@ import type { IncomingMessage } from "http";
 import { getWsManager } from "./manager.js";
 import type { WsConnectedData, WsErrorData } from "./types.js";
 import { createLogger } from "@playerco/shared";
+import { MessageRateLimiter } from "./rateLimiter.js";
+
+export { MessageRateLimiter } from "./rateLimiter.js";
 
 const logger = createLogger({ service: "indexer:ws" });
 
@@ -18,15 +21,25 @@ export interface WsServerConfig {
   heartbeatIntervalMs?: number;
   /** Allowed origins (CSV); empty = allow all */
   allowedOrigins?: string;
+  /** Max inbound messages per second per connection (default 20) */
+  msgRateLimitPerSec?: number;
+  /** Burst capacity for message rate limiter (default 20) */
+  msgRateBurst?: number;
 }
 
 const MAX_CONNECTIONS_PER_IP = 10;
 const HEARTBEAT_INTERVAL_MS = 30_000;
 const MISSED_PONGS_LIMIT = 2;
 
+// Per-connection message rate limit: 20 msg/sec, burst capacity of 20
+const MSG_RATE_LIMIT_PER_SEC = 20;
+const MSG_RATE_BURST = 20;
+
 export function createWsServer(config: WsServerConfig): WebSocketServer {
   const maxConnsPerIp = config.maxConnectionsPerIp ?? MAX_CONNECTIONS_PER_IP;
   const heartbeatMs = config.heartbeatIntervalMs ?? HEARTBEAT_INTERVAL_MS;
+  const msgRateLimitPerSec = config.msgRateLimitPerSec ?? MSG_RATE_LIMIT_PER_SEC;
+  const msgRateBurst = config.msgRateBurst ?? MSG_RATE_BURST;
   const allowedOrigins = config.allowedOrigins
     ? new Set(config.allowedOrigins.split(",").map(s => s.trim()).filter(Boolean))
     : null;
@@ -82,6 +95,9 @@ export function createWsServer(config: WsServerConfig): WebSocketServer {
     // Send connected confirmation
     sendConnected(ws, tableId);
 
+    // Per-connection inbound rate limiter
+    const rateLimiter = new MessageRateLimiter(msgRateLimitPerSec, msgRateBurst);
+
     // Heartbeat: ping every heartbeatMs, close if missed MISSED_PONGS_LIMIT pongs
     let missedPongs = 0;
     const heartbeat = setInterval(() => {
@@ -102,6 +118,12 @@ export function createWsServer(config: WsServerConfig): WebSocketServer {
 
     // Handle client messages (ping/pong, etc.)
     ws.on("message", (data) => {
+      if (!rateLimiter.consume()) {
+        logger.warn({ ip, tableId }, 'WS rate limit exceeded, closing connection');
+        sendError(ws, "RATE_LIMIT_EXCEEDED", "Message rate limit exceeded");
+        ws.close(1008, "Policy Violation");
+        return;
+      }
       try {
         const message = JSON.parse(data.toString());
         handleClientMessage(ws, tableId, message);

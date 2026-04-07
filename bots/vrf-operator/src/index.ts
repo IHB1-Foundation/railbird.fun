@@ -1,4 +1,4 @@
-import { ENV_VARS, createLogger, startHealthServer, parsePositiveInt } from "@playerco/shared";
+import { ENV_VARS, createLogger, startHealthServer, parsePositiveInt, validateChainIdWithRpc } from "@playerco/shared";
 import { VrfOperatorBot } from "./bot.js";
 
 const log = createLogger({ service: "vrf-operator" });
@@ -52,6 +52,13 @@ async function main(): Promise<void> {
     randomSalt: process.env.VRF_OPERATOR_RANDOM_SALT || "railbird-vrf-operator",
     fixedRandomness: parseOptionalBigInt("VRF_OPERATOR_FIXED_RANDOMNESS"),
   };
+
+  // Validate that RPC_URL returns the expected chain ID before proceeding.
+  await validateChainIdWithRpc(config.rpcUrl, config.chainId).catch((err: unknown) => {
+    log.error({ err }, "Chain ID validation failed");
+    process.exit(1);
+  });
+  log.info({ chainId: config.chainId }, "Chain ID validated");
 
   const bot = new VrfOperatorBot(config);
 

@@ -112,3 +112,25 @@ jobs:
       - name: Audit dependencies
         # Advisory only — known false positives in dev deps shouldn't block PRs
         run: pnpm audit --audit-level high || true
+
+  # ── Docker image builds ───────────────────────────────────────────────────
+  docker-builds:
+    name: Docker Image Builds
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build ownerview image
+        run: docker build -f services/ownerview/Dockerfile . --tag playerco/ownerview:ci
+
+      - name: Build indexer image
+        run: docker build -f services/indexer/Dockerfile . --tag playerco/indexer:ci
+
+      - name: Build keeper bot image
+        run: docker build -f bots/keeper/Dockerfile . --tag playerco/keeper:ci
+
+      - name: Build agent bot image
+        run: docker build -f bots/agent/Dockerfile . --tag playerco/agent:ci

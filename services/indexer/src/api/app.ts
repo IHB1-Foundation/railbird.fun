@@ -2,6 +2,9 @@
 
 import express from "express";
 import { router } from "./routes.js";
+import { createLogger } from "@playerco/shared";
+
+const logger = createLogger({ service: "indexer" });
 
 const DEFAULT_ALLOWED_ORIGINS = [
   "http://localhost:3000",
@@ -47,7 +50,7 @@ export function createApp(): express.Application {
 
   // Request logging
   app.use((req, _res, next) => {
-    console.log(`${new Date().toISOString()} ${req.method} ${req.path}`);
+    logger.debug({ method: req.method, path: req.path }, "Incoming request");
     next();
   });
 
@@ -61,7 +64,7 @@ export function createApp(): express.Application {
 
   // Error handler
   app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-    console.error("Unhandled error:", err);
+    logger.error({ err }, "Unhandled error");
     res.status(500).json({ error: "Internal server error" });
   });
 

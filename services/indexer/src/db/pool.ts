@@ -2,6 +2,9 @@
 
 import pg from "pg";
 const { Pool } = pg;
+import { createLogger } from "@playerco/shared";
+
+const logger = createLogger({ service: "indexer" });
 
 export interface DbConfig {
   host: string;
@@ -44,7 +47,7 @@ export function getPool(): pg.Pool {
     pool = new Pool(config);
 
     pool.on("error", (err) => {
-      console.error("Unexpected error on idle client", err);
+      logger.error({ err }, "Unexpected error on idle DB client");
     });
   }
   return pool;

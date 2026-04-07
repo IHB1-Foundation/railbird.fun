@@ -6,6 +6,9 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { getPool, closePool } from "./pool.js";
+import { createLogger } from "@playerco/shared";
+
+const logger = createLogger({ service: "indexer" });
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -47,7 +50,7 @@ function parseMigrationVersion(filename: string): number | null {
 }
 
 async function migrate(): Promise<void> {
-  console.log("Running database migrations...");
+  logger.info("Running database migrations...");
 
   const migrationsDir = findMigrationsDir();
   const files = fs
@@ -66,7 +69,7 @@ async function migrate(): Promise<void> {
   for (const file of files) {
     const version = parseMigrationVersion(file);
     if (version === null) {
-      console.warn(`Skipping non-versioned file: ${file}`);
+      logger.warn({ file }, "Skipping non-versioned migration file");
       continue;
     }
 
@@ -78,7 +81,7 @@ async function migrate(): Promise<void> {
     const sqlPath = path.join(migrationsDir, file);
     const sql = fs.readFileSync(sqlPath, "utf-8");
 
-    console.log(`  Applying migration ${version}: ${file}`);
+    logger.info({ version, file }, "Applying migration");
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
@@ -97,13 +100,13 @@ async function migrate(): Promise<void> {
     }
   }
 
-  console.log(`Migrations complete: ${ran} applied, ${skipped} already up-to-date.`);
+  logger.info({ ran, skipped }, "Migrations complete");
 }
 
 // Run if executed directly
 migrate()
   .catch((err) => {
-    console.error("Migration failed:", err);
+    logger.error({ err }, "Migration failed");
     process.exit(1);
   })
   .finally(() => {

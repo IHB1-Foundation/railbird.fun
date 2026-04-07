@@ -1,9 +1,12 @@
 // Database flush script
 
 import { getPool, closePool } from "./pool.js";
+import { createLogger } from "@playerco/shared";
+
+const logger = createLogger({ service: "indexer" });
 
 async function flush(): Promise<void> {
-  console.log("Flushing indexer database tables...");
+  logger.info("Flushing indexer database tables...");
   const pool = getPool();
 
   try {
@@ -31,9 +34,9 @@ async function flush(): Promise<void> {
          updated_at = NOW()`
     );
 
-    console.log("Database flush completed");
+    logger.info("Database flush completed");
   } catch (error) {
-    console.error("Database flush failed:", error);
+    logger.error({ err: error }, "Database flush failed");
     throw error;
   } finally {
     await closePool();
@@ -41,6 +44,6 @@ async function flush(): Promise<void> {
 }
 
 flush().catch((err) => {
-  console.error(err);
+  logger.error({ err }, "Flush script failed");
   process.exit(1);
 });

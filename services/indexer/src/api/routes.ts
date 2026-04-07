@@ -2,6 +2,9 @@
 
 import { Router, type Request, type Response, type NextFunction } from "express";
 import type { Router as RouterType } from "express";
+import { createLogger } from "@playerco/shared";
+
+const logger = createLogger({ service: "indexer" });
 import { TOKEN_PROFILES, type PlayerKey, type TokenProfile } from "./tokenProfiles.js";
 import {
   getTable,
@@ -218,7 +221,7 @@ router.get("/tables", async (_req, res) => {
 
     res.json(response);
   } catch (error) {
-    console.error("Error fetching tables:", error);
+    logger.error({ err: error }, "Error fetching tables:");
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -252,7 +255,7 @@ router.get("/tables/:id", async (req, res) => {
     const response = formatTableResponse(table, seats, hand, actions);
     res.json(response);
   } catch (error) {
-    console.error("Error fetching table:", error);
+    logger.error({ err: error }, "Error fetching table:");
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -282,7 +285,7 @@ router.get("/tables/:id/hands", async (req, res) => {
 
     res.json(response);
   } catch (error) {
-    console.error("Error fetching hands:", error);
+    logger.error({ err: error }, "Error fetching hands:");
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -311,7 +314,7 @@ router.get("/tables/:tableId/hands/:handId", async (req, res) => {
 
     res.json(formatHandResponse(hand, actions));
   } catch (error) {
-    console.error("Error fetching hand:", error);
+    logger.error({ err: error }, "Error fetching hand:");
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -341,7 +344,7 @@ router.get("/tables/:tableId/hands/:handId/revealed-holecards", async (req, res)
       }))
     );
   } catch (error) {
-    console.error("Error fetching revealed holecards:", error);
+    logger.error({ err: error }, "Error fetching revealed holecards:");
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -366,7 +369,7 @@ router.get("/agents", async (req, res) => {
 
     res.json(response);
   } catch (error) {
-    console.error("Error fetching agents:", error);
+    logger.error({ err: error }, "Error fetching agents:");
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -386,7 +389,7 @@ router.get("/agents/:address", async (req, res) => {
 
     res.json(formatAgentResponse(agent, snapshot));
   } catch (error) {
-    console.error("Error fetching agent:", error);
+    logger.error({ err: error }, "Error fetching agent:");
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -404,7 +407,7 @@ router.get("/agents/:address/snapshots", async (req, res) => {
     const snapshots = await getVaultSnapshots(agent.vault_address, limit);
     res.json(snapshots.map(formatSnapshotResponse));
   } catch (error) {
-    console.error("Error fetching snapshots:", error);
+    logger.error({ err: error }, "Error fetching snapshots:");
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -436,7 +439,7 @@ router.get("/agents/:address/rebalances", async (req, res) => {
       }))
     );
   } catch (error) {
-    console.error("Error fetching rebalance events:", error);
+    logger.error({ err: error }, "Error fetching rebalance events:");
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -593,7 +596,7 @@ router.get("/leaderboard", leaderboardRateLimit, async (req, res) => {
 
     res.json(response);
   } catch (error) {
-    console.error("Error fetching leaderboard:", error);
+    logger.error({ err: error }, "Error fetching leaderboard:");
     res.status(500).json({ error: "Internal server error" });
   }
 });

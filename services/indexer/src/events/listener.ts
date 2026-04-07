@@ -1,7 +1,9 @@
 // Event listener - subscribes to chain events and dispatches to handlers
 
 import { createPublicClient, http, type Log, decodeEventLog, type Address } from "viem";
-import { getChainConfig } from "@playerco/shared";
+import { createLogger, getChainConfig } from "@playerco/shared";
+
+const logger = createLogger({ service: "indexer" });
 import { pokerTableAbi, playerRegistryAbi, playerVaultAbi, gameStateToString } from "./abis.js";
 import * as handlers from "./handlers.js";
 import type {
@@ -92,14 +94,12 @@ export class EventListener {
     if (this.running) return;
     this.running = true;
 
-    console.log("Starting event listener...");
-    console.log(`Log block range: ${this.config.logBlockRange}`);
-    console.log(`Monitoring ${this.config.pokerTableAddresses.length} table(s)`);
+    logger.info({ logBlockRange: this.config.logBlockRange, tableCount: this.config.pokerTableAddresses.length }, "Starting event listener...");
     for (const addr of this.config.pokerTableAddresses) {
       await this.seedTableStateFromChain(addr);
     }
     await this.loadTrackedVaultAddresses();
-    console.log(`Tracking ${this.trackedVaultAddresses.size} vault address(es)`);
+    logger.info({ vaultCount: this.trackedVaultAddresses.size }, "Vault addresses loaded");
 
     // Get last processed block from DB
     const state = await getIndexerState();
@@ -110,15 +110,13 @@ export class EventListener {
       const stateBlock = BigInt(state.last_processed_block);
       if (this.config.replayOnStart) {
         fromBlock = configuredStartBlock;
-        console.log(
-          `Replay mode enabled: starting from configured START_BLOCK ${configuredStartBlock} (cursor was ${stateBlock})`
-        );
+        logger.info({ configuredStartBlock: configuredStartBlock.toString(), cursor: stateBlock.toString() }, "Replay mode enabled: starting from configured START_BLOCK");
       } else if (stateBlock > fromBlock) {
         fromBlock = stateBlock;
       }
     }
 
-    console.log(`Resuming from block ${fromBlock}`);
+    logger.info({ fromBlock: fromBlock.toString() }, "Resuming from block");
 
     const CIRCUIT_BREAKER_THRESHOLD = 10;
     const BACKOFF_BASE_MS = 5_000;
@@ -153,14 +151,13 @@ export class EventListener {
         }
       } catch (error) {
         consecutiveErrors++;
-        console.error(
-          { consecutiveErrors, backoffMs, error },
+        logger.error(
+          { consecutiveErrors, backoffMs, err: error },
           "Error in event listener"
         );
 
         if (consecutiveErrors >= CIRCUIT_BREAKER_THRESHOLD) {
-          // Circuit breaker: log at elevated severity and hold at max backoff
-          console.error(
+          logger.error(
             { consecutiveErrors, maxBackoffMs: BACKOFF_MAX_MS },
             "CIRCUIT BREAKER: event listener exceeded consecutive error threshold — manual investigation required"
           );
@@ -178,7 +175,7 @@ export class EventListener {
   }
 
   private async processBlockRange(fromBlock: bigint, toBlock: bigint): Promise<void> {
-    console.log(`Processing blocks ${fromBlock} to ${toBlock}...`);
+    logger.debug({ fromBlock: fromBlock.toString(), toBlock: toBlock.toString() }, "Processing block range");
 
     // Fetch table/registry first, then derive any new vault addresses before vault log query.
     const [tableLogs, registryLogs] = await Promise.all([
@@ -344,7 +341,7 @@ export class EventListener {
           break;
       }
     } catch (error) {
-      console.error("Error decoding poker table log:", error);
+      logger.error({ err: error, blockNumber: log.blockNumber?.toString() }, "Error decoding poker table log");
     }
   }
 
@@ -383,7 +380,7 @@ export class EventListener {
           break;
       }
     } catch (error) {
-      console.error("Error decoding registry log:", error);
+      logger.error({ err: error, blockNumber: log.blockNumber?.toString() }, "Error decoding registry log");
     }
   }
 
@@ -419,7 +416,7 @@ export class EventListener {
           break;
       }
     } catch (error) {
-      console.error("Error decoding vault log:", error);
+      logger.error({ err: error, blockNumber: log.blockNumber?.toString() }, "Error decoding vault log");
     }
   }
 
@@ -717,11 +714,12 @@ export class EventListener {
         if (seat.owner.toLowerCase() !== ZERO_ADDRESS) occupiedSeats += 1;
       }
 
-      console.log(
-        `Seeded table snapshot from chain: table=${ctx.tableId} state=${gameStateString} hand=${currentHandIdValue} seats=${occupiedSeats}/${maxSeats}`
+      logger.info(
+        { tableId: ctx.tableId.toString(), state: gameStateString, hand: currentHandIdValue.toString(), occupiedSeats, maxSeats },
+        "Seeded table snapshot from chain"
       );
     } catch (error) {
-      console.error("Failed to seed table snapshot from chain (continuing with log replay):", error);
+      logger.error({ err: error }, "Failed to seed table snapshot from chain (continuing with log replay)");
     }
   }
 }

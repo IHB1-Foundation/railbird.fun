@@ -4,8 +4,9 @@
  * Derives a deterministic secp256k1 encryption key pair from a wallet signature.
  * The private key is kept in memory only; the public key may be cached in localStorage.
  *
- * Key derivation:
- *   message  = "Railbird Encryption Key Derivation v1"
+ * Key derivation (T-R5-02: time-based component prevents indefinite key exposure):
+ *   date     = current UTC date (YYYY-MM-DD) — key rotates daily
+ *   message  = "Railbird Encryption Key Derivation v1 | {date}"
  *   signature = personal_sign(message, address)
  *   privKey  = keccak256(signature)   // 32 bytes
  *   pubKey   = secp256k1.getPublicKey(privKey, compressed=true)  // 33 bytes
@@ -15,10 +16,19 @@ import { secp256k1 } from "@noble/curves/secp256k1.js";
 import { keccak_256 } from "@noble/hashes/sha3.js";
 import { hexToBytes } from "./cryptoUtils";
 
-const DERIVATION_MESSAGE = "Railbird Encryption Key Derivation v1";
+/** Returns current UTC date string for daily key rotation (e.g. "2026-04-07"). */
+function utcDateString(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+/** Build the derivation message with a daily time component to limit key exposure window. */
+function buildDerivationMessage(): string {
+  return `Railbird Encryption Key Derivation v1 | ${utcDateString()}`;
+}
+
 const PUBKEY_STORAGE_PREFIX = "railbird_encpubkey_";
 
-/** In-memory cache: address (lowercase) → { privKey, pubKey } */
+/** In-memory cache: "{address}:{date}" → { privKey, pubKey } — invalidated on UTC date change. */
 const sessionCache = new Map<string, { privKey: Uint8Array; pubKey: Uint8Array }>();
 
 export interface EncryptionKeyPair {
@@ -39,14 +49,16 @@ export async function deriveEncryptionKeyPair(
   address: string,
   sign: (message: string, address: string) => Promise<string>
 ): Promise<EncryptionKeyPair> {
-  const key = address.toLowerCase();
+  const date = utcDateString();
+  const cacheKey = `${address.toLowerCase()}:${date}`;
 
-  // Return cached pair if available (avoids repeat signing prompts)
-  const cached = sessionCache.get(key);
+  // Return cached pair if available (avoids repeat signing prompts within same UTC day)
+  const cached = sessionCache.get(cacheKey);
   if (cached) return cached;
 
-  // Request wallet signature for key derivation
-  const signature = await sign(DERIVATION_MESSAGE, key);
+  // Request wallet signature for key derivation (includes today's date for daily rotation)
+  const derivationMessage = buildDerivationMessage();
+  const signature = await sign(derivationMessage, address.toLowerCase());
 
   // privKey = keccak256(signature bytes)
   const sigBytes = hexToBytes(signature);
@@ -61,12 +73,12 @@ export async function deriveEncryptionKeyPair(
   const pubKey = secp256k1.getPublicKey(privKey, true); // compressed
 
   const pair: EncryptionKeyPair = { privKey, pubKey };
-  sessionCache.set(key, pair);
+  sessionCache.set(cacheKey, pair);
 
   // Cache pubKey in localStorage (public, safe to persist)
   try {
     localStorage.setItem(
-      PUBKEY_STORAGE_PREFIX + key,
+      PUBKEY_STORAGE_PREFIX + address.toLowerCase(),
       bytesToHex(pubKey)
     );
   } catch {
@@ -96,7 +108,10 @@ export function getCachedPubKey(address: string): Uint8Array | null {
  * Clear the in-memory cache for an address (e.g., on wallet disconnect).
  */
 export function clearEncryptionKeyCache(address: string): void {
-  sessionCache.delete(address.toLowerCase());
+  const prefix = address.toLowerCase() + ":";
+  for (const key of sessionCache.keys()) {
+    if (key.startsWith(prefix)) sessionCache.delete(key);
+  }
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────

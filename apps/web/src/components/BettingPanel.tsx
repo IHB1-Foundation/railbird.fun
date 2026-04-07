@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { CHIP_SYMBOL, formatChips, shortenAddress } from "@/lib/utils";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { CHIP_SYMBOL, cn, formatChips, shortenAddress } from "@/lib/utils";
 import type { TableResponse } from "@/lib/types";
 import { buildSeatMarket, formatOdds, toImpliedPercent } from "@/lib/betting";
 import { INDEXER_BASE } from "@/lib/api";
@@ -90,7 +90,18 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
   const [settledHands, setSettledHands] = useState<Set<string>>(new Set());
   const [selectedSeat, setSelectedSeat] = useState<number | null>(null);
   const [stakeInput, setStakeInput] = useState("50");
-  const [notice, setNotice] = useState<string>("");
+  const [notice, setNotice] = useState<{ text: string; type: "success" | "error" } | null>(null);
+
+  const showSuccess = useCallback((text: string) => setNotice({ text, type: "success" }), []);
+  const showError   = useCallback((text: string) => setNotice({ text, type: "error" }),   []);
+
+  // Auto-clear: success after 5 s, error after 10 s
+  useEffect(() => {
+    if (!notice) return;
+    const ms = notice.type === "success" ? 5000 : 10000;
+    const timer = setTimeout(() => setNotice(null), ms);
+    return () => clearTimeout(timer);
+  }, [notice]);
 
   const market = useMemo(() => buildSeatMarket(table), [table]);
   const handId = table.currentHand?.handId ?? null;
@@ -134,9 +145,9 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
       localStorage.removeItem(BANKROLL_KEY);
       localStorage.removeItem(WAGERS_KEY);
       localStorage.removeItem(SETTLED_HANDS_KEY);
-      setNotice("Saved betting data was corrupted. Starting from defaults.");
+      showError("Saved betting data was corrupted. Starting from defaults.");
     }
-  }, []);
+  }, [showError]);
 
   // Only poll while a hand is in progress — stops wasting RPC budget between hands.
   useEffect(() => {
@@ -199,12 +210,12 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
     localStorage.setItem(BANKROLL_KEY, nextBankroll.toString());
     localStorage.setItem(SETTLED_HANDS_KEY, JSON.stringify(Array.from(nextSettled)));
 
-    setNotice(
-      realized > 0n
-        ? `Hand #${handId} settled: +${formatChips(realized)} ${CHIP_SYMBOL}`
-        : `Hand #${handId} settled: no winning tickets this round.`
-    );
-  }, [bankrollWei, handId, settledHands, table.tableId, wagers, winnerSeat]);
+    if (realized > 0n) {
+      showSuccess(`Hand #${handId} settled: +${formatChips(realized)} ${CHIP_SYMBOL}`);
+    } else {
+      showError(`Hand #${handId} settled: no winning tickets this round.`);
+    }
+  }, [bankrollWei, handId, settledHands, showError, showSuccess, table.tableId, wagers, winnerSeat]);
 
   const openWagers = wagers.filter((w) => w.status === "open").slice(-8).reverse();
   const settledWagers = wagers.filter((w) => w.status !== "open").slice(-8).reverse();
@@ -219,23 +230,23 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
   }
 
   function placeBet() {
-    setNotice("");
+    setNotice(null);
     if (!marketOpen || !handId) {
-      setNotice("Betting is closed right now. Wait for the next hand.");
+      showError("Betting is closed right now. Wait for the next hand.");
       return;
     }
     if (!selectedMarket) {
-      setNotice("Select an agent before placing a bet.");
+      showError("Select an agent before placing a bet.");
       return;
     }
 
     const stakeWei = parseChipInputToWei(stakeInput);
     if (!stakeWei) {
-      setNotice(`Invalid stake: enter a positive whole number between 1 and ${MAX_STAKE_CHIPS.toLocaleString()} chips.`);
+      showError(`Invalid stake: enter a positive whole number between 1 and ${MAX_STAKE_CHIPS.toLocaleString()} chips.`);
       return;
     }
     if (stakeWei > bankrollWei) {
-      setNotice("Insufficient bankroll.");
+      showError("Insufficient bankroll.");
       return;
     }
 
@@ -254,7 +265,7 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
 
     const nextWagers = [...wagers, wager];
     persist(nextBankroll, nextWagers);
-    setNotice(
+    showSuccess(
       `Bet accepted: ${selectedMarket.profile.codename} / ${formatChips(stakeWei)} ${CHIP_SYMBOL} @ ${formatOdds(selectedMarket.oddsBps)}x`
     );
   }
@@ -262,7 +273,7 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
   function resetBook() {
     const empty: Wager[] = [];
     const settled = new Set<string>();
-    setNotice("Bet history has been reset.");
+    showSuccess("Bet history has been reset.");
     setWagers(empty);
     setSettledHands(settled);
     setBankrollWei(DEFAULT_BANKROLL);
@@ -295,7 +306,23 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
         {marketOpen ? `Hand #${handId} market open` : "Market closed (waiting for next hand)"}
       </div>
 
-      {notice && <div className={styles.betNotice}>{notice}</div>}
+      {notice && (
+        <div
+          className={cn(styles.betNotice, notice.type === "success" ? styles.betNoticeSuccess : styles.betNoticeError)}
+          role="alert"
+          aria-live="polite"
+        >
+          <span>{notice.text}</span>
+          <button
+            type="button"
+            className={styles.betNoticeDismiss}
+            onClick={() => setNotice(null)}
+            aria-label="Dismiss"
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       <div className={styles.betLayout}>
         <div className={styles.betAgentGrid}>

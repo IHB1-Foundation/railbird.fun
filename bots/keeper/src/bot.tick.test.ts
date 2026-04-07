@@ -306,3 +306,157 @@ describe("KeeperBot tick() — stats tracking", () => {
     assert.strictEqual((client.startHand as MockFn).mock.calls.length, 0);
   });
 });
+
+// ─── T-R17-03: Concurrent keeper coordination tests ──────────────────────────
+// Simulates two keeper instances racing on the same action.
+// The winning keeper's action succeeds; the losing keeper receives a
+// OneActionPerBlock / CannotStartHand error that isDuplicateKeeperAction()
+// classifies as a coordination race, incrementing coordinationSkips only.
+
+import { encodeErrorResult } from "viem";
+
+/** Build a viem-style error with an ABI-encoded custom error selector. */
+function makeContractError(errorName: string): Error {
+  const data = encodeErrorResult({
+    abi: [{ type: "error" as const, name: errorName, inputs: [] }],
+    errorName,
+  });
+  const err = new Error(`execution reverted with custom error: ${errorName}`);
+  (err as unknown as Record<string, unknown>).cause = { data };
+  return err;
+}
+
+describe("KeeperBot — multi-keeper forceTimeout race (T-R17-03)", () => {
+  test("first keeper succeeds, second gets OneActionPerBlock → coordinationSkip not error", async () => {
+    // Bot 1: forceTimeout succeeds
+    const client1 = makeMockClient();
+    client1.getTableState = mock.fn(async () =>
+      makeBaseState({
+        gameState: GameState.BETTING_PRE,
+        actionDeadline: 500n,
+        lastActionBlock: 99n,
+      })
+    );
+    client1.getBlockTimestamp = mock.fn(async () => 1000n);
+    client1.getBlockNumber = mock.fn(async () => 100n);
+    client1.isBettingState = mock.fn(() => true);
+    client1.isVRFWaitingState = mock.fn(() => false);
+    client1.forceTimeout = mock.fn(async () => "0xabc");
+    const bot1 = makeBot(client1);
+    await runTick(bot1);
+    assert.strictEqual(bot1.getStats().timeoutsForced, 1, "bot1 forced timeout");
+    assert.strictEqual(bot1.getStats().coordinationSkips, 0, "bot1: no coordination skip");
+    assert.strictEqual(bot1.getStats().errors, 0, "bot1: no errors");
+
+    // Bot 2: forceTimeout throws OneActionPerBlock (another keeper acted first)
+    const client2 = makeMockClient();
+    client2.getTableState = mock.fn(async () =>
+      makeBaseState({
+        gameState: GameState.BETTING_PRE,
+        actionDeadline: 500n,
+        lastActionBlock: 99n,
+      })
+    );
+    client2.getBlockTimestamp = mock.fn(async () => 1000n);
+    client2.getBlockNumber = mock.fn(async () => 100n);
+    client2.isBettingState = mock.fn(() => true);
+    client2.isVRFWaitingState = mock.fn(() => false);
+    client2.forceTimeout = mock.fn(async () => {
+      throw makeContractError("OneActionPerBlock");
+    });
+    const bot2 = makeBot(client2);
+    await runTick(bot2);
+    assert.strictEqual(bot2.getStats().timeoutsForced, 0, "bot2: no timeout forced");
+    assert.strictEqual(bot2.getStats().coordinationSkips, 1, "bot2: coordination skip recorded");
+    assert.strictEqual(bot2.getStats().errors, 0, "bot2: not counted as an error");
+  });
+
+  test("second keeper string-fallback OneActionPerBlock is also a coordination skip", async () => {
+    const client = makeMockClient();
+    client.getTableState = mock.fn(async () =>
+      makeBaseState({
+        gameState: GameState.BETTING_PRE,
+        actionDeadline: 500n,
+        lastActionBlock: 99n,
+      })
+    );
+    client.getBlockTimestamp = mock.fn(async () => 1000n);
+    client.getBlockNumber = mock.fn(async () => 100n);
+    client.isBettingState = mock.fn(() => true);
+    client.isVRFWaitingState = mock.fn(() => false);
+    client.forceTimeout = mock.fn(async () => {
+      throw new Error("execution reverted: One action per block");
+    });
+    const bot = makeBot(client);
+    await runTick(bot);
+    assert.strictEqual(bot.getStats().coordinationSkips, 1, "string-match fallback coordination skip");
+    assert.strictEqual(bot.getStats().errors, 0, "not counted as an error");
+  });
+});
+
+describe("KeeperBot — multi-keeper startHand race (T-R17-03)", () => {
+  test("first keeper startHand succeeds, second gets CannotStartHand → coordinationSkip", async () => {
+    // Bot 1 starts the hand
+    const client1 = makeMockClient();
+    client1.getTableState = mock.fn(async () =>
+      makeBaseState({ gameState: GameState.WAITING_FOR_SEATS, canStartHand: true })
+    );
+    client1.isBettingState = mock.fn(() => false);
+    client1.isVRFWaitingState = mock.fn(() => false);
+    client1.startHand = mock.fn(async () => "0xdef");
+    const bot1 = makeBot(client1);
+    await runTick(bot1);
+    assert.strictEqual(bot1.getStats().handsStarted, 1, "bot1 started hand");
+    assert.strictEqual(bot1.getStats().coordinationSkips, 0, "bot1: no coordination skip");
+
+    // Bot 2 races to start the same hand — gets CannotStartHand
+    const client2 = makeMockClient();
+    client2.getTableState = mock.fn(async () =>
+      makeBaseState({ gameState: GameState.WAITING_FOR_SEATS, canStartHand: true })
+    );
+    client2.isBettingState = mock.fn(() => false);
+    client2.isVRFWaitingState = mock.fn(() => false);
+    client2.startHand = mock.fn(async () => {
+      throw makeContractError("CannotStartHand");
+    });
+    const bot2 = makeBot(client2);
+    await runTick(bot2);
+    assert.strictEqual(bot2.getStats().handsStarted, 0, "bot2: hand not started");
+    assert.strictEqual(bot2.getStats().coordinationSkips, 1, "bot2: coordination skip recorded");
+    assert.strictEqual(bot2.getStats().errors, 0, "bot2: not counted as an error");
+  });
+});
+
+describe("KeeperBot — keeper retry after coordination skip (T-R17-03)", () => {
+  test("keeper retries on next tick and succeeds after coordination skip", async () => {
+    const client = makeMockClient();
+    let callCount = 0;
+
+    // First tick: coordination race (another keeper acted)
+    // Second tick: success
+    client.startHand = mock.fn(async () => {
+      callCount++;
+      if (callCount === 1) {
+        throw makeContractError("CannotStartHand");
+      }
+      return "0xsuccesshash";
+    });
+    client.getTableState = mock.fn(async () =>
+      makeBaseState({ gameState: GameState.WAITING_FOR_SEATS, canStartHand: true })
+    );
+    client.isBettingState = mock.fn(() => false);
+    client.isVRFWaitingState = mock.fn(() => false);
+
+    const bot = makeBot(client);
+
+    // First tick: coordination skip
+    await runTick(bot);
+    assert.strictEqual(bot.getStats().coordinationSkips, 1, "First tick: coordination skip");
+    assert.strictEqual(bot.getStats().handsStarted, 0, "First tick: hand not started");
+
+    // Second tick: success
+    await runTick(bot);
+    assert.strictEqual(bot.getStats().handsStarted, 1, "Second tick: hand started after retry");
+    assert.strictEqual(bot.getStats().errors, 0, "No errors across both ticks");
+  });
+});

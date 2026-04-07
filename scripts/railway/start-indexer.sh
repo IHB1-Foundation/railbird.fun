@@ -63,8 +63,11 @@ require_env DB_PASSWORD
 
 export PORT="${PORT:-3002}"
 export START_BLOCK="${START_BLOCK:-0}"
-export INDEXER_FLUSH_ON_START="${INDEXER_FLUSH_ON_START:-true}"
-export POLL_INTERVAL_MS="${POLL_INTERVAL_MS:-2000}"
+# Default false: flushing on start destroys historical data. Set to true only
+# for a planned re-index (e.g. after a schema migration that requires replay).
+export INDEXER_FLUSH_ON_START="${INDEXER_FLUSH_ON_START:-false}"
+# Per-environment recommended: local=1000  testnet=2000  mainnet=3000
+export POLL_INTERVAL_MS="${POLL_INTERVAL_MS:-1000}"
 export LOG_BLOCK_RANGE="${LOG_BLOCK_RANGE:-90}"
 
 flush_on_start="$(printf '%s' "$INDEXER_FLUSH_ON_START" | tr '[:upper:]' '[:lower:]')"

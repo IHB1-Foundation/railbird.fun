@@ -94,6 +94,8 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
   const [joinOperator, setJoinOperator] = useState<string>("");
   const [joinLoading, setJoinLoading] = useState<boolean>(false);
   const [joinStatus, setJoinStatus] = useState<string>("");
+  const [refreshError, setRefreshError] = useState<string | null>(null);
+  const [refreshRetryCount, setRefreshRetryCount] = useState(0);
 
   const { isConnected, isAuthenticated, address, connect, getHoleCards } = useAuth();
 
@@ -140,11 +142,18 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
       const res = await fetch(`${INDEXER_BASE}/api/tables/${tableId}`, {
         cache: "no-store",
       });
-      if (!res.ok) return;
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
       const data = (await res.json()) as TableResponse;
       setTable(data);
+      setRefreshError(null);
+      setRefreshRetryCount(0);
     } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unknown error";
       console.error("[TableViewer] Table fetch failed:", err);
+      setRefreshError(`Table data refresh failed (${msg}). Retrying…`);
+      setRefreshRetryCount((n) => n + 1);
     }
   }, [tableId]);
 
@@ -352,8 +361,24 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
     table.contractAddress,
   ]);
 
+  // Auto-retry table refresh with exponential backoff when it fails
+  useEffect(() => {
+    if (refreshRetryCount === 0) return;
+    const delay = Math.min(1000 * Math.pow(2, refreshRetryCount - 1), 30_000);
+    const timer = setTimeout(() => void refreshTable(), delay);
+    return () => clearTimeout(timer);
+  }, [refreshRetryCount, refreshTable]);
+
   return (
     <div>
+      {/* Refresh error banner */}
+      {refreshError && (
+        <div role="alert" style={{ background: "#3a1a1a", color: "#f87171", padding: "0.5rem 1rem", marginBottom: "0.5rem", borderRadius: "4px", fontSize: "0.875rem" }}>
+          {refreshError}
+          {refreshRetryCount > 0 && ` (attempt ${refreshRetryCount})`}
+        </div>
+      )}
+
       {/* Connection Status */}
       <div className={cn(
         styles.connectionStatus,

@@ -467,7 +467,7 @@ contract PokerTableTest is Test {
         vm.prank(operator1);
         vm.roll(block.number + 1);
 
-        vm.expectRevert("Not your turn");
+        vm.expectRevert(abi.encodeWithSelector(PokerTable.NotYourTurn.selector));
         pokerTable.check(0);
     }
 
@@ -824,7 +824,7 @@ contract PokerTableTest is Test {
         _completePreflop();
 
         // Try to re-request immediately (before timeout)
-        vm.expectRevert("VRF timeout not reached");
+        vm.expectRevert(abi.encodeWithSelector(PokerTable.VRFTimeoutNotReached.selector));
         pokerTable.reRequestVRF();
     }
 
@@ -1351,7 +1351,7 @@ contract PokerTableTest is Test {
 
         // Button tries in same block
         vm.prank(operator1);
-        vm.expectRevert("One action per block");
+        vm.expectRevert(abi.encodeWithSelector(PokerTable.OneActionPerBlock.selector));
         pokerTable.call(0);
     }
 
@@ -1387,7 +1387,7 @@ contract PokerTableTest is Test {
         vm.warp(block.timestamp + 31 minutes);
 
         // Same block - forceTimeout should also respect one-action-per-block
-        vm.expectRevert("One action per block");
+        vm.expectRevert(abi.encodeWithSelector(PokerTable.OneActionPerBlock.selector));
         pokerTable.forceTimeout();
 
         vm.roll(block.number + 1);
@@ -1401,7 +1401,7 @@ contract PokerTableTest is Test {
 
         // Without advancing block, action should fail
         vm.prank(operator4);
-        vm.expectRevert("One action per block");
+        vm.expectRevert(abi.encodeWithSelector(PokerTable.OneActionPerBlock.selector));
         pokerTable.call(3);
     }
 
@@ -1443,7 +1443,7 @@ contract PokerTableTest is Test {
         bytes32 commitment = keccak256("test");
         pokerTable.submitHoleCommit(1, 0, commitment);
 
-        vm.expectRevert("Commitment already exists");
+        vm.expectRevert(abi.encodeWithSelector(PokerTable.CommitmentAlreadyExists.selector));
         pokerTable.submitHoleCommit(1, 0, keccak256("another"));
     }
 
@@ -1964,7 +1964,7 @@ contract PokerTableTest is Test {
         _playToShowdown();
 
         // No reveals submitted
-        vm.expectRevert("Showdown reveal window open");
+        vm.expectRevert(abi.encodeWithSelector(PokerTable.ShowdownRevealWindowOpen.selector));
         pokerTable.settleShowdown();
     }
 

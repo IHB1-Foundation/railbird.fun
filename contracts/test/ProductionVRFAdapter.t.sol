@@ -300,7 +300,7 @@ contract ProductionVRFAdapterTest is Test {
         _setupPokerTableForFulfillment();
         _startHandAndGetToVRF();
 
-        vm.expectRevert("VRF timeout not reached");
+        vm.expectRevert(abi.encodeWithSelector(PokerTable.VRFTimeoutNotReached.selector));
         pokerTable.reRequestVRF();
     }
 

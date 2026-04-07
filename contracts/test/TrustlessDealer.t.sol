@@ -415,7 +415,7 @@ contract TrustlessDealerTest is Test {
         assertEq(oldRequestId, 1);
 
         // Before timeout
-        vm.expectRevert("VRF timeout not reached");
+        vm.expectRevert(abi.encodeWithSelector(PokerTable.VRFTimeoutNotReached.selector));
         pokerTable.reRequestHoleCardVRF();
 
         // After timeout

@@ -9,7 +9,10 @@ import {
   isCannotStartHand,
   isSettleShowdownRetriable,
   isCommitmentAlreadyExists,
+  isDuplicateKeeperAction,
+  tryDecodeCustomError,
 } from "./contractErrors.js";
+import { encodeErrorResult } from "viem";
 
 describe("GameState enum", () => {
   test("has correct values", () => {
@@ -316,5 +319,80 @@ describe("contractErrors — error matching helpers", () => {
     const err = new Error(`execution reverted: ${CONTRACT_ERRORS.COMMITMENT_ALREADY_EXISTS}`);
     assert.strictEqual(isCommitmentAlreadyExists(err), true);
     assert.strictEqual(isCommitmentAlreadyExists(new Error("something else")), false);
+  });
+});
+
+describe("contractErrors — custom error selector matching (T-R15-04)", () => {
+  // Helper: build a mock viem error with .cause.data set to ABI-encoded error
+  function makeViemErrorWithSelector(errorName: string): Error {
+    const data = encodeErrorResult({
+      abi: [{ type: "error" as const, name: errorName, inputs: [] }],
+      errorName,
+    });
+    const err = new Error(`execution reverted with custom error: ${errorName}`);
+    (err as unknown as Record<string, unknown>).cause = { data };
+    return err;
+  }
+
+  test("tryDecodeCustomError returns error name for OneActionPerBlock selector", () => {
+    const err = makeViemErrorWithSelector("OneActionPerBlock");
+    assert.strictEqual(tryDecodeCustomError(err), "OneActionPerBlock");
+  });
+
+  test("tryDecodeCustomError returns error name for VRFTimeoutNotReached selector", () => {
+    const err = makeViemErrorWithSelector("VRFTimeoutNotReached");
+    assert.strictEqual(tryDecodeCustomError(err), "VRFTimeoutNotReached");
+  });
+
+  test("tryDecodeCustomError returns null for unknown selector", () => {
+    const err = new Error("plain string error");
+    (err as unknown as Record<string, unknown>).cause = { data: "0xdeadbeef" };
+    assert.strictEqual(tryDecodeCustomError(err), null);
+  });
+
+  test("tryDecodeCustomError returns null with no revert data", () => {
+    assert.strictEqual(tryDecodeCustomError(new Error("no data")), null);
+    assert.strictEqual(tryDecodeCustomError("string error"), null);
+  });
+
+  test("isDuplicateKeeperAction matches OneActionPerBlock selector", () => {
+    const err = makeViemErrorWithSelector("OneActionPerBlock");
+    assert.strictEqual(isDuplicateKeeperAction(err), true);
+  });
+
+  test("isDuplicateKeeperAction matches CannotStartHand selector", () => {
+    const err = makeViemErrorWithSelector("CannotStartHand");
+    assert.strictEqual(isDuplicateKeeperAction(err), true);
+  });
+
+  test("isDuplicateKeeperAction returns false for non-coordination error selector", () => {
+    const err = makeViemErrorWithSelector("NotYourTurn");
+    assert.strictEqual(isDuplicateKeeperAction(err), false);
+  });
+
+  test("isVrfAlreadyReRequested matches VRFTimeoutNotReached selector", () => {
+    const err = makeViemErrorWithSelector("VRFTimeoutNotReached");
+    assert.strictEqual(isVrfAlreadyReRequested(err), true);
+  });
+
+  test("isSettleShowdownRetriable matches ShowdownRevealWindowOpen selector", () => {
+    const err = makeViemErrorWithSelector("ShowdownRevealWindowOpen");
+    assert.strictEqual(isSettleShowdownRetriable(err), true);
+  });
+
+  test("isCommitmentAlreadyExists matches CommitmentAlreadyExists selector", () => {
+    const err = makeViemErrorWithSelector("CommitmentAlreadyExists");
+    assert.strictEqual(isCommitmentAlreadyExists(err), true);
+  });
+
+  test("string fallback still works when no selector data", () => {
+    assert.strictEqual(
+      isDuplicateKeeperAction(new Error("One action per block")),
+      true
+    );
+    assert.strictEqual(
+      isVrfAlreadyReRequested(new Error("VRF timeout not reached")),
+      true
+    );
   });
 });

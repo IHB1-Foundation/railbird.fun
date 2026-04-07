@@ -326,6 +326,22 @@ contract PokerTable {
     /// @notice Emitted when blind levels are updated
     event BlindsUpdated(uint256 oldSmallBlind, uint256 oldBigBlind, uint256 newSmallBlind, uint256 newBigBlind);
 
+    // ============ Custom Errors ============
+    /// @notice Thrown when a second action is attempted in the same block.
+    error OneActionPerBlock();
+    /// @notice Thrown when a function is called in an unexpected game state.
+    error InvalidGameState();
+    /// @notice Thrown when startHand cannot proceed (state, timing, or seat conditions).
+    error CannotStartHand();
+    /// @notice Thrown when VRF timeout has not elapsed yet.
+    error VRFTimeoutNotReached();
+    /// @notice Thrown when settleShowdown is called but the reveal window is still open.
+    error ShowdownRevealWindowOpen();
+    /// @notice Thrown when a hole card commitment is submitted for a seat that already has one.
+    error CommitmentAlreadyExists();
+    /// @notice Thrown when the actor seat check fails.
+    error NotYourTurn();
+
     // ============ State Variables ============
     uint256 public tableId;
     uint256 public smallBlind;
@@ -426,7 +442,7 @@ contract PokerTable {
     }
 
     function _checkActorTurn(uint8 seatIndex) internal view {
-        require(currentHand.actorSeat == seatIndex, "Not your turn");
+        if (currentHand.actorSeat != seatIndex) revert NotYourTurn();
     }
     modifier isActorTurn(uint8 seatIndex) {
         _checkActorTurn(seatIndex);
@@ -442,7 +458,7 @@ contract PokerTable {
     }
 
     function _checkOneActionPerBlock() internal view {
-        require(block.number > lastActionBlock, "One action per block");
+        if (block.number <= lastActionBlock) revert OneActionPerBlock();
     }
     modifier oneActionPerBlock() {
         _checkOneActionPerBlock();
@@ -890,10 +906,9 @@ contract PokerTable {
      * @notice Start a new hand. Can be called by anyone when conditions are met.
      */
     function startHand() external whenNotPaused {
-        require(
-            gameState == GameState.WAITING_FOR_SEATS || gameState == GameState.SETTLED,
-            "Cannot start hand now"
-        );
+        if (gameState != GameState.WAITING_FOR_SEATS && gameState != GameState.SETTLED) {
+            revert CannotStartHand();
+        }
         _evictBustedSeats();
         if (gameState == GameState.TOURNAMENT_OVER) return; // winner already declared
         require(_countPlayableSeats() >= 2, "Need at least 2 funded seats");
@@ -1409,7 +1424,7 @@ contract PokerTable {
         } else if (gameState == GameState.BETTING_RIVER) {
             nextState = GameState.SHOWDOWN;
         } else {
-            revert("Invalid state for betting round completion");
+            revert InvalidGameState();
         }
 
         emit BettingRoundComplete(currentHandId, currentState, nextState);
@@ -1517,7 +1532,7 @@ contract PokerTable {
             "Not waiting for VRF"
         );
         require(vrfAdapter != address(0), "No VRF adapter");
-        require(block.timestamp > vrfRequestTimestamp + VRF_TIMEOUT, "VRF timeout not reached");
+        if (block.timestamp <= vrfRequestTimestamp + VRF_TIMEOUT) revert VRFTimeoutNotReached();
 
         uint256 oldRequestId = pendingVRFRequestId;
         uint256 newRequestId = IVRFAdapter(vrfAdapter).requestRandomness(
@@ -1538,7 +1553,7 @@ contract PokerTable {
     function reRequestHoleCardVRF() external {
         require(gameState == GameState.WAITING_VRF_HOLECARDS, "Not waiting for hole card VRF");
         require(vrfAdapter != address(0), "No VRF adapter");
-        require(block.timestamp > vrfRequestTimestamp + VRF_TIMEOUT, "VRF timeout not reached");
+        if (block.timestamp <= vrfRequestTimestamp + VRF_TIMEOUT) revert VRFTimeoutNotReached();
 
         uint256 oldRequestId = pendingHoleCardVRFRequestId;
         uint256 newRequestId = IVRFAdapter(vrfAdapter).requestRandomness(
@@ -1791,11 +1806,10 @@ contract PokerTable {
         }
 
         if (revealedCount == 0) {
-            require(
-                showdownStartTimestamp != 0 &&
-                block.timestamp > showdownStartTimestamp + SHOWDOWN_TIMEOUT,
-                "Showdown reveal window open"
-            );
+            if (
+                showdownStartTimestamp == 0 ||
+                block.timestamp <= showdownStartTimestamp + SHOWDOWN_TIMEOUT
+            ) revert ShowdownRevealWindowOpen();
             _settleUnrevealedShowdown();
             return;
         }
@@ -2089,7 +2103,7 @@ contract PokerTable {
             "Cannot submit commit now"
         );
         require(commitment != bytes32(0), "Empty commitment");
-        require(holeCommits[handId][seatIndex] == bytes32(0), "Commitment already exists");
+        if (holeCommits[handId][seatIndex] != bytes32(0)) revert CommitmentAlreadyExists();
 
         holeCommits[handId][seatIndex] = commitment;
 

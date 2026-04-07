@@ -2113,5 +2113,12 @@ export const POKER_TABLE_ABI = [
       }
     ],
     "anonymous": false
-  }
+  },
+  { "type": "error", "name": "OneActionPerBlock", "inputs": [] },
+  { "type": "error", "name": "InvalidGameState", "inputs": [] },
+  { "type": "error", "name": "CannotStartHand", "inputs": [] },
+  { "type": "error", "name": "VRFTimeoutNotReached", "inputs": [] },
+  { "type": "error", "name": "ShowdownRevealWindowOpen", "inputs": [] },
+  { "type": "error", "name": "CommitmentAlreadyExists", "inputs": [] },
+  { "type": "error", "name": "NotYourTurn", "inputs": [] }
 ] as const;

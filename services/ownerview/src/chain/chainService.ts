@@ -22,10 +22,13 @@ export class ChainError extends Error {
 /**
  * Service for on-chain data retrieval
  */
+const MAX_SEATS_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
 export class ChainService {
   private client: PublicClient;
   private pokerTableAddress: Address;
   private maxSeatsCache: number | null = null;
+  private maxSeatsCachedAt: number | null = null;
 
   constructor(config: ChainServiceConfig) {
     this.client = createPublicClient({
@@ -108,7 +111,12 @@ export class ChainService {
   }
 
   async getMaxSeats(): Promise<number> {
-    if (this.maxSeatsCache !== null) {
+    const now = Date.now();
+    if (
+      this.maxSeatsCache !== null &&
+      this.maxSeatsCachedAt !== null &&
+      now - this.maxSeatsCachedAt < MAX_SEATS_CACHE_TTL_MS
+    ) {
       return this.maxSeatsCache;
     }
 
@@ -123,6 +131,7 @@ export class ChainService {
         throw new Error(`Invalid MAX_SEATS value: ${String(result)}`);
       }
       this.maxSeatsCache = maxSeats;
+      this.maxSeatsCachedAt = now;
       return maxSeats;
     } catch (err) {
       throw new ChainError(

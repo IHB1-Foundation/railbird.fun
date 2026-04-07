@@ -2,6 +2,8 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# Source shared utilities (hydrate_db_env, require_env, etc.)
+. "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 ENV_FILE="${ENV_FILE:-$ROOT_DIR/.env}"
 RAILWAY_ENV="${RAILWAY_ENV:-production}"
 AGENT_DEPLOY_MODE="${AGENT_DEPLOY_MODE:-pack}" # pack | split
@@ -37,39 +39,6 @@ set +a
 export OWNERVIEW_URL="${OWNERVIEW_URL:-https://ownerview.railbird.fun}"
 export CORS_ALLOWED_ORIGINS="${CORS_ALLOWED_ORIGINS:-https://railbird.fun,https://www.railbird.fun}"
 
-hydrate_db_env_from_common_sources() {
-  export DB_HOST="${DB_HOST:-${PGHOST:-}}"
-  export DB_PORT="${DB_PORT:-${PGPORT:-5432}}"
-  export DB_NAME="${DB_NAME:-${PGDATABASE:-}}"
-  export DB_USER="${DB_USER:-${PGUSER:-}}"
-  export DB_PASSWORD="${DB_PASSWORD:-${PGPASSWORD:-}}"
-
-  if [ -z "${DB_HOST:-}" ] && [ -n "${DATABASE_URL:-}" ]; then
-    eval "$(
-      DATABASE_URL="$DATABASE_URL" node -e '
-        try {
-          const u = new URL(process.env.DATABASE_URL);
-          const host = u.hostname || "";
-          const port = u.port || "5432";
-          const db = (u.pathname || "").replace(/^\//, "");
-          const user = decodeURIComponent(u.username || "");
-          const pass = decodeURIComponent(u.password || "");
-          const out = [
-            `export DB_HOST=${JSON.stringify(host)}`,
-            `export DB_PORT=${JSON.stringify(port)}`,
-            `export DB_NAME=${JSON.stringify(db)}`,
-            `export DB_USER=${JSON.stringify(user)}`,
-            `export DB_PASSWORD=${JSON.stringify(pass)}`
-          ];
-          console.log(out.join("\n"));
-        } catch {
-          process.exit(1);
-        }
-      ' 2>/dev/null || true
-    )"
-  fi
-}
-
 is_local_db_host() {
   case "${DB_HOST:-}" in
     ""|localhost|127.0.0.1)
@@ -81,7 +50,8 @@ is_local_db_host() {
   esac
 }
 
-hydrate_db_env_from_common_sources
+# Use shared DB config hydration from common.sh
+hydrate_db_env
 
 should_skip_deploys_flag() {
   if [ "$RAILWAY_SKIP_DEPLOYS" = "true" ]; then

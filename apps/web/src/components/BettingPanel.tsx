@@ -4,9 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { CHIP_SYMBOL, formatChips, shortenAddress } from "@/lib/utils";
 import type { TableResponse } from "@/lib/types";
 import { buildSeatMarket, formatOdds, toImpliedPercent } from "@/lib/betting";
+import { INDEXER_BASE } from "@/lib/api";
 import styles from "./BettingPanel.module.css";
-
-const INDEXER_BASE = process.env.NEXT_PUBLIC_INDEXER_URL || "https://indexer.railbird.fun";
 const BANKROLL_KEY = "railbird_bet_bankroll_v1";
 const WAGERS_KEY = "railbird_wagers_v1";
 const SETTLED_HANDS_KEY = "railbird_settled_hands_v1";

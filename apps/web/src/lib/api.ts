@@ -10,7 +10,10 @@ import type {
   HandResponse,
 } from "./types";
 
-const API_BASE = process.env.NEXT_PUBLIC_INDEXER_URL || "https://indexer.railbird.fun";
+export const INDEXER_BASE = process.env.NEXT_PUBLIC_INDEXER_URL || "https://indexer.railbird.fun";
+
+/** @deprecated Use INDEXER_BASE */
+const API_BASE = INDEXER_BASE;
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 const MAX_RETRIES = 2;

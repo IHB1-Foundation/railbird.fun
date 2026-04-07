@@ -17,7 +17,7 @@ import {
 import type { TableResponse } from "@/lib/types";
 import { GAME_STATES, ACTION_TYPES } from "@/lib/types";
 import { useWebSocket } from "@/lib/useWebSocket";
-import { getRevealedHolecards, type RevealedHolecardResponse } from "@/lib/api";
+import { getRevealedHolecards, type RevealedHolecardResponse, INDEXER_BASE } from "@/lib/api";
 import { PokerCard } from "@/components/poker/PokerCard";
 import { VrfStatusWidget } from "@/components/poker/VrfStatusWidget";
 import { SeatPanel } from "@/components/poker/SeatPanel";
@@ -60,7 +60,6 @@ function isValidTableResponse(data: unknown): data is TableResponse {
   }
   return true;
 }
-const INDEXER_BASE = process.env.NEXT_PUBLIC_INDEXER_URL || "https://indexer.railbird.fun";
 const STREET_LABELS = ["Pre-flop", "Flop", "Turn", "River", "Showdown"] as const;
 
 function getSeatOrbitPosition(seatIndex: number, totalSeats: number): { left: string; top: string } {

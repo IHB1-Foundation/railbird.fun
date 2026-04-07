@@ -1,0 +1,114 @@
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  padding-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+.topbarInner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 72px;
+  border-radius: 999px;
+  background: linear-gradient(140deg, rgba(12, 13, 24, 0.95), rgba(18, 19, 36, 0.88));
+  border: 1px solid var(--card-border);
+  box-shadow:
+    0 20px 42px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(12px);
+  padding: 0.75rem 0.95rem;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.2rem 0.4rem;
+  font-weight: 700;
+}
+
+.brandLogo {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  box-shadow:
+    0 0 0 1px rgba(172, 151, 255, 0.34),
+    0 8px 18px rgba(129, 108, 249, 0.45);
+}
+
+.brandText {
+  font-size: 1.1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  background: linear-gradient(140deg, #9e8dff 8%, #d8beff 68%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.topNav {
+  display: inline-flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.topNav a {
+  padding: 0.45rem 0.85rem;
+  border-radius: 999px;
+  font-size: 0.92rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  color: rgba(247, 248, 255, 0.82);
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.topNav a:hover {
+  color: #fff;
+  border-color: rgba(196, 176, 255, 0.42);
+  background: linear-gradient(160deg, rgba(129, 108, 249, 0.24), rgba(70, 56, 140, 0.18));
+}
+
+.topbarActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 210px;
+}
+
+@media (max-width: 1024px) {
+  .topbarInner {
+    border-radius: 20px;
+    min-height: auto;
+    flex-wrap: wrap;
+  }
+
+  .topNav {
+    order: 3;
+    width: 100%;
+    padding-top: 0.2rem;
+  }
+
+  .topbarActions {
+    margin-left: auto;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .topbar {
+    padding-top: 0.75rem;
+  }
+
+  .topbarInner {
+    padding: 0.7rem;
+  }
+
+  .brandText {
+    font-size: 0.98rem;
+  }
+}

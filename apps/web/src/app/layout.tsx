@@ -3,6 +3,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Roboto } from "next/font/google";
 import "./globals.css";
+import styles from "./layout.module.css";
 import { Providers } from "./providers";
 import { WalletButton } from "@/components/WalletButton";
 
@@ -36,26 +37,26 @@ export default function RootLayout({
       <body className={roboto.variable}>
         <Providers>
           <div className="app-shell">
-            <header className="topbar">
-              <div className="topbar-inner">
-                <Link href="/" className="brand">
+            <header className={styles.topbar}>
+              <div className={styles.topbarInner}>
+                <Link href="/" className={styles.brand}>
                   <Image
                     src="/brand/railbird-mark.svg"
                     alt="Railbird logo"
                     width={40}
                     height={40}
-                    className="brand-logo"
+                    className={styles.brandLogo}
                     priority
                   />
-                  <span className="brand-text">Railbird</span>
+                  <span className={styles.brandText}>Railbird</span>
                 </Link>
-                <nav className="top-nav">
+                <nav className={styles.topNav}>
                   <Link href="/">Tables</Link>
                   <Link href="/betting">Rail Bets</Link>
                   <Link href="/leaderboard">Leaderboard</Link>
                   <Link href="/me">My Agents</Link>
                 </nav>
-                <div className="topbar-actions">
+                <div className={styles.topbarActions}>
                   <WalletButton />
                 </div>
               </div>

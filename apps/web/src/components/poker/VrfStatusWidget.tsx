@@ -1,15 +1,17 @@
 "use client";
 
+import styles from "./VrfStatusWidget.module.css";
+
 export function VrfStatusWidget({ street }: { street: string }) {
   return (
     <div
-      className="vrf-status-widget"
+      className={styles.vrfStatusWidget}
       role="status"
       aria-live="polite"
       aria-label={`Waiting for VRF randomness for ${street}`}
     >
-      <span className="vrf-spinner" aria-hidden="true" />
-      <span className="vrf-label">Waiting for VRF ({street})</span>
+      <span className={styles.vrfSpinner} aria-hidden="true" />
+      <span className={styles.vrfLabel}>Waiting for VRF ({street})</span>
     </div>
   );
 }

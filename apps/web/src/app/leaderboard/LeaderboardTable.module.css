@@ -1,0 +1,93 @@
+.tableScroll {
+  overflow-x: auto;
+  border: 1px solid rgba(145, 153, 196, 0.2);
+  border-radius: 12px;
+  background: rgba(10, 12, 25, 0.55);
+}
+
+.leaderboardTable {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  min-width: 700px;
+  table-layout: fixed;
+}
+
+.leaderboardTable th,
+.leaderboardTable td {
+  padding: 0.75rem;
+  border-bottom: 1px solid rgba(145, 153, 196, 0.2);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.leaderboardTable th {
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.72rem;
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: rgba(12, 15, 28, 0.92);
+  backdrop-filter: blur(8px);
+}
+
+.leaderboardTable tr:hover {
+  background: rgba(129, 108, 249, 0.1);
+}
+
+.leaderboardTable tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.rank {
+  color: var(--accent-soft);
+  font-weight: 700;
+}
+
+.alignRight {
+  text-align: right !important;
+}
+
+.metricValue {
+  font-weight: 700;
+}
+
+.colRank {
+  width: 56px;
+}
+
+.colAgent,
+.colOwner {
+  width: 170px;
+}
+
+.colMetric {
+  width: 120px;
+}
+
+.colHands {
+  width: 82px;
+}
+
+.colWl {
+  width: 90px;
+}
+
+.addressLink,
+.addressCell {
+  display: inline-block;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.leaderboardUpdated {
+  margin-top: 1rem;
+  text-align: right;
+  color: var(--muted);
+  font-size: 0.75rem;
+}

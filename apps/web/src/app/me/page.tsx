@@ -7,6 +7,7 @@ import { shortenAddress, formatMon, formatNavPerShare } from "@/lib/utils";
 import type { AgentResponse } from "@/lib/types";
 
 import { getAgentsByOwner } from "@/lib/api";
+import styles from "./page.module.css";
 
 export default function MyAgentsPage() {
   const { isConnected, isAuthenticated, address, connect, authenticate } =
@@ -42,7 +43,7 @@ export default function MyAgentsPage() {
   // Not connected - prompt to connect
   if (!isConnected) {
     return (
-      <div className="auth-prompt">
+      <div className={styles.authPrompt}>
         <h2>My Agents</h2>
         <p>Connect your wallet to view your owned agents</p>
         <button onClick={connect} className="wallet-button">
@@ -55,7 +56,7 @@ export default function MyAgentsPage() {
   // Connected but not authenticated - prompt to sign
   if (!isAuthenticated) {
     return (
-      <div className="auth-prompt">
+      <div className={styles.authPrompt}>
         <h2>My Agents</h2>
         <p>
           Connected as{" "}
@@ -71,9 +72,9 @@ export default function MyAgentsPage() {
 
   return (
     <section className="page-section">
-      <div className="page-heading-row">
+      <div className={styles.pageHeadingRow}>
         <h2>My Agents</h2>
-        <span className="owner-pill">
+        <span className={styles.ownerPill}>
           Owner:{" "}
           <span className="text-mono">{shortenAddress(address || "")}</span>
         </span>
@@ -101,7 +102,7 @@ export default function MyAgentsPage() {
       )}
 
       {!isLoading && agents.length > 0 && (
-        <div className="agent-list">
+        <div className={styles.agentList}>
           {agents.map((agent) => (
             <AgentCard key={agent.tokenAddress} agent={agent} />
           ))}
@@ -115,9 +116,9 @@ function AgentCard({ agent }: { agent: AgentResponse }) {
   const snapshot = agent.latestSnapshot;
 
   return (
-    <div className="agent-card">
-      <div className="agent-card-header">
-        <div className="agent-card-title">
+    <div className={styles.agentCard}>
+      <div className={styles.agentCardHeader}>
+        <div className={styles.agentCardTitle}>
           <span className="text-mono">{shortenAddress(agent.tokenAddress)}</span>
         </div>
         {agent.tableAddress && (
@@ -127,61 +128,61 @@ function AgentCard({ agent }: { agent: AgentResponse }) {
         )}
       </div>
 
-      <div className="agent-card-stats">
+      <div className={styles.agentCardStats}>
         <div>
-          <div className="agent-card-stat-label">External Assets (A)</div>
-          <div className="agent-card-stat-value">
+          <div className={styles.agentCardStatLabel}>External Assets (A)</div>
+          <div className={styles.agentCardStatValue}>
             {snapshot ? formatMon(snapshot.externalAssets) : "-"}
           </div>
         </div>
         <div>
-          <div className="agent-card-stat-label">Treasury Shares (B)</div>
-          <div className="agent-card-stat-value">
+          <div className={styles.agentCardStatLabel}>Treasury Shares (B)</div>
+          <div className={styles.agentCardStatValue}>
             {snapshot ? formatMon(snapshot.treasuryShares) : "-"}
           </div>
         </div>
         <div>
-          <div className="agent-card-stat-label">Outstanding (N)</div>
-          <div className="agent-card-stat-value">
+          <div className={styles.agentCardStatLabel}>Outstanding (N)</div>
+          <div className={styles.agentCardStatValue}>
             {snapshot ? formatMon(snapshot.outstandingShares) : "-"}
           </div>
         </div>
         <div>
-          <div className="agent-card-stat-label">NAV/Share (P)</div>
-          <div className="agent-card-stat-value">
+          <div className={styles.agentCardStatLabel}>NAV/Share (P)</div>
+          <div className={styles.agentCardStatValue}>
             {snapshot ? formatNavPerShare(snapshot.navPerShare) : "-"}
           </div>
         </div>
       </div>
 
-      <div className="agent-card-stats agent-card-stats-spaced">
+      <div className={`${styles.agentCardStats} ${styles.agentCardStatsSpaced}`}>
         <div>
-          <div className="agent-card-stat-label">Vault</div>
-          <div className="agent-card-stat-value text-mono text-sm">
+          <div className={styles.agentCardStatLabel}>Vault</div>
+          <div className={`${styles.agentCardStatValue} text-mono text-sm`}>
             {agent.vaultAddress ? shortenAddress(agent.vaultAddress) : "-"}
           </div>
         </div>
         <div>
-          <div className="agent-card-stat-label">Operator</div>
-          <div className="agent-card-stat-value text-mono text-sm">
+          <div className={styles.agentCardStatLabel}>Operator</div>
+          <div className={`${styles.agentCardStatValue} text-mono text-sm`}>
             {shortenAddress(agent.operatorAddress)}
           </div>
         </div>
         <div>
-          <div className="agent-card-stat-label">Cumulative PnL</div>
-          <div className={`agent-card-stat-value ${snapshot && BigInt(snapshot.cumulativePnl) >= 0 ? "value-positive" : "value-negative"}`}>
+          <div className={styles.agentCardStatLabel}>Cumulative PnL</div>
+          <div className={`${styles.agentCardStatValue} ${snapshot && BigInt(snapshot.cumulativePnl) >= 0 ? "value-positive" : "value-negative"}`}>
             {snapshot ? formatMon(snapshot.cumulativePnl) : "-"}
           </div>
         </div>
         <div>
-          <div className="agent-card-stat-label">Status</div>
-          <div className="agent-card-stat-value">
+          <div className={styles.agentCardStatLabel}>Status</div>
+          <div className={styles.agentCardStatValue}>
             {agent.isRegistered ? "Active" : "Inactive"}
           </div>
         </div>
       </div>
 
-      <div className="agent-card-actions">
+      <div className={styles.agentCardActions}>
         <Link href={`/agent/${agent.tokenAddress}`}>
           <button className="wallet-button">View Details</button>
         </Link>

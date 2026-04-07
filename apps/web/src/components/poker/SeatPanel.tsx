@@ -3,6 +3,7 @@
 import { cn, formatChips, shortenAddress, CHIP_SYMBOL, ZERO_ADDRESS } from "@/lib/utils";
 import type { HoleCardsResponse } from "@/lib/auth";
 import { PokerCard } from "./PokerCard";
+import styles from "./SeatPanel.module.css";
 
 /** Minimal seat shape required by SeatPanel — allows placeholder seats without tokenAddress. */
 interface SeatShape {
@@ -34,8 +35,8 @@ export function SeatPanel({
 }: SeatPanelProps) {
   if (seat.ownerAddress.toLowerCase() === ZERO_ADDRESS) {
     return (
-      <div className="seat-panel">
-        <div className="seat-label">Seat {seat.seatIndex}</div>
+      <div className={styles.seatPanel}>
+        <div className={styles.seatLabel}>Seat {seat.seatIndex}</div>
         <div className="muted">Empty</div>
       </div>
     );
@@ -44,33 +45,33 @@ export function SeatPanel({
   return (
     <div
       className={cn(
-        "seat-panel",
-        isActor && "active",
-        isOwner && "owner",
-        isHandActive && !seat.isActive && "folded"
+        styles.seatPanel,
+        isActor && styles.active,
+        isOwner && styles.owner,
+        isHandActive && !seat.isActive && styles.folded
       )}
     >
-      <div className="seat-label">
+      <div className={styles.seatLabel}>
         <span>Seat {seat.seatIndex}</span>
-        {isButton && <span className="dealer-chip">D</span>}
-        {isOwner && <span className="you-pill">YOU</span>}
+        {isButton && <span className={styles.dealerChip}>D</span>}
+        {isOwner && <span className={styles.youPill}>YOU</span>}
       </div>
-      <div className="seat-address" title={seat.ownerAddress}>
+      <div className={styles.seatAddress} title={seat.ownerAddress}>
         {shortenAddress(seat.ownerAddress)}
       </div>
-      <div className="seat-stack">
+      <div className={styles.seatStack}>
         {formatChips(seat.stack)} {CHIP_SYMBOL}
       </div>
-      <div className={cn("seat-bet", seat.currentBet === "0" && "zero")}>
-        <span className="seat-bet-chip" />
+      <div className={cn(styles.seatBet, seat.currentBet === "0" && styles.zero)}>
+        <span className={styles.seatBetChip} />
         This Round: {formatChips(seat.currentBet)} {CHIP_SYMBOL}
       </div>
-      {isActor && <div className="seat-action-badge">ACTING</div>}
+      {isActor && <div className={styles.seatActionBadge}>ACTING</div>}
       {isActor && turnTimeRemaining !== "--" && (
         <div
           className={cn(
-            "seat-turn-timer",
-            turnTimeRemaining === "Expired" && "urgent"
+            styles.seatTurnTimer,
+            turnTimeRemaining === "Expired" && styles.urgent
           )}
         >
           {turnTimeRemaining}
@@ -78,9 +79,9 @@ export function SeatPanel({
       )}
       {/* Owner's hole cards — only shown to the seat owner */}
       {isOwner && holeCards && (
-        <div className="seat-holecards">
-          <div className="hole-cards-label">Your Hand</div>
-          <div className="hole-cards">
+        <div className={styles.seatHolecards}>
+          <div className={styles.holeCardsLabel}>Your Hand</div>
+          <div className={styles.holeCards}>
             <PokerCard cardIndex={holeCards.cards[0]} />
             <PokerCard cardIndex={holeCards.cards[1]} />
           </div>

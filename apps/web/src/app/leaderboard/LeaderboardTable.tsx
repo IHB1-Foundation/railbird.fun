@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { shortenAddress, formatPercent, formatMon } from "@/lib/utils";
 import type { LeaderboardResponse } from "@/lib/types";
+import styles from "./LeaderboardTable.module.css";
 
 interface LeaderboardTableProps {
   data: LeaderboardResponse;
@@ -10,21 +11,21 @@ export function LeaderboardTable({ data }: LeaderboardTableProps) {
   const { metric, entries } = data;
 
   return (
-    <div className="table-scroll">
-      <table className="leaderboard-table">
+    <div className={styles.tableScroll}>
+      <table className={styles.leaderboardTable}>
         <thead>
           <tr>
-            <th className="col-rank">#</th>
-            <th className="col-agent">Agent</th>
-            <th className="col-owner">Owner</th>
-            <th className="align-right col-metric">
+            <th className={styles.colRank}>#</th>
+            <th className={styles.colAgent}>Agent</th>
+            <th className={styles.colOwner}>Owner</th>
+            <th className={`${styles.alignRight} ${styles.colMetric}`}>
               {metric === "roi" && "ROI"}
               {metric === "pnl" && "PnL"}
               {metric === "winrate" && "Win Rate"}
               {metric === "mdd" && "Max DD"}
             </th>
-            <th className="align-right col-hands">Hands</th>
-            <th className="align-right col-wl">W/L</th>
+            <th className={`${styles.alignRight} ${styles.colHands}`}>Hands</th>
+            <th className={`${styles.alignRight} ${styles.colWl}`}>W/L</th>
           </tr>
         </thead>
         <tbody>
@@ -34,29 +35,29 @@ export function LeaderboardTable({ data }: LeaderboardTableProps) {
 
             return (
               <tr key={entry.tokenAddress}>
-                <td className="rank col-rank">{entry.rank}</td>
-                <td className="col-agent">
+                <td className={`${styles.rank} ${styles.colRank}`}>{entry.rank}</td>
+                <td className={styles.colAgent}>
                   <Link
                     href={`/agent/${entry.tokenAddress}`}
-                    className="text-mono address-link"
+                    className={`text-mono ${styles.addressLink}`}
                     title={entry.tokenAddress}
                   >
                     {shortenAddress(entry.tokenAddress)}
                   </Link>
                 </td>
                 <td
-                  className="text-mono text-muted address-cell col-owner"
+                  className={`text-mono text-muted ${styles.addressCell} ${styles.colOwner}`}
                   title={entry.ownerAddress}
                 >
                   {shortenAddress(entry.ownerAddress)}
                 </td>
                 <td
-                  className={`align-right metric-value col-metric ${isPositive ? "positive" : "negative"}`}
+                  className={`${styles.alignRight} ${styles.metricValue} ${styles.colMetric} ${isPositive ? "positive" : "negative"}`}
                 >
                   {primaryValue}
                 </td>
-                <td className="align-right col-hands">{entry.totalHands}</td>
-                <td className="align-right text-muted col-wl">
+                <td className={`${styles.alignRight} ${styles.colHands}`}>{entry.totalHands}</td>
+                <td className={`${styles.alignRight} text-muted ${styles.colWl}`}>
                   <span className="value-positive">{entry.winningHands}</span>
                   /
                   <span className="value-negative">{entry.losingHands}</span>

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { CHIP_SYMBOL, formatChips, shortenAddress } from "@/lib/utils";
 import type { TableResponse } from "@/lib/types";
 import { buildSeatMarket, formatOdds, toImpliedPercent } from "@/lib/betting";
+import styles from "./BettingPanel.module.css";
 
 const INDEXER_BASE = process.env.NEXT_PUBLIC_INDEXER_URL || "https://indexer.railbird.fun";
 const BANKROLL_KEY = "railbird_bet_bankroll_v1";
@@ -260,16 +261,16 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
 
   return (
     <section className="page-section">
-      <div className="bet-header">
+      <div className={styles.betHeader}>
         <div>
           <h2 className="section-title">Rail Bets</h2>
-          <p className="bet-subtitle">
+          <p className={styles.betSubtitle}>
             Agent-profile winner board. Settlements are processed automatically from the current hand winner.
           </p>
         </div>
-        <div className="card bet-bankroll">
+        <div className={`card ${styles.betBankroll}`}>
           <div className="label">Virtual Bankroll</div>
-          <div className="bet-bankroll-value">
+          <div className={styles.betBankrollValue}>
             {formatChips(bankrollWei)} {CHIP_SYMBOL}
           </div>
           <button className="ghost-btn" onClick={resetBook} type="button" aria-label="Reset virtual bankroll to default">
@@ -278,41 +279,41 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
         </div>
       </div>
 
-      <div className={`bet-market-state ${marketOpen ? "open" : "closed"}`} aria-live="polite" aria-atomic="true">
+      <div className={`${styles.betMarketState} ${marketOpen ? styles.open : styles.closed}`} aria-live="polite" aria-atomic="true">
         {marketOpen ? `Hand #${handId} market open` : "Market closed (waiting for next hand)"}
       </div>
 
-      {notice && <div className="bet-notice">{notice}</div>}
+      {notice && <div className={styles.betNotice}>{notice}</div>}
 
-      <div className="bet-layout">
-        <div className="bet-agent-grid">
+      <div className={styles.betLayout}>
+        <div className={styles.betAgentGrid}>
           {market.map((entry) => (
             <article
               key={entry.seatIndex}
-              className={`card bet-agent-card ${selectedSeat === entry.seatIndex ? "selected" : ""}`}
+              className={`card ${styles.betAgentCard} ${selectedSeat === entry.seatIndex ? styles.selected : ""}`}
             >
-              <div className="bet-agent-top">
+              <div className={styles.betAgentTop}>
                 <div>
-                  <div className="bet-agent-seat">Seat {entry.seatIndex}</div>
-                  <h3 className="bet-agent-name">{entry.profile.codename}</h3>
-                  <div className="bet-agent-style">{entry.profile.style}</div>
+                  <div className={styles.betAgentSeat}>Seat {entry.seatIndex}</div>
+                  <h3 className={styles.betAgentName}>{entry.profile.codename}</h3>
+                  <div className={styles.betAgentStyle}>{entry.profile.style}</div>
                 </div>
-                <div className="bet-agent-odds">{formatOdds(entry.oddsBps)}x</div>
+                <div className={styles.betAgentOdds}>{formatOdds(entry.oddsBps)}x</div>
               </div>
 
-              <p className="bet-agent-blurb">{entry.profile.blurb}</p>
+              <p className={styles.betAgentBlurb}>{entry.profile.blurb}</p>
 
-              <div className="bet-agent-stats">
+              <div className={styles.betAgentStats}>
                 <span>Implied: {toImpliedPercent(entry.winProb)}</span>
                 <span>Aggro: {(entry.profile.aggression * 100).toFixed(0)}%</span>
                 <span>Stack: {formatChips(entry.stack)} {CHIP_SYMBOL}</span>
               </div>
 
-              <div className="bet-agent-owner">{shortenAddress(entry.ownerAddress)}</div>
+              <div className={styles.betAgentOwner}>{shortenAddress(entry.ownerAddress)}</div>
 
               <button
                 type="button"
-                className="bet-select-btn"
+                className={styles.betSelectBtn}
                 onClick={() => setSelectedSeat(entry.seatIndex)}
                 aria-pressed={selectedSeat === entry.seatIndex}
                 aria-label={`Bet on ${entry.profile.codename} at seat ${entry.seatIndex}`}
@@ -323,34 +324,34 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
           ))}
         </div>
 
-        <aside className="card bet-slip">
+        <aside className={`card ${styles.betSlip}`}>
           <h3 className="section-title-sm">Bet Slip</h3>
-          <div className="bet-slip-row">
+          <div className={styles.betSlipRow}>
             <span className="label">Table / Hand</span>
             <span>
               #{table.tableId} / {handId ?? "-"}
             </span>
           </div>
-          <div className="bet-slip-row">
+          <div className={styles.betSlipRow}>
             <span className="label">Selection</span>
             <span>{selectedMarket ? selectedMarket.profile.codename : "None"}</span>
           </div>
-          <div className="bet-slip-row">
+          <div className={styles.betSlipRow}>
             <span className="label">Odds</span>
             <span>{selectedMarket ? `${formatOdds(selectedMarket.oddsBps)}x` : "-"}</span>
           </div>
 
-          <label className="bet-input-label" htmlFor="stake-input">Stake ({CHIP_SYMBOL})</label>
+          <label className={styles.betInputLabel} htmlFor="stake-input">Stake ({CHIP_SYMBOL})</label>
           <input
             id="stake-input"
-            className="bet-input"
+            className={styles.betInput}
             value={stakeInput}
             onChange={(e) => setStakeInput(e.target.value)}
             placeholder="e.g. 50"
             inputMode="decimal"
           />
 
-          <div className="bet-quick-row">
+          <div className={styles.betQuickRow}>
             {["10", "25", "50", "100"].map((preset) => (
               <button
                 key={preset}
@@ -365,7 +366,7 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
 
           <button
             type="button"
-            className="bet-place-btn"
+            className={styles.betPlaceBtn}
             onClick={placeBet}
             disabled={!marketOpen}
             aria-disabled={!marketOpen}
@@ -376,15 +377,15 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
         </aside>
       </div>
 
-      <div className="bet-history-grid">
+      <div className={styles.betHistoryGrid}>
         <div className="card">
           <h3 className="section-title-sm">Open Bets</h3>
           {openWagers.length === 0 ? (
             <div className="muted">No open bets.</div>
           ) : (
-            <div className="bet-ticket-list">
+            <div className={styles.betTicketList}>
               {openWagers.map((wager) => (
-                <div key={wager.id} className="bet-ticket">
+                <div key={wager.id} className={styles.betTicket}>
                   <div>{wager.profileName}</div>
                   <div>
                     Hand #{wager.handId} · {formatChips(BigInt(wager.stakeWei))} {CHIP_SYMBOL}
@@ -401,9 +402,9 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
           {settledWagers.length === 0 ? (
             <div className="muted">No settled bets yet.</div>
           ) : (
-            <div className="bet-ticket-list">
+            <div className={styles.betTicketList}>
               {settledWagers.map((wager) => (
-                <div key={wager.id} className={`bet-ticket ${wager.status}`}>
+                <div key={wager.id} className={`${styles.betTicket} ${wager.status === "won" ? styles.won : styles.lost}`}>
                   <div>
                     Hand #{wager.handId} · Seat {wager.seatIndex}
                   </div>

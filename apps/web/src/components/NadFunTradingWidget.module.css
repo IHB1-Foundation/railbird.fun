@@ -1,0 +1,250 @@
+.nadfunWidget {
+  border-radius: 16px;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  background: linear-gradient(160deg, rgba(13, 13, 14, 0.98), rgba(18, 17, 15, 0.96));
+  padding: 1.15rem;
+}
+
+.nadfunStageRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.nadfunStageBadge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  background: rgba(245, 158, 11, 0.1);
+  color: #f3c57a;
+}
+
+.nadfunStageBadge.stageBonding {
+  color: #fde68a;
+  background: rgba(251, 191, 36, 0.14);
+  border-color: rgba(251, 191, 36, 0.44);
+}
+
+.nadfunStageBadge.stageLocked {
+  color: #c0c4dd;
+  background: rgba(155, 163, 193, 0.16);
+  border-color: rgba(155, 163, 193, 0.4);
+}
+
+.nadfunStageBadge.stageGraduated {
+  color: #bbffd7;
+  background: rgba(57, 217, 138, 0.16);
+  border-color: rgba(57, 217, 138, 0.45);
+}
+
+.nadfunStageBadge.stageUnknown {
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(149, 158, 204, 0.34);
+}
+
+.nadfunExternalLink {
+  color: #ffdba7;
+  font-size: 0.78rem;
+}
+
+.nadfunLockedNotice {
+  margin-bottom: 0.8rem;
+  border-radius: 10px;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid rgba(172, 151, 255, 0.34);
+  background: rgba(129, 108, 249, 0.14);
+  font-size: 0.84rem;
+  color: var(--muted);
+}
+
+.nadfunDirectionTabs {
+  display: flex;
+  gap: 0.45rem;
+  margin-bottom: 0.75rem;
+}
+
+.nadfunTab {
+  flex: 1;
+  padding: 0.44rem 0.82rem;
+  border-radius: 999px;
+  border: 1px solid rgba(149, 159, 207, 0.35);
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.02);
+  transition: all 0.2s ease;
+}
+
+.nadfunTab:hover {
+  color: #fff;
+  border-color: rgba(210, 190, 255, 0.56);
+}
+
+.nadfunTab.active {
+  background: linear-gradient(150deg, rgba(245, 158, 11, 0.92), rgba(249, 115, 22, 0.9));
+  border-color: transparent;
+  color: #1d1204;
+}
+
+.nadfunField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-bottom: 0.75rem;
+}
+
+.nadfunFieldSm {
+  flex: 1;
+}
+
+.nadfunLabel {
+  display: block;
+  color: var(--muted);
+  font-size: 0.77rem;
+}
+
+.nadfunInput {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(149, 158, 204, 0.32);
+  border-radius: 9px;
+  color: var(--foreground);
+  padding: 0.58rem 0.7rem;
+  font-family: var(--text-mono);
+  width: 100%;
+}
+
+.nadfunInput:focus {
+  outline: none;
+  border-color: rgba(197, 180, 255, 0.7);
+}
+
+.nadfunControlsRow {
+  display: flex;
+  gap: 0.7rem;
+  margin-bottom: 0.75rem;
+}
+
+.nadfunPresets {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+}
+
+.nadfunQuoteBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid rgba(149, 159, 207, 0.35);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.44rem 0.82rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: 0.75rem;
+  width: 100%;
+}
+
+.nadfunQuoteBtn:hover:not(:disabled) {
+  color: #fff;
+  border-color: rgba(210, 190, 255, 0.56);
+}
+
+.nadfunQuoteBtn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.nadfunQuoteResult {
+  margin-bottom: 0.75rem;
+  border-radius: 10px;
+  padding: 0.68rem;
+  font-size: 0.84rem;
+  color: #a9ffd0;
+  border: 1px solid rgba(57, 217, 138, 0.45);
+  background: rgba(57, 217, 138, 0.15);
+  text-align: center;
+}
+
+.nadfunExecuteBtn {
+  width: 100%;
+  border: none;
+  border-radius: 999px;
+  padding: 0.74rem 1rem;
+  font-weight: 700;
+  background: linear-gradient(150deg, #f59e0b 0%, #f97316 100%);
+  color: #1b1000;
+  cursor: pointer;
+  transition: filter 0.2s ease;
+  margin-bottom: 0.75rem;
+}
+
+.nadfunExecuteBtn:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.nadfunExecuteBtn:disabled {
+  background: rgba(145, 152, 194, 0.2);
+  color: rgba(211, 216, 240, 0.72);
+  cursor: not-allowed;
+}
+
+.nadfunConnectNotice {
+  margin-bottom: 0.75rem;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.nadfunError {
+  margin-bottom: 0.75rem;
+  border-radius: 10px;
+  text-align: center;
+  padding: 0.68rem;
+  font-size: 0.84rem;
+  color: #ffbbc4;
+  border: 1px solid rgba(255, 98, 110, 0.45);
+  background: rgba(255, 98, 110, 0.15);
+}
+
+.nadfunSuccess {
+  margin-bottom: 0.75rem;
+  border-radius: 10px;
+  text-align: center;
+  padding: 0.68rem;
+  font-size: 0.84rem;
+  color: #a9ffd0;
+  border: 1px solid rgba(57, 217, 138, 0.45);
+  background: rgba(57, 217, 138, 0.15);
+}
+
+.nadfunFallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid rgba(245, 158, 11, 0.5);
+  background: rgba(245, 158, 11, 0.1);
+  color: #ffd7a1;
+  font-weight: 600;
+  padding: 0.52rem 1rem;
+  font-size: 0.84rem;
+  transition: all 0.2s ease;
+}
+
+.nadfunFallback:hover {
+  border-color: rgba(245, 158, 11, 0.8);
+  color: #fff;
+}

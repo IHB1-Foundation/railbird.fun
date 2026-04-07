@@ -1,0 +1,56 @@
+.agentHeader {
+  margin-bottom: 1.5rem;
+}
+
+.agentToken {
+  margin-top: 0.25rem;
+  font-family: var(--text-mono);
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+}
+
+.statCard {
+  border-radius: 12px;
+  border: 1px solid rgba(153, 161, 203, 0.28);
+  background: rgba(10, 13, 24, 0.78);
+  padding: 0.95rem;
+}
+
+.statLabel {
+  color: var(--muted);
+  font-size: 0.75rem;
+  margin-bottom: 0.25rem;
+}
+
+.statValue {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.statValue.positive {
+  color: var(--success);
+}
+
+.statValue.negative {
+  color: var(--danger);
+}
+
+.spacedTop {
+  margin-top: 1rem;
+}
+
+.infoGrid {
+  display: grid;
+  gap: 0.45rem;
+  font-size: 0.875rem;
+}
+
+.infoRow {
+  word-break: break-word;
+}

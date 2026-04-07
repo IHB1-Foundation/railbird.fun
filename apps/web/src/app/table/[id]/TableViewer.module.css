@@ -1,0 +1,476 @@
+.tableLayout {
+  position: relative;
+  padding: 1.2rem;
+  border-radius: 24px;
+  border: 1px solid rgba(169, 132, 89, 0.42);
+  background:
+    radial-gradient(800px 240px at 50% 112%, rgba(8, 10, 17, 0.94), rgba(8, 10, 17, 0)),
+    linear-gradient(165deg, rgba(34, 21, 13, 0.72), rgba(20, 13, 10, 0.74));
+  box-shadow:
+    0 24px 50px rgba(0, 0, 0, 0.4),
+    inset 0 0 0 1px rgba(220, 184, 129, 0.14);
+}
+
+.tableSurface {
+  position: relative;
+  width: min(100%, 1020px);
+  margin: 0 auto;
+  aspect-ratio: 16 / 10;
+  border-radius: 46% / 40%;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(26, 132, 96, 0.44) 0%, rgba(18, 86, 64, 0.5) 42%, rgba(10, 53, 40, 0.92) 88%),
+    linear-gradient(145deg, rgba(7, 26, 21, 0.92), rgba(9, 34, 29, 0.96));
+  box-shadow:
+    inset 0 0 0 2px rgba(14, 56, 44, 0.9),
+    inset 0 0 78px rgba(0, 0, 0, 0.42),
+    0 24px 40px rgba(0, 0, 0, 0.46);
+}
+
+.tableSurface::before,
+.tableSurface::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.tableSurface::before {
+  inset: -16px;
+  z-index: -2;
+  background:
+    linear-gradient(128deg, rgba(99, 61, 36, 0.96), rgba(74, 44, 24, 0.98) 38%, rgba(125, 74, 46, 0.94) 78%, rgba(61, 34, 17, 0.97));
+  box-shadow:
+    inset 0 0 0 2px rgba(236, 196, 132, 0.16),
+    inset 0 0 26px rgba(0, 0, 0, 0.36),
+    0 18px 32px rgba(0, 0, 0, 0.5);
+}
+
+.tableSurface::after {
+  inset: 11px;
+  border: 2px solid rgba(202, 159, 102, 0.36);
+  box-shadow: inset 0 0 0 1px rgba(48, 24, 11, 0.55);
+}
+
+.tableCenter {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(78%, 520px);
+  display: grid;
+  gap: 0.75rem;
+  justify-items: center;
+  z-index: 2;
+}
+
+.seatsOrbit {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+}
+
+.seatNode {
+  position: absolute;
+  transform: translate(-50%, -50%);
+}
+
+.communityCards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+  align-items: center;
+  min-height: 4.1rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 14px;
+  background: rgba(10, 17, 28, 0.66);
+  border: 1px solid rgba(152, 193, 180, 0.26);
+  box-shadow: inset 0 0 22px rgba(0, 0, 0, 0.35);
+}
+
+.tablePotBlock {
+  text-align: center;
+  padding: 0.45rem 0.7rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(9, 19, 31, 0.78);
+  border: 1px solid rgba(154, 200, 183, 0.35);
+  min-width: min(94%, 320px);
+}
+
+.potValue {
+  font-size: clamp(1.1rem, 1.9vw, 1.4rem);
+  font-weight: 700;
+  color: #ffe0a8;
+  text-shadow: 0 0 16px rgba(255, 182, 88, 0.25);
+}
+
+.tableHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.8rem;
+  margin-bottom: 1rem;
+}
+
+.tableHeadingMeta {
+  margin-top: 0.25rem;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.tableHeadingMetaMono {
+  font-family: var(--text-mono);
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
+
+.tableHeadingRight {
+  text-align: right;
+  display: grid;
+  justify-items: end;
+  gap: 0.3rem;
+  max-width: 340px;
+}
+
+.tableHandId {
+  margin-top: 0.45rem;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+.tableTurnIndicator {
+  margin-top: 0.45rem;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #ffe8bc;
+  border-radius: 999px;
+  padding: 0.34rem 0.78rem;
+  border: 1px solid rgba(255, 217, 140, 0.8);
+  background: linear-gradient(145deg, rgba(120, 63, 19, 0.82), rgba(72, 36, 12, 0.78));
+  box-shadow:
+    0 0 0 1px rgba(255, 222, 159, 0.35),
+    0 0 18px rgba(255, 170, 77, 0.3);
+  max-width: min(100%, 340px);
+  overflow-wrap: anywhere;
+}
+
+.tableButtonSeat {
+  margin-top: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--accent-soft);
+}
+
+.joinSeatControls {
+  margin-top: 0.7rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.7rem;
+  align-items: end;
+}
+
+.joinSeatHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.joinSeatBadges {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.joinSeatBadge {
+  border-radius: 999px;
+  border: 1px solid rgba(245, 158, 11, 0.5);
+  color: #ffd7a1;
+  background: rgba(245, 158, 11, 0.14);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.5rem;
+}
+
+.joinSeatInstructions {
+  display: grid;
+  gap: 0.3rem;
+  margin-top: 0.2rem;
+  color: rgba(232, 220, 194, 0.84);
+  font-size: 0.82rem;
+}
+
+.joinField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.joinFieldLabel {
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+}
+
+.joinFieldInput {
+  width: 100%;
+  border-radius: 11px;
+  border: 1px solid rgba(188, 161, 112, 0.36);
+  background: linear-gradient(165deg, rgba(9, 11, 22, 0.82), rgba(13, 16, 28, 0.9));
+  color: #f3f4fb;
+  padding: 0.6rem 0.72rem;
+  font-size: 0.9rem;
+}
+
+.joinFieldInput:focus {
+  outline: none;
+  border-color: rgba(245, 158, 11, 0.72);
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.16);
+}
+
+.joinFieldInput::placeholder {
+  color: rgba(156, 163, 199, 0.75);
+}
+
+.joinSubmitBtn {
+  min-height: 41px;
+}
+
+.actionLog {
+  max-height: 220px;
+  overflow-y: auto;
+  font-size: 0.875rem;
+}
+
+.streetLog {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.streetBlock {
+  border: 1px solid rgba(146, 154, 195, 0.22);
+  border-radius: 10px;
+  padding: 0.35rem 0.65rem 0.15rem;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.streetTitle {
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #ffdda2;
+  padding: 0.26rem 0 0.2rem;
+  border-bottom: 1px dashed rgba(255, 205, 118, 0.35);
+}
+
+.actionItem {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid rgba(146, 154, 195, 0.2);
+}
+
+.actionMain {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.actionActor {
+  font-family: var(--text-mono);
+  font-size: 0.76rem;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.actionItem:last-child {
+  border-bottom: none;
+}
+
+.actionTime {
+  font-size: 0.75rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.ownerBanner {
+  margin-bottom: 1rem;
+  border-radius: 12px;
+  padding: 0.75rem 0.95rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.9rem;
+  background: rgba(129, 108, 249, 0.14);
+  border: 1px solid rgba(195, 175, 255, 0.58);
+}
+
+.ownerBannerTitle {
+  color: var(--accent-soft);
+}
+
+.playersGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.playerCell {
+  border: 1px solid rgba(154, 162, 202, 0.26);
+  border-radius: 12px;
+  padding: 0.7rem;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.playerCell.activeTurn {
+  border-color: rgba(255, 213, 124, 0.85);
+  background: linear-gradient(160deg, rgba(102, 61, 24, 0.3), rgba(255, 255, 255, 0.03));
+  box-shadow: 0 0 0 1px rgba(255, 213, 124, 0.28), inset 0 1px 0 rgba(255, 220, 153, 0.15);
+}
+
+.playerSeatTitle {
+  font-weight: 600;
+  margin-bottom: 0.45rem;
+}
+
+.youTag {
+  margin-left: 0.45rem;
+  font-size: 0.75rem;
+  color: var(--accent-soft);
+}
+
+.playerLine {
+  font-size: 0.875rem;
+  margin-top: 0.2rem;
+  display: flex;
+  align-items: baseline;
+  gap: 0.28rem;
+  min-width: 0;
+}
+
+.playerLine .textMono {
+  display: inline-block;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.playerActions {
+  margin-top: 0.45rem;
+}
+
+.inlineLink {
+  font-size: 0.875rem;
+}
+
+.sectionCard {
+  margin-top: 1rem;
+}
+
+.sectionCardLg {
+  margin-top: 1.5rem;
+}
+
+.connectionStatus {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 100;
+  border-radius: 999px;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.75rem;
+  border: 1px solid rgba(148, 157, 200, 0.35);
+  backdrop-filter: blur(10px);
+}
+
+.connectionStatus.connected {
+  color: #a7ffd0;
+  background: rgba(57, 217, 138, 0.18);
+}
+
+.connectionStatus.disconnected {
+  color: #ffabb6;
+  background: rgba(255, 98, 110, 0.18);
+}
+
+@media (max-width: 840px) {
+  .tableHeader,
+  .ownerBanner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .tableHeadingRight {
+    text-align: left;
+    justify-items: start;
+    max-width: 100%;
+  }
+
+  .tableLayout {
+    border-radius: 16px;
+  }
+
+  .tableSurface {
+    aspect-ratio: auto;
+    border-radius: 18px;
+    padding: 0.82rem;
+  }
+
+  .tableSurface::before,
+  .tableSurface::after {
+    display: none;
+  }
+
+  .tableCenter {
+    position: static;
+    transform: none;
+    width: 100%;
+    gap: 0.62rem;
+  }
+
+  .seatsOrbit {
+    position: static;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.52rem;
+    margin-top: 0.75rem;
+  }
+
+  .seatNode {
+    position: static;
+    transform: none;
+  }
+
+  .playersGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .tableLayout {
+    padding: 1rem 0.7rem;
+  }
+
+  .tableCenter,
+  .communityCards,
+  .tablePotBlock {
+    width: 100%;
+  }
+
+  .seatsOrbit {
+    grid-template-columns: 1fr;
+  }
+
+  .connectionStatus {
+    right: 0.75rem;
+    bottom: 0.75rem;
+  }
+}

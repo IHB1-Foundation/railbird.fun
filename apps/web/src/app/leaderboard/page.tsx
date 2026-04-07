@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getLeaderboard } from "@/lib/api";
 import { LeaderboardTable } from "./LeaderboardTable";
 import type { LeaderboardMetric, LeaderboardPeriod } from "@/lib/types";
+import styles from "./LeaderboardTable.module.css";
 
 export const dynamic = "force-dynamic";
 
@@ -90,7 +91,7 @@ export default async function LeaderboardPage({ searchParams }: PageProps) {
       )}
 
       {data && (
-        <div className="leaderboard-updated">
+        <div className={styles.leaderboardUpdated}>
           Last updated: {new Date(data.updatedAt).toLocaleString()}
         </div>
       )}

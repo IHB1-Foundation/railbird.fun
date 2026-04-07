@@ -8,6 +8,7 @@ import {
   formatNavPerShare,
   formatTime,
 } from "@/lib/utils";
+import styles from "./page.module.css";
 export const dynamic = "force-dynamic";
 
 export default async function AgentPage({
@@ -68,47 +69,47 @@ export default async function AgentPage({
   return (
     <section className="page-section">
       {/* Header */}
-      <div className="agent-header">
+      <div className={styles.agentHeader}>
         <h2>Agent</h2>
-        <div className="agent-token">
+        <div className={styles.agentToken}>
           {token}
         </div>
       </div>
 
       {/* Stats Grid */}
-      <div className="stats-grid">
-        <div className="stat-card">
-          <div className="stat-label">External Assets (A)</div>
-          <div className="stat-value">
+      <div className={styles.statsGrid}>
+        <div className={styles.statCard}>
+          <div className={styles.statLabel}>External Assets (A)</div>
+          <div className={styles.statValue}>
             {hasSnapshot ? formatMon(snapshot.externalAssets) : "--"}
           </div>
         </div>
-        <div className="stat-card">
-          <div className="stat-label">Treasury Shares (B)</div>
-          <div className="stat-value">
+        <div className={styles.statCard}>
+          <div className={styles.statLabel}>Treasury Shares (B)</div>
+          <div className={styles.statValue}>
             {hasSnapshot ? formatMon(snapshot.treasuryShares) : "--"}
           </div>
         </div>
-        <div className="stat-card">
-          <div className="stat-label">Outstanding (N)</div>
-          <div className="stat-value">
+        <div className={styles.statCard}>
+          <div className={styles.statLabel}>Outstanding (N)</div>
+          <div className={styles.statValue}>
             {hasSnapshot ? formatMon(snapshot.outstandingShares) : "--"}
           </div>
         </div>
-        <div className="stat-card">
-          <div className="stat-label">NAV/Share (P)</div>
-          <div className="stat-value">
+        <div className={styles.statCard}>
+          <div className={styles.statLabel}>NAV/Share (P)</div>
+          <div className={styles.statValue}>
             {hasSnapshot ? formatNavPerShare(snapshot.navPerShare) : "--"}
           </div>
         </div>
       </div>
 
       {/* PnL and ROI */}
-      <div className="stats-grid spaced-top">
-        <div className="stat-card">
-          <div className="stat-label">Cumulative PnL</div>
+      <div className={`${styles.statsGrid} ${styles.spacedTop}`}>
+        <div className={styles.statCard}>
+          <div className={styles.statLabel}>Cumulative PnL</div>
           <div
-            className={`stat-value ${
+            className={`${styles.statValue} ${
               hasSnapshot && BigInt(snapshot.cumulativePnl) >= 0n
                 ? "positive"
                 : "negative"
@@ -117,10 +118,10 @@ export default async function AgentPage({
             {hasSnapshot ? formatMon(snapshot.cumulativePnl) : "--"}
           </div>
         </div>
-        <div className="stat-card">
-          <div className="stat-label">ROI</div>
+        <div className={styles.statCard}>
+          <div className={styles.statLabel}>ROI</div>
           <div
-            className={`stat-value ${
+            className={`${styles.statValue} ${
               parseFloat(roi) >= 0 ? "positive" : "negative"
             }`}
           >
@@ -132,23 +133,23 @@ export default async function AgentPage({
       {/* Agent Info */}
       <div className="card section-card-lg">
         <h3 className="section-title-sm">Agent Info</h3>
-        <div className="info-grid">
-          <div className="info-row">
+        <div className={styles.infoGrid}>
+          <div className={styles.infoRow}>
             <span className="label">Owner:</span>{" "}
             <span className="text-mono">{shortenAddress(agent.ownerAddress)}</span>
           </div>
-          <div className="info-row">
+          <div className={styles.infoRow}>
             <span className="label">Operator:</span>{" "}
             <span className="text-mono">{shortenAddress(agent.operatorAddress)}</span>
           </div>
           {agent.vaultAddress && (
-            <div className="info-row">
+            <div className={styles.infoRow}>
               <span className="label">Vault:</span>{" "}
               <span className="text-mono">{shortenAddress(agent.vaultAddress)}</span>
             </div>
           )}
           {agent.tableAddress && (
-            <div className="info-row">
+            <div className={styles.infoRow}>
               <span className="label">Table:</span>{" "}
               <Link href={`/table/${agent.tableAddress}`} className="text-mono">
                 {shortenAddress(agent.tableAddress)}
@@ -156,7 +157,7 @@ export default async function AgentPage({
             </div>
           )}
           {agent.metaUri && (
-            <div className="info-row">
+            <div className={styles.infoRow}>
               <span className="label">Meta URI:</span>{" "}
               {agent.metaUri}
             </div>

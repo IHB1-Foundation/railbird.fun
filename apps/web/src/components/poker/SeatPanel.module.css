@@ -1,0 +1,183 @@
+.seatPanel {
+  width: clamp(132px, 16vw, 170px);
+  padding: 0.58rem 0.62rem;
+  background:
+    linear-gradient(165deg, rgba(9, 11, 22, 0.87), rgba(14, 17, 28, 0.93));
+  border: 1px solid rgba(188, 161, 112, 0.42);
+  border-radius: 14px;
+  text-align: center;
+  box-shadow:
+    0 10px 22px rgba(0, 0, 0, 0.34),
+    inset 0 1px 0 rgba(255, 236, 197, 0.08);
+}
+
+.seatPanel.active {
+  border-color: rgba(255, 213, 124, 0.98);
+  box-shadow:
+    0 0 0 2px rgba(255, 213, 124, 0.5),
+    0 0 24px rgba(255, 179, 74, 0.45),
+    0 12px 24px rgba(0, 0, 0, 0.45);
+}
+
+.seatPanel.owner {
+  background:
+    linear-gradient(165deg, rgba(63, 48, 111, 0.5), rgba(16, 18, 33, 0.92));
+  border-color: rgba(203, 176, 255, 0.86);
+}
+
+.seatPanel.folded {
+  opacity: 0.52;
+  filter: grayscale(0.85) saturate(0.55);
+  border-color: rgba(128, 133, 145, 0.45);
+}
+
+.seatLabel {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.34rem;
+  font-size: 0.72rem;
+  color: #c8ccb9;
+  margin-bottom: 0.25rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.seatAddress {
+  font-size: 0.76rem;
+  font-family: var(--text-mono);
+  margin-bottom: 0.22rem;
+  color: #e7e8ef;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.seatStack {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #ffe3ad;
+}
+
+.seatBet {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.75rem;
+  color: var(--warning);
+  margin-top: 0.3rem;
+}
+
+.seatBet.zero {
+  color: #9ba1ba;
+}
+
+.seatBet.zero .seatBetChip {
+  opacity: 0.45;
+}
+
+.seatBetChip {
+  width: 0.52rem;
+  height: 0.52rem;
+  border-radius: 999px;
+  background: radial-gradient(circle at 35% 35%, #ffd47a, #de8a2f 72%);
+  border: 1px solid rgba(255, 224, 165, 0.5);
+}
+
+.seatActionBadge {
+  margin: 0.35rem auto 0;
+  width: fit-content;
+  border-radius: 999px;
+  padding: 0.1rem 0.44rem;
+  font-size: 0.59rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  color: #2f1903;
+  border: 1px solid rgba(255, 198, 95, 0.62);
+  background: linear-gradient(155deg, #ffe4a3, #ffbe5d);
+  box-shadow: 0 0 0 1px rgba(255, 226, 167, 0.36), 0 0 14px rgba(255, 178, 74, 0.32);
+  animation: action-glow 1.3s ease-in-out infinite;
+}
+
+.seatTurnTimer {
+  margin-top: 0.28rem;
+  font-size: 0.66rem;
+  font-weight: 700;
+  color: #fff2d4;
+  font-family: var(--text-mono);
+}
+
+.seatTurnTimer.urgent {
+  color: #ff9a9a;
+}
+
+.seatHolecards {
+  margin-top: 0.48rem;
+  padding-top: 0.45rem;
+  border-top: 1px dashed rgba(206, 186, 152, 0.46);
+}
+
+.holeCards {
+  display: flex;
+  gap: 0.2rem;
+  justify-content: center;
+  padding: 0.36rem;
+  background: rgba(16, 31, 53, 0.48);
+  border: 1px solid rgba(164, 170, 202, 0.4);
+  border-radius: 8px;
+}
+
+.holeCardsLabel {
+  color: #d4d8e9;
+  font-size: 0.68rem;
+  margin-bottom: 0.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.dealerChip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.36rem;
+  height: 1.36rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #2e1e05;
+  background: radial-gradient(circle at 35% 30%, #fff0c8, #efb24e 70%);
+  border: 1px solid rgba(255, 223, 158, 0.52);
+  box-shadow:
+    0 0 0 1px rgba(255, 226, 167, 0.45),
+    0 0 16px rgba(255, 197, 96, 0.42);
+  animation: dealer-pulse 1.8s ease-in-out infinite;
+}
+
+.youPill {
+  border-radius: 999px;
+  padding: 0.08rem 0.36rem;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #140f08;
+  background: linear-gradient(160deg, #ffe8b5, #ffc96e);
+}
+
+@media (max-width: 1024px) {
+  .seatPanel {
+    width: clamp(122px, 18vw, 156px);
+  }
+}
+
+@media (max-width: 840px) {
+  .seatPanel {
+    width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .seatLabel {
+    font-size: 0.69rem;
+  }
+}

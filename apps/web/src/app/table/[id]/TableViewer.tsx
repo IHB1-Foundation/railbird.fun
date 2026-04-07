@@ -22,6 +22,8 @@ import { PokerCard } from "@/components/poker/PokerCard";
 import { VrfStatusWidget } from "@/components/poker/VrfStatusWidget";
 import { SeatPanel } from "@/components/poker/SeatPanel";
 import { ShowdownResultsPanel } from "@/components/poker/ShowdownResultsPanel";
+import styles from "./TableViewer.module.css";
+
 const TABLE_MAX_SEATS = Number(process.env.NEXT_PUBLIC_TABLE_MAX_SEATS || "9");
 
 /** Lightweight structural guard against injected WebSocket payloads. */
@@ -312,8 +314,8 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
     <div>
       {/* Connection Status */}
       <div className={cn(
-        "connection-status",
-        wsStatus === "connected" ? "connected" : wsStatus === "polling" ? "polling" : "disconnected"
+        styles.connectionStatus,
+        wsStatus === "connected" ? styles.connected : wsStatus === "polling" ? styles.polling : styles.disconnected
       )}>
         {wsStatus === "connected" && "Live"}
         {wsStatus === "connecting" && "Connecting…"}
@@ -323,13 +325,13 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
 
       {/* Owner Mode Banner */}
       {isAuthenticated && ownedSeatIndex !== null && (
-        <div className="owner-banner">
+        <div className={styles.ownerBanner}>
           <span>
-            <strong className="owner-banner-title">Owner Mode</strong> - You
+            <strong className={styles.ownerBannerTitle}>Owner Mode</strong> - You
             own Seat {ownedSeatIndex}
           </span>
           {holeCards && (
-            <span className="owner-banner-cards">
+            <span className={styles.ownerBannerCards}>
               Cards visible on your seat below
             </span>
           )}
@@ -337,58 +339,58 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
       )}
 
       {/* Header */}
-      <div className="table-header">
-        <div className="table-heading">
+      <div className={styles.tableHeader}>
+        <div className={styles.tableHeading}>
           <h2>Table #{tableId}</h2>
-          <div className="table-heading-meta">
+          <div className={styles.tableHeadingMeta}>
             Blinds: {formatChips(table.smallBlind)}/{formatChips(table.bigBlind)} {CHIP_SYMBOL}
           </div>
           <div
-            className="table-heading-meta table-heading-meta-mono"
+            className={`${styles.tableHeadingMeta} ${styles.tableHeadingMetaMono}`}
             title={table.contractAddress}
           >
             Contract: {table.contractAddress}
           </div>
         </div>
-        <div className="table-heading-right">
+        <div className={styles.tableHeadingRight}>
           <span className={cn("status", isActive ? "live" : "waiting")}>
             <span className={cn("dot", isActive && "pulse")} />
             {gameState}
           </span>
-          <div className="table-button-seat">
+          <div className={styles.tableButtonSeat}>
             Button: Seat {table.buttonSeat}
           </div>
           {currentHand && (
-            <div className="table-hand-id">
+            <div className={styles.tableHandId}>
               Hand #{currentHand.handId}
             </div>
           )}
           {actorSeat !== null && actorSeatData ? (
-            <div className="table-turn-indicator">
+            <div className={styles.tableTurnIndicator}>
               NOW ACTING: Seat {actorSeat} ({shortenAddress(actorSeatData.ownerAddress)})
             </div>
           ) : null}
         </div>
       </div>
 
-      <div className="card section-card">
-        <div className="join-seat-header">
+      <div className={`card ${styles.sectionCard}`}>
+        <div className={styles.joinSeatHeader}>
           <h3 className="section-title-sm">Add Player / Agent</h3>
-          <div className="join-seat-badges">
-            <span className="join-seat-badge">Wallet Join</span>
-            <span className="join-seat-badge">Agent Operator Optional</span>
+          <div className={styles.joinSeatBadges}>
+            <span className={styles.joinSeatBadge}>Wallet Join</span>
+            <span className={styles.joinSeatBadge}>Agent Operator Optional</span>
           </div>
         </div>
-        <div className="join-seat-instructions">
+        <div className={styles.joinSeatInstructions}>
           <span>1. Pick an empty seat</span>
           <span>2. Enter buy-in</span>
           <span>3. Set operator only when attaching an agent</span>
         </div>
-        <div className="join-seat-controls">
-          <label className="join-field">
-            <span className="join-field-label">Seat</span>
+        <div className={styles.joinSeatControls}>
+          <label className={styles.joinField}>
+            <span className={styles.joinFieldLabel}>Seat</span>
             <select
-              className="join-field-input"
+              className={styles.joinFieldInput}
               value={joinSeatIndex}
               onChange={(e) => setJoinSeatIndex(Number(e.target.value))}
               disabled={joinLoading || availableSeats.length === 0}
@@ -400,10 +402,10 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
               ))}
             </select>
           </label>
-          <label className="join-field">
-            <span className="join-field-label">Buy-in ({CHIP_SYMBOL})</span>
+          <label className={styles.joinField}>
+            <span className={styles.joinFieldLabel}>Buy-in ({CHIP_SYMBOL})</span>
             <input
-              className="join-field-input"
+              className={styles.joinFieldInput}
               type="number"
               min="1"
               step="1"
@@ -412,10 +414,10 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
               disabled={joinLoading}
             />
           </label>
-          <label className="join-field">
-            <span className="join-field-label">Operator (optional)</span>
+          <label className={styles.joinField}>
+            <span className={styles.joinFieldLabel}>Operator (optional)</span>
             <input
-              className="join-field-input"
+              className={styles.joinFieldInput}
               type="text"
               placeholder="0x... (agent wallet)"
               value={joinOperator}
@@ -424,7 +426,7 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
             />
           </label>
           <button
-            className="wallet-button sign join-submit-btn"
+            className={`wallet-button sign ${styles.joinSubmitBtn}`}
             onClick={handleJoinSeat}
             disabled={joinLoading || availableSeats.length === 0}
           >
@@ -435,10 +437,10 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
       </div>
 
       {/* Table Layout */}
-      <div className="table-layout">
-        <div className="table-surface">
-          <div className="table-center">
-            <div className="community-cards">
+      <div className={styles.tableLayout}>
+        <div className={styles.tableSurface}>
+          <div className={styles.tableCenter}>
+            <div className={styles.communityCards}>
               {currentHand && currentHand.communityCards.length > 0 ? (
                 currentHand.communityCards
                   .filter((c) => c !== 255)
@@ -448,9 +450,9 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
               )}
             </div>
 
-            <div className="table-pot-block">
+            <div className={styles.tablePotBlock}>
               {currentHand && (
-                <div className="pot-value">
+                <div className={styles.potValue}>
                   Pot: {formatChips(currentHand.pot)} {CHIP_SYMBOL}
                 </div>
               )}
@@ -463,11 +465,11 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
             </div>
           </div>
 
-          <div className="seats-orbit">
+          <div className={styles.seatsOrbit}>
             {occupiedSeats.map((seat) => (
               <div
                 key={seat.seatIndex}
-                className="seat-node"
+                className={styles.seatNode}
                 style={getSeatOrbitPosition(seat.seatIndex, maxSeats)}
               >
                 <SeatPanel
@@ -486,36 +488,36 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
       </div>
 
       {/* Action Log */}
-      <div className="card section-card">
+      <div className={`card ${styles.sectionCard}`}>
         <h3 className="section-title-sm">Action Log</h3>
-        <div className="action-log">
+        <div className={styles.actionLog}>
           {streetSections.length > 0 ? (
-            <div className="street-log">
+            <div className={styles.streetLog}>
               {streetSections.map((section) => (
-                <div key={section.street} className="street-block">
-                  <div className="street-title">{section.street}</div>
+                <div key={section.street} className={styles.streetBlock}>
+                  <div className={styles.streetTitle}>{section.street}</div>
                   {section.actions.map((action, i) => {
                     const seat = seatByIndex.get(action.seatIndex);
                     const hasOwner =
                       !!seat && seat.ownerAddress.toLowerCase() !== ZERO_ADDRESS;
 
                     return (
-                      <div key={`${section.street}-${i}`} className="action-item">
-                        <div className="action-main">
+                      <div key={`${section.street}-${i}`} className={styles.actionItem}>
+                        <div className={styles.actionMain}>
                           <span>
                             <strong>Seat {action.seatIndex}</strong>{" "}
                             {ACTION_TYPES[action.actionType] || action.actionType}
                             {action.amount !== "0" && ` ${formatChips(action.amount)} ${CHIP_SYMBOL}`}
                           </span>
                           {hasOwner ? (
-                            <span className="action-actor">
+                            <span className={styles.actionActor}>
                               {shortenAddress(seat.ownerAddress)}
                             </span>
                           ) : null}
                         </div>
-                        <span className="action-time" title={`Block #${action.blockNumber}`}>
+                        <span className={styles.actionTime} title={`Block #${action.blockNumber}`}>
                           {formatTime(action.timestamp)}{" "}
-                          <span className="action-block">#{action.blockNumber}</span>
+                          <span className={styles.actionBlock}>#{action.blockNumber}</span>
                         </span>
                       </div>
                     );
@@ -541,42 +543,42 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
       )}
 
       {/* Seats with Agent Links */}
-      <div className="card section-card">
+      <div className={`card ${styles.sectionCard}`}>
         <h3 className="section-title-sm">Players</h3>
-        <div className="players-grid">
+        <div className={styles.playersGrid}>
           {normalizedSeats.map((seat) => (
             <div
               key={seat.seatIndex}
-              className={cn("player-cell", currentHand?.actorSeat === seat.seatIndex && "active-turn")}
+              className={cn(styles.playerCell, currentHand?.actorSeat === seat.seatIndex && styles.activeTurn)}
             >
-              <div className="player-seat-title">
+              <div className={styles.playerSeatTitle}>
                 Seat {seat.seatIndex}
                 {ownedSeatIndex === seat.seatIndex && (
-                  <span className="you-tag">(You)</span>
+                  <span className={styles.youTag}>(You)</span>
                 )}
               </div>
               {seat.ownerAddress.toLowerCase() !== ZERO_ADDRESS ? (
                 <>
-                  <div className="player-line">
+                  <div className={styles.playerLine}>
                     Owner:{" "}
                     <span className="text-mono">
                       {shortenAddress(seat.ownerAddress)}
                     </span>
                   </div>
-                  <div className="player-line">
+                  <div className={styles.playerLine}>
                     Operator:{" "}
                     <span className="text-mono">
                       {shortenAddress(seat.operatorAddress)}
                     </span>
                   </div>
-                  <div className="player-line">
+                  <div className={styles.playerLine}>
                     This Round: {formatChips(seat.currentBet)} {CHIP_SYMBOL}
                   </div>
-                  <div className="player-actions">
+                  <div className={styles.playerActions}>
                     {seat.tokenAddress ? (
                       <Link
                         href={`/agent/${seat.tokenAddress}`}
-                        className="inline-link"
+                        className={styles.inlineLink}
                       >
                         View Agent
                       </Link>

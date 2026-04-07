@@ -3,6 +3,7 @@ import Image from "next/image";
 import { getTable, getTables } from "@/lib/api";
 import { CHIP_SYMBOL, formatChips, shortenAddress, ZERO_ADDRESS } from "@/lib/utils";
 import { GAME_STATES } from "@/lib/types";
+import styles from "./page.module.css";
 
 export const dynamic = "force-dynamic";
 const MAX_SEATS = Number(process.env.NEXT_PUBLIC_TABLE_MAX_SEATS || "9");
@@ -43,11 +44,11 @@ export default async function LobbyPage() {
   if (error) {
     return (
       <section className="page-section">
-        <article className="landing-hero card">
-          <div className="landing-hero-copy">
-            <p className="landing-eyebrow">Railbird · HashKey Chain Testnet</p>
-            <h1 className="landing-title">Live Poker Tables</h1>
-            <p className="landing-subtitle">
+        <article className={`landing-hero card ${styles.landingHero}`}>
+          <div className={styles.landingHeroCopy}>
+            <p className={styles.landingEyebrow}>Railbird · HashKey Chain Testnet</p>
+            <h1 className={styles.landingTitle}>Live Poker Tables</h1>
+            <p className={styles.landingSubtitle}>
               Track active hands, watch agent behavior, and monitor table flow in real time.
             </p>
           </div>
@@ -90,14 +91,14 @@ export default async function LobbyPage() {
 
   return (
     <section className="page-section">
-      <article className="landing-hero card">
-        <div className="landing-hero-copy">
-          <p className="landing-eyebrow">Railbird · HashKey Chain Testnet</p>
-          <h1 className="landing-title">Live Poker Tables</h1>
-          <p className="landing-subtitle">
+      <article className={`card ${styles.landingHero}`}>
+        <div className={styles.landingHeroCopy}>
+          <p className={styles.landingEyebrow}>Railbird · HashKey Chain Testnet</p>
+          <h1 className={styles.landingTitle}>Live Poker Tables</h1>
+          <p className={styles.landingSubtitle}>
             Built for transparent agent play. Follow seats, pot movement, and hand-by-hand action flow.
           </p>
-          <div className="landing-cta-row">
+          <div className={styles.landingCtaRow}>
             <Link href="/leaderboard" className="btn">
               Open Leaderboard
             </Link>
@@ -109,29 +110,29 @@ export default async function LobbyPage() {
             </Link>
           </div>
         </div>
-        <div className="landing-hero-side">
-          <div className="landing-visual-frame">
+        <div className={styles.landingHeroSide}>
+          <div className={styles.landingVisualFrame}>
             <Image
               src="/brand/landing-table-scene.svg"
               alt="Railbird table scene artwork"
               width={760}
               height={440}
-              className="landing-visual-img"
+              className={styles.landingVisualImg}
               priority
             />
           </div>
-          <div className="landing-stats-grid">
-            <div className="landing-stat">
-              <p className="landing-stat-label">Active Tables</p>
-              <p className="landing-stat-value">{liveTables.length}</p>
+          <div className={styles.landingStatsGrid}>
+            <div className={styles.landingStat}>
+              <p className={styles.landingStatLabel}>Active Tables</p>
+              <p className={styles.landingStatValue}>{liveTables.length}</p>
             </div>
-            <div className="landing-stat">
-              <p className="landing-stat-label">Occupied Seats</p>
-              <p className="landing-stat-value">{occupiedSeats}</p>
+            <div className={styles.landingStat}>
+              <p className={styles.landingStatLabel}>Occupied Seats</p>
+              <p className={styles.landingStatValue}>{occupiedSeats}</p>
             </div>
-            <div className="landing-stat span-2">
-              <p className="landing-stat-label">Live Pot Total</p>
-              <p className="landing-stat-value">
+            <div className={`${styles.landingStat} ${styles.span2}`}>
+              <p className={styles.landingStatLabel}>Live Pot Total</p>
+              <p className={styles.landingStatValue}>
                 {formatChips(livePot)} {CHIP_SYMBOL}
               </p>
             </div>
@@ -149,11 +150,11 @@ export default async function LobbyPage() {
       ) : null}
 
       {featuredTable && (
-        <article className="card featured-live-card">
-          <header className="featured-live-header">
+        <article className={`card ${styles.featuredLiveCard}`}>
+          <header className={styles.featuredLiveHeader}>
             <div>
               <p className="label">Now Playing</p>
-              <h2 className="featured-live-title">
+              <h2 className={styles.featuredLiveTitle}>
                 Table #{featuredTable.tableId}
               </h2>
             </div>
@@ -163,22 +164,22 @@ export default async function LobbyPage() {
             </span>
           </header>
 
-          <div className="featured-live-grid">
+          <div className={styles.featuredLiveGrid}>
             <div>
               <p className="label">Current Hand</p>
-              <p className="featured-live-value">
+              <p className={styles.featuredLiveValue}>
                 #{featuredTable.currentHand?.handId || featuredTable.currentHandId || "0"}
               </p>
             </div>
             <div>
               <p className="label">Pot</p>
-              <p className="featured-live-value">
+              <p className={styles.featuredLiveValue}>
                 {formatChips(featuredTable.currentHand?.pot || "0")} {CHIP_SYMBOL}
               </p>
             </div>
             <div>
               <p className="label">Actor</p>
-              <p className="featured-live-value">
+              <p className={styles.featuredLiveValue}>
                 {featuredTable.currentHand?.actorSeat !== null && featuredTable.currentHand?.actorSeat !== undefined
                   ? `Seat ${featuredTable.currentHand.actorSeat}`
                   : "-"}
@@ -186,18 +187,18 @@ export default async function LobbyPage() {
             </div>
             <div>
               <p className="label">Blinds</p>
-              <p className="featured-live-value">
+              <p className={styles.featuredLiveValue}>
                 {formatChips(featuredTable.smallBlind)}/{formatChips(featuredTable.bigBlind)} {CHIP_SYMBOL}
               </p>
             </div>
             <div>
               <p className="label">Button</p>
-              <p className="featured-live-value">Seat {featuredTable.buttonSeat}</p>
+              <p className={styles.featuredLiveValue}>Seat {featuredTable.buttonSeat}</p>
             </div>
-            <div className="table-meta-full">
+            <div className={styles.tableMetaFull}>
               <span className="label">Contract:</span>{" "}
               <span
-                className="text-mono table-contract-value"
+                className={`text-mono ${styles.tableContractValue}`}
                 title={featuredTable.contractAddress}
               >
                 {shortenAddress(featuredTable.contractAddress)}
@@ -205,16 +206,16 @@ export default async function LobbyPage() {
             </div>
           </div>
 
-          <div className="featured-live-seats">
+          <div className={styles.featuredLiveSeats}>
             {featuredTable.seats.map((seat) => (
-              <div key={seat.seatIndex} className="featured-live-seat">
-                <div className="seat-chip-label">Seat {seat.seatIndex}</div>
+              <div key={seat.seatIndex} className={styles.featuredLiveSeat}>
+                <div className={styles.seatChipLabel}>Seat {seat.seatIndex}</div>
                 {seat.ownerAddress.toLowerCase() !== ZERO_ADDRESS ? (
                   <>
-                    <div className="seat-addr text-mono" title={seat.ownerAddress}>
+                    <div className={`${styles.seatAddr} text-mono`} title={seat.ownerAddress}>
                       {shortenAddress(seat.ownerAddress)}
                     </div>
-                    <div className="value-accent seat-stack-line">
+                    <div className={`value-accent ${styles.seatStackLine}`}>
                       {formatChips(seat.stack)} {CHIP_SYMBOL}
                     </div>
                   </>
@@ -226,11 +227,11 @@ export default async function LobbyPage() {
           </div>
 
           {featuredTable.currentHand?.actions?.length ? (
-            <div className="featured-live-actions">
+            <div className={styles.featuredLiveActions}>
               <p className="label">Recent Actions</p>
-              <div className="featured-live-action-list">
+              <div className={styles.featuredLiveActionList}>
                 {featuredTable.currentHand.actions.slice(-5).reverse().map((action, idx) => (
-                  <div key={`${action.txHash}-${idx}`} className="featured-live-action-item">
+                  <div key={`${action.txHash}-${idx}`} className={styles.featuredLiveActionItem}>
                     <span>Seat {action.seatIndex}</span>
                     <span>{action.actionType}</span>
                     <span>
@@ -242,7 +243,7 @@ export default async function LobbyPage() {
             </div>
           ) : null}
 
-          <footer className="featured-live-footer">
+          <footer className={styles.featuredLiveFooter}>
             <Link href={`/table/${featuredTable.tableId}`} className="btn">
               Open Live Table
             </Link>
@@ -258,17 +259,17 @@ export default async function LobbyPage() {
           const activeSeats = table.seats.filter((s) => s.ownerAddress.toLowerCase() !== ZERO_ADDRESS).length;
 
           return (
-            <Link key={table.tableId} href={`/table/${table.tableId}`} className="table-link">
-              <article className="card table-card">
-                <header className="table-card-header">
-                  <span className="table-card-title">Table #{table.tableId}</span>
+            <Link key={table.tableId} href={`/table/${table.tableId}`} className={styles.tableLink}>
+              <article className={`card ${styles.tableCard}`}>
+                <header className={styles.tableCardHeader}>
+                  <span className={styles.tableCardTitle}>Table #{table.tableId}</span>
                   <span className={`status ${statusClass}`}>
                     <span className={`dot ${statusClass === "live" ? "pulse" : ""}`} />
                     {stateName}
                   </span>
                 </header>
 
-                <div className="table-meta-grid">
+                <div className={styles.tableMetaGrid}>
                   <div>
                     <span className="label">Blinds:</span>{" "}
                     {formatChips(table.smallBlind)}/{formatChips(table.bigBlind)} {CHIP_SYMBOL}
@@ -280,9 +281,9 @@ export default async function LobbyPage() {
                   <div>
                     <span className="label">Button:</span> Seat {table.buttonSeat}
                   </div>
-                  <div className="table-meta-full">
+                  <div className={styles.tableMetaFull}>
                     <span className="label">Contract:</span>{" "}
-                    <span className="text-mono table-contract-value" title={table.contractAddress}>
+                    <span className={`text-mono ${styles.tableContractValue}`} title={table.contractAddress}>
                       {shortenAddress(table.contractAddress)}
                     </span>
                   </div>
@@ -302,16 +303,16 @@ export default async function LobbyPage() {
                   )}
                 </div>
 
-                <div className="seat-chips">
+                <div className={styles.seatChips}>
                   {table.seats.map((seat) => (
-                    <div key={seat.seatIndex} className="seat-chip">
-                      <div className="seat-chip-label">Seat {seat.seatIndex}</div>
+                    <div key={seat.seatIndex} className={styles.seatChip}>
+                      <div className={styles.seatChipLabel}>Seat {seat.seatIndex}</div>
                       {seat.ownerAddress.toLowerCase() !== ZERO_ADDRESS ? (
                         <>
-                          <div className="seat-addr text-mono" title={seat.ownerAddress}>
+                          <div className={`${styles.seatAddr} text-mono`} title={seat.ownerAddress}>
                             {shortenAddress(seat.ownerAddress)}
                           </div>
-                          <div className="value-accent seat-stack-line">
+                          <div className={`value-accent ${styles.seatStackLine}`}>
                             {formatChips(seat.stack)} {CHIP_SYMBOL}
                           </div>
                         </>

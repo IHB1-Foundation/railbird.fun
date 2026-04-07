@@ -1,0 +1,36 @@
+.pokerCard {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.1rem;
+  height: 2.85rem;
+  border-radius: 0.35rem;
+  background:
+    linear-gradient(180deg, #ffffff, #eceffb);
+  border: 1px solid rgba(42, 47, 69, 0.36);
+  box-shadow:
+    0 6px 10px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.86);
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #0a0d1e;
+}
+
+.pokerCard.heart {
+  color: var(--heart);
+}
+
+.pokerCard.spade {
+  color: #101324;
+}
+
+.pokerCard.unknown {
+  background:
+    repeating-linear-gradient(
+      135deg,
+      rgba(55, 58, 80, 0.98) 0 7px,
+      rgba(42, 45, 67, 0.98) 7px 14px
+    );
+  border-color: rgba(152, 159, 198, 0.42);
+  color: #e0e4f7;
+}

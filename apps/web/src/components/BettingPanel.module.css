@@ -1,0 +1,248 @@
+.betHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 0.9rem;
+}
+
+.betSubtitle {
+  max-width: 780px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.betBankroll {
+  min-width: 240px;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.betBankrollValue {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #e8deff;
+}
+
+.betMarketState {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.36rem 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.8rem;
+}
+
+.betMarketState.open {
+  color: #93ffd0;
+  background: rgba(57, 217, 138, 0.16);
+  border: 1px solid rgba(57, 217, 138, 0.45);
+}
+
+.betMarketState.closed {
+  color: #ffe2ad;
+  background: rgba(255, 191, 77, 0.14);
+  border: 1px solid rgba(255, 191, 77, 0.44);
+}
+
+.betNotice {
+  margin-bottom: 0.8rem;
+  border-radius: 10px;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid rgba(172, 151, 255, 0.34);
+  background: rgba(129, 108, 249, 0.14);
+  font-size: 0.84rem;
+}
+
+.betLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 1rem;
+  align-items: start;
+}
+
+.betAgentGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.betAgentCard {
+  display: grid;
+  gap: 0.55rem;
+  border-color: rgba(159, 136, 255, 0.26);
+}
+
+.betAgentCard.selected {
+  border-color: rgba(201, 185, 255, 0.72);
+  box-shadow:
+    0 0 0 1px rgba(201, 185, 255, 0.45),
+    0 22px 38px rgba(2, 4, 12, 0.5);
+}
+
+.betAgentTop {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.betAgentSeat {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.betAgentName {
+  font-size: 1rem;
+}
+
+.betAgentStyle {
+  color: #d7cbff;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.betAgentOdds {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #e8deff;
+}
+
+.betAgentBlurb {
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.betAgentStats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  font-size: 0.78rem;
+}
+
+.betAgentStats span {
+  border: 1px solid rgba(157, 166, 207, 0.3);
+  border-radius: 999px;
+  padding: 0.22rem 0.5rem;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.betAgentOwner {
+  font-family: var(--text-mono);
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.betSelectBtn {
+  border: 1px solid rgba(194, 177, 255, 0.34);
+  cursor: pointer;
+  border-radius: 999px;
+  font-weight: 700;
+  padding: 0.52rem 0.8rem;
+  background: rgba(143, 127, 235, 0.24);
+  color: #ece6ff;
+}
+
+.betPlaceBtn {
+  width: 100%;
+  border: none;
+  cursor: pointer;
+  border-radius: 999px;
+  font-weight: 700;
+  padding: 0.68rem 0.9rem;
+  background: linear-gradient(140deg, #816cf9 0%, #6d52ff 100%);
+  color: #fff;
+}
+
+.betPlaceBtn:disabled {
+  cursor: not-allowed;
+  background: rgba(130, 136, 172, 0.25);
+  color: rgba(226, 230, 248, 0.7);
+}
+
+.betSlip {
+  display: grid;
+  gap: 0.62rem;
+}
+
+.betSlipRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.86rem;
+}
+
+.betInputLabel {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.betInput {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid rgba(149, 158, 204, 0.3);
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--foreground);
+  padding: 0.62rem 0.7rem;
+}
+
+.betInput:focus {
+  outline: none;
+  border-color: rgba(197, 180, 255, 0.7);
+}
+
+.betQuickRow {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.betHistoryGrid {
+  margin-top: 1rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.betTicketList {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.betTicket {
+  border-radius: 10px;
+  border: 1px solid rgba(148, 156, 197, 0.25);
+  background: rgba(255, 255, 255, 0.02);
+  padding: 0.62rem 0.7rem;
+  display: grid;
+  gap: 0.18rem;
+  font-size: 0.8rem;
+}
+
+.betTicket.won {
+  border-color: rgba(57, 217, 138, 0.45);
+  background: rgba(57, 217, 138, 0.1);
+}
+
+.betTicket.lost {
+  border-color: rgba(255, 98, 110, 0.45);
+  background: rgba(255, 98, 110, 0.1);
+}
+
+@media (max-width: 1024px) {
+  .betLayout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 840px) {
+  .betAgentGrid,
+  .betHistoryGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .betHeader {
+    flex-direction: column;
+  }
+}

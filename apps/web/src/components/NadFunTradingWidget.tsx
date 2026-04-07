@@ -16,6 +16,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { createPublicClient, createWalletClient, custom, http, parseUnits, formatUnits, type Address } from "viem";
 import { useAuth } from "@/lib/auth";
+import styles from "./NadFunTradingWidget.module.css";
 
 // ─── Contract ABIs ────────────────────────────────────────────────────────────
 // These follow common nad.fun interface patterns. Adjust selectors to match deployed contracts.
@@ -117,11 +118,11 @@ const STAGE_LABELS: Record<TokenStage, string> = {
   unknown: "Unknown",
 };
 
-const STAGE_COLORS: Record<TokenStage, string> = {
-  bonding_curve: "stage-bonding",
-  locked: "stage-locked",
-  graduated: "stage-graduated",
-  unknown: "stage-unknown",
+const STAGE_CSS_CLASSES: Record<TokenStage, string> = {
+  bonding_curve: styles.stageBonding,
+  locked: styles.stageLocked,
+  graduated: styles.stageGraduated,
+  unknown: styles.stageUnknown,
 };
 
 // ─── Config helpers ───────────────────────────────────────────────────────────
@@ -288,13 +289,15 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
       // Get wallet client
       const walletClient = createWalletClient({
         account: address as Address,
-        transport: custom((window as unknown as { ethereum: unknown }).ethereum),
+        chain: undefined,
+        transport: custom((window as { ethereum: Parameters<typeof custom>[0] }).ethereum),
       });
 
       let hash: `0x${string}`;
       if (stage === "bonding_curve") {
         if (direction === "buy") {
           hash = await walletClient.writeContract({
+            chain: null,
             address: routerAddress,
             abi: BONDING_ROUTER_ABI,
             functionName: "buyTokens",
@@ -303,6 +306,7 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
           });
         } else {
           hash = await walletClient.writeContract({
+            chain: null,
             address: routerAddress,
             abi: BONDING_ROUTER_ABI,
             functionName: "sellTokens",
@@ -314,6 +318,7 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
         const WMON_ADDRESS = (process.env.NEXT_PUBLIC_WMON_ADDRESS || "0x0000000000000000000000000000000000000000") as Address;
         if (direction === "buy") {
           hash = await walletClient.writeContract({
+            chain: null,
             address: routerAddress,
             abi: DEX_ROUTER_ABI,
             functionName: "swapExactETHForTokens",
@@ -322,6 +327,7 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
           });
         } else {
           hash = await walletClient.writeContract({
+            chain: null,
             address: routerAddress,
             abi: DEX_ROUTER_ABI,
             functionName: "swapExactTokensForETH",
@@ -346,7 +352,7 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
         href={`https://nad.fun/token/${tokenAddress}`}
         target="_blank"
         rel="noopener noreferrer"
-        className="btn-outline nadfun-fallback"
+        className={styles.nadfunFallback}
         aria-label="Open token on nad.fun"
       >
         Open on nad.fun ↗
@@ -355,17 +361,17 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
   }
 
   return (
-    <div className="nadfun-widget">
+    <div className={styles.nadfunWidget}>
       {/* Stage badge */}
-      <div className="nadfun-stage-row">
-        <span className={`nadfun-stage-badge ${STAGE_COLORS[stage]}`}>
+      <div className={styles.nadfunStageRow}>
+        <span className={`${styles.nadfunStageBadge} ${STAGE_CSS_CLASSES[stage]}`}>
           {STAGE_LABELS[stage]}
         </span>
         <a
           href={`https://nad.fun/token/${tokenAddress}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="nadfun-external-link"
+          className={styles.nadfunExternalLink}
           aria-label="Open on nad.fun"
         >
           Open on nad.fun ↗
@@ -373,7 +379,7 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
       </div>
 
       {stage === "locked" && (
-        <div className="nadfun-locked-notice" role="status">
+        <div className={styles.nadfunLockedNotice} role="status">
           Token is currently in locked stage — trading is temporarily unavailable.
         </div>
       )}
@@ -381,12 +387,12 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
       {isTradeable && (
         <>
           {/* Direction tabs */}
-          <div className="nadfun-direction-tabs" role="tablist" aria-label="Trade direction">
+          <div className={styles.nadfunDirectionTabs} role="tablist" aria-label="Trade direction">
             <button
               type="button"
               role="tab"
               aria-selected={direction === "buy"}
-              className={`nadfun-tab ${direction === "buy" ? "active" : ""}`}
+              className={`${styles.nadfunTab} ${direction === "buy" ? styles.active : ""}`}
               onClick={() => { setDirection("buy"); setQuote(null); }}
             >
               Buy
@@ -395,7 +401,7 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
               type="button"
               role="tab"
               aria-selected={direction === "sell"}
-              className={`nadfun-tab ${direction === "sell" ? "active" : ""}`}
+              className={`${styles.nadfunTab} ${direction === "sell" ? styles.active : ""}`}
               onClick={() => { setDirection("sell"); setQuote(null); }}
             >
               Sell
@@ -403,13 +409,13 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
           </div>
 
           {/* Amount input */}
-          <div className="nadfun-field">
-            <label className="nadfun-label" htmlFor="nadfun-amount">
+          <div className={styles.nadfunField}>
+            <label className={styles.nadfunLabel} htmlFor="nadfun-amount">
               {direction === "buy" ? "MON to spend" : "Tokens to sell"}
             </label>
             <input
               id="nadfun-amount"
-              className="nadfun-input"
+              className={styles.nadfunInput}
               type="text"
               inputMode="decimal"
               value={amountInput}
@@ -418,13 +424,13 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
             />
           </div>
 
-          {/* Slippage */}
-          <div className="nadfun-controls-row">
-            <div className="nadfun-field nadfun-field-sm">
-              <label className="nadfun-label" htmlFor="nadfun-slippage">Slippage (%)</label>
+          {/* Slippage + Deadline */}
+          <div className={styles.nadfunControlsRow}>
+            <div className={`${styles.nadfunField} ${styles.nadfunFieldSm}`}>
+              <label className={styles.nadfunLabel} htmlFor="nadfun-slippage">Slippage (%)</label>
               <input
                 id="nadfun-slippage"
-                className="nadfun-input"
+                className={styles.nadfunInput}
                 type="number"
                 min="0.1"
                 max="50"
@@ -434,11 +440,11 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
                 aria-label="Slippage tolerance in percent"
               />
             </div>
-            <div className="nadfun-field nadfun-field-sm">
-              <label className="nadfun-label" htmlFor="nadfun-deadline">Deadline (min)</label>
+            <div className={`${styles.nadfunField} ${styles.nadfunFieldSm}`}>
+              <label className={styles.nadfunLabel} htmlFor="nadfun-deadline">Deadline (min)</label>
               <input
                 id="nadfun-deadline"
-                className="nadfun-input"
+                className={styles.nadfunInput}
                 type="number"
                 min="1"
                 max="120"
@@ -450,12 +456,12 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
           </div>
 
           {/* Quick slippage presets */}
-          <div className="nadfun-presets" aria-label="Slippage presets">
+          <div className={styles.nadfunPresets} aria-label="Slippage presets">
             {[50, 100, 200, 500].map((bps) => (
               <button
                 key={bps}
                 type="button"
-                className={`ghost-btn ${slippageBps === bps ? "active" : ""}`}
+                className="ghost-btn"
                 onClick={() => setSlippageBps(bps)}
                 aria-pressed={slippageBps === bps}
               >
@@ -467,7 +473,7 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
           {/* Quote */}
           <button
             type="button"
-            className="btn-outline nadfun-quote-btn"
+            className={styles.nadfunQuoteBtn}
             onClick={getQuote}
             disabled={quoteLoading}
             aria-busy={quoteLoading}
@@ -477,7 +483,7 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
           </button>
 
           {quote && (
-            <div className="nadfun-quote-result" role="status" aria-live="polite">
+            <div className={styles.nadfunQuoteResult} role="status" aria-live="polite">
               {quote}
               {` (slippage ${(slippageBps / 100).toFixed(1)}%)`}
             </div>
@@ -487,7 +493,7 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
           {isConnected ? (
             <button
               type="button"
-              className="btn-primary nadfun-execute-btn"
+              className={styles.nadfunExecuteBtn}
               onClick={executeTrade}
               disabled={txLoading || !routerAddress}
               aria-busy={txLoading}
@@ -496,7 +502,7 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
               {txLoading ? "Confirming…" : `${direction === "buy" ? "Buy" : "Sell"} now`}
             </button>
           ) : (
-            <div className="nadfun-connect-notice" role="note">
+            <div className={styles.nadfunConnectNotice} role="note">
               Connect wallet to trade
             </div>
           )}
@@ -505,12 +511,12 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
 
       {/* Feedback */}
       {error && (
-        <div className="nadfun-error" role="alert" aria-live="assertive">
+        <div className={styles.nadfunError} role="alert" aria-live="assertive">
           {error}
         </div>
       )}
       {txHash && (
-        <div className="nadfun-success" role="status" aria-live="polite">
+        <div className={styles.nadfunSuccess} role="status" aria-live="polite">
           Transaction submitted:{" "}
           <span className="text-mono">{txHash.slice(0, 10)}…{txHash.slice(-8)}</span>
         </div>

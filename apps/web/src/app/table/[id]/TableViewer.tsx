@@ -304,10 +304,22 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
       return;
     }
 
-    // Validate buy-in amount: positive integer, no decimals, max 1 trillion chips
-    const buyInNum = Number(joinBuyIn);
-    if (!joinBuyIn || isNaN(buyInNum) || buyInNum <= 0 || !Number.isInteger(buyInNum) || buyInNum > 1e12) {
-      setJoinStatus("Invalid buy-in: enter a positive whole number (max 1,000,000,000,000).");
+    // Validate buy-in: must be a positive integer string, no decimals, within [1, 10^15] chips.
+    // Use BigInt to avoid Number precision issues near MAX_SAFE_INTEGER.
+    const BUY_IN_MAX = 1_000_000_000_000_000n; // 10^15 chips
+    if (!/^\d+$/.test(joinBuyIn.trim()) || joinBuyIn.trim() === "0") {
+      setJoinStatus("Invalid buy-in: enter a positive whole number (e.g. 1000).");
+      return;
+    }
+    let buyInBigInt: bigint;
+    try {
+      buyInBigInt = BigInt(joinBuyIn.trim());
+    } catch {
+      setJoinStatus("Invalid buy-in amount. Please enter a whole number.");
+      return;
+    }
+    if (buyInBigInt <= 0n || buyInBigInt > BUY_IN_MAX) {
+      setJoinStatus(`Invalid buy-in: must be between 1 and ${BUY_IN_MAX.toLocaleString()} chips.`);
       return;
     }
 
@@ -433,14 +445,15 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
             </select>
           </label>
           <label className={styles.joinField}>
-            <span className={styles.joinFieldLabel}>Buy-in ({CHIP_SYMBOL})</span>
+            <span className={styles.joinFieldLabel}>Buy-in ({CHIP_SYMBOL}) — min 1, max 10^15</span>
             <input
               className={styles.joinFieldInput}
-              type="number"
-              min="1"
-              step="1"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              placeholder="e.g. 1000"
               value={joinBuyIn}
-              onChange={(e) => setJoinBuyIn(e.target.value)}
+              onChange={(e) => setJoinBuyIn(e.target.value.replace(/[^0-9]/g, ""))}
               disabled={joinLoading}
             />
           </label>

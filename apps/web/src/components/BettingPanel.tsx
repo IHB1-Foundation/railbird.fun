@@ -59,12 +59,25 @@ function isStringArray(v: unknown): v is string[] {
   return Array.isArray(v) && v.every((x) => typeof x === "string");
 }
 
+/** Max stake: 10^9 chips (prevents overflow in BigInt * 10^18 calculation). */
+const MAX_STAKE_CHIPS = 1_000_000_000n;
+
+/**
+ * Parses a positive integer chip amount (no decimals) to its wei representation.
+ * Returns null if the input is not a valid positive integer within range.
+ */
 function parseChipInputToWei(raw: string): bigint | null {
   const value = raw.trim();
-  if (!/^\d+(\.\d{0,18})?$/.test(value)) return null;
-  const [whole, frac = ""] = value.split(".");
-  const paddedFrac = `${frac}${"0".repeat(18)}`.slice(0, 18);
-  return BigInt(whole) * 10n ** 18n + BigInt(paddedFrac);
+  // Only allow positive integer strings (no decimals, no leading zeros except "0" itself)
+  if (!/^[1-9]\d*$/.test(value)) return null;
+  let chips: bigint;
+  try {
+    chips = BigInt(value);
+  } catch {
+    return null;
+  }
+  if (chips <= 0n || chips > MAX_STAKE_CHIPS) return null;
+  return chips * 10n ** 18n;
 }
 
 function nowIso(): string {
@@ -218,8 +231,8 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
     }
 
     const stakeWei = parseChipInputToWei(stakeInput);
-    if (!stakeWei || stakeWei <= 0n) {
-      setNotice("Invalid stake amount format.");
+    if (!stakeWei) {
+      setNotice(`Invalid stake: enter a positive whole number between 1 and ${MAX_STAKE_CHIPS.toLocaleString()} chips.`);
       return;
     }
     if (stakeWei > bankrollWei) {

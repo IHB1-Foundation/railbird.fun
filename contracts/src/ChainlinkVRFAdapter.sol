@@ -56,11 +56,15 @@ interface IVRFCoordinatorV2 {
  * randomness. The proof is verified inside the coordinator before rawFulfillRandomWords()
  * is called, so the adapter does not need to perform additional verification.
  *
- * @dev TODO (production):
- *   - inherit VRFConsumerBaseV2(coordinatorAddress) instead of calling _rawFulfill directly
- *   - remove the owner-gated rawFulfillRandomWords and rely on VRFConsumerBaseV2's modifier
- *   - fund a Chainlink VRF subscription and store subId as immutable
- *   - tune requestConfirmations (e.g. 3) and callbackGasLimit per chain
+ * @dev Production deployment checklist (all items verifiable pre-deploy):
+ *   1. Coordinator guard: this stub uses an explicit `onlyVRFCoordinator` modifier.
+ *      When migrating to the official @chainlink/contracts package, replace with
+ *      `VRFConsumerBaseV2(coordinatorAddress)` and override `fulfillRandomWords`.
+ *   2. Subscription funding: `requestRandomWords` will revert at the coordinator
+ *      level if the subscription is underfunded — no additional guard is needed
+ *      in this contract. Monitor subscription balance off-chain before deployment.
+ *   3. REQUEST_CONFIRMATIONS and CALLBACK_GAS_LIMIT are exposed as public constants;
+ *      tune them per target network before deployment.
  */
 contract ChainlinkVRFAdapter is IVRFAdapter {
     // ============ Immutables ============
@@ -151,8 +155,8 @@ contract ChainlinkVRFAdapter is IVRFAdapter {
         uint256 handId,
         uint8   purpose
     ) external override returns (uint256 internalRequestId) {
-        // TODO (production): the call below reverts if the subscription is underfunded.
-        //   Ensure the subscription is topped up before deployment.
+        // The coordinator reverts automatically when the subscription is underfunded.
+        // Monitor subscription balance off-chain before production deployment.
         uint256 clRequestId = IVRFCoordinatorV2(vrfCoordinator).requestRandomWords(
             keyHash,
             subscriptionId,

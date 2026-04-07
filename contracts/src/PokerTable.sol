@@ -195,6 +195,15 @@ contract PokerTable {
         uint8 winnerSeat,
         uint256 potAmount
     );
+
+    /// @dev Emitted when a vault settlement callback fails so indexers can detect and surface the miss.
+    event VaultCallbackFailed(
+        uint256 indexed handId,
+        address indexed seatOwner,
+        address indexed vault,
+        bytes reason
+    );
+
     event ShowdownTimedOut(
         uint256 indexed handId,
         uint8 activePlayers,
@@ -1593,7 +1602,9 @@ contract PokerTable {
                 if (!isReg || vault == address(0)) continue;
                 // Guard: skip EOAs and precompiles — only call deployed contracts
                 if (vault.code.length == 0) continue;
-                try IPlayerVaultMinimal(vault).onSettlement(handId, pnl) {} catch {}
+                try IPlayerVaultMinimal(vault).onSettlement(handId, pnl) {} catch (bytes memory reason) {
+                    emit VaultCallbackFailed(handId, seatOwner, vault, reason);
+                }
             } catch {}
         }
     }

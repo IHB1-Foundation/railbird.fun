@@ -26,6 +26,15 @@ function buildDerivationMessage(): string {
   return `Railbird Encryption Key Derivation v1 | ${utcDateString()}`;
 }
 
+/** Rejects after `ms` milliseconds with a timeout error. */
+function signTimeout(ms: number): Promise<never> {
+  return new Promise((_, reject) =>
+    setTimeout(() => reject(new Error(`Encryption key derivation timed out after ${ms / 1000}s. Please try again.`)), ms)
+  );
+}
+
+const SIGN_TIMEOUT_MS = 60_000; // 60 seconds
+
 const PUBKEY_STORAGE_PREFIX = "railbird_encpubkey_";
 
 /** In-memory cache: "{address}:{date}" → { privKey, pubKey } — invalidated on UTC date change. */
@@ -56,9 +65,13 @@ export async function deriveEncryptionKeyPair(
   const cached = sessionCache.get(cacheKey);
   if (cached) return cached;
 
-  // Request wallet signature for key derivation (includes today's date for daily rotation)
+  // Request wallet signature for key derivation (includes today's date for daily rotation).
+  // T-R5-03: Race against a 60-second timeout to avoid infinite wait if user ignores popup.
   const derivationMessage = buildDerivationMessage();
-  const signature = await sign(derivationMessage, address.toLowerCase());
+  const signature = await Promise.race([
+    sign(derivationMessage, address.toLowerCase()),
+    signTimeout(SIGN_TIMEOUT_MS),
+  ]);
 
   // privKey = keccak256(signature bytes)
   const sigBytes = hexToBytes(signature);

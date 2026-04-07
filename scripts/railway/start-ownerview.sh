@@ -11,6 +11,12 @@ require_env RPC_URL
 require_env JWT_SECRET
 require_env DEALER_API_KEY
 
+# Validate JWT_SECRET length (defense in depth — index.ts also validates at runtime)
+if [ "${#JWT_SECRET}" -lt 32 ]; then
+  echo "[ownerview] ERROR: JWT_SECRET must be at least 32 characters (got ${#JWT_SECRET})" >&2
+  exit 1
+fi
+
 # Accept POKER_TABLE_ADDRESSES (preferred, comma-separated) or legacy POKER_TABLE_ADDRESS.
 if [ -n "${POKER_TABLE_ADDRESSES:-}" ]; then
   export POKER_TABLE_ADDRESSES

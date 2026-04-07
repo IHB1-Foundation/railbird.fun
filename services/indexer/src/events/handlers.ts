@@ -23,6 +23,9 @@ import {
   getHand,
 } from "../db/index.js";
 import { gameStateToString, actionTypeToString } from "./abis.js";
+import { createLogger } from "@playerco/shared";
+
+const logger = createLogger({ service: "indexer" });
 import {
   broadcastAction,
   broadcastHandStarted,
@@ -76,7 +79,7 @@ export async function handleSeatUpdated(
   );
 
   await markEventProcessed(meta.blockNumber, meta.logIndex, meta.txHash, "SeatUpdated");
-  console.log(`[SeatUpdated] table=${ctx.tableId} seat=${args.seatIndex} stack=${args.stack}`);
+  logger.info({ tableId: ctx.tableId.toString(), seatIndex: args.seatIndex, stack: args.stack.toString() }, 'SeatUpdated');
 
   // Broadcast to WebSocket clients
   broadcastSeatUpdated(ctx.tableId, args.seatIndex, args.owner, args.operator, args.stack);
@@ -108,7 +111,7 @@ export async function handleHandStarted(
   await updateTableState(ctx.tableId, "BETTING_PRE", args.handId, args.buttonSeat);
 
   await markEventProcessed(meta.blockNumber, meta.logIndex, meta.txHash, "HandStarted");
-  console.log(`[HandStarted] table=${ctx.tableId} hand=${args.handId} button=${args.buttonSeat}`);
+  logger.info({ tableId: ctx.tableId.toString(), handId: args.handId.toString(), buttonSeat: args.buttonSeat }, 'HandStarted');
 
   // Broadcast to WebSocket clients
   broadcastHandStarted(ctx.tableId, args.handId, args.smallBlind, args.bigBlind, args.buttonSeat);
@@ -141,7 +144,7 @@ export async function handleActionTaken(
   await updateHand(ctx.tableId, args.handId, { pot: args.potAfter });
 
   await markEventProcessed(meta.blockNumber, meta.logIndex, meta.txHash, "ActionTaken");
-  console.log(`[ActionTaken] hand=${args.handId} seat=${args.seatIndex} action=${actionType} amount=${args.amount}`);
+  logger.info({ handId: args.handId.toString(), seatIndex: args.seatIndex, actionType, amount: args.amount.toString() }, 'ActionTaken');
 
   // Broadcast to WebSocket clients
   broadcastAction(
@@ -189,7 +192,7 @@ export async function handleBettingRoundComplete(
   await updateTableState(ctx.tableId, toStateStr);
 
   await markEventProcessed(meta.blockNumber, meta.logIndex, meta.txHash, "BettingRoundComplete");
-  console.log(`[BettingRoundComplete] hand=${args.handId} ${gameStateToString(args.fromState)} -> ${toStateStr}`);
+  logger.info({ handId: args.handId.toString(), fromState: gameStateToString(args.fromState), toState: toStateStr }, 'BettingRoundComplete');
 
   // Broadcast to WebSocket clients
   broadcastBettingRoundComplete(ctx.tableId, args.handId, args.fromState, args.toState);
@@ -210,7 +213,7 @@ export async function handleVRFRequested(
   await updateTableState(ctx.tableId, streetStr);
 
   await markEventProcessed(meta.blockNumber, meta.logIndex, meta.txHash, "VRFRequested");
-  console.log(`[VRFRequested] hand=${args.handId} street=${streetStr} requestId=${args.requestId}`);
+  logger.info({ handId: args.handId.toString(), street: streetStr, requestId: args.requestId.toString() }, 'VRFRequested');
 
   // Broadcast to WebSocket clients
   broadcastVRFRequested(ctx.tableId, args.handId, args.street, args.requestId);
@@ -237,7 +240,7 @@ export async function handleCommunityCardsDealt(
   });
 
   await markEventProcessed(meta.blockNumber, meta.logIndex, meta.txHash, "CommunityCardsDealt");
-  console.log(`[CommunityCardsDealt] hand=${args.handId} cards=[${args.cards.join(",")}]`);
+  logger.info({ handId: args.handId.toString(), cards: [...args.cards] }, 'CommunityCardsDealt');
 
   // Broadcast to WebSocket clients
   broadcastCommunityCards(ctx.tableId, args.handId, args.street, args.cards);
@@ -275,7 +278,7 @@ export async function handleHandSettled(
   await updateTableState(ctx.tableId, "SETTLED");
 
   await markEventProcessed(meta.blockNumber, meta.logIndex, meta.txHash, "HandSettled");
-  console.log(`[HandSettled] hand=${args.handId} winner=${args.winnerSeat} pot=${args.potAmount}`);
+  logger.info({ handId: args.handId.toString(), winnerSeat: args.winnerSeat, pot: args.potAmount.toString() }, 'HandSettled');
 
   // Broadcast to WebSocket clients
   broadcastHandSettled(ctx.tableId, args.handId, args.winnerSeat, args.potAmount);
@@ -291,9 +294,7 @@ export async function handleShowdownTimedOut(
   if (await isEventProcessed(meta.blockNumber, meta.logIndex)) return;
 
   await markEventProcessed(meta.blockNumber, meta.logIndex, meta.txHash, "ShowdownTimedOut");
-  console.log(
-    `[ShowdownTimedOut] hand=${args.handId} activePlayers=${args.activePlayers} pot=${args.potAmount}`
-  );
+  logger.info({ handId: args.handId.toString(), activePlayers: args.activePlayers, pot: args.potAmount.toString() }, 'ShowdownTimedOut');
 }
 
 export async function handleForceTimeout(
@@ -308,7 +309,7 @@ export async function handleForceTimeout(
 
   // ForceTimeout is informational - ActionTaken will handle the actual action
   await markEventProcessed(meta.blockNumber, meta.logIndex, meta.txHash, "ForceTimeout");
-  console.log(`[ForceTimeout] hand=${args.handId} seat=${args.seatIndex} action=${actionTypeToString(args.forcedAction)}`);
+  logger.info({ handId: args.handId.toString(), seatIndex: args.seatIndex, forcedAction: actionTypeToString(args.forcedAction) }, 'ForceTimeout');
 
   // Broadcast to WebSocket clients
   broadcastForceTimeout(ctx.tableId, args.handId, args.seatIndex, args.forcedAction);
@@ -342,7 +343,7 @@ export async function handleAgentRegistered(
   );
 
   await markEventProcessed(meta.blockNumber, meta.logIndex, meta.txHash, "AgentRegistered");
-  console.log(`[AgentRegistered] token=${args.token} owner=${args.owner}`);
+  logger.info({ token: args.token, owner: args.owner }, 'AgentRegistered');
 }
 
 export async function handleOperatorUpdated(
@@ -357,7 +358,7 @@ export async function handleOperatorUpdated(
   await updateAgentOperator(args.token, args.newOperator);
 
   await markEventProcessed(meta.blockNumber, meta.logIndex, meta.txHash, "OperatorUpdated");
-  console.log(`[OperatorUpdated] token=${args.token} ${args.oldOperator} -> ${args.newOperator}`);
+  logger.info({ token: args.token, oldOperator: args.oldOperator, newOperator: args.newOperator }, 'OperatorUpdated');
 }
 
 export async function handleOwnerUpdated(
@@ -372,7 +373,7 @@ export async function handleOwnerUpdated(
   await updateAgentOwner(args.token, args.newOwner);
 
   await markEventProcessed(meta.blockNumber, meta.logIndex, meta.txHash, "OwnerUpdated");
-  console.log(`[OwnerUpdated] token=${args.token} ${args.oldOwner} -> ${args.newOwner}`);
+  logger.info({ token: args.token, oldOwner: args.oldOwner, newOwner: args.newOwner }, 'OwnerUpdated');
 }
 
 export async function handleVaultUpdated(
@@ -387,7 +388,7 @@ export async function handleVaultUpdated(
   await updateAgentVault(args.token, args.newVault);
 
   await markEventProcessed(meta.blockNumber, meta.logIndex, meta.txHash, "VaultUpdated");
-  console.log(`[VaultUpdated] token=${args.token} ${args.oldVault} -> ${args.newVault}`);
+  logger.info({ token: args.token, oldVault: args.oldVault, newVault: args.newVault }, 'VaultUpdated');
 }
 
 export async function handleTableUpdated(
@@ -402,7 +403,7 @@ export async function handleTableUpdated(
   await updateAgentTable(args.token, args.newTable);
 
   await markEventProcessed(meta.blockNumber, meta.logIndex, meta.txHash, "TableUpdated");
-  console.log(`[TableUpdated] token=${args.token} ${args.oldTable} -> ${args.newTable}`);
+  logger.info({ token: args.token, oldTable: args.oldTable, newTable: args.newTable }, 'TableUpdated');
 }
 
 export async function handleMetaURIUpdated(
@@ -417,7 +418,7 @@ export async function handleMetaURIUpdated(
   await updateAgentMetaUri(args.token, args.newMetaURI);
 
   await markEventProcessed(meta.blockNumber, meta.logIndex, meta.txHash, "MetaURIUpdated");
-  console.log(`[MetaURIUpdated] token=${args.token}`);
+  logger.info({ token: args.token }, 'MetaURIUpdated');
 }
 
 // ============ PlayerVault Event Handlers ============
@@ -451,7 +452,7 @@ export async function handleVaultSnapshot(
   );
 
   await markEventProcessed(meta.blockNumber, meta.logIndex, meta.txHash, "VaultSnapshot");
-  console.log(`[VaultSnapshot] vault=${vaultAddress} hand=${args.handId} A=${args.A} P=${args.P}`);
+  logger.info({ vaultAddress, handId: args.handId.toString(), A: args.A.toString(), P: args.P.toString() }, 'VaultSnapshot');
 }
 
 export async function handleTournamentWinner(
@@ -463,9 +464,7 @@ export async function handleTournamentWinner(
   if (!meta) return;
   if (await isEventProcessed(meta.blockNumber, meta.logIndex)) return;
   await markEventProcessed(meta.blockNumber, meta.logIndex, meta.txHash, "TournamentWinner");
-  console.log(
-    `[TournamentWinner] table=${ctx.tableId} winner=${args.winner} seat=${args.seatIndex} finalStack=${args.finalStack}`
-  );
+  logger.info({ tableId: ctx.tableId.toString(), winner: args.winner, seatIndex: args.seatIndex, finalStack: args.finalStack.toString() }, 'TournamentWinner');
 }
 
 export async function handleCardIntegrityViolation(
@@ -477,9 +476,7 @@ export async function handleCardIntegrityViolation(
   if (!meta) return;
   if (await isEventProcessed(meta.blockNumber, meta.logIndex)) return;
   await markEventProcessed(meta.blockNumber, meta.logIndex, meta.txHash, "CardIntegrityViolation");
-  console.error(
-    `[CardIntegrityViolation] INTEGRITY ALERT table=${ctx.tableId} hand=${args.handId} seat=${args.seatIndex} card=${args.card} communityIndex=${args.communityIndex}`
-  );
+  logger.error({ tableId: ctx.tableId.toString(), handId: args.handId.toString(), seatIndex: args.seatIndex, card: args.card, communityIndex: args.communityIndex }, 'CardIntegrityViolation INTEGRITY ALERT');
 }
 
 export async function handleHoleCardsRevealed(
@@ -502,7 +499,7 @@ export async function handleHoleCardsRevealed(
   );
 
   await markEventProcessed(meta.blockNumber, meta.logIndex, meta.txHash, "HoleCardsRevealed");
-  console.log(`[HoleCardsRevealed] hand=${args.handId} seat=${args.seatIndex} cards=[${args.card1},${args.card2}]`);
+  logger.info({ handId: args.handId.toString(), seatIndex: args.seatIndex, cards: [args.card1, args.card2] }, 'HoleCardsRevealed');
 }
 
 export async function handleRebalanceBuy(
@@ -525,7 +522,7 @@ export async function handleRebalanceBuy(
     meta.txHash
   );
   await markEventProcessed(meta.blockNumber, meta.logIndex, meta.txHash, "RebalanceBuy");
-  console.log(`[RebalanceBuy] vault=${vaultAddress} hand=${args.handId} monIn=${args.monIn} tokenOut=${args.tokenOut}`);
+  logger.info({ vaultAddress, handId: args.handId.toString(), monIn: args.monIn.toString(), tokenOut: args.tokenOut.toString() }, 'RebalanceBuy');
 }
 
 export async function handleRebalanceSell(
@@ -548,5 +545,5 @@ export async function handleRebalanceSell(
     meta.txHash
   );
   await markEventProcessed(meta.blockNumber, meta.logIndex, meta.txHash, "RebalanceSell");
-  console.log(`[RebalanceSell] vault=${vaultAddress} hand=${args.handId} tokenIn=${args.tokenIn} monOut=${args.monOut}`);
+  logger.info({ vaultAddress, handId: args.handId.toString(), tokenIn: args.tokenIn.toString(), monOut: args.monOut.toString() }, 'RebalanceSell');
 }

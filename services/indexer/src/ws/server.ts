@@ -5,6 +5,9 @@ import type { Server } from "http";
 import type { IncomingMessage } from "http";
 import { getWsManager } from "./manager.js";
 import type { WsConnectedData, WsErrorData } from "./types.js";
+import { createLogger } from "@playerco/shared";
+
+const logger = createLogger({ service: "indexer:ws" });
 
 export interface WsServerConfig {
   httpServer: Server;
@@ -117,7 +120,7 @@ export function createWsServer(config: WsServerConfig): WebSocketServer {
 
     // Handle errors
     ws.on("error", (error) => {
-      console.error(`[WS] Client error:`, error);
+      logger.error({ ip, tableId, err: error }, 'WS client error');
       clearInterval(heartbeat);
       ipConns.delete(ws);
       if (ipConns.size === 0) connsByIp.delete(ip);
@@ -125,7 +128,7 @@ export function createWsServer(config: WsServerConfig): WebSocketServer {
     });
   });
 
-  console.log(`[WS] WebSocket server initialized on path ${config.path ?? "/ws"}`);
+  logger.info({ path: config.path ?? "/ws" }, 'WebSocket server initialized');
   return wss;
 }
 

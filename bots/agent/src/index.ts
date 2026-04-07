@@ -10,7 +10,10 @@ import {
   parsePositiveInt,
   optionalEnv,
   requireEnv,
+  createLogger,
 } from "@playerco/shared";
+
+const logger = createLogger({ service: "agent-bot" });
 
 const VERSION = "0.0.1";
 
@@ -46,7 +49,7 @@ function createStrategy(aggressionFactor: number): {
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    console.warn("[AgentBot] AGENT_DECISION_ENGINE=gemini but GEMINI_API_KEY is missing. Using simple strategy.");
+    logger.warn({}, 'AGENT_DECISION_ENGINE=gemini but GEMINI_API_KEY is missing — using simple strategy');
     return { strategy: fallback, engine: "simple", geminiModel: null };
   }
 
@@ -66,7 +69,7 @@ function createStrategy(aggressionFactor: number): {
 }
 
 async function main() {
-  console.log(`Agent bot v${VERSION}`);
+  logger.info({ version: VERSION }, 'Agent bot starting');
   const rpcUrl = requireEnv("RPC_URL");
   const defaultTurnActionDelayMs = 0;
   const defaultPollIntervalMs = 1000;
@@ -76,7 +79,7 @@ async function main() {
 
   // AGENT_TABLE_ADDRESS is deprecated — use POKER_TABLE_ADDRESS instead
   if (process.env.AGENT_TABLE_ADDRESS) {
-    console.warn("[AgentBot] AGENT_TABLE_ADDRESS is deprecated. Use POKER_TABLE_ADDRESS instead.");
+    logger.warn({}, 'AGENT_TABLE_ADDRESS is deprecated — use POKER_TABLE_ADDRESS instead');
   }
   const tableAddress = process.env.POKER_TABLE_ADDRESS || process.env.AGENT_TABLE_ADDRESS;
   if (!tableAddress) {
@@ -101,39 +104,38 @@ async function main() {
 
   // Validate that RPC_URL returns the expected chain ID before proceeding.
   await validateChainIdWithRpc(config.rpcUrl, config.chainId).catch((err: unknown) => {
-    console.error(`[AgentBot] Chain ID validation failed: ${err instanceof Error ? err.message : String(err)}`);
+    logger.error({ err: err instanceof Error ? err.message : String(err) }, 'Chain ID validation failed');
     process.exit(1);
   });
 
-  console.log("Configuration:");
-  console.log(`  RPC URL: ${config.rpcUrl}`);
-  console.log(`  Table: ${config.pokerTableAddress}`);
-  console.log(`  OwnerView: ${config.ownerviewUrl}`);
-  console.log(`  Chain ID: ${config.chainId}`);
-  console.log(`  Poll interval: ${config.pollIntervalMs}ms`);
-  console.log(`  Turn action delay: ${turnActionDelayMs}ms`);
-  console.log(`  Aggression: ${aggressionFactor.toFixed(2)}`);
-  console.log(`  Decision engine: ${engine}`);
-  if (geminiModel) {
-    console.log(`  Gemini model: ${geminiModel}`);
-  }
-  console.log(`  Max hands: ${maxHands || "unlimited"}`);
+  logger.info({
+    rpcUrl: config.rpcUrl,
+    table: config.pokerTableAddress,
+    ownerviewUrl: config.ownerviewUrl,
+    chainId: config.chainId,
+    pollIntervalMs: config.pollIntervalMs,
+    turnActionDelayMs,
+    aggression: aggressionFactor.toFixed(2),
+    decisionEngine: engine,
+    ...(geminiModel ? { geminiModel } : {}),
+    maxHands: maxHands || "unlimited",
+  }, 'Configuration');
 
   // Create and run bot
   const bot = new AgentBot(config);
   const healthPort = parseInt(process.env.HEALTH_PORT || "9100", 10);
   const health = startHealthServer({ service: "agent-bot", port: healthPort });
-  console.log(`  Health endpoint: http://0.0.0.0:${healthPort}/health`);
+  logger.info({ healthEndpoint: `http://0.0.0.0:${healthPort}/health` }, 'Health server started');
 
   // Handle shutdown
   let shutdownRequested = false;
   const shutdown = () => {
     if (shutdownRequested) {
-      console.log("\nForce shutdown");
+      logger.info({}, 'Force shutdown');
       process.exit(1);
     }
     shutdownRequested = true;
-    console.log("\nShutdown requested, stopping bot...");
+    logger.info({}, 'Shutdown requested, stopping bot');
     bot.stop();
     void health.close();
   };
@@ -146,17 +148,18 @@ async function main() {
 
   // Print final stats
   const stats = bot.getStats();
-  console.log("\nFinal Statistics:");
-  console.log(`  Hands played: ${stats.handsPlayed}`);
-  console.log(`  Hands won: ${stats.handsWon}`);
-  console.log(`  Win rate: ${stats.handsPlayed > 0 ? ((stats.handsWon / stats.handsPlayed) * 100).toFixed(1) : 0}%`);
-  console.log(`  Total profit: ${stats.totalProfit}`);
-  console.log(`  Actions submitted: ${stats.actionsSubmitted}`);
-  console.log(`  Errors: ${stats.errors}`);
+  logger.info({
+    handsPlayed: stats.handsPlayed,
+    handsWon: stats.handsWon,
+    winRate: stats.handsPlayed > 0 ? ((stats.handsWon / stats.handsPlayed) * 100).toFixed(1) + "%" : "0%",
+    totalProfit: stats.totalProfit.toString(),
+    actionsSubmitted: stats.actionsSubmitted,
+    errors: stats.errors,
+  }, 'Final statistics');
 }
 
 main().catch((error) => {
-  console.error("Fatal error:", error);
+  logger.error({ err: error instanceof Error ? error.message : String(error) }, 'Fatal error');
   process.exit(1);
 });
 

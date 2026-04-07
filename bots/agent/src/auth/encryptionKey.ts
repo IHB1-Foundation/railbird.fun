@@ -16,7 +16,9 @@ import { secp256k1 } from "@noble/curves/secp256k1.js";
 import { keccak_256 } from "@noble/hashes/sha3.js";
 import { signMessage } from "viem/accounts";
 import { createPublicClient, http, toHex, type Address, type Chain } from "viem";
-import { hexToBytes } from "@playerco/shared";
+import { hexToBytes, createLogger } from "@playerco/shared";
+
+const logger = createLogger({ service: "agent-bot:encryption" });
 
 const DERIVATION_MESSAGE = "Railbird Encryption Key Derivation v1";
 
@@ -104,11 +106,11 @@ export async function ensureEncryptionKeyRegistered(params: {
 
   const newKeyHex = toHex(pubKey);
   if (existing && existing !== "0x" && existing.toLowerCase() === newKeyHex.toLowerCase()) {
-    console.log(`[EncryptionKey] Key already registered for seat ${seatIndex}, skipping`);
+    logger.info({ seatIndex }, 'Encryption key already registered, skipping');
     return undefined;
   }
 
-  console.log(`[EncryptionKey] Registering encryption key for seat ${seatIndex}...`);
+  logger.info({ seatIndex }, 'Registering encryption key');
 
   const txHash = await writeContract({
     address: tableAddress,
@@ -122,7 +124,7 @@ export async function ensureEncryptionKeyRegistered(params: {
     hash: txHash,
     timeout: parseInt(process.env.TX_TIMEOUT_MS || "60000", 10),
   });
-  console.log(`[EncryptionKey] Registered for seat ${seatIndex}: ${txHash}`);
+  logger.info({ seatIndex, txHash }, 'Encryption key registered');
 
   return txHash;
 }

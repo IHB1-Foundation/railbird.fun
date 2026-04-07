@@ -10,12 +10,15 @@ import {
   parsePositiveInt,
   optionalEnv,
   requireEnv,
+  createLogger,
 } from "@playerco/shared";
+
+const logger = createLogger({ service: "keeper-bot" });
 
 const VERSION = "0.0.1";
 
 async function main() {
-  console.log(`Keeper bot v${VERSION}`);
+  logger.info({ version: VERSION }, 'Keeper bot starting');
   const rpcUrl = requireEnv("RPC_URL");
   const defaultPollIntervalMs = 2000;
 
@@ -32,7 +35,7 @@ async function main() {
     : allTableAddresses;
 
   if (tableAddresses.length === 0) {
-    console.log(`[KeeperBot] No tables assigned to shard ${shardId}/${totalShards}. Exiting.`);
+    logger.info({ shardId, totalShards }, 'No tables assigned to shard, exiting');
     return;
   }
 
@@ -51,20 +54,19 @@ async function main() {
 
   // Validate that RPC_URL returns the expected chain ID before proceeding.
   await validateChainIdWithRpc(baseConfig.rpcUrl, baseConfig.chainId).catch((err: unknown) => {
-    console.error(`[KeeperBot] Chain ID validation failed: ${err instanceof Error ? err.message : String(err)}`);
+    logger.error({ err: err instanceof Error ? err.message : String(err) }, 'Chain ID validation failed');
     process.exit(1);
   });
 
-  console.log("Configuration:");
-  console.log(`  RPC URL: ${baseConfig.rpcUrl}`);
-  console.log(`  Tables: ${tableAddresses.join(", ")}`);
-  console.log(`  Chain ID: ${baseConfig.chainId}`);
-  console.log(`  Poll interval: ${baseConfig.pollIntervalMs}ms`);
-  console.log(`  Action jitter: ${actionJitterMs}ms`);
-  if (totalShards > 1) {
-    console.log(`  Shard: ${shardId}/${totalShards} (${tableAddresses.length}/${allTableAddresses.length} tables)`);
-  }
-  console.log(`  Dealer integration: ${baseConfig.ownerviewUrl && baseConfig.dealerApiKey ? "enabled" : "disabled"}`);
+  logger.info({
+    rpcUrl: baseConfig.rpcUrl,
+    tables: tableAddresses,
+    chainId: baseConfig.chainId,
+    pollIntervalMs: baseConfig.pollIntervalMs,
+    actionJitterMs,
+    ...(totalShards > 1 ? { shardId, totalShards, assignedTables: tableAddresses.length, totalTables: allTableAddresses.length } : {}),
+    dealerIntegration: !!(baseConfig.ownerviewUrl && baseConfig.dealerApiKey),
+  }, 'Configuration');
 
   // Create one KeeperBot per table
   const bots = tableAddresses.map(
@@ -73,17 +75,17 @@ async function main() {
 
   const healthPort = parseInt(process.env.HEALTH_PORT || "9101", 10);
   const health = startHealthServer({ service: "keeper-bot", port: healthPort });
-  console.log(`  Health endpoint: http://0.0.0.0:${healthPort}/health`);
+  logger.info({ healthEndpoint: `http://0.0.0.0:${healthPort}/health` }, 'Health server started');
 
   // Handle shutdown
   let shutdownRequested = false;
   const shutdown = () => {
     if (shutdownRequested) {
-      console.log("\nForce shutdown");
+      logger.info({}, 'Force shutdown');
       process.exit(1);
     }
     shutdownRequested = true;
-    console.log("\nShutdown requested, stopping keeper(s)...");
+    logger.info({}, 'Shutdown requested, stopping keepers');
     for (const bot of bots) {
       bot.stop();
     }
@@ -99,18 +101,21 @@ async function main() {
   // Print final stats for each bot
   for (let i = 0; i < bots.length; i++) {
     const stats = bots[i].getStats();
-    console.log(`\nFinal Statistics (Table ${tableAddresses[i]}):`);
-    console.log(`  Timeouts forced: ${stats.timeoutsForced}`);
-    console.log(`  Hands started: ${stats.handsStarted}`);
-    console.log(`  Showdowns settled: ${stats.showdownsSettled}`);
-    console.log(`  Errors: ${stats.errors}`);
-    console.log(`  Coordination skips: ${stats.coordinationSkips}`);
-    console.log(`  Last action: ${stats.lastAction} at ${new Date(stats.lastActionTime).toISOString()}`);
+    logger.info({
+      table: tableAddresses[i],
+      timeoutsForced: stats.timeoutsForced,
+      handsStarted: stats.handsStarted,
+      showdownsSettled: stats.showdownsSettled,
+      errors: stats.errors,
+      coordinationSkips: stats.coordinationSkips,
+      lastAction: stats.lastAction,
+      lastActionTime: new Date(stats.lastActionTime).toISOString(),
+    }, 'Final statistics');
   }
 }
 
 main().catch((error) => {
-  console.error("Fatal error:", error);
+  logger.error({ err: error instanceof Error ? error.message : String(error) }, 'Fatal error');
   process.exit(1);
 });
 

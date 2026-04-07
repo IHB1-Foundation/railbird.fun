@@ -1,5 +1,7 @@
 import express, { type Express, type Request, type Response, type NextFunction } from "express";
-import type { Address } from "@playerco/shared";
+import { type Address, createLogger } from "@playerco/shared";
+
+const logger = createLogger({ service: "ownerview" });
 import { AuthService } from "./auth/index.js";
 import { ChainService } from "./chain/index.js";
 import { HoleCardStore } from "./holecards/index.js";
@@ -182,10 +184,10 @@ export async function createApp(config: AppConfig): Promise<AppContext> {
     retentionTimer = setInterval(() => {
       holeCardStore.deleteOlderThan(retentionMaxAge).then((deleted) => {
         if (deleted > 0) {
-          console.log(`[Retention] Cleaned up ${deleted} expired hole card records`);
+          logger.info({ deleted }, 'Retention cleaned up expired hole card records');
         }
       }).catch((err) => {
-        console.error("[Retention] Error during cleanup:", err);
+        logger.error({ err }, 'Retention error during cleanup');
       });
     }, retentionInterval);
   }
@@ -215,7 +217,7 @@ export async function createApp(config: AppConfig): Promise<AppContext> {
 
   // Error handler
   app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
-    console.error("Unhandled error:", err);
+    logger.error({ err }, 'Unhandled error');
     res.status(500).json({
       error: "Internal server error",
       code: "INTERNAL_ERROR",

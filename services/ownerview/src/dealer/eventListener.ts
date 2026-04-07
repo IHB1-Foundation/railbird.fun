@@ -6,8 +6,10 @@ import {
   parseAbiItem,
   decodeEventLog,
 } from "viem";
-import type { Address } from "@playerco/shared";
+import { type Address, createLogger } from "@playerco/shared";
 import { DealerService } from "./dealerService.js";
+
+const logger = createLogger({ service: "ownerview:dealer" });
 import type { HandStartedEvent } from "./types.js";
 import { PokerTableABI } from "../chain/pokerTableAbi.js";
 
@@ -108,7 +110,7 @@ export class HandStartedEventListener {
         void this.handleLogs(logs);
       },
       onError: (error) => {
-        console.error("[DealerEventListener] Watch error:", error.message);
+        logger.error({ tableId: this.tableId, err: error.message }, 'DealerEventListener watch error');
       },
     }));
 
@@ -132,22 +134,21 @@ export class HandStartedEventListener {
               card: number;
               communityIndex: number;
             };
-            console.error(
-              `[DealerIntegrity] VIOLATION detected! table=${this.tableId} hand=${args.handId} ` +
-              `seat=${args.seatIndex} card=${args.card} communityIndex=${args.communityIndex} — ` +
-              `dealer dealt a hole card that duplicates a community card`
+            logger.error(
+              { tableId: this.tableId, handId: args.handId.toString(), seatIndex: args.seatIndex, card: args.card, communityIndex: args.communityIndex },
+              'DealerIntegrity VIOLATION: dealer dealt a hole card that duplicates a community card'
             );
           } catch (_e) { /* ignore decode errors */ }
         }
       },
       onError: (error) => {
-        console.error("[DealerIntegrity] Watch error:", error.message);
+        logger.error({ tableId: this.tableId, err: error.message }, 'DealerIntegrity watch error');
       },
     }));
 
-    console.log(
-      `[DealerEventListener] Started watching HandStarted events for table ${this.tableId} at ${this.pokerTableAddress} ` +
-      `[trustless-dealer: ${this.trustlessDealerEnabled ? "ENABLED" : "DISABLED"}]`
+    logger.info(
+      { tableId: this.tableId, pokerTableAddress: this.pokerTableAddress, trustlessDealer: this.trustlessDealerEnabled },
+      'DealerEventListener started watching HandStarted events'
     );
   }
 
@@ -160,7 +161,7 @@ export class HandStartedEventListener {
     }
     this.unwatchers = [];
     this.isRunning = false;
-    console.log("[DealerEventListener] Stopped");
+    logger.info({ tableId: this.tableId }, 'DealerEventListener stopped');
   }
 
   /**
@@ -190,10 +191,7 @@ export class HandStartedEventListener {
 
         await this.handleHandStarted(event);
       } catch (error) {
-        console.error(
-          "[DealerEventListener] Failed to process log:",
-          error instanceof Error ? error.message : String(error)
-        );
+        logger.error({ tableId: this.tableId, err: error instanceof Error ? error.message : String(error) }, 'DealerEventListener failed to process log');
       }
     }
   }
@@ -206,18 +204,13 @@ export class HandStartedEventListener {
 
     // Feature flag: skip automatic dealing in legacy mode
     if (!this.trustlessDealerEnabled) {
-      console.log(
-        `[DealerEventListener] Trustless dealer disabled (TRUSTLESS_DEALER_ENABLED=false). ` +
-        `Skipping automatic deal for hand ${handIdStr}. Use /dealer API to deal manually.`
-      );
+      logger.info({ tableId: this.tableId, handId: handIdStr }, 'Trustless dealer disabled, skipping automatic deal — use /dealer API to deal manually');
       return;
     }
 
     // Check if already dealt (idempotency)
     if (await this.dealerService.isHandDealt(this.tableId, handIdStr)) {
-      console.log(
-        `[DealerEventListener] Hand ${handIdStr} already dealt, skipping`
-      );
+      logger.info({ tableId: this.tableId, handId: handIdStr }, 'Hand already dealt, skipping');
       return;
     }
 
@@ -227,18 +220,14 @@ export class HandStartedEventListener {
       // Fetch per-seat encryption keys from on-chain
       const encryptionKeys = await this.getEncryptionKeys(seatIndexes);
       if (encryptionKeys.size === 0) {
-        console.warn(
-          `[DealerEventListener] No encryption keys registered for hand ${handIdStr} — skipping deal`
-        );
+        logger.warn({ tableId: this.tableId, handId: handIdStr }, 'No encryption keys registered — skipping deal');
         return;
       }
 
       // Fetch hole card VRF randomness from on-chain (stored by fulfillVRF callback)
       const vrfRandomness = await this.getHoleCardVRFRandomness(handIdStr);
       if (vrfRandomness === 0n) {
-        console.warn(
-          `[DealerEventListener] Hole card VRF not fulfilled yet for hand ${handIdStr} — skipping`
-        );
+        logger.warn({ tableId: this.tableId, handId: handIdStr }, 'Hole card VRF not fulfilled yet — skipping');
         return;
       }
 
@@ -253,19 +242,14 @@ export class HandStartedEventListener {
         encryptionKeys,
       });
 
-      console.log(
-        `[DealerEventListener] Dealt cards for hand ${handIdStr}: ${result.seats.length} seats, commit=${result.dealerSeedCommit}`
-      );
+      logger.info({ tableId: this.tableId, handId: handIdStr, seats: result.seats.length, commit: result.dealerSeedCommit }, 'Dealt cards for hand');
 
       // Invoke callback if set
       if (this.onHandStarted) {
         this.onHandStarted(this.tableId, event);
       }
     } catch (error) {
-      console.error(
-        `[DealerEventListener] Failed to deal hand ${handIdStr}:`,
-        error instanceof Error ? error.message : String(error)
-      );
+      logger.error({ tableId: this.tableId, handId: handIdStr, err: error instanceof Error ? error.message : String(error) }, 'Failed to deal hand');
     }
   }
 

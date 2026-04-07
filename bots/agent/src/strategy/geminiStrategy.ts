@@ -6,6 +6,9 @@ import type {
   Strategy,
 } from "./types.js";
 import { SimpleStrategy } from "./simpleStrategy.js";
+import { createLogger } from "@playerco/shared";
+
+const logger = createLogger({ service: "agent-bot:gemini" });
 
 interface GeminiGenerateContentResponse {
   candidates?: Array<{
@@ -69,7 +72,7 @@ export class GeminiStrategy implements Strategy {
       return this.sanitizeDecision(parsed, context);
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
-      console.warn(`[GeminiStrategy] Falling back to simple strategy: ${reason}`);
+      logger.warn({ reason }, 'GeminiStrategy falling back to simple strategy');
       return await this.fallbackStrategy.decide(context);
     }
   }

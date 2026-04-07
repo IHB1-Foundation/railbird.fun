@@ -105,17 +105,27 @@ contract PlayerVault is IPlayerVault {
         emit Withdrawn(recipient, amount);
     }
 
-    function fundBuyIn(address table, uint256 amount) external override onlyOwner {
+    function fundBuyIn(address table, uint256 amount) external override {
+        bool callerIsOwner = msg.sender == owner;
+        bool callerIsTable = authorizedTables[msg.sender];
+        require(callerIsOwner || callerIsTable, "Not authorized");
         require(table != address(0), "Invalid table");
         require(amount > 0, "Zero amount");
-        uint256 available = address(this).balance - totalEscrow;
-        require(amount <= available, "Insufficient available balance");
+        if (callerIsOwner) {
+            // Owner-initiated: verify vault has sufficient available ETH balance
+            uint256 available = address(this).balance > totalEscrow
+                ? address(this).balance - totalEscrow
+                : 0;
+            require(amount <= available, "Insufficient available balance");
+        }
+        // Table-initiated: pure accounting — chip escrow does not require ETH backing
         tableEscrow[table] += amount;
         totalEscrow += amount;
         emit BuyInFunded(table, amount);
     }
 
-    function releaseEscrow(address table, uint256 amount) external onlyOwner {
+    function releaseEscrow(address table, uint256 amount) external {
+        require(msg.sender == owner || authorizedTables[msg.sender], "Not authorized");
         require(amount <= tableEscrow[table], "Exceeds escrow");
         tableEscrow[table] -= amount;
         totalEscrow -= amount;

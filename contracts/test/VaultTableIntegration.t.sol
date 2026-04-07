@@ -230,6 +230,70 @@ contract VaultTableIntegrationTest is Test {
         assertEq(vault1.handCount(), 3, "Three hands recorded");
     }
 
+    // ─── T-R0-02: Vault escrow integration ────────────────────────────────────
+
+    /**
+     * @notice T-R0-02: registerSeat triggers vault.fundBuyIn, increasing totalEscrow.
+     */
+    function test_R0_02_RegisterSeat_TracksVaultEscrow() public {
+        PlayerRegistry registry = new PlayerRegistry();
+        vm.prank(owner1);
+        registry.registerAgent(address(vault1), address(pokerTable), owner1, "");
+        pokerTable.setPlayerRegistry(address(registry));
+
+        assertEq(vault1.totalEscrow(), 0, "No escrow before seat registration");
+        _registerSeat(0, owner1, owner1);
+
+        assertEq(vault1.totalEscrow(), BUY_IN, "Escrow increases by buy-in amount after registerSeat");
+        assertEq(vault1.tableEscrow(address(pokerTable)), BUY_IN, "Per-table escrow matches buy-in");
+    }
+
+    /**
+     * @notice T-R0-02: cashOutSeat reduces vault escrow.
+     */
+    function test_R0_02_CashOutSeat_ReleasesVaultEscrow() public {
+        PlayerRegistry registry = new PlayerRegistry();
+        vm.prank(owner1);
+        registry.registerAgent(address(vault1), address(pokerTable), owner1, "");
+        pokerTable.setPlayerRegistry(address(registry));
+
+        _registerSeat(0, owner1, owner1);
+        assertEq(vault1.totalEscrow(), BUY_IN, "Escrow after buy-in");
+
+        uint256 cashOutAmount = BUY_IN / 2;
+        vm.prank(owner1);
+        pokerTable.cashOutSeat(0, cashOutAmount, owner1);
+
+        assertEq(vault1.totalEscrow(), BUY_IN - cashOutAmount, "Escrow reduced by cash-out amount");
+    }
+
+    /**
+     * @notice T-R0-02: leaveSeat releases full vault escrow.
+     */
+    function test_R0_02_LeaveSeat_ReleasesFullEscrow() public {
+        PlayerRegistry registry = new PlayerRegistry();
+        vm.prank(owner1);
+        registry.registerAgent(address(vault1), address(pokerTable), owner1, "");
+        pokerTable.setPlayerRegistry(address(registry));
+
+        _registerSeat(0, owner1, owner1);
+        assertEq(vault1.totalEscrow(), BUY_IN, "Escrow after buy-in");
+
+        vm.prank(owner1);
+        pokerTable.leaveSeat(0, owner1);
+
+        assertEq(vault1.totalEscrow(), 0, "Full escrow released after leaveSeat");
+    }
+
+    /**
+     * @notice T-R0-02: unauthorized table cannot call vault.releaseEscrow.
+     */
+    function test_R0_02_ReleaseEscrow_RevertIfUnauthorized() public {
+        vm.prank(address(0xDEAD));
+        vm.expectRevert("Not authorized");
+        vault1.releaseEscrow(address(pokerTable), 100);
+    }
+
     // ─── T-R0-01: Automatic settlement callback ────────────────────────────────
 
     /**

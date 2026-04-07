@@ -25,6 +25,12 @@ interface IPlayerVaultMinimal {
     function onSettlement(uint256 handId, int256 pnl) external;
 }
 
+/// @dev Minimal interface for vault escrow tracking.
+interface IPlayerVaultEscrow {
+    function fundBuyIn(address table, uint256 amount) external;
+    function releaseEscrow(address table, uint256 amount) external;
+}
+
 /**
  * @title PokerTable
  * @notice 9-player Hold'em table with on-chain betting and VRF-driven community cards.
@@ -635,6 +641,9 @@ contract PokerTable {
         }
 
         emit SeatUpdated(seatIndex, owner, operator == address(0) ? owner : operator, buyIn);
+
+        // Notify vault of the buy-in so it can track chip escrow for NAV accounting
+        _tryVaultFundBuyIn(owner, buyIn);
     }
 
     /**
@@ -677,12 +686,16 @@ contract PokerTable {
         require(msg.sender == seat.owner, "Not seat owner");
         require(seat.stack >= amount, "Insufficient seat stack");
 
+        address seatOwner = seat.owner;
         seat.stack -= amount;
-        address payoutRecipient = recipient == address(0) ? seat.owner : recipient;
+        address payoutRecipient = recipient == address(0) ? seatOwner : recipient;
         address(chipToken).safeTransfer(payoutRecipient, amount);
 
-        emit SeatUpdated(seatIndex, seat.owner, seat.operator, seat.stack);
-        emit SeatCashOut(seatIndex, seat.owner, payoutRecipient, amount, seat.stack);
+        emit SeatUpdated(seatIndex, seatOwner, seat.operator, seat.stack);
+        emit SeatCashOut(seatIndex, seatOwner, payoutRecipient, amount, seat.stack);
+
+        // Release vault escrow for cashed-out chips
+        _tryVaultReleaseEscrow(seatOwner, amount);
     }
 
     /**
@@ -701,7 +714,8 @@ contract PokerTable {
         require(msg.sender == seat.owner, "Not seat owner");
 
         uint256 payoutAmount = seat.stack;
-        address payoutRecipient = recipient == address(0) ? seat.owner : recipient;
+        address seatOwner = seat.owner;
+        address payoutRecipient = recipient == address(0) ? seatOwner : recipient;
 
         delete seats[seatIndex];
         needsPostBlind[seatIndex] = false;
@@ -711,7 +725,10 @@ contract PokerTable {
         }
 
         emit SeatUpdated(seatIndex, address(0), address(0), 0);
-        emit SeatClosed(seatIndex, seat.owner, payoutRecipient, payoutAmount);
+        emit SeatClosed(seatIndex, seatOwner, payoutRecipient, payoutAmount);
+
+        // Release vault escrow for all chips returned when leaving
+        _tryVaultReleaseEscrow(seatOwner, payoutAmount);
     }
 
     /**
@@ -1566,6 +1583,32 @@ contract PokerTable {
                 try IPlayerVaultMinimal(vault).onSettlement(handId, pnl) {} catch {}
             } catch {}
         }
+    }
+
+    /// @dev Look up the vault address for a seat owner via the PlayerRegistry. Returns address(0) if not found.
+    function _getVaultForOwner(address seatOwner) internal view returns (address) {
+        if (playerRegistry == address(0) || seatOwner == address(0)) return address(0);
+        try IPlayerRegistry(playerRegistry).agents(seatOwner) returns (
+            address vault, address, address, address, string memory, bool isReg
+        ) {
+            if (isReg && vault.code.length > 0) return vault;
+        } catch {}
+        return address(0);
+    }
+
+    /// @dev Notify vault of a buy-in so it can track chip escrow. Silently skips if vault not found.
+    function _tryVaultFundBuyIn(address seatOwner, uint256 amount) internal {
+        address vault = _getVaultForOwner(seatOwner);
+        if (vault == address(0)) return;
+        try IPlayerVaultEscrow(vault).fundBuyIn(address(this), amount) {} catch {}
+    }
+
+    /// @dev Notify vault that chips have been cashed out / released from escrow. Silently skips.
+    function _tryVaultReleaseEscrow(address seatOwner, uint256 amount) internal {
+        if (amount == 0) return;
+        address vault = _getVaultForOwner(seatOwner);
+        if (vault == address(0)) return;
+        try IPlayerVaultEscrow(vault).releaseEscrow(address(this), amount) {} catch {}
     }
 
     /**

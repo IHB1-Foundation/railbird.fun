@@ -25,6 +25,7 @@ import {
 } from "../db/index.js";
 import { getWsManager } from "../ws/index.js";
 import { getListenerHealth } from "../events/listenerState.js";
+import { getPoolStats } from "../db/pool.js";
 import type {
   TableResponse,
   SeatResponse,
@@ -161,6 +162,8 @@ router.get("/health", async (_req, res) => {
     listenerHealth.status === "running" || listenerHealth.status === "disabled";
   const allReady = dbReady && chainReady && listenerReady;
 
+  const poolStats = getPoolStats();
+
   res.status(allReady ? 200 : 503).json({
     status: allReady ? "ready" : "degraded",
     timestamp: new Date().toISOString(),
@@ -169,6 +172,7 @@ router.get("/health", async (_req, res) => {
       chain: chainReady ? "ready" : "unavailable",
       eventListener: listenerHealth,
     },
+    pool: poolStats,
     websocket: wsStats,
   });
 });

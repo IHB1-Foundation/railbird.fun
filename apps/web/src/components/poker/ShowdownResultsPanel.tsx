@@ -1,6 +1,6 @@
 "use client";
 
-import { cn, formatChips, shortenAddress, CHIP_SYMBOL } from "@/lib/utils";
+import { cn, formatChips, shortenAddress, CHIP_SYMBOL, ZERO_ADDRESS } from "@/lib/utils";
 import type { TableResponse } from "@/lib/types";
 import type { RevealedHolecardResponse } from "@/lib/api";
 import { PokerCard } from "./PokerCard";
@@ -127,8 +127,7 @@ export function ShowdownResultsPanel({
                 )}
               </div>
               {seat &&
-                seat.ownerAddress.toLowerCase() !==
-                  "0x0000000000000000000000000000000000000000" && (
+                seat.ownerAddress.toLowerCase() !== ZERO_ADDRESS && (
                   <div className="showdown-owner">
                     {shortenAddress(seat.ownerAddress)}
                   </div>

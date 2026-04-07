@@ -388,3 +388,214 @@ contract VaultTableIntegrationTest is Test {
         assertEq(vault2.handCount(), 0, "No callback without registry");
     }
 }
+
+// ─── T-R0-03: Per-hand rebalancing end-to-end ─────────────────────────────
+
+import "../src/NadfunCompatToken.sol";
+import "./mocks/MockNadfunRouter.sol";
+
+contract RebalancingIntegrationTest is Test {
+    PokerTable      public pokerTable;
+    PlayerVault     public vault1;
+    PlayerVault     public vault2;
+    PlayerRegistry  public registry;
+    MockVRFAdapter  public mockVRF;
+    ChipToken       public chipToken;
+    NadfunCompatToken public agentToken;
+    MockNadfunRouter  public router;
+
+    address public owner1 = address(0x1);
+    address public owner2 = address(0x2);
+
+    uint256 constant SMALL_BLIND = 10;
+    uint256 constant BIG_BLIND   = 20;
+    uint256 constant BUY_IN      = 200;
+
+    function setUp() public {
+        mockVRF   = new MockVRFAdapter();
+        chipToken = new ChipToken("TestChip", "TCHIP");
+        agentToken = new NadfunCompatToken("AgentToken", "AGT", "", 1_000_000e18, address(this), address(this));
+        router = new MockNadfunRouter();
+
+        pokerTable = new PokerTable(
+            1, SMALL_BLIND, BIG_BLIND,
+            address(mockVRF), address(chipToken), address(0),
+            30 minutes, 5 minutes, 10 minutes, 2, address(this)
+        );
+        pokerTable.setDealer(address(this));
+
+        vault1 = new PlayerVault(owner1);
+        vault2 = new PlayerVault(owner2);
+
+        // Fund vaults with ETH for rebalancing buys
+        vm.deal(address(vault1), 10 ether);
+        vm.deal(address(vault2), 10 ether);
+
+        // Fund router with agent tokens and ETH for sells
+        agentToken.transfer(address(router), 500_000e18);
+        vm.deal(address(router), 10 ether);
+
+        chipToken.mint(owner1, BUY_IN * 100);
+        chipToken.mint(owner2, BUY_IN * 100);
+
+        vm.prank(owner1);
+        vault1.authorizeTable(address(pokerTable));
+        vm.prank(owner2);
+        vault2.authorizeTable(address(pokerTable));
+
+        registry = new PlayerRegistry();
+        vm.prank(owner1);
+        registry.registerAgent(address(vault1), address(pokerTable), owner1, "");
+        vm.prank(owner2);
+        registry.registerAgent(address(vault2), address(pokerTable), owner2, "");
+
+        pokerTable.setPlayerRegistry(address(registry));
+
+        // Configure vault1 for rebalancing
+        vm.prank(owner1);
+        vault1.setRebalanceConfig(address(agentToken), address(router), 1000, 1000); // 10% each
+    }
+
+    function _registerSeat(uint8 idx, address chipOwner, address op) internal {
+        vm.startPrank(chipOwner);
+        chipToken.approve(address(pokerTable), BUY_IN);
+        pokerTable.registerSeat(idx, chipOwner, op, BUY_IN);
+        vm.stopPrank();
+    }
+
+    function _playAndFold() internal returns (uint256 handId) {
+        pokerTable.startHand();
+        mockVRF.fulfillLastRequest(12345);
+        handId = pokerTable.currentHandId();
+        for (uint8 i = 0; i < 2; i++) {
+            PokerTable.Seat memory s = pokerTable.getSeat(i);
+            if (s.isActive && pokerTable.holeCommits(handId, i) == bytes32(0)) {
+                bytes32 commit = keccak256(abi.encodePacked(handId, i, uint8(i * 2), uint8(i * 2 + 1), bytes32("salt")));
+                pokerTable.submitHoleCommit(handId, i, commit);
+            }
+        }
+        pokerTable.advanceToPreflop();
+        // seat0 folds → seat1 wins
+        vm.roll(block.number + 1);
+        vm.prank(owner1);
+        pokerTable.fold(0);
+    }
+
+    /**
+     * @notice T-R0-03: After settlement, vault can execute rebalanceBuy for the settled hand.
+     * @dev Router rate is set so q_buy < P (NAV-accretive): many tokens out per ETH in.
+     *      With N=1M tokens, A=10ETH: need tokensPerMon >= N/A = 1e24/10e18 = 1e5 tokens/ETH.
+     *      We use 1e6 tokens/ETH (tokensPerMonScaled = 1e6 * 1e18 = 1e24).
+     */
+    function test_R0_03_RebalanceBuy_AfterSettlement() public {
+        _registerSeat(0, owner1, owner1);
+        _registerSeat(1, owner2, owner2);
+
+        uint256 handId = _playAndFold();
+
+        // vault1 (loser) has settlement recorded
+        assertEq(vault1.lastSnapshotHandId(), handId, "vault1 snapshot updated");
+
+        // Need tokensPerMonScaled >= N * 1e18 / A = 1e24*1e18/10e18 = 1e23.
+        // Use 3e23 so tokenOut = 3e23 tokens/ETH, router has 5e23 capacity.
+        router.setRates(3e23, 5e17);
+
+        uint256 assets = vault1.getExternalAssets();
+        uint256 monIn = (assets * 1000) / 10000; // 10% limit
+
+        vm.prank(owner1);
+        vault1.rebalanceBuy(handId, monIn, 0);
+
+        assertEq(vault1.lastRebalanceHandId(), handId, "rebalance recorded for hand");
+    }
+
+    /**
+     * @notice T-R0-03: Second rebalance for same hand reverts.
+     */
+    function test_R0_03_RebalanceBuy_RevertOnDoubleRebalance() public {
+        _registerSeat(0, owner1, owner1);
+        _registerSeat(1, owner2, owner2);
+
+        uint256 handId = _playAndFold();
+
+        router.setRates(3e23, 5e17);
+        uint256 assets = vault1.getExternalAssets();
+        uint256 monIn = (assets * 1000) / 10000;
+
+        vm.prank(owner1);
+        vault1.rebalanceBuy(handId, monIn, 0);
+
+        // Second attempt on same hand must revert
+        vm.prank(owner1);
+        vm.expectRevert("Already rebalanced this hand");
+        vault1.rebalanceBuy(handId, monIn, 0);
+    }
+
+    /**
+     * @notice T-R0-03: NAV-accretive buy constraint — bad rate reverts.
+     */
+    function test_R0_03_RebalanceBuy_RevertIfDilutive() public {
+        _registerSeat(0, owner1, owner1);
+        _registerSeat(1, owner2, owner2);
+
+        uint256 handId = _playAndFold();
+
+        // Very few tokens per ETH → q_buy >> P → dilutive
+        router.setRates(1e14, 5e17); // almost 0 tokens/ETH
+
+        uint256 assets = vault1.getExternalAssets();
+        uint256 monIn = (assets * 1000) / 10000;
+
+        vm.prank(owner1);
+        vm.expectRevert("Buy would dilute NAV");
+        vault1.rebalanceBuy(handId, monIn, 0);
+    }
+
+    /**
+     * @notice T-R0-03: rebalanceSell after settlement succeeds.
+     * @dev Sell rate: high monOut/token so q_sell >> P → accretive.
+     */
+    function test_R0_03_RebalanceSell_AfterSettlement() public {
+        _registerSeat(0, owner1, owner1);
+        _registerSeat(1, owner2, owner2);
+
+        // Seed vault1 with agent tokens to sell
+        agentToken.transfer(address(vault1), 1000e18);
+        // Also ensure router has enough ETH to pay out
+        vm.deal(address(router), 100 ether);
+
+        uint256 handId = _playAndFold();
+
+        // N = T - B = 1_000_000e18 - 1000e18 = 999_000e18; A ≈ 10e18
+        // P = A/N ≈ 10e18/999_000e18 ≈ 1e13 wei/token
+        // For sell to be accretive: q_sell = monOut/tokenIn >= P
+        // Use high monPerTokenScaled: 1e13 wei/token works; use 1e16 for margin
+        router.setRates(2e18, 1e16); // sell: 1e16 wei per token-unit (>> P)
+
+        uint256 tokenIn = (1000e18 * 1000) / 10000; // 10% of vault1's token balance
+
+        vm.startPrank(owner1);
+        vault1.rebalanceSell(handId, tokenIn, 0);
+        vm.stopPrank();
+
+        assertEq(vault1.lastRebalanceHandId(), handId, "sell rebalance recorded");
+    }
+
+    /**
+     * @notice T-R0-03: rebalanceSell reverts if NAV-accretive constraint violated.
+     */
+    function test_R0_03_RebalanceSell_RevertIfDilutive() public {
+        _registerSeat(0, owner1, owner1);
+        _registerSeat(1, owner2, owner2);
+
+        agentToken.transfer(address(vault1), 1000e18);
+        uint256 handId = _playAndFold();
+
+        // Near-zero monOut/token → q_sell << P → dilutive
+        router.setRates(2e18, 1); // 1 wei per token-unit
+
+        vm.prank(owner1);
+        vm.expectRevert("Sell would dilute NAV");
+        vault1.rebalanceSell(handId, 100e18, 0);
+    }
+}

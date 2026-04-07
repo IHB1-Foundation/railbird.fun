@@ -1,5 +1,6 @@
 import { getTable } from "@/lib/api";
 import { TableViewer } from "./TableViewer";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
@@ -44,5 +45,9 @@ export default async function TablePage({
     );
   }
 
-  return <TableViewer initialData={table} tableId={id} />;
+  return (
+    <ErrorBoundary label="Table Viewer">
+      <TableViewer initialData={table} tableId={id} />
+    </ErrorBoundary>
+  );
 }

@@ -1,5 +1,6 @@
 import { getTables } from "@/lib/api";
 import { BettingPanel } from "@/components/BettingPanel";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +20,11 @@ export default async function BettingPage() {
       );
     }
 
-    return <BettingPanel initialTable={table} />;
+    return (
+      <ErrorBoundary label="Betting Panel">
+        <BettingPanel initialTable={table} />
+      </ErrorBoundary>
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     return (

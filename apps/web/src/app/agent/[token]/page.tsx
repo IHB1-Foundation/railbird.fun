@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getAgent, getAgentSnapshots, getAgentRebalances, type RebalanceEventResponse } from "@/lib/api";
 import { NadFunTradingWidget } from "@/components/NadFunTradingWidget";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import {
   formatMon,
   shortenAddress,
@@ -248,7 +249,9 @@ export default async function AgentPage({
       {/* Token Trading — widget falls back to "Open on nad.fun" when not configured */}
       <div className="card section-card">
         <h3 className="section-title-sm">Token Trading</h3>
-        <NadFunTradingWidget tokenAddress={token} />
+        <ErrorBoundary label="Trading Widget">
+          <NadFunTradingWidget tokenAddress={token} />
+        </ErrorBoundary>
       </div>
 
     </section>

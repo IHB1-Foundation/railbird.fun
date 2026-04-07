@@ -221,3 +221,48 @@ jobs:
       - name: Tear down
         if: always()
         run: docker compose down -v
+
+  # ── E2E smoke test (T-R17-01) ─────────────────────────────────────────────
+  # Runs a real hand end-to-end: deploy → register → play → verify settlement.
+  # Uses 2 agents and 1 hand to keep runtime under 5 minutes.
+  e2e:
+    name: E2E Smoke Test (1 hand, 2 agents)
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared package
+        run: pnpm --filter @playerco/shared build
+
+      - name: Run E2E smoke test (2 agents, 1 hand)
+        run: bash scripts/ci-e2e.sh 1
+        timeout-minutes: 5
+
+      - name: Dump logs on failure
+        if: failure()
+        run: |
+          echo "=== Anvil ===" && cat /tmp/ci-anvil.log 2>/dev/null || true
+          echo "=== OwnerView ===" && cat /tmp/ci-ownerview.log 2>/dev/null || true
+          echo "=== Keeper ===" && cat /tmp/ci-keeper.log 2>/dev/null || true
+          echo "=== Agent 0 ===" && cat /tmp/ci-agent0.log 2>/dev/null || true
+          echo "=== Agent 1 ===" && cat /tmp/ci-agent1.log 2>/dev/null || true

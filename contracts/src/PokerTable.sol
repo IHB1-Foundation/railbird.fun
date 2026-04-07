@@ -278,6 +278,9 @@ contract PokerTable {
         uint256 newRequestId
     );
 
+    /// @notice Emitted when BETTING_PRE begins (after advanceToPreflop).
+    event PreflopStarted(uint256 indexed handId, uint8 actorSeat, uint256 actionDeadline);
+
     /// @notice Emitted when settlement occurs without a dealer seed reveal (soft enforcement)
     event ShuffleUnverified(uint256 indexed handId);
 
@@ -1552,6 +1555,8 @@ contract PokerTable {
         gameState = GameState.BETTING_PRE;
         // T-R1-04: Set action deadline so forceTimeout works from the very first preflop action
         actionDeadline = block.timestamp + ACTION_TIMEOUT;
+        // T-R1-05: Emit state transition so the indexer can track this transition
+        emit PreflopStarted(currentHandId, currentHand.actorSeat, actionDeadline);
         // If all players are all-in from blind posting, skip pre-flop betting
         if (_countNonAllInActivePlayers() == 0) {
             _completeBettingRound();

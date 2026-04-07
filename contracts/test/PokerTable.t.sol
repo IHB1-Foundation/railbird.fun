@@ -3056,6 +3056,23 @@ contract PokerTableTest is Test {
         );
     }
 
+    // ============ T-R1-05: advanceToPreflop emits PreflopStarted ============
+
+    event PreflopStarted(uint256 indexed handId, uint8 actorSeat, uint256 actionDeadline);
+
+    /**
+     * @notice T-R1-05: advanceToPreflop emits PreflopStarted event.
+     */
+    function test_R1_05_AdvanceToPreflop_EmitsPreflopStarted() public {
+        _setupAllSeats();
+        _startHandToWFHC();
+        _submitDummyCommits(1);
+
+        vm.expectEmit(true, false, false, false); // only check handId topic
+        emit PreflopStarted(1, 0, 0);
+        pokerTable.advanceToPreflop();
+    }
+
     // ============ T-1301: Heads-Up Blind Rule (button=SB) ============
 
     function test_HeadsUp_ButtonIsSB() public {

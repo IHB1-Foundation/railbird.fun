@@ -24,18 +24,18 @@ export function createOwnerRoutes(
   router.get("/holecards", async (req: AuthenticatedRequest, res: Response) => {
     const { tableId, handId } = req.query;
 
-    // Validate required parameters
-    if (!tableId || typeof tableId !== "string") {
+    // Validate required parameters — must be non-empty numeric strings.
+    if (!tableId || typeof tableId !== "string" || !/^\d+$/.test(tableId)) {
       res.status(400).json({
-        error: "Missing or invalid tableId parameter",
+        error: "Missing or invalid tableId parameter: must be a numeric string",
         code: "INVALID_TABLE_ID",
       });
       return;
     }
 
-    if (!handId || typeof handId !== "string") {
+    if (!handId || typeof handId !== "string" || !/^\d+$/.test(handId)) {
       res.status(400).json({
-        error: "Missing or invalid handId parameter",
+        error: "Missing or invalid handId parameter: must be a numeric string",
         code: "INVALID_HAND_ID",
       });
       return;

@@ -387,6 +387,38 @@ contract VaultTableIntegrationTest is Test {
         assertEq(vault1.handCount(), 0, "No callback without registry");
         assertEq(vault2.handCount(), 0, "No callback without registry");
     }
+
+    // ─── T-R1-03: nonReentrant on onSettlement ─────────────────────────────────
+
+    /**
+     * @notice T-R1-03: The nonReentrant guard on onSettlement prevents re-entry.
+     * @dev PlayerVault.onSettlement has a custom nonReentrant modifier that sets
+     *      `_entered` (storage slot 7, byte 1) before executing and clears it after.
+     *      We simulate the guard being locked via vm.store, then verify the revert.
+     *
+     *      Storage layout (slot 7): [_entered (byte 1) | initialized (byte 0)]
+     *      Setting _entered = true → slot 7 value = 0x...0100.
+     */
+    function test_R1_03_OnSettlement_RevertOnReentrance() public {
+        // Simulate the reentrancy guard being locked (as if a first call is mid-execution)
+        // PlayerVault slot 7: initialized (byte 0, lsb) | _entered (byte 1)
+        vm.store(address(vault1), bytes32(uint256(7)), bytes32(uint256(1 << 8)));
+
+        // Any authorized table calling onSettlement while the guard is locked must revert
+        vm.prank(address(pokerTable));
+        vm.expectRevert("Reentrant call");
+        vault1.onSettlement(1, 0);
+    }
+
+    /**
+     * @notice T-R1-03: Normal onSettlement call succeeds (guard is not locked).
+     */
+    function test_R1_03_OnSettlement_NormalCallSucceeds() public {
+        // Vault is freshly deployed — _entered = false
+        vm.prank(address(pokerTable));
+        vault1.onSettlement(1, 0); // must not revert
+        assertEq(vault1.handCount(), 1, "handCount should be incremented");
+    }
 }
 
 // ─── T-R0-03: Per-hand rebalancing end-to-end ─────────────────────────────

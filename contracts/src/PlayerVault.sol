@@ -132,7 +132,7 @@ contract PlayerVault is IPlayerVault {
         emit EscrowReleased(table, amount);
     }
 
-    function onSettlement(uint256 handId, int256 pnl) external override onlyAuthorizedTable {
+    function onSettlement(uint256 handId, int256 pnl) external override onlyAuthorizedTable nonReentrant {
         cumulativePnl += pnl;
         handCount++;
         lastSnapshotHandId = handId;

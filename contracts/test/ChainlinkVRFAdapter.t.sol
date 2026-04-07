@@ -76,6 +76,7 @@ contract ChainlinkVRFAdapterTest is Test {
         address indexed table,
         uint256 randomness
     );
+    event OwnerTransferred(address indexed oldOwner, address indexed newOwner);
 
     function setUp() public {
         coordinator = new MockVRFCoordinator();
@@ -248,5 +249,12 @@ contract ChainlinkVRFAdapterTest is Test {
     function test_TransferOwnership_RevertIfZeroAddress() public {
         vm.expectRevert("Zero address");
         adapter.transferOwnership(address(0));
+    }
+
+    function test_TransferOwnership_EmitsEvent() public {
+        address newOwner = address(0xBEEF);
+        vm.expectEmit(true, true, false, false);
+        emit OwnerTransferred(adminOwner, newOwner);
+        adapter.transferOwnership(newOwner);
     }
 }

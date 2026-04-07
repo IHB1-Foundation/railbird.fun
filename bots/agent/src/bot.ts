@@ -60,6 +60,9 @@ export class AgentBot {
   // 'unregistered' → 'registering' → 'registered' prevents double-registration
   // when consecutive ticks overlap while a tx is in-flight.
   private encryptionKeyState: "unregistered" | "registering" | "registered" = "unregistered";
+  /** Timestamp (ms) when we entered 'registering' state; used to detect stuck registration. */
+  private encryptionKeyRegistrationStartedAt: number | null = null;
+  private static readonly ENCRYPTION_KEY_REGISTRATION_TIMEOUT_MS = 2 * 60_000; // 2 minutes
 
   constructor(config: AgentBotConfig) {
     this.config = config;
@@ -166,9 +169,47 @@ export class AgentBot {
   }
 
   /**
+   * T-R3-01: Recover from a stuck 'registering' state.
+   * If we've been in 'registering' for > 2 minutes, check on-chain.
+   * On-chain registered → advance to 'registered'; otherwise roll back to 'unregistered'.
+   */
+  private async recoverStuckRegistration(): Promise<void> {
+    if (
+      this.encryptionKeyState !== "registering" ||
+      this.encryptionKeyRegistrationStartedAt === null ||
+      Date.now() - this.encryptionKeyRegistrationStartedAt < AgentBot.ENCRYPTION_KEY_REGISTRATION_TIMEOUT_MS
+    ) {
+      return;
+    }
+
+    if (this.mySeatIndex === null || !this.encryptionPrivKey) {
+      this.encryptionKeyState = "unregistered";
+      this.encryptionKeyRegistrationStartedAt = null;
+      return;
+    }
+
+    try {
+      const { secp256k1 } = await import("@noble/curves/secp256k1.js");
+      const pubKey = secp256k1.getPublicKey(this.encryptionPrivKey, true);
+      const alreadyRegistered = await this.chainClient.registerEncryptionKey(this.mySeatIndex, pubKey);
+      // null return means "same key already on-chain" → treat as registered
+      this.encryptionKeyState = "registered";
+      this.encryptionKeyRegistrationStartedAt = null;
+      console.log(`[AgentBot] Recovered from stuck registration (on-chain: ${alreadyRegistered === null ? "already set" : alreadyRegistered})`);
+    } catch (error) {
+      console.warn("[AgentBot] Stuck registration recovery failed, rolling back to unregistered:", error);
+      this.encryptionKeyState = "unregistered";
+      this.encryptionKeyRegistrationStartedAt = null;
+    }
+  }
+
+  /**
    * Single tick of the bot loop
    */
   private async tick(): Promise<void> {
+    // Recover from a stuck encryption key registration if it has timed out
+    await this.recoverStuckRegistration();
+
     // Get current table state
     const state = await this.chainClient.getTableState(this.mySeatIndex);
 

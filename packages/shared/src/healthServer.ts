@@ -6,6 +6,8 @@ import http from "http";
 export interface HealthServerOptions {
   port?: number;
   service: string;
+  /** Optional callback returning extra fields merged into the /health response. */
+  getExtras?: () => Record<string, unknown>;
 }
 
 export interface HealthServer {
@@ -25,10 +27,12 @@ export function startHealthServer(options: HealthServerOptions): HealthServer {
 
   const server = http.createServer((req, res) => {
     if (req.method === "GET" && req.url === "/health") {
+      const extras = options.getExtras ? options.getExtras() : {};
       const body = JSON.stringify({
         status: "ok",
         uptime: Math.floor((Date.now() - startTime) / 1000),
         service: options.service,
+        ...extras,
       });
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(body);

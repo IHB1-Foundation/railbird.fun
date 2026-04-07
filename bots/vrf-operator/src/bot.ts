@@ -1,7 +1,7 @@
 import { randomBytes } from "crypto";
 import { bytesToHex, encodePacked, keccak256, stringToHex } from "viem";
 import { ChainClient, type VrfRequest } from "./chain/client.js";
-import { createLogger } from "@playerco/shared";
+import { createLogger, CircuitBreaker, CircuitOpenError } from "@playerco/shared";
 
 export interface VrfOperatorBotConfig {
   rpcUrl: string;
@@ -51,6 +51,8 @@ export class VrfOperatorBot {
     lastFulfilledTxHash: "",
   };
 
+  private rpcCircuit = new CircuitBreaker({ name: "RPC", failureThreshold: 5, recoveryTimeoutMs: 30_000 });
+
   constructor(config: VrfOperatorBotConfig) {
     this.config = config;
     this.chainClient = new ChainClient({
@@ -67,6 +69,10 @@ export class VrfOperatorBot {
 
   getStats(): VrfOperatorStats {
     return { ...this.stats };
+  }
+
+  getRpcCircuitState(): string {
+    return this.rpcCircuit.circuitState;
   }
 
   stop(): void {
@@ -126,10 +132,14 @@ export class VrfOperatorBot {
 
     while (this.running) {
       try {
-        await this.tick(minConfirmations);
+        await this.rpcCircuit.execute(() => this.tick(minConfirmations));
       } catch (error) {
-        this.stats.errors += 1;
-        this.log.error({ err: error }, "Tick error");
+        if (error instanceof CircuitOpenError) {
+          this.log.warn({ circuit: "RPC" }, "RPC circuit open — skipping tick");
+        } else {
+          this.stats.errors += 1;
+          this.log.error({ err: error }, "Tick error");
+        }
       }
       await this.sleep(pollInterval);
     }

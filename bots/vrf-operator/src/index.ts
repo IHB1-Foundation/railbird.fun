@@ -63,7 +63,13 @@ async function main(): Promise<void> {
   const bot = new VrfOperatorBot(config);
 
   const healthPort = parseInt(process.env.HEALTH_PORT || "9102", 10);
-  const health = startHealthServer({ service: "vrf-operator", port: healthPort });
+  const health = startHealthServer({
+    service: "vrf-operator",
+    port: healthPort,
+    getExtras: () => ({
+      circuits: { rpc: bot.getRpcCircuitState().toLowerCase() },
+    }),
+  });
   log.info({ port: healthPort }, "Health endpoint listening");
 
   const shutdown = (): void => {

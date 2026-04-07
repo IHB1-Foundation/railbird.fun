@@ -51,6 +51,7 @@ export class AgentBot {
 
   // Circuit breakers for external services
   private ownerViewCircuit = new CircuitBreaker({ name: "OwnerView", failureThreshold: 5, recoveryTimeoutMs: 30_000 });
+  private rpcCircuit = new CircuitBreaker({ name: "RPC", failureThreshold: 5, recoveryTimeoutMs: 30_000 });
 
   // T-R3-02: Escalating logging for persistent hole card failures
   /** Whether we've already emitted the first circuit-open WARN (suppresses duplicates). */
@@ -110,6 +111,10 @@ export class AgentBot {
     return { ...this.stats };
   }
 
+  getRpcCircuitState(): string {
+    return this.rpcCircuit.circuitState;
+  }
+
   /**
    * Run the bot for a specified number of hands (or indefinitely if 0)
    */
@@ -144,7 +149,7 @@ export class AgentBot {
 
     while (this.running) {
       try {
-        await this.tick();
+        await this.rpcCircuit.execute(() => this.tick());
         this.currentBackoffMs = pollInterval;
 
         // Check if we've reached max hands
@@ -153,6 +158,11 @@ export class AgentBot {
           break;
         }
       } catch (error) {
+        if (error instanceof CircuitOpenError) {
+          logger.warn({ circuit: "RPC" }, "RPC circuit open — skipping tick");
+          await this.sleep(this.currentBackoffMs);
+          continue;
+        }
         logger.error({ error }, "Error in tick");
         this.stats.errors++;
         if (this.isRateLimitError(error)) {

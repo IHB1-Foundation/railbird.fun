@@ -74,7 +74,15 @@ async function main() {
   );
 
   const healthPort = parseInt(process.env.HEALTH_PORT || "9101", 10);
-  const health = startHealthServer({ service: "keeper-bot", port: healthPort });
+  const health = startHealthServer({
+    service: "keeper-bot",
+    port: healthPort,
+    getExtras: () => ({
+      circuits: {
+        rpc: bots[0]?.getRpcCircuitState().toLowerCase() ?? "closed",
+      },
+    }),
+  });
   logger.info({ healthEndpoint: `http://0.0.0.0:${healthPort}/health` }, 'Health server started');
 
   // Handle shutdown

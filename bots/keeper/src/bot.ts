@@ -71,8 +71,9 @@ export class KeeperBot {
   /** Track which hands we've already attempted rebalancing to avoid duplicate triggers. */
   private rebalancedHands: Set<bigint> = new Set();
 
-  // Circuit breaker for the dealer API
+  // Circuit breakers
   private dealerCircuit = new CircuitBreaker({ name: "DealerAPI", failureThreshold: 5, recoveryTimeoutMs: 30_000 });
+  private rpcCircuit = new CircuitBreaker({ name: "RPC", failureThreshold: 5, recoveryTimeoutMs: 30_000 });
 
   // Track last state to detect changes
   private lastHandId: bigint = 0n;
@@ -103,6 +104,10 @@ export class KeeperBot {
     return { ...this.stats };
   }
 
+  getRpcCircuitState(): string {
+    return this.rpcCircuit.circuitState;
+  }
+
   async run(): Promise<void> {
     this.running = true;
     const pollInterval = Math.max(200, this.config.pollIntervalMs || 2000);
@@ -115,9 +120,14 @@ export class KeeperBot {
 
     while (this.running) {
       try {
-        await this.tick();
+        await this.rpcCircuit.execute(() => this.tick());
         this.currentBackoffMs = pollInterval;
       } catch (error) {
+        if (error instanceof CircuitOpenError) {
+          this.log.warn({ circuit: "RPC" }, "RPC circuit open — skipping tick");
+          await this.sleep(this.currentBackoffMs);
+          continue;
+        }
         this.log.error({ err: error }, "Error in tick");
         this.stats.errors++;
         if (this.isRateLimitError(error)) {

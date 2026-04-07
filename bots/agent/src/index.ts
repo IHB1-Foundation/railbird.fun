@@ -124,7 +124,13 @@ async function main() {
   // Create and run bot
   const bot = new AgentBot(config);
   const healthPort = parseInt(process.env.HEALTH_PORT || "9100", 10);
-  const health = startHealthServer({ service: "agent-bot", port: healthPort });
+  const health = startHealthServer({
+    service: "agent-bot",
+    port: healthPort,
+    getExtras: () => ({
+      circuits: { rpc: bot.getRpcCircuitState().toLowerCase() },
+    }),
+  });
   logger.info({ healthEndpoint: `http://0.0.0.0:${healthPort}/health` }, 'Health server started');
 
   // Handle shutdown

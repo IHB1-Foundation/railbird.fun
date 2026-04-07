@@ -146,6 +146,11 @@ function getDexRouterAddress(): Address | null {
   return addr ? (addr as Address) : null;
 }
 
+function getWmonAddress(): Address | null {
+  const addr = process.env.NEXT_PUBLIC_WMON_ADDRESS;
+  return addr ? (addr as Address) : null;
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 interface NadFunTradingWidgetProps {
@@ -169,9 +174,13 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
   const lensAddress = getLensAddress();
   const bondingRouter = getBondingRouterAddress();
   const dexRouter = getDexRouterAddress();
+  const wmonAddress = getWmonAddress();
 
   const isConfigured = !!lensAddress;
-  const isTradeable = stage === "bonding_curve" || stage === "graduated";
+  // Graduated stage also requires WMON_ADDRESS for the swap path
+  const isTradeable =
+    stage === "bonding_curve" ||
+    (stage === "graduated" && !!wmonAddress);
   const routerAddress = stage === "graduated" ? dexRouter : bondingRouter;
 
   // ── Fetch token stage ────────────────────────────────────────────────────
@@ -286,11 +295,15 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
 
       const minOut = (quoteWei * BigInt(10000 - slippageBps)) / 10000n;
 
-      // Get wallet client
+      // Get wallet client — requires browser wallet extension
+      if (!window.ethereum) {
+        setError("No wallet extension detected. Please install MetaMask or a compatible wallet.");
+        return;
+      }
       const walletClient = createWalletClient({
         account: address as Address,
         chain: undefined,
-        transport: custom((window as { ethereum: Parameters<typeof custom>[0] }).ethereum),
+        transport: custom(window.ethereum),
       });
 
       let hash: `0x${string}`;
@@ -314,15 +327,18 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
           });
         }
       } else {
-        // graduated — Uniswap V2 style
-        const WMON_ADDRESS = (process.env.NEXT_PUBLIC_WMON_ADDRESS || "0x0000000000000000000000000000000000000000") as Address;
+        // graduated — Uniswap V2 style; WMON address required for swap path
+        if (!wmonAddress) {
+          setError("WMON_ADDRESS is not configured. Cannot execute DEX swap.");
+          return;
+        }
         if (direction === "buy") {
           hash = await walletClient.writeContract({
             chain: null,
             address: routerAddress,
             abi: DEX_ROUTER_ABI,
             functionName: "swapExactETHForTokens",
-            args: [minOut, [WMON_ADDRESS, tokenAddress as Address], address as Address, deadline],
+            args: [minOut, [wmonAddress, tokenAddress as Address], address as Address, deadline],
             value: amountWei,
           });
         } else {
@@ -331,7 +347,7 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
             address: routerAddress,
             abi: DEX_ROUTER_ABI,
             functionName: "swapExactTokensForETH",
-            args: [amountWei, minOut, [tokenAddress as Address, WMON_ADDRESS], address as Address, deadline],
+            args: [amountWei, minOut, [tokenAddress as Address, wmonAddress], address as Address, deadline],
           });
         }
       }
@@ -342,7 +358,7 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
     } finally {
       setTxLoading(false);
     }
-  }, [isConnected, address, routerAddress, isTradeable, amountInput, deadlineMinutes, direction, slippageBps, stage, tokenAddress, lensAddress]);
+  }, [isConnected, address, routerAddress, isTradeable, amountInput, deadlineMinutes, direction, slippageBps, stage, tokenAddress, lensAddress, wmonAddress]);
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -381,6 +397,12 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
       {stage === "locked" && (
         <div className={styles.nadfunLockedNotice} role="status">
           Token is currently in locked stage — trading is temporarily unavailable.
+        </div>
+      )}
+
+      {stage === "graduated" && !wmonAddress && (
+        <div className={styles.nadfunLockedNotice} role="status">
+          DEX trading requires WMON_ADDRESS configuration. Use the external link above.
         </div>
       )}
 

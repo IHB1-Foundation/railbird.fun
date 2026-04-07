@@ -47,14 +47,11 @@ scripts/nadfun-agents.generated.env
 # Persistent data (hole cards, etc.)
 data/
 
-# Local docs
+# Local-only docs (sensitive config / deployment info)
 LOCAL.md
 DEPLOY.md
-
-# Keep markdown docs local-only (except root README, SUBMISSION, and docs/)
-*.md
-!README.md
-!SUBMISSION.md
-!docs/*.md
+ENVIRON.md
+ENVIRONMENT.md
+KAIA_WALLETS.md
 lcov.info
 *.tsbuildinfo

@@ -27,13 +27,21 @@ jobs:
       - name: Run contract tests
         run: cd contracts && forge test -vvv
 
+      # T-R17-04: Slither is now blocking for medium+ severity findings.
+      # Known false positives are suppressed in contracts/slither.config.json:
+      #   solc-version      — compiler pinned in foundry.toml
+      #   naming-convention — style only, not security
+      #   reentrancy-benign — custom nonReentrant modifier used correctly
+      #   low-level-calls   — intentional ETH transfers (withdraw/settlement)
+      #   calls-loop        — design: settlement callbacks per seat (try-caught)
+      #   timestamp         — block.timestamp used for deadlines (acceptable precision)
       - name: Run Slither static analysis
         uses: crytic/slither-action@v0.4.0
         with:
           target: contracts/
+          slither-config: contracts/slither.config.json
           slither-args: "--filter-paths contracts/lib/ --exclude-dependencies"
-          fail-on: high
-        continue-on-error: true   # advisory — don't block merges yet
+          fail-on: medium
 
       # T-R12-01: ABI freshness check.
       # Railway excludes @playerco/contracts from its build command because Foundry

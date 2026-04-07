@@ -1,0 +1,13 @@
+{
+  "filter_paths": "lib/,node_modules/",
+  "exclude_dependencies": true,
+  "compile_force_framework": "foundry",
+  "detectors_to_exclude": [
+    "solc-version",
+    "naming-convention",
+    "reentrancy-benign",
+    "low-level-calls",
+    "calls-loop",
+    "timestamp"
+  ]
+}

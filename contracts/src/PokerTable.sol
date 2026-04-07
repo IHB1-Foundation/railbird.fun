@@ -2096,24 +2096,25 @@ contract PokerTable {
         );
         require(computedCommitment == commitment, "Invalid reveal");
 
-        // Store revealed cards
-        _revealedHoleCards[handId][seatIndex] = [card1, card2];
-        isHoleCardsRevealed[handId][seatIndex] = true;
-
-        emit HoleCardsRevealed(handId, seatIndex, card1, card2);
-
-        // Post-hoc integrity check: verify hole cards don't duplicate community cards.
-        // Emits CardIntegrityViolation if a conflict is found (dealer integrity violation).
-        // Settlement proceeds regardless — this only provides an auditable signal.
+        // Hard integrity check: if hole cards duplicate any community card, void this reveal.
+        // The seat cannot win — it will be treated as having not revealed at showdown.
         for (uint8 ci = 0; ci < 5; ci++) {
             if (communityCards[ci] == UNDEALT) continue;
             if (card1 == communityCards[ci]) {
                 emit CardIntegrityViolation(handId, seatIndex, card1, ci);
+                return; // forfeit: do NOT mark as revealed
             }
             if (card2 == communityCards[ci]) {
                 emit CardIntegrityViolation(handId, seatIndex, card2, ci);
+                return; // forfeit: do NOT mark as revealed
             }
         }
+
+        // Cards are clean — store the reveal
+        _revealedHoleCards[handId][seatIndex] = [card1, card2];
+        isHoleCardsRevealed[handId][seatIndex] = true;
+
+        emit HoleCardsRevealed(handId, seatIndex, card1, card2);
     }
 
     /**

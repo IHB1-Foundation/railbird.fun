@@ -2996,6 +2996,46 @@ contract PokerTableTest is Test {
         assertTrue(violationFound, "CardIntegrityViolation not emitted");
     }
 
+    /**
+     * @notice T-R1-01: Hard enforcement — duplicate card reveal is voided (seat forfeits).
+     * @dev Seat 0 commits [3, 12]; card 3 collides with communityCards[2] (flop).
+     *      After T-R1-01, isHoleCardsRevealed must remain false after such a reveal attempt.
+     */
+    function test_R1_01_CardIntegrity_RevealVoided_IfDuplicate() public {
+        _setupAllSeats();
+        _startHandToWFHC();
+
+        // Seat 0 commits hole cards [3, 12] — card 3 will duplicate communityCards[2]
+        _commitCards(1, 0, 3, 12, bytes32("s0"));
+        _commitCards(1, 1, 2, 4, bytes32("s1"));
+        _commitCards(1, 2, 5, 6, bytes32("s2"));
+        _commitCards(1, 3, 7, 8, bytes32("s3"));
+        pokerTable.advanceToPreflop();
+
+        _playToShowdown();
+
+        // Sanity check: community card 2 == 3 (established by test_CardIntegrity_ViolationDetected)
+        assertEq(pokerTable.communityCards(2), 3, "Community card[2] should be 3");
+
+        // Attempt reveal with duplicate card — should emit violation but NOT mark as revealed
+        vm.recordLogs();
+        pokerTable.revealHoleCards(1, 0, 3, 12, bytes32("s0"));
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        bytes32 violationSig = keccak256("CardIntegrityViolation(uint256,uint8,uint8,uint8)");
+        bool violationFound = false;
+        for (uint256 i = 0; i < logs.length; i++) {
+            if (logs[i].topics[0] == violationSig) { violationFound = true; break; }
+        }
+        assertTrue(violationFound, "CardIntegrityViolation should be emitted");
+
+        // Hard enforcement: seat 0 is NOT marked as revealed (forfeit)
+        assertFalse(pokerTable.isHoleCardsRevealed(1, 0), "Reveal must be voided for duplicate card");
+
+        // Verify good cards (seat 1) still work normally
+        pokerTable.revealHoleCards(1, 1, 2, 4, bytes32("s1"));
+        assertTrue(pokerTable.isHoleCardsRevealed(1, 1), "Clean reveal should succeed");
+    }
+
     // ============ T-1301: Heads-Up Blind Rule (button=SB) ============
 
     function test_HeadsUp_ButtonIsSB() public {

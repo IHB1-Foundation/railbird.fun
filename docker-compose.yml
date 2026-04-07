@@ -111,6 +111,10 @@ services:
       start_period: 10s
 
   # ── Keeper bot ──────────────────────────────────────────────────────────────
+  # keeper and agent bots do NOT depend on the indexer service (T-R11-02).
+  # Both bots read chain state directly via RPC and use ownerview only for
+  # hole-card ACL.  Adding an indexer dependency would delay startup without
+  # any benefit; the indexer is optional telemetry for these processes.
   keeper:
     build:
       context: .

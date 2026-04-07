@@ -14,7 +14,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
-import { createPublicClient, createWalletClient, custom, http, parseUnits, formatUnits, type Address } from "viem";
+import { createPublicClient, createWalletClient, custom, http, isAddress, parseUnits, formatUnits, type Address } from "viem";
 import { useAuth } from "@/lib/auth";
 import styles from "./NadFunTradingWidget.module.css";
 
@@ -131,24 +131,33 @@ function getRpcUrl() {
   return process.env.NEXT_PUBLIC_RPC_URL || "https://testnet.hsk.xyz";
 }
 
-function getLensAddress(): Address | null {
-  const addr = process.env.NEXT_PUBLIC_NADFUN_LENS_ADDRESS;
-  return addr ? (addr as Address) : null;
+/**
+ * Reads an address env var and returns it if it is a well-formed EIP-55 address.
+ * Returns null when the var is unset.
+ * Returns the string "INVALID:<var>" when the var is set but malformed — this
+ * triggers a user-visible config error rather than a silent failure.
+ */
+function readAddressEnv(varName: string): Address | "INVALID" | null {
+  const raw = process.env[varName];
+  if (!raw) return null;
+  if (!isAddress(raw)) return "INVALID";
+  return raw as Address;
 }
 
-function getBondingRouterAddress(): Address | null {
-  const addr = process.env.NEXT_PUBLIC_NADFUN_BONDING_ROUTER_ADDRESS;
-  return addr ? (addr as Address) : null;
+function getLensAddress(): Address | "INVALID" | null {
+  return readAddressEnv("NEXT_PUBLIC_NADFUN_LENS_ADDRESS");
 }
 
-function getDexRouterAddress(): Address | null {
-  const addr = process.env.NEXT_PUBLIC_NADFUN_DEX_ROUTER_ADDRESS;
-  return addr ? (addr as Address) : null;
+function getBondingRouterAddress(): Address | "INVALID" | null {
+  return readAddressEnv("NEXT_PUBLIC_NADFUN_BONDING_ROUTER_ADDRESS");
 }
 
-function getWmonAddress(): Address | null {
-  const addr = process.env.NEXT_PUBLIC_WMON_ADDRESS;
-  return addr ? (addr as Address) : null;
+function getDexRouterAddress(): Address | "INVALID" | null {
+  return readAddressEnv("NEXT_PUBLIC_NADFUN_DEX_ROUTER_ADDRESS");
+}
+
+function getWmonAddress(): Address | "INVALID" | null {
+  return readAddressEnv("NEXT_PUBLIC_WMON_ADDRESS");
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -171,12 +180,25 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
   const [error, setError] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
 
-  const lensAddress = getLensAddress();
-  const bondingRouter = getBondingRouterAddress();
-  const dexRouter = getDexRouterAddress();
-  const wmonAddress = getWmonAddress();
+  const lensAddressRaw = getLensAddress();
+  const bondingRouterRaw = getBondingRouterAddress();
+  const dexRouterRaw = getDexRouterAddress();
+  const wmonAddressRaw = getWmonAddress();
 
-  const isConfigured = !!lensAddress;
+  // Detect any malformed (set but invalid) address env vars.
+  const configErrors: string[] = [];
+  if (lensAddressRaw === "INVALID") configErrors.push("NEXT_PUBLIC_NADFUN_LENS_ADDRESS is malformed");
+  if (bondingRouterRaw === "INVALID") configErrors.push("NEXT_PUBLIC_NADFUN_BONDING_ROUTER_ADDRESS is malformed");
+  if (dexRouterRaw === "INVALID") configErrors.push("NEXT_PUBLIC_NADFUN_DEX_ROUTER_ADDRESS is malformed");
+  if (wmonAddressRaw === "INVALID") configErrors.push("NEXT_PUBLIC_WMON_ADDRESS is malformed");
+
+  // After validation, treat "INVALID" as null so the rest of the component is typed correctly.
+  const lensAddress = lensAddressRaw === "INVALID" ? null : lensAddressRaw;
+  const bondingRouter = bondingRouterRaw === "INVALID" ? null : bondingRouterRaw;
+  const dexRouter = dexRouterRaw === "INVALID" ? null : dexRouterRaw;
+  const wmonAddress = wmonAddressRaw === "INVALID" ? null : wmonAddressRaw;
+
+  const isConfigured = !!lensAddress && configErrors.length === 0;
   // Graduated stage also requires WMON_ADDRESS for the swap path
   const isTradeable =
     stage === "bonding_curve" ||
@@ -361,6 +383,26 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
   }, [isConnected, address, routerAddress, isTradeable, amountInput, deadlineMinutes, direction, slippageBps, stage, tokenAddress, lensAddress, wmonAddress]);
 
   // ── Render ────────────────────────────────────────────────────────────────
+
+  if (configErrors.length > 0) {
+    return (
+      <div role="alert" style={{ color: "#fca5a5", fontSize: "0.85rem", padding: "0.5rem 0" }}>
+        <strong>Trading widget misconfigured:</strong>
+        <ul style={{ margin: "0.3rem 0 0.5rem 1rem" }}>
+          {configErrors.map((e) => <li key={e}>{e}</li>)}
+        </ul>
+        <a
+          href={`https://nad.fun/token/${tokenAddress}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={styles.nadfunFallback}
+          aria-label="Open token on nad.fun"
+        >
+          Open on nad.fun ↗
+        </a>
+      </div>
+    );
+  }
 
   if (!isConfigured) {
     return (

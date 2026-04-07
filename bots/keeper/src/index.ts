@@ -2,7 +2,7 @@
 // Entry point that reads configuration from environment variables
 
 import { KeeperBot } from "./bot.js";
-import { requireEnv as sharedRequireEnv, startHealthServer } from "@playerco/shared";
+import { requireEnv as sharedRequireEnv, startHealthServer, validateChainIdWithRpc } from "@playerco/shared";
 
 const VERSION = "0.0.1";
 
@@ -95,6 +95,12 @@ async function main() {
     actionJitterMs,
     vaultAddress: process.env.VAULT_ADDRESS as `0x${string}` | undefined,
   };
+
+  // Validate that RPC_URL returns the expected chain ID before proceeding.
+  await validateChainIdWithRpc(baseConfig.rpcUrl, baseConfig.chainId).catch((err: unknown) => {
+    console.error(`[KeeperBot] Chain ID validation failed: ${err instanceof Error ? err.message : String(err)}`);
+    process.exit(1);
+  });
 
   console.log("Configuration:");
   console.log(`  RPC URL: ${baseConfig.rpcUrl}`);

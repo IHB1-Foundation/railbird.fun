@@ -275,6 +275,50 @@ export function clearChainConfigCache(): void {
 }
 
 /**
+ * Validates that the chain ID returned by the RPC matches the expected chain ID.
+ * Call this at service startup to detect misconfigured RPC_URL / CHAIN_ENV pairs.
+ *
+ * @throws ChainConfigError with a descriptive message if the IDs do not match.
+ */
+export async function validateChainIdWithRpc(
+  rpcUrl: string,
+  expectedChainId: number
+): Promise<void> {
+  let rpcChainId: number;
+
+  try {
+    const response = await fetch(rpcUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_chainId", params: [] }),
+    });
+    if (!response.ok) {
+      throw new Error(`RPC returned HTTP ${response.status}`);
+    }
+    const json = (await response.json()) as { result?: string; error?: unknown };
+    if (json.error) {
+      throw new Error(`RPC error: ${JSON.stringify(json.error)}`);
+    }
+    if (typeof json.result !== "string") {
+      throw new Error(`Unexpected eth_chainId response: ${JSON.stringify(json)}`);
+    }
+    rpcChainId = parseInt(json.result, 16);
+  } catch (cause) {
+    throw new ChainConfigError(
+      `Failed to validate chain ID via RPC (${rpcUrl}): ${cause instanceof Error ? cause.message : String(cause)}`
+    );
+  }
+
+  if (rpcChainId !== expectedChainId) {
+    throw new ChainConfigError(
+      `CHAIN_ID mismatch: configured CHAIN_ENV expects chain ID ${expectedChainId} ` +
+        `but RPC at ${rpcUrl} returned chain ID ${rpcChainId}. ` +
+        `Check that RPC_URL and CHAIN_ENV point to the same network.`
+    );
+  }
+}
+
+/**
  * Gets a specific contract address from the config.
  * Shorthand for getChainConfig().contracts[name]
  */

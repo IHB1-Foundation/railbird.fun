@@ -1,6 +1,6 @@
 // @playerco/indexer - Event ingestion and REST API
 
-import { VERSION, createLogger } from "@playerco/shared";
+import { VERSION, createLogger, validateChainIdWithRpc } from "@playerco/shared";
 import { createApp } from "./api/index.js";
 import { EventListener } from "./events/index.js";
 import { setListenerStatus } from "./events/listenerState.js";
@@ -63,6 +63,18 @@ async function main(): Promise<void> {
       "Chain configuration required but missing (POKER_TABLE_ADDRESSES, PLAYER_REGISTRY_ADDRESS, RPC_URL)"
     );
     process.exit(1);
+  }
+
+  // Validate CHAIN_ENV ↔ RPC_URL chain ID match at startup.
+  if (process.env.RPC_URL) {
+    const EXPECTED_CHAIN_IDS: Record<string, number> = { local: 31337, testnet: 133, mainnet: 177 };
+    const expectedChainId = EXPECTED_CHAIN_IDS[CHAIN_ENV];
+    if (expectedChainId !== undefined) {
+      await validateChainIdWithRpc(process.env.RPC_URL, expectedChainId).catch((err: unknown) => {
+        logger.error({ err }, "Chain ID mismatch — RPC_URL and CHAIN_ENV disagree. Refusing to start.");
+        process.exit(1);
+      });
+    }
   }
 
   // Start REST API with HTTP server

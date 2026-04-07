@@ -17,6 +17,7 @@ export {
   getContractAddress,
   validateChainConfigEnv,
   clearChainConfigCache,
+  validateChainIdWithRpc,
   ChainConfigError,
 } from "./chainConfig.js";
 

@@ -3,7 +3,7 @@
 
 import { AgentBot } from "./bot.js";
 import { GeminiStrategy, SimpleStrategy, type Strategy } from "./strategy/index.js";
-import { requireEnv as sharedRequireEnv, startHealthServer } from "@playerco/shared";
+import { requireEnv as sharedRequireEnv, startHealthServer, validateChainIdWithRpc } from "@playerco/shared";
 
 const VERSION = "0.0.1";
 
@@ -126,6 +126,12 @@ async function main() {
   };
 
   const maxHands = parseInt(optionalEnv("MAX_HANDS", "0"));
+
+  // Validate that RPC_URL returns the expected chain ID before proceeding.
+  await validateChainIdWithRpc(config.rpcUrl, config.chainId).catch((err: unknown) => {
+    console.error(`[AgentBot] Chain ID validation failed: ${err instanceof Error ? err.message : String(err)}`);
+    process.exit(1);
+  });
 
   console.log("Configuration:");
   console.log(`  RPC URL: ${config.rpcUrl}`);

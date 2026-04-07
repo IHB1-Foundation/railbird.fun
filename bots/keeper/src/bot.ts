@@ -28,6 +28,8 @@ export interface KeeperBotConfig {
    * Default: 0 (no jitter). Set via KEEPER_ACTION_JITTER_MS.
    */
   actionJitterMs?: number;
+  /** Optional vault address. When set, keeper triggers post-settlement rebalancing. */
+  vaultAddress?: `0x${string}`;
 }
 
 export interface KeeperStats {
@@ -44,6 +46,8 @@ export interface KeeperStats {
   txErrors: number;
   /** Duplicate/race actions skipped due to multi-keeper coordination. */
   coordinationSkips: number;
+  /** Vault rebalancing attempts triggered after settlement. */
+  rebalancesTriggered: number;
 }
 
 export class KeeperBot {
@@ -62,7 +66,10 @@ export class KeeperBot {
     apiErrors: 0,
     txErrors: 0,
     coordinationSkips: 0,
+    rebalancesTriggered: 0,
   };
+  /** Track which hands we've already attempted rebalancing to avoid duplicate triggers. */
+  private rebalancedHands: Set<bigint> = new Set();
 
   // Circuit breaker for the dealer API
   private dealerCircuit = new CircuitBreaker({ name: "DealerAPI", failureThreshold: 5, recoveryTimeoutMs: 30_000 });
@@ -83,6 +90,7 @@ export class KeeperBot {
       rpcUrl: config.rpcUrl,
       privateKey: config.privateKey,
       pokerTableAddress: config.pokerTableAddress,
+      vaultAddress: config.vaultAddress,
       chainId: config.chainId,
     });
   }
@@ -154,6 +162,8 @@ export class KeeperBot {
     // Check for keeper actions needed
     await this.checkAndSubmitHoleCommits(state);
     await this.checkAndHandleTimeout(state, currentTimestamp, currentBlock);
+    // T-R3-03: Trigger vault rebalancing after settlement
+    await this.checkAndTriggerRebalancing(state, currentBlock);
     await this.checkAndReRequestVRF(state, currentTimestamp);
     await this.checkAndStartHand(state);
     await this.checkAndSettleShowdown(state);
@@ -554,5 +564,100 @@ export class KeeperBot {
       message.includes("too many requests") ||
       message.includes("requests limited")
     );
+  }
+
+  /**
+   * T-R3-03: Trigger vault rebalancing after hand settlement.
+   * Only runs when a vault address is configured and the hand is newly settled.
+   * Respects the contract-enforced randomized delay (rebalanceEligibleBlock) and
+   * size limits (rebalanceMaxMonBps / rebalanceMaxTokenBps).
+   */
+  private async checkAndTriggerRebalancing(state: TableState, currentBlock: bigint): Promise<void> {
+    if (!this.chainClient.hasVault()) return;
+    if (state.gameState !== GameState.SETTLED && state.gameState !== GameState.WAITING_FOR_SEATS) return;
+    if (state.currentHandId === 0n) return;
+
+    // Avoid retrying the same hand within this process run
+    if (this.rebalancedHands.has(state.currentHandId)) return;
+
+    let status;
+    try {
+      status = await this.chainClient.getRebalanceStatus();
+    } catch (error) {
+      this.log.warn({ err: error }, "Failed to read vault rebalance status");
+      return;
+    }
+
+    if (!status.canRebalance) {
+      // Not yet eligible (same hand or wrong state); mark to avoid repeated checks
+      if (status.currentHandId === state.currentHandId &&
+          status.lastRebalancedHandId === state.currentHandId) {
+        this.rebalancedHands.add(state.currentHandId);
+      }
+      return;
+    }
+
+    // Respect the on-chain randomized delay (set by vault after settlement)
+    if (currentBlock < status.rebalanceEligibleBlock) {
+      this.log.debug({
+        blocksRemaining: status.blocksRemaining.toString(),
+        eligibleBlock: status.rebalanceEligibleBlock.toString(),
+      }, "Rebalance not yet eligible, waiting for delay");
+      return;
+    }
+
+    // Mark as attempted for this hand regardless of outcome
+    this.rebalancedHands.add(state.currentHandId);
+
+    // Read vault state to determine amount within BPS limits
+    let externalAssets: bigint;
+    let treasuryShares: bigint;
+    let maxMonBps: bigint;
+    let maxTokenBps: bigint;
+    try {
+      [externalAssets, treasuryShares, maxMonBps, maxTokenBps] = await Promise.all([
+        this.chainClient.getVaultExternalAssets(),
+        this.chainClient.getVaultTreasuryShares(),
+        this.chainClient.getVaultRebalanceMaxMonBps(),
+        this.chainClient.getVaultRebalanceMaxTokenBps(),
+      ]);
+    } catch (error) {
+      this.log.warn({ err: error }, "Failed to read vault state for rebalancing");
+      return;
+    }
+
+    // Try rebalanceBuy first (uses external assets to buy treasury shares)
+    if (externalAssets > 0n && maxMonBps > 0n) {
+      const monAmount = externalAssets * maxMonBps / 10000n;
+      if (monAmount > 0n) {
+        try {
+          await this.coordinationJitter();
+          const hash = await this.chainClient.rebalanceBuy(monAmount, 0n);
+          this.stats.rebalancesTriggered++;
+          this.recordAction("rebalanceBuy");
+          this.log.info({ tx: hash, monAmount: monAmount.toString(), handId: state.currentHandId.toString() }, "Vault rebalanceBuy triggered");
+          return;
+        } catch (error) {
+          // Accretive constraint not satisfied (price too high) or other error — try sell
+          this.log.info({ err: String(error).split("\n")[0], handId: state.currentHandId.toString() }, "rebalanceBuy skipped (accretive constraint or error), trying sell");
+        }
+      }
+    }
+
+    // Try rebalanceSell (sells treasury shares for external assets)
+    if (treasuryShares > 0n && maxTokenBps > 0n) {
+      const tokenAmount = treasuryShares * maxTokenBps / 10000n;
+      if (tokenAmount > 0n) {
+        try {
+          await this.coordinationJitter();
+          const hash = await this.chainClient.rebalanceSell(tokenAmount, 0n);
+          this.stats.rebalancesTriggered++;
+          this.recordAction("rebalanceSell");
+          this.log.info({ tx: hash, tokenAmount: tokenAmount.toString(), handId: state.currentHandId.toString() }, "Vault rebalanceSell triggered");
+        } catch (error) {
+          this.log.info({ err: String(error).split("\n")[0], handId: state.currentHandId.toString() }, "rebalanceSell skipped (accretive constraint or error)");
+        }
+      }
+    }
   }
 }

@@ -13,6 +13,7 @@ import {
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { GameState, NonceManager, POKER_TABLE_ABI } from "@playerco/shared";
+import { PLAYER_VAULT_ABI } from "./playerVaultAbi.js";
 
 export { GameState };
 
@@ -40,9 +41,18 @@ export interface ChainClientConfig {
   rpcUrl: string;
   privateKey: `0x${string}`;
   pokerTableAddress: Address;
+  vaultAddress?: Address;
   chainId?: number;
   /** Timeout for waitForTransactionReceipt in ms. Defaults to TX_TIMEOUT_MS env or 60_000. */
   txTimeoutMs?: number;
+}
+
+export interface RebalanceStatus {
+  canRebalance: boolean;
+  currentHandId: bigint;
+  lastRebalancedHandId: bigint;
+  rebalanceEligibleBlock: bigint;
+  blocksRemaining: bigint;
 }
 
 const DEFAULT_TX_TIMEOUT_MS = parseInt(process.env.TX_TIMEOUT_MS || "60000", 10);
@@ -52,6 +62,7 @@ export class ChainClient {
   private walletClient: WalletClient;
   private account: Account;
   private pokerTableAddress: Address;
+  private vaultAddress: Address | null;
   private chain: Chain;
   private tableIdCache: bigint | null = null;
   private txTimeoutMs: number;
@@ -73,6 +84,7 @@ export class ChainClient {
 
     this.account = privateKeyToAccount(config.privateKey);
     this.pokerTableAddress = config.pokerTableAddress;
+    this.vaultAddress = config.vaultAddress ?? null;
     this.txTimeoutMs = config.txTimeoutMs ?? DEFAULT_TX_TIMEOUT_MS;
 
     this.publicClient = createPublicClient({
@@ -292,6 +304,98 @@ export class ChainClient {
         abi: POKER_TABLE_ABI,
         functionName: "revealHoleCards",
         args: [handId, seatIndex, card1, card2, salt],
+        nonce,
+      });
+      await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });
+      return hash;
+    });
+  }
+
+  // ── Vault rebalancing methods ────────────────────────────────────────────────
+
+  hasVault(): boolean {
+    return this.vaultAddress !== null;
+  }
+
+  async getRebalanceStatus(): Promise<RebalanceStatus> {
+    if (!this.vaultAddress) throw new Error("No vault address configured");
+    const result = await this.publicClient.readContract({
+      address: this.vaultAddress,
+      abi: PLAYER_VAULT_ABI,
+      functionName: "getRebalanceStatus",
+    }) as readonly [boolean, bigint, bigint, bigint, bigint];
+    return {
+      canRebalance: result[0],
+      currentHandId: result[1],
+      lastRebalancedHandId: result[2],
+      rebalanceEligibleBlock: result[3],
+      blocksRemaining: result[4],
+    };
+  }
+
+  async getVaultExternalAssets(): Promise<bigint> {
+    if (!this.vaultAddress) throw new Error("No vault address configured");
+    return this.publicClient.readContract({
+      address: this.vaultAddress,
+      abi: PLAYER_VAULT_ABI,
+      functionName: "getExternalAssets",
+    }) as Promise<bigint>;
+  }
+
+  async getVaultTreasuryShares(): Promise<bigint> {
+    if (!this.vaultAddress) throw new Error("No vault address configured");
+    return this.publicClient.readContract({
+      address: this.vaultAddress,
+      abi: PLAYER_VAULT_ABI,
+      functionName: "getTreasuryShares",
+    }) as Promise<bigint>;
+  }
+
+  async getVaultRebalanceMaxMonBps(): Promise<bigint> {
+    if (!this.vaultAddress) throw new Error("No vault address configured");
+    return this.publicClient.readContract({
+      address: this.vaultAddress,
+      abi: PLAYER_VAULT_ABI,
+      functionName: "rebalanceMaxMonBps",
+    }) as Promise<bigint>;
+  }
+
+  async getVaultRebalanceMaxTokenBps(): Promise<bigint> {
+    if (!this.vaultAddress) throw new Error("No vault address configured");
+    return this.publicClient.readContract({
+      address: this.vaultAddress,
+      abi: PLAYER_VAULT_ABI,
+      functionName: "rebalanceMaxTokenBps",
+    }) as Promise<bigint>;
+  }
+
+  async rebalanceBuy(monAmount: bigint, minTokenOut: bigint): Promise<Hash> {
+    if (!this.vaultAddress) throw new Error("No vault address configured");
+    return this.nonceManager.withNonce(async (nonce) => {
+      const hash = await this.walletClient.writeContract({
+        chain: this.chain,
+        account: this.account,
+        address: this.vaultAddress as Address,
+        abi: PLAYER_VAULT_ABI,
+        functionName: "rebalanceBuy",
+        args: [monAmount, minTokenOut],
+        nonce,
+      });
+      await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });
+      return hash;
+    });
+  }
+
+  async rebalanceSell(tokenAmount: bigint, minMonOut: bigint): Promise<Hash> {
+    if (!this.vaultAddress) throw new Error("No vault address configured");
+    return this.nonceManager.withNonce(async (nonce) => {
+      const hash = await this.walletClient.writeContract({
+        chain: this.chain,
+        account: this.account,
+        address: this.vaultAddress as Address,
+        abi: PLAYER_VAULT_ABI,
+        functionName: "rebalanceSell",
+        args: [tokenAmount, minMonOut],
         nonce,
       });
       await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });

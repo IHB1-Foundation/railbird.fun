@@ -72,6 +72,7 @@ async function main() {
     chainId: parseInt(optionalEnv("CHAIN_ID", "133")),
     pollIntervalMs: parsePositiveInt("POLL_INTERVAL_MS", defaultPollIntervalMs),
     actionJitterMs,
+    vaultAddress: process.env.VAULT_ADDRESS as `0x${string}` | undefined,
   };
 
   console.log("Configuration:");

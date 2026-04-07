@@ -296,24 +296,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   /**
-   * Disconnect and clear session
+   * Disconnect and clear session.
+   * Client state is always cleared regardless of server logout success.
    */
   const disconnect = useCallback(() => {
     if (state.address) {
       clearEncryptionKeyCache(state.address);
     }
+
+    const clearClientState = () => {
+      if (!COOKIE_SESSION_ENABLED) {
+        sessionStorage.removeItem(STORAGE_KEY_TOKEN);
+        sessionStorage.removeItem(STORAGE_KEY_ADDRESS);
+        sessionStorage.removeItem(STORAGE_KEY_EXPIRES);
+      }
+      setState(initialState);
+    };
+
     if (COOKIE_SESSION_ENABLED) {
-      // Ask server to clear httpOnly cookies
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 5_000);
       fetch(`${process.env.NEXT_PUBLIC_OWNERVIEW_URL || "https://ownerview.railbird.fun"}/auth/logout`, {
         method: "POST",
         credentials: "include",
-      }).catch(() => {/* ignore errors on logout */});
+        signal: controller.signal,
+      })
+        .catch((err) => {
+          console.error("[AuthContext] Server logout failed; client state cleared anyway:", err);
+        })
+        .finally(() => {
+          clearTimeout(timer);
+          clearClientState();
+        });
     } else {
-      sessionStorage.removeItem(STORAGE_KEY_TOKEN);
-      sessionStorage.removeItem(STORAGE_KEY_ADDRESS);
-      sessionStorage.removeItem(STORAGE_KEY_EXPIRES);
+      clearClientState();
     }
-    setState(initialState);
   }, [state.address]);
 
   /**

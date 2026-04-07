@@ -1,4 +1,7 @@
 /** @type {import('next').NextConfig} */
+// NOTE: Content-Security-Policy is handled per-request in src/middleware.ts
+// so that production builds can use a nonce-based policy without `'unsafe-inline'`.
+// The static headers below apply only the non-CSP security headers.
 const isDev = process.env.NODE_ENV !== "production";
 
 const nextConfig = {
@@ -36,27 +39,6 @@ const nextConfig = {
           { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
           // Don't send Referer to cross-origin requests
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-          // Content Security Policy
-          {
-            key: "Content-Security-Policy",
-            value: [
-              "default-src 'self'",
-              // Allow Next.js inline scripts and eval in dev
-              isDev
-                ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
-                : "script-src 'self' 'unsafe-inline'",
-              "style-src 'self' 'unsafe-inline'",
-              // Wallet providers inject images and connect to RPC endpoints
-              "img-src 'self' data: blob: https:",
-              // WebSocket connections for live table updates, RPC calls
-              "connect-src 'self' wss: ws: https:",
-              "font-src 'self' data:",
-              "frame-src 'none'",
-              "object-src 'none'",
-              "base-uri 'self'",
-              "form-action 'self'",
-            ].join("; "),
-          },
           // Block dangerous browser features
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
         ],

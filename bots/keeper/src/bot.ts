@@ -632,7 +632,7 @@ export class KeeperBot {
       if (monAmount > 0n) {
         try {
           await this.coordinationJitter();
-          const hash = await this.chainClient.rebalanceBuy(monAmount, 0n);
+          const hash = await this.chainClient.rebalanceBuy(status.currentHandId, monAmount, 0n);
           this.stats.rebalancesTriggered++;
           this.recordAction("rebalanceBuy");
           this.log.info({ tx: hash, monAmount: monAmount.toString(), handId: state.currentHandId.toString() }, "Vault rebalanceBuy triggered");
@@ -650,7 +650,7 @@ export class KeeperBot {
       if (tokenAmount > 0n) {
         try {
           await this.coordinationJitter();
-          const hash = await this.chainClient.rebalanceSell(tokenAmount, 0n);
+          const hash = await this.chainClient.rebalanceSell(status.currentHandId, tokenAmount, 0n);
           this.stats.rebalancesTriggered++;
           this.recordAction("rebalanceSell");
           this.log.info({ tx: hash, tokenAmount: tokenAmount.toString(), handId: state.currentHandId.toString() }, "Vault rebalanceSell triggered");

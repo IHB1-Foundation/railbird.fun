@@ -12,8 +12,18 @@ import {
   type Hash,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { GameState, NonceManager, POKER_TABLE_ABI } from "@playerco/shared";
-import { PLAYER_VAULT_ABI } from "./playerVaultAbi.js";
+import { GameState, NonceManager, POKER_TABLE_ABI, PLAYER_VAULT_ABI } from "@playerco/shared";
+
+// Minimal ERC20 ABI for reading token balances (treasury shares)
+const ERC20_BALANCE_ABI = [
+  {
+    type: "function",
+    name: "balanceOf",
+    inputs: [{ type: "address", name: "account" }],
+    outputs: [{ type: "uint256" }],
+    stateMutability: "view",
+  },
+] as const;
 
 export { GameState };
 
@@ -319,17 +329,25 @@ export class ChainClient {
 
   async getRebalanceStatus(): Promise<RebalanceStatus> {
     if (!this.vaultAddress) throw new Error("No vault address configured");
-    const result = await this.publicClient.readContract({
-      address: this.vaultAddress,
-      abi: PLAYER_VAULT_ABI,
-      functionName: "getRebalanceStatus",
-    }) as readonly [boolean, bigint, bigint, bigint, bigint];
+    const [lastSnapshotHandId, lastRebalanceHandId] = await Promise.all([
+      this.publicClient.readContract({
+        address: this.vaultAddress,
+        abi: PLAYER_VAULT_ABI,
+        functionName: "lastSnapshotHandId",
+      }) as Promise<bigint>,
+      this.publicClient.readContract({
+        address: this.vaultAddress,
+        abi: PLAYER_VAULT_ABI,
+        functionName: "lastRebalanceHandId",
+      }) as Promise<bigint>,
+    ]);
+    const canRebalance = lastSnapshotHandId > 0n && lastSnapshotHandId !== lastRebalanceHandId;
     return {
-      canRebalance: result[0],
-      currentHandId: result[1],
-      lastRebalancedHandId: result[2],
-      rebalanceEligibleBlock: result[3],
-      blocksRemaining: result[4],
+      canRebalance,
+      currentHandId: lastSnapshotHandId,
+      lastRebalancedHandId: lastRebalanceHandId,
+      rebalanceEligibleBlock: 0n,
+      blocksRemaining: 0n,
     };
   }
 
@@ -344,10 +362,19 @@ export class ChainClient {
 
   async getVaultTreasuryShares(): Promise<bigint> {
     if (!this.vaultAddress) throw new Error("No vault address configured");
-    return this.publicClient.readContract({
+    const agentToken = await this.publicClient.readContract({
       address: this.vaultAddress,
       abi: PLAYER_VAULT_ABI,
-      functionName: "getTreasuryShares",
+      functionName: "agentToken",
+    }) as Address;
+    if (!agentToken || agentToken === "0x0000000000000000000000000000000000000000") {
+      return 0n;
+    }
+    return this.publicClient.readContract({
+      address: agentToken,
+      abi: ERC20_BALANCE_ABI,
+      functionName: "balanceOf",
+      args: [this.vaultAddress],
     }) as Promise<bigint>;
   }
 
@@ -369,7 +396,7 @@ export class ChainClient {
     }) as Promise<bigint>;
   }
 
-  async rebalanceBuy(monAmount: bigint, minTokenOut: bigint): Promise<Hash> {
+  async rebalanceBuy(handId: bigint, monAmount: bigint, minTokenOut: bigint): Promise<Hash> {
     if (!this.vaultAddress) throw new Error("No vault address configured");
     return this.nonceManager.withNonce(async (nonce) => {
       const hash = await this.walletClient.writeContract({
@@ -378,7 +405,7 @@ export class ChainClient {
         address: this.vaultAddress as Address,
         abi: PLAYER_VAULT_ABI,
         functionName: "rebalanceBuy",
-        args: [monAmount, minTokenOut],
+        args: [handId, monAmount, minTokenOut],
         nonce,
       });
       await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });
@@ -386,7 +413,7 @@ export class ChainClient {
     });
   }
 
-  async rebalanceSell(tokenAmount: bigint, minMonOut: bigint): Promise<Hash> {
+  async rebalanceSell(handId: bigint, tokenAmount: bigint, minMonOut: bigint): Promise<Hash> {
     if (!this.vaultAddress) throw new Error("No vault address configured");
     return this.nonceManager.withNonce(async (nonce) => {
       const hash = await this.walletClient.writeContract({
@@ -395,7 +422,7 @@ export class ChainClient {
         address: this.vaultAddress as Address,
         abi: PLAYER_VAULT_ABI,
         functionName: "rebalanceSell",
-        args: [tokenAmount, minMonOut],
+        args: [handId, tokenAmount, minMonOut],
         nonce,
       });
       await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });

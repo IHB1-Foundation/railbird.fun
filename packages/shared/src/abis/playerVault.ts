@@ -219,56 +219,69 @@ export const PLAYER_VAULT_ABI = [
   },
   {
     "type": "function",
-    "name": "recordRebalanceBuy",
+    "name": "agentToken",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "address" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "nadfunRouter",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "address" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "rebalanceMaxMonBps",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "uint256" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "rebalanceMaxTokenBps",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "uint256" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "lastRebalanceHandId",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "uint256" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "setRebalanceConfig",
     "inputs": [
-      {
-        "name": "handId",
-        "type": "uint256"
-      },
-      {
-        "name": "monIn",
-        "type": "uint256"
-      },
-      {
-        "name": "tokenOut",
-        "type": "uint256"
-      },
-      {
-        "name": "navBefore",
-        "type": "uint256"
-      },
-      {
-        "name": "navAfter",
-        "type": "uint256"
-      }
+      { "name": "_agentToken", "type": "address" },
+      { "name": "_router", "type": "address" },
+      { "name": "_maxMonBps", "type": "uint256" },
+      { "name": "_maxTokenBps", "type": "uint256" }
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
   },
   {
     "type": "function",
-    "name": "recordRebalanceSell",
+    "name": "rebalanceBuy",
     "inputs": [
-      {
-        "name": "handId",
-        "type": "uint256"
-      },
-      {
-        "name": "tokenIn",
-        "type": "uint256"
-      },
-      {
-        "name": "monOut",
-        "type": "uint256"
-      },
-      {
-        "name": "navBefore",
-        "type": "uint256"
-      },
-      {
-        "name": "navAfter",
-        "type": "uint256"
-      }
+      { "name": "handId", "type": "uint256" },
+      { "name": "monIn", "type": "uint256" },
+      { "name": "minTokenOut", "type": "uint256" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "rebalanceSell",
+    "inputs": [
+      { "name": "handId", "type": "uint256" },
+      { "name": "tokenIn", "type": "uint256" },
+      { "name": "minMonOut", "type": "uint256" }
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
@@ -553,6 +566,15 @@ export const PLAYER_VAULT_ABI = [
         "type": "int256",
         "indexed": false
       }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "RouterUpdated",
+    "inputs": [
+      { "name": "oldRouter", "type": "address", "indexed": true },
+      { "name": "newRouter", "type": "address", "indexed": true }
     ],
     "anonymous": false
   },

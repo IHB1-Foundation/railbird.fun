@@ -25,6 +25,7 @@ interface MockChainClient {
   isBettingState: MockFn;
   isVRFWaitingState: MockFn;
   getTableId: MockFn;
+  hasVault: MockFn;
   address: string;
 }
 
@@ -65,6 +66,7 @@ function makeMockClient(): MockChainClient {
       [GameState.WAITING_VRF_FLOP, GameState.WAITING_VRF_TURN, GameState.WAITING_VRF_RIVER].includes(state)
     ),
     getTableId: mock.fn(async () => 1n),
+    hasVault: mock.fn(() => false),
     address: "0x1234567890123456789012345678901234567890",
   };
 }

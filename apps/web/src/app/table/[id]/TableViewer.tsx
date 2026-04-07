@@ -112,8 +112,13 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
     })();
   }, [table.contractAddress]);
 
+  // Stringify seats for stable memo key — avoids recomputing on every render
+  // when the server returns a new array reference with identical content.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const seatsKey = useMemo(() => JSON.stringify(table.seats), [JSON.stringify(table.seats)]);
   const normalizedSeats = useMemo(() => {
-    const byIndex = new Map(table.seats.map((seat) => [seat.seatIndex, seat]));
+    const parsed = JSON.parse(seatsKey) as typeof table.seats;
+    const byIndex = new Map(parsed.map((seat) => [seat.seatIndex, seat]));
     return Array.from({ length: maxSeats }, (_, seatIndex) => {
       return byIndex.get(seatIndex) ?? {
         seatIndex,
@@ -125,7 +130,7 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
         tokenAddress: null,
       };
     });
-  }, [maxSeats, table.seats]);
+  }, [maxSeats, seatsKey]);
 
   const seatByIndex = useMemo(
     () => new Map(normalizedSeats.map((seat) => [seat.seatIndex, seat])),
@@ -261,8 +266,11 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
     : null;
   const actorSeat = currentHand?.actorSeat ?? null;
   const actorSeatData = actorSeat !== null ? seatByIndex.get(actorSeat) : null;
+  // Use stable keys instead of the whole currentHand object to avoid
+  // recomputing on unrelated hand property changes.
+  const actionsKey = currentHand ? JSON.stringify(currentHand.actions) : null;
   const streetSections = useMemo(() => {
-    if (!currentHand || currentHand.actions.length === 0) {
+    if (!currentHand || !actionsKey || currentHand.actions.length === 0) {
       return [] as Array<{ street: string; actions: TableAction[] }>;
     }
 
@@ -283,7 +291,8 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
     }
 
     return sections.filter((section) => section.actions.length > 0);
-  }, [currentHand]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [actionsKey]);
 
   const handleJoinSeat = useCallback(async () => {
     setJoinStatus("");

@@ -102,8 +102,7 @@ export async function registerSeat(params: RegisterSeatParams): Promise<Register
     address: params.tableAddress,
     abi: POKER_TABLE_ABI,
     functionName: "registerSeat",
-    args: [params.seatIndex, account, operator],
-    value: buyIn,
+    args: [params.seatIndex, account, operator, buyIn],
     account,
     chain: CHAIN,
   });

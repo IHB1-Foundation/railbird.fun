@@ -20,6 +20,11 @@ interface IPlayerRegistry {
     );
 }
 
+/// @dev Minimal interface for vault settlement callbacks.
+interface IPlayerVaultMinimal {
+    function onSettlement(uint256 handId, int256 pnl) external;
+}
+
 /**
  * @title PokerTable
  * @notice 9-player Hold'em table with on-chain betting and VRF-driven community cards.
@@ -1535,6 +1540,35 @@ contract PokerTable {
     }
 
     /**
+     * @dev Notify each seat's PlayerVault of its net PnL for the settled hand.
+     *      `won[i]` = chips received from the pot by seat i.
+     *      PnL = won[i] - totalHandBet[i].
+     *      Gracefully skips: if playerRegistry unset, vault unset, not registered, or call reverts.
+     */
+    function _notifyVaultsOfSettlement(
+        uint256 handId,
+        uint256[MAX_SEATS] memory won
+    ) internal {
+        if (playerRegistry == address(0)) return;
+        for (uint8 i = 0; i < numSeats; i++) {
+            address seatOwner = seats[i].owner;
+            if (seatOwner == address(0)) continue;
+            uint256 totalBet = seats[i].totalHandBet;
+            uint256 received = won[i];
+            if (totalBet == 0 && received == 0) continue;
+            int256 pnl = int256(received) - int256(totalBet);
+            try IPlayerRegistry(playerRegistry).agents(seatOwner) returns (
+                address vault, address, address, address, string memory, bool isReg
+            ) {
+                if (!isReg || vault == address(0)) continue;
+                // Guard: skip EOAs and precompiles — only call deployed contracts
+                if (vault.code.length == 0) continue;
+                try IPlayerVaultMinimal(vault).onSettlement(handId, pnl) {} catch {}
+            } catch {}
+        }
+    }
+
+    /**
      * @notice Find first active, non-all-in player after the button (clockwise).
      * @dev Used for post-flop action order. Returns MAX_SEATS if everyone is all-in.
      */
@@ -1623,6 +1657,13 @@ contract PokerTable {
 
         emit SeatUpdated(winnerSeat, seats[winnerSeat].owner, seats[winnerSeat].operator, seats[winnerSeat].stack);
         emit HandSettled(currentHandId, winnerSeat, potAmount);
+
+        // Notify vaults of PnL before resetting hand state
+        {
+            uint256[MAX_SEATS] memory won;
+            won[winnerSeat] = potAmount;
+            _notifyVaultsOfSettlement(handId, won);
+        }
 
         // Prepare for next hand
         gameState = GameState.SETTLED;
@@ -1731,6 +1772,7 @@ contract PokerTable {
     ) internal {
         uint8 potCount = currentHand.sidePotCount;
         uint8 firstWinner = numSeats;
+        uint256[MAX_SEATS] memory won;
 
         for (uint8 p = 0; p < potCount; p++) {
             uint256 potAmount = sidePots[p].amount;
@@ -1772,6 +1814,7 @@ contract PokerTable {
                 if (eligible[i] && revealedBySeat[i] && scoresBySeat[i] == bestScore) {
                     uint256 amount = share + (i == primaryWinner ? remainder : 0);
                     seats[i].stack += amount;
+                    won[i] += amount;
                     if (firstWinner == numSeats) firstWinner = i;
                     emit SeatUpdated(i, seats[i].owner, seats[i].operator, seats[i].stack);
                 }
@@ -1781,6 +1824,9 @@ contract PokerTable {
         if (firstWinner == numSeats) firstWinner = fallbackWinner;
 
         emit HandSettled(currentHandId, firstWinner, currentHand.pot);
+
+        // Notify vaults of PnL before resetting hand state
+        _notifyVaultsOfSettlement(currentHandId, won);
 
         gameState = GameState.SETTLED;
         showdownStartTimestamp = 0;
@@ -1825,11 +1871,13 @@ contract PokerTable {
         }
 
         // Distribute shares
+        uint256[MAX_SEATS] memory won;
         for (uint8 i = 0; i < revealedCount; i++) {
             if (scores[i] == bestScore) {
                 uint256 amount = share;
                 if (revSeats[i] == primaryWinner) amount += remainder;
                 seats[revSeats[i]].stack += amount;
+                won[revSeats[i]] = amount;
                 emit SeatUpdated(
                     revSeats[i],
                     seats[revSeats[i]].owner,
@@ -1840,6 +1888,9 @@ contract PokerTable {
         }
 
         emit HandSettled(currentHandId, primaryWinner, potAmount);
+
+        // Notify vaults of PnL before resetting hand state
+        _notifyVaultsOfSettlement(currentHandId, won);
 
         // Prepare for next hand
         gameState = GameState.SETTLED;
@@ -1895,6 +1946,7 @@ contract PokerTable {
         }
         require(primaryWinner != UNDEALT, "No active players");
 
+        uint256[MAX_SEATS] memory won;
         for (uint8 i = 0; i < activeCount; i++) {
             uint8 seatIndex = activeSeats[i];
             uint256 payout = share;
@@ -1902,6 +1954,7 @@ contract PokerTable {
                 payout += remainder;
             }
             seats[seatIndex].stack += payout;
+            won[seatIndex] = payout;
             emit SeatUpdated(
                 seatIndex,
                 seats[seatIndex].owner,
@@ -1912,6 +1965,9 @@ contract PokerTable {
 
         emit ShowdownTimedOut(currentHandId, activeCount, potAmount);
         emit HandSettled(currentHandId, primaryWinner, potAmount);
+
+        // Notify vaults of PnL before resetting hand state
+        _notifyVaultsOfSettlement(currentHandId, won);
 
         gameState = GameState.SETTLED;
         showdownStartTimestamp = 0;

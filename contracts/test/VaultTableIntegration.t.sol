@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 import "../src/PokerTable.sol";
 import "../src/PlayerVault.sol";
+import "../src/PlayerRegistry.sol";
 import "../src/ChipToken.sol";
 import "./mocks/MockVRFAdapter.sol";
 
@@ -227,5 +228,99 @@ contract VaultTableIntegrationTest is Test {
 
         assertEq(vault1.getCumulativePnl(), int256(120), "Cumulative PnL = 100 - 40 + 60");
         assertEq(vault1.handCount(), 3, "Three hands recorded");
+    }
+
+    // ─── T-R0-01: Automatic settlement callback ────────────────────────────────
+
+    /**
+     * @notice T-R0-01: PokerTable automatically calls vault.onSettlement after fold settlement.
+     * @dev Sets up PlayerRegistry linking seat owners to their vaults.
+     *      After a fold, expects vault1 (winner) to have positive PnL and
+     *      vault2 (loser) to have negative PnL, both set automatically by the table.
+     */
+    function test_R0_01_AutoSettlementCallback_FoldWin() public {
+        // Deploy and configure PlayerRegistry
+        PlayerRegistry registry = new PlayerRegistry();
+
+        // Register owner1 pointing to vault1 and the table
+        vm.prank(owner1);
+        registry.registerAgent(address(vault1), address(pokerTable), owner1, "");
+
+        // Register owner2 pointing to vault2 and the table
+        vm.prank(owner2);
+        registry.registerAgent(address(vault2), address(pokerTable), owner2, "");
+
+        // Wire registry into the table (admin is address(this))
+        pokerTable.setPlayerRegistry(address(registry));
+
+        // Register seats
+        _registerSeat(0, owner1, owner1);
+        _registerSeat(1, owner2, owner2);
+
+        // Start hand: SB=10 seat0, BB=20 seat1
+        _startHand();
+
+        uint256 handId = pokerTable.currentHandId();
+
+        // seat0 is actor (heads-up: BTN/SB acts first preflop)
+        vm.roll(block.number + 1);
+        vm.prank(owner1);
+        pokerTable.call(0); // seat0 calls BB (puts in 10 more → total 20)
+
+        vm.roll(block.number + 1);
+        vm.prank(owner2);
+        pokerTable.check(1); // seat1 checks (BB already in) → betting round complete
+
+        // VRF fulfill for flop
+        mockVRF.fulfillLastRequest(99999);
+
+        vm.roll(block.number + 1);
+        vm.prank(owner2);
+        pokerTable.check(1); // flop: seat1 checks
+
+        vm.roll(block.number + 1);
+        vm.prank(owner1);
+        pokerTable.fold(0); // seat0 folds → seat1 wins pot (40 chips)
+
+        assertEq(
+            uint256(pokerTable.gameState()),
+            uint256(PokerTable.GameState.SETTLED),
+            "Should be SETTLED"
+        );
+
+        // vault2 (seat1 = winner) should have positive PnL: won 40, bet 20 → pnl = +20
+        assertEq(vault2.handCount(), 1, "vault2 should record 1 hand");
+        assertGt(vault2.getCumulativePnl(), 0, "vault2 winner should have positive PnL");
+
+        // vault1 (seat0 = loser) should have negative PnL: won 0, bet 20 → pnl = -20
+        assertEq(vault1.handCount(), 1, "vault1 should record 1 hand");
+        assertLt(vault1.getCumulativePnl(), 0, "vault1 loser should have negative PnL");
+
+        // Exact amounts: pot = 40 (20+20). seat0 bet 20, won 0 → pnl = -20. seat1 bet 20, won 40 → pnl = +20
+        assertEq(vault2.getCumulativePnl(), int256(20), "vault2 net +20");
+        assertEq(vault1.getCumulativePnl(), -int256(20), "vault1 net -20");
+
+        // hand IDs should match
+        assertEq(vault1.lastSnapshotHandId(), handId, "vault1 hand ID matches");
+        assertEq(vault2.lastSnapshotHandId(), handId, "vault2 hand ID matches");
+    }
+
+    /**
+     * @notice T-R0-01: Vault callback is silently skipped when playerRegistry is not set.
+     */
+    function test_R0_01_AutoSettlementCallback_SkipsIfNoRegistry() public {
+        // No registry set — playerRegistry == address(0)
+        _registerSeat(0, owner1, owner1);
+        _registerSeat(1, owner2, owner2);
+        _startHand();
+
+        // Preflop: seat0 (BTN/SB) is first actor in heads-up
+        vm.roll(block.number + 1);
+        vm.prank(owner1);
+        pokerTable.fold(0); // seat0 folds immediately
+
+        // Vaults should NOT have been called (no registry)
+        assertEq(vault1.handCount(), 0, "No callback without registry");
+        assertEq(vault2.handCount(), 0, "No callback without registry");
     }
 }

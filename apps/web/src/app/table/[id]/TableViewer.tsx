@@ -16,6 +16,7 @@ import {
 } from "@/lib/utils";
 import type { TableResponse } from "@/lib/types";
 import { GAME_STATES, ACTION_TYPES } from "@/lib/types";
+import { GameState } from "@playerco/shared";
 import { useWebSocket } from "@/lib/useWebSocket";
 import { getRevealedHolecards, type RevealedHolecardResponse, INDEXER_BASE } from "@/lib/api";
 import { PokerCard } from "@/components/poker/PokerCard";
@@ -219,8 +220,13 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
         setRevealedHolecards([]);
         return;
       }
+      // The indexer always returns GameState string names (e.g. "SHOWDOWN").
       const state = table.gameState;
-      if (state !== "SHOWDOWN" && state !== "SETTLED" && state !== "10" && state !== "11") {
+      const isRevealState =
+        state === GameState[GameState.SHOWDOWN] ||
+        state === GameState[GameState.SETTLED] ||
+        state === GameState[GameState.TOURNAMENT_OVER];
+      if (!isRevealState) {
         setRevealedHolecards([]);
         return;
       }
@@ -259,10 +265,11 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
   const gameState = GAME_STATES[table.gameState] || table.gameState;
   const currentHand = table.currentHand;
   const isActive = gameState !== "Waiting for Seats" && gameState !== "Settled";
+  // The indexer returns GameState string names — no numeric fallbacks needed.
   const vrfStreet: string | null =
-    table.gameState === "WAITING_VRF_FLOP" || table.gameState === "4" ? "Flop"
-    : table.gameState === "WAITING_VRF_TURN" || table.gameState === "6" ? "Turn"
-    : table.gameState === "WAITING_VRF_RIVER" || table.gameState === "8" ? "River"
+    table.gameState === GameState[GameState.WAITING_VRF_FLOP] ? "Flop"
+    : table.gameState === GameState[GameState.WAITING_VRF_TURN] ? "Turn"
+    : table.gameState === GameState[GameState.WAITING_VRF_RIVER] ? "River"
     : null;
   const actorSeat = currentHand?.actorSeat ?? null;
   const actorSeatData = actorSeat !== null ? seatByIndex.get(actorSeat) : null;

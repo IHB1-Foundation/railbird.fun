@@ -31,6 +31,25 @@ const HASHKEY_TESTNET: Chain = {
 const CHAIN: Chain = HASHKEY_TESTNET;
 const ZERO_ADDRESS = ZERO_ADDR as Address;
 
+/** Convert a Uint8Array to a 0x-prefixed hex string. */
+function bytesToHex(bytes: Uint8Array): `0x${string}` {
+  return ("0x" + Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("")) as `0x${string}`;
+}
+
+/**
+ * Runtime-validate that a readContract result is a hex string.
+ * Returns the value typed as `0x${string}` or throws a descriptive error.
+ */
+function asHexString(value: unknown, context: string): `0x${string}` {
+  if (typeof value !== "string") {
+    throw new Error(`${context}: expected hex string from contract, got ${typeof value}`);
+  }
+  if (value !== "0x" && !/^0x[0-9a-fA-F]+$/.test(value)) {
+    throw new Error(`${context}: contract returned malformed hex: "${value}"`);
+  }
+  return value as `0x${string}`;
+}
+
 
 function getPublicClient() {
   return createPublicClient({
@@ -145,19 +164,20 @@ export async function registerEncryptionKeyOnChain(
   const publicClient = getPublicClient();
 
   // Check if the same key is already registered — skip if so
-  const existing = await publicClient.readContract({
+  const existingRaw = await publicClient.readContract({
     address: params.tableAddress,
     abi: POKER_TABLE_ABI,
     functionName: "getEncryptionKey",
     args: [params.seatIndex],
-  }) as `0x${string}`;
+  });
+  const existing = asHexString(existingRaw, "registerEncryptionKey: getEncryptionKey");
 
-  const newKeyHex = "0x" + Array.from(params.pubKey).map(b => b.toString(16).padStart(2, "0")).join("");
+  const newKeyHex = bytesToHex(params.pubKey);
   if (existing && existing !== "0x" && existing.toLowerCase() === newKeyHex.toLowerCase()) {
     return undefined; // same key already registered, skip
   }
 
-  const pubKeyHex = ("0x" + Array.from(params.pubKey).map(b => b.toString(16).padStart(2, "0")).join("")) as `0x${string}`;
+  const pubKeyHex = newKeyHex;
   const txHash = await walletClient.writeContract({
     address: params.tableAddress,
     abi: POKER_TABLE_ABI,
@@ -180,29 +200,26 @@ export async function getEncryptionKeyOnChain(
   seatIndex: number
 ): Promise<Uint8Array | null> {
   const publicClient = getPublicClient();
-  const hex = await publicClient.readContract({
-    address: tableAddress,
-    abi: POKER_TABLE_ABI,
-    functionName: "getEncryptionKey",
-    args: [seatIndex],
-  }) as `0x${string}`;
+  let hex: `0x${string}`;
+  try {
+    const raw = await publicClient.readContract({
+      address: tableAddress,
+      abi: POKER_TABLE_ABI,
+      functionName: "getEncryptionKey",
+      args: [seatIndex],
+    });
+    hex = asHexString(raw, "getEncryptionKeyOnChain");
+  } catch (err) {
+    console.error("getEncryptionKeyOnChain: contract read failed", err);
+    return null;
+  }
 
   if (!hex || hex === "0x") return null;
-  const h = hex.startsWith("0x") ? hex.slice(2) : hex;
-  if (h.length === 0) return null;
-  // Validate hex format: must be even-length and contain only hex chars
-  if (h.length % 2 !== 0 || !/^[0-9a-fA-F]+$/.test(h)) {
-    console.error("getEncryptionKeyOnChain: unexpected hex format", hex);
-    return null;
+  const h = hex.slice(2); // strip 0x — already validated by asHexString
+  if (h.length === 0 || h.length % 2 !== 0) return null;
+  const bytes = new Uint8Array(h.length / 2);
+  for (let i = 0; i < bytes.length; i++) {
+    bytes[i] = parseInt(h.slice(i * 2, i * 2 + 2), 16);
   }
-  try {
-    const bytes = new Uint8Array(h.length / 2);
-    for (let i = 0; i < bytes.length; i++) {
-      bytes[i] = parseInt(h.slice(i * 2, i * 2 + 2), 16);
-    }
-    return bytes;
-  } catch (err) {
-    console.error("getEncryptionKeyOnChain: failed to parse hex key", err);
-    return null;
-  }
+  return bytes;
 }

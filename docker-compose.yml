@@ -125,6 +125,11 @@ services:
       HEALTH_PORT: "9101"
     ports:
       - "9101:9101"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9101/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     depends_on:
       ownerview:
         condition: service_healthy
@@ -145,6 +150,11 @@ services:
       HEALTH_PORT: "9102"
     ports:
       - "9102:9102"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9102/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     depends_on:
       anvil:
         condition: service_healthy
@@ -166,6 +176,11 @@ services:
       HEALTH_PORT: "9100"
     ports:
       - "9100:9100"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9100/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     depends_on:
       ownerview:
         condition: service_healthy

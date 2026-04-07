@@ -173,10 +173,14 @@ contract PlayerVault is IPlayerVault {
         require(_router != address(0), "Invalid router");
         require(_maxMonBps <= MAX_BPS, "maxMonBps > 100%");
         require(_maxTokenBps <= MAX_BPS, "maxTokenBps > 100%");
+        address oldRouter = nadfunRouter;
         agentToken = _agentToken;
         nadfunRouter = _router;
         rebalanceMaxMonBps = _maxMonBps;
         rebalanceMaxTokenBps = _maxTokenBps;
+        if (oldRouter != _router) {
+            emit RouterUpdated(oldRouter, _router);
+        }
     }
 
     /**

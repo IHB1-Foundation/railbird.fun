@@ -19,6 +19,8 @@ interface IPlayerVault {
     event RebalanceBuy(uint256 indexed handId, uint256 monIn, uint256 tokenOut, uint256 navBefore, uint256 navAfter);
     /// @dev Emitted when the treasury sells its own token for external assets (NAV-accretive)
     event RebalanceSell(uint256 indexed handId, uint256 tokenIn, uint256 monOut, uint256 navBefore, uint256 navAfter);
+    /// @dev Emitted when the nad.fun router address is updated via setRebalanceConfig.
+    event RouterUpdated(address indexed oldRouter, address indexed newRouter);
 
     function deposit() external payable;
     function withdraw(uint256 amount, address recipient) external;

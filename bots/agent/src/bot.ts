@@ -50,6 +50,16 @@ export class AgentBot {
   // Circuit breakers for external services
   private ownerViewCircuit = new CircuitBreaker({ name: "OwnerView", failureThreshold: 5, recoveryTimeoutMs: 30_000 });
 
+  // T-R3-02: Escalating logging for persistent hole card failures
+  /** Whether we've already emitted the first circuit-open WARN (suppresses duplicates). */
+  private circuitOpenWarnLogged: boolean = false;
+  /** Number of consecutive hands where hole cards could not be fetched (circuit open). */
+  private consecutiveCircuitOpenHands: number = 0;
+  /** Number of consecutive circuit-open hands after which we escalate to CRITICAL. */
+  private static readonly FOLD_ONLY_THRESHOLD = 10;
+  /** Log CRITICAL every this many cumulative apiErrors. */
+  private static readonly CRITICAL_API_ERROR_INTERVAL = 10;
+
   // Track last known hand for detecting new hands
   private lastHandId: bigint = 0n;
   private lastStack: bigint | null = null;
@@ -354,13 +364,37 @@ export class AgentBot {
             card2: response.holeCards[1].card,
           };
         }
+        // T-R3-02: Reset circuit-open tracking on successful fetch
+        if (this.consecutiveCircuitOpenHands > 0) {
+          console.log("[AgentBot] OwnerView recovered — resuming informed play");
+        }
+        this.consecutiveCircuitOpenHands = 0;
+        this.circuitOpenWarnLogged = false;
       } catch (error) {
         if (error instanceof CircuitOpenError) {
-          // Circuit open: skip silently (logged when circuit opened)
+          // T-R3-02: Log WARN on first open; escalate to CRITICAL after sustained outage.
+          this.consecutiveCircuitOpenHands++;
+          if (!this.circuitOpenWarnLogged) {
+            console.warn("[AgentBot] OwnerView circuit breaker is OPEN — playing blind (no hole cards)");
+            this.circuitOpenWarnLogged = true;
+          }
+          if (this.consecutiveCircuitOpenHands >= AgentBot.FOLD_ONLY_THRESHOLD) {
+            console.error(
+              `[AgentBot] CRITICAL: OwnerView has been unavailable for ${this.consecutiveCircuitOpenHands} consecutive hands. ` +
+                "Playing blind. Consider checking OwnerView service health."
+            );
+          }
         } else {
           // Hole card failure is non-fatal: bot can still play with heuristics.
           console.error("[AgentBot] Failed to get hole cards (playing without):", error);
           this.stats.apiErrors++;
+          // Escalate every CRITICAL_API_ERROR_INTERVAL cumulative errors
+          if (this.stats.apiErrors % AgentBot.CRITICAL_API_ERROR_INTERVAL === 0) {
+            console.error(
+              `[AgentBot] CRITICAL: ${this.stats.apiErrors} cumulative hole card API errors. ` +
+                "OwnerView may be degraded."
+            );
+          }
         }
       }
     }

@@ -2,6 +2,9 @@
 
 import type { WebSocket } from "ws";
 import type { WsMessage, WsMessageType } from "./types.js";
+import { createLogger } from "@playerco/shared";
+
+const logger = createLogger({ service: "indexer:ws" });
 
 export class WsManager {
   // Map of tableId -> Set of connected WebSocket clients
@@ -13,7 +16,7 @@ export class WsManager {
       this.connections.set(tableId, new Set());
     }
     this.connections.get(tableId)!.add(ws);
-    console.log(`[WS] Client subscribed to table ${tableId} (${this.getSubscriberCount(tableId)} total)`);
+    logger.info({ tableId, total: this.getSubscriberCount(tableId) }, "WS client subscribed");
   }
 
   // Unsubscribe a client from a table
@@ -24,7 +27,7 @@ export class WsManager {
       if (clients.size === 0) {
         this.connections.delete(tableId);
       }
-      console.log(`[WS] Client unsubscribed from table ${tableId} (${this.getSubscriberCount(tableId)} remaining)`);
+      logger.info({ tableId, remaining: this.getSubscriberCount(tableId) }, "WS client unsubscribed");
     }
   }
 
@@ -36,7 +39,7 @@ export class WsManager {
         if (clients.size === 0) {
           this.connections.delete(tableId);
         }
-        console.log(`[WS] Client unsubscribed from table ${tableId} (${this.getSubscriberCount(tableId)} remaining)`);
+        logger.info({ tableId, remaining: this.getSubscriberCount(tableId) }, "WS client disconnected from all tables");
       }
     }
   }
@@ -76,17 +79,17 @@ export class WsManager {
           failed++;
         }
       } catch (error) {
-        console.error(`[WS] Failed to send message to client:`, error);
+        logger.error({ tableId, error }, "WS failed to send message to client");
         clients.delete(ws);
         failed++;
       }
     }
 
     if (sent > 0) {
-      console.log(`[WS] Broadcast ${type} to ${sent} clients for table ${tableId}`);
+      logger.debug({ tableId, type, sent }, "WS broadcast sent");
     }
     if (failed > 0) {
-      console.log(`[WS] Removed ${failed} stale connections for table ${tableId}`);
+      logger.warn({ tableId, failed }, "WS removed stale connections");
     }
   }
 

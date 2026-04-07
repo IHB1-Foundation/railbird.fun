@@ -5,7 +5,9 @@ import { OwnerViewClient, type HoleCardsResponse } from "./auth/ownerviewClient.
 import { SimpleStrategy, type Strategy, Decision, type DecisionContext, type HoleCards } from "./strategy/index.js";
 import { signMessage } from "viem/accounts";
 import { deriveEncryptionKeyPair } from "./auth/encryptionKey.js";
-import { CircuitBreaker, CircuitOpenError } from "@playerco/shared";
+import { CircuitBreaker, CircuitOpenError, createLogger } from "@playerco/shared";
+
+const logger = createLogger({ service: "agent-bot" });
 
 export interface AgentBotConfig {
   rpcUrl: string;
@@ -116,17 +118,15 @@ export class AgentBot {
     const pollInterval = Math.max(200, this.config.pollIntervalMs || 1000);
     this.currentBackoffMs = pollInterval;
 
-    console.log(`[AgentBot] Starting bot for address: ${this.address}`);
-    console.log(`[AgentBot] Table: ${this.config.pokerTableAddress}`);
-    console.log(`[AgentBot] Max hands: ${maxHands || "unlimited"}`);
+    logger.info({ address: this.address, table: this.config.pokerTableAddress, maxHands: maxHands || "unlimited" }, "AgentBot starting");
 
     // Authenticate with OwnerView if available
     if (this.ownerviewClient) {
       try {
         await this.ownerviewClient.authenticate();
-        console.log("[AgentBot] Authenticated with OwnerView service");
+        logger.info("Authenticated with OwnerView service");
       } catch (error) {
-        console.warn("[AgentBot] Failed to authenticate with OwnerView:", error);
+        logger.warn({ error }, "Failed to authenticate with OwnerView");
       }
     }
 
@@ -134,12 +134,12 @@ export class AgentBot {
     try {
       const { privKey } = await deriveEncryptionKeyPair(this.config.privateKey);
       this.encryptionPrivKey = privKey;
-      console.log("[AgentBot] Encryption key pair derived");
+      logger.info("Encryption key pair derived");
       if (this.ownerviewClient) {
         this.ownerviewClient.setEncryptionPrivKey(privKey);
       }
     } catch (error) {
-      console.warn("[AgentBot] Failed to derive encryption key pair:", error);
+      logger.warn({ error }, "Failed to derive encryption key pair");
     }
 
     while (this.running) {
@@ -149,26 +149,22 @@ export class AgentBot {
 
         // Check if we've reached max hands
         if (maxHands > 0 && this.stats.handsPlayed >= maxHands) {
-          console.log(`[AgentBot] Reached ${maxHands} hands, stopping`);
+          logger.info({ maxHands }, "Reached max hands, stopping");
           break;
         }
       } catch (error) {
-        console.error("[AgentBot] Error in tick:", error);
+        logger.error({ error }, "Error in tick");
         this.stats.errors++;
         if (this.isRateLimitError(error)) {
           this.currentBackoffMs = Math.min(this.currentBackoffMs * 2, 15000);
-          console.warn(`[AgentBot] RPC rate-limited. Backing off to ${this.currentBackoffMs}ms`);
+          logger.warn({ backoffMs: this.currentBackoffMs }, "RPC rate-limited, backing off");
         }
       }
 
       await this.sleep(this.currentBackoffMs);
     }
 
-    console.log("[AgentBot] Bot stopped");
-    console.log("[AgentBot] Stats:", {
-      ...this.stats,
-      totalProfit: this.stats.totalProfit.toString(),
-    });
+    logger.info({ stats: { ...this.stats, totalProfit: this.stats.totalProfit.toString() } }, "AgentBot stopped");
   }
 
   /**
@@ -205,9 +201,9 @@ export class AgentBot {
       // null return means "same key already on-chain" → treat as registered
       this.encryptionKeyState = "registered";
       this.encryptionKeyRegistrationStartedAt = null;
-      console.log(`[AgentBot] Recovered from stuck registration (on-chain: ${alreadyRegistered === null ? "already set" : alreadyRegistered})`);
+      logger.info({ status: alreadyRegistered === null ? "already set" : alreadyRegistered }, "Recovered from stuck encryption key registration");
     } catch (error) {
-      console.warn("[AgentBot] Stuck registration recovery failed, rolling back to unregistered:", error);
+      logger.warn({ error }, "Stuck registration recovery failed, rolling back to unregistered");
       this.encryptionKeyState = "unregistered";
       this.encryptionKeyRegistrationStartedAt = null;
     }
@@ -227,7 +223,7 @@ export class AgentBot {
     if (this.mySeatIndex === null) {
       this.mySeatIndex = this.chainClient.findMySeat(state);
       if (this.mySeatIndex !== null) {
-        console.log(`[AgentBot] Found my seat: ${this.mySeatIndex}`);
+        logger.info({ seatIndex: this.mySeatIndex }, "Found my seat");
         this.lastStack = state.seats[this.mySeatIndex].stack;
 
         // Auto-register encryption key on-chain (once per session).
@@ -242,15 +238,15 @@ export class AgentBot {
             // if the same key is already set (returns null).
             const txHash = await this.chainClient.registerEncryptionKey(this.mySeatIndex, pubKey);
             if (txHash) {
-              console.log(`[AgentBot] Encryption key registered: ${txHash}`);
+              logger.info({ txHash }, "Encryption key registered on-chain");
             } else {
-              console.log("[AgentBot] Encryption key already registered on-chain, skipping");
+              logger.info("Encryption key already registered on-chain, skipping");
             }
             this.encryptionKeyState = "registered";
           } catch (error) {
             // Roll back to unregistered so the next tick can retry.
             this.encryptionKeyState = "unregistered";
-            console.warn("[AgentBot] Failed to register encryption key:", error);
+            logger.warn({ error }, "Failed to register encryption key");
           }
         }
       }
@@ -275,9 +271,7 @@ export class AgentBot {
           }
         }
         this.lastStack = currentStack;
-        console.log(
-          `[AgentBot] Hand ${this.lastHandId} complete. Hands: ${this.stats.handsPlayed}, Won: ${this.stats.handsWon}`
-        );
+        logger.info({ handId: String(this.lastHandId), handsPlayed: this.stats.handsPlayed, handsWon: this.stats.handsWon }, "Hand complete");
       }
       this.lastHandId = state.currentHandId;
     }
@@ -287,9 +281,9 @@ export class AgentBot {
       // Try to start a new hand if settled
       if (state.gameState === GameState.SETTLED) {
         try {
-          console.log("[AgentBot] Attempting to start new hand...");
+          logger.debug("Attempting to start new hand");
           await this.chainClient.startHand();
-          console.log("[AgentBot] Started new hand");
+          logger.info("Started new hand");
         } catch (error) {
           // Another player might have started, or conditions not met
           // This is expected behavior, not an error
@@ -322,9 +316,7 @@ export class AgentBot {
         const turnKey = `${state.currentHandId}:${state.gameState}:${state.hand.actorSeat}:${state.lastActionBlock}`;
         if (this.waitingTurnKey !== turnKey) {
           this.waitingTurnKey = turnKey;
-          console.log(
-            `[AgentBot] My turn started. Waiting ${turnActionDelayMs}ms before action (eligible at ${actionEligibleAt}).`
-          );
+          logger.info({ turnActionDelayMs, eligibleAt: String(actionEligibleAt) }, "My turn started, waiting before action");
         }
         return;
       }
@@ -366,7 +358,7 @@ export class AgentBot {
         }
         // T-R3-02: Reset circuit-open tracking on successful fetch
         if (this.consecutiveCircuitOpenHands > 0) {
-          console.log("[AgentBot] OwnerView recovered — resuming informed play");
+          logger.info("OwnerView recovered — resuming informed play");
         }
         this.consecutiveCircuitOpenHands = 0;
         this.circuitOpenWarnLogged = false;
@@ -375,25 +367,22 @@ export class AgentBot {
           // T-R3-02: Log WARN on first open; escalate to CRITICAL after sustained outage.
           this.consecutiveCircuitOpenHands++;
           if (!this.circuitOpenWarnLogged) {
-            console.warn("[AgentBot] OwnerView circuit breaker is OPEN — playing blind (no hole cards)");
+            logger.warn("OwnerView circuit breaker is OPEN — playing blind (no hole cards)");
             this.circuitOpenWarnLogged = true;
           }
           if (this.consecutiveCircuitOpenHands >= AgentBot.FOLD_ONLY_THRESHOLD) {
-            console.error(
-              `[AgentBot] CRITICAL: OwnerView has been unavailable for ${this.consecutiveCircuitOpenHands} consecutive hands. ` +
-                "Playing blind. Consider checking OwnerView service health."
+            logger.error(
+              { consecutiveHands: this.consecutiveCircuitOpenHands },
+              "CRITICAL: OwnerView has been unavailable for extended period; playing blind"
             );
           }
         } else {
           // Hole card failure is non-fatal: bot can still play with heuristics.
-          console.error("[AgentBot] Failed to get hole cards (playing without):", error);
+          logger.error({ error }, "Failed to get hole cards (playing without)");
           this.stats.apiErrors++;
           // Escalate every CRITICAL_API_ERROR_INTERVAL cumulative errors
           if (this.stats.apiErrors % AgentBot.CRITICAL_API_ERROR_INTERVAL === 0) {
-            console.error(
-              `[AgentBot] CRITICAL: ${this.stats.apiErrors} cumulative hole card API errors. ` +
-                "OwnerView may be degraded."
-            );
+            logger.error({ apiErrors: this.stats.apiErrors }, "CRITICAL: cumulative hole card API errors; OwnerView may be degraded");
           }
         }
       }
@@ -414,10 +403,7 @@ export class AgentBot {
 
     // Get decision from strategy
     const decision = await this.strategy.decide(context);
-    console.log(
-      `[AgentBot] Hand ${state.currentHandId}, deciding: ${decision.action}` +
-        (decision.raiseAmount ? ` to ${decision.raiseAmount}` : "")
-    );
+    logger.info({ handId: String(state.currentHandId), action: decision.action, raiseAmount: decision.raiseAmount ? String(decision.raiseAmount) : undefined }, "Deciding action");
 
     // Submit action
     try {
@@ -436,19 +422,19 @@ export class AgentBot {
           break;
       }
       this.stats.actionsSubmitted++;
-      console.log(`[AgentBot] Action ${decision.action} submitted successfully`);
+      logger.info({ action: decision.action }, "Action submitted successfully");
     } catch (error) {
-      console.error(`[AgentBot] Failed to submit ${decision.action}:`, error);
+      logger.error({ action: decision.action, error }, "Failed to submit action");
       this.stats.errors++;
 
       // Fail-safe: try to fold if other actions fail
       if (decision.action !== Decision.FOLD) {
         try {
-          console.log("[AgentBot] Fail-safe: attempting fold");
+          logger.info("Fail-safe: attempting fold");
           await this.chainClient.fold(seatIndex);
           this.stats.actionsSubmitted++;
         } catch (foldError) {
-          console.error("[AgentBot] Fail-safe fold also failed:", foldError);
+          logger.error({ error: foldError }, "Fail-safe fold also failed");
         }
       }
     }

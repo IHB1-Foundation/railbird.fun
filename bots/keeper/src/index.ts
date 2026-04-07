@@ -14,6 +14,24 @@ function optionalEnv(name: string, defaultValue: string): string {
   return process.env[name] || defaultValue;
 }
 
+/**
+ * Validates that a private key string is a properly-formatted 32-byte hex key.
+ * Exits with a descriptive error if invalid.
+ */
+function validatePrivateKey(name: string, key: string): void {
+  if (!key) {
+    console.error(`[KeeperBot] ${name} is empty. Set a valid 32-byte hex private key.`);
+    process.exit(1);
+  }
+  const stripped = key.startsWith("0x") ? key.slice(2) : key;
+  if (!/^[0-9a-fA-F]+$/.test(stripped) || stripped.length !== 64) {
+    console.error(
+      `[KeeperBot] ${name} is invalid: must be a 32-byte hex string (64 hex chars, optionally prefixed with 0x). Got length ${stripped.length}.`
+    );
+    process.exit(1);
+  }
+}
+
 function parsePositiveInt(name: string, fallback: number): number {
   const raw = process.env[name];
   if (!raw) return fallback;
@@ -64,9 +82,12 @@ async function main() {
     return;
   }
 
+  const keeperKey = requireEnv("KEEPER_PRIVATE_KEY");
+  validatePrivateKey("KEEPER_PRIVATE_KEY", keeperKey);
+
   const baseConfig = {
     rpcUrl,
-    privateKey: requireEnv("KEEPER_PRIVATE_KEY") as `0x${string}`,
+    privateKey: keeperKey as `0x${string}`,
     ownerviewUrl: process.env.OWNERVIEW_URL,
     dealerApiKey: process.env.DEALER_API_KEY,
     chainId: parseInt(optionalEnv("CHAIN_ID", "133")),

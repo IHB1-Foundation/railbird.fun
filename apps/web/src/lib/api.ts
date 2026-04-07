@@ -17,6 +17,7 @@ const MAX_RETRIES = 2;
 
 async function fetchJson<T>(path: string, timeoutMs = DEFAULT_TIMEOUT_MS): Promise<T> {
   let lastError: Error | null = null;
+  let retryAfterMs: number | null = null;
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     const controller = new AbortController();
@@ -29,18 +30,27 @@ async function fetchJson<T>(path: string, timeoutMs = DEFAULT_TIMEOUT_MS): Promi
       });
 
       if (!res.ok) {
+        // Capture Retry-After for 429 before throwing
+        if (res.status === 429) {
+          const retryAfterHeader = res.headers.get("Retry-After");
+          retryAfterMs = retryAfterHeader
+            ? Math.min(parseInt(retryAfterHeader, 10) * 1000, 30_000)
+            : null;
+        }
         throw new Error(`API error: ${res.status} ${res.statusText}`);
       }
 
       return await res.json();
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err));
-      // Don't retry on definitive errors (4xx, abort on last attempt)
+      // Don't retry on definitive errors (other 4xx, abort on last attempt)
       if (attempt === MAX_RETRIES || (err instanceof Error && !isRetryableError(err))) {
         break;
       }
-      // Exponential back-off before retry
-      await new Promise((r) => setTimeout(r, 200 * (attempt + 1)));
+      // Use Retry-After delay for 429, otherwise exponential back-off
+      const delay = retryAfterMs ?? 200 * (attempt + 1);
+      retryAfterMs = null;
+      await new Promise((r) => setTimeout(r, delay));
     } finally {
       clearTimeout(timer);
     }
@@ -50,8 +60,11 @@ async function fetchJson<T>(path: string, timeoutMs = DEFAULT_TIMEOUT_MS): Promi
 }
 
 function isRetryableError(err: Error): boolean {
-  // Retry on network errors and timeouts, not on HTTP 4xx
-  return err.name === "AbortError" || !err.message.startsWith("API error: 4");
+  // Retry on network errors, timeouts, 429 (rate-limit, use Retry-After), and 5xx.
+  // Do NOT retry on other 4xx (permanent client errors).
+  if (err.name === "AbortError") return true;
+  if (err.message.startsWith("API error: 429")) return true;
+  return !err.message.startsWith("API error: 4");
 }
 
 // Tables

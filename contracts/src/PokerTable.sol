@@ -832,8 +832,8 @@ contract PokerTable {
      *
      * @dev The caller provides the per-seat reveal data (cards + salts + commitments).
      *      VRF randomness is read from on-chain storage. Dealer seed is read from on-chain storage.
-     *      Emits ShuffleVerified on success, ShuffleIntegrityViolation on failure.
-     *      This is a soft-enforcement: settlement is not affected by the outcome.
+     *      Emits ShuffleVerified on success.
+     *      On failure: emits ShuffleIntegrityViolation and auto-pauses the table (hard enforcement).
      *
      * @param handId    The hand ID to verify
      * @param seatCount Number of seats that were dealt
@@ -865,7 +865,13 @@ contract PokerTable {
         if (valid) {
             emit ShuffleVerified(handId, dealerSeed);
         } else {
+            // Hard enforcement: auto-pause the table so admin must investigate before play resumes.
+            // Previous settlement funds have already been distributed; this prevents further cheating.
             emit ShuffleIntegrityViolation(handId, dealerSeed);
+            if (!paused) {
+                paused = true;
+                emit TablePaused(address(this));
+            }
         }
     }
 
@@ -1693,14 +1699,27 @@ contract PokerTable {
         emit CommunityCardsDealt(currentHandId, gameState, newCards);
     }
 
+    /**
+     * @dev T-R1-02: Hard enforcement — if dealer committed a seed but never revealed it,
+     *      emit ShuffleUnverified and auto-pause the table so admin must investigate.
+     *      Settlement funds are still distributed (to avoid locking player chips), but
+     *      further play is blocked until an admin unpauses.
+     */
+    function _checkAndFlagUnrevealedDealerSeed(uint256 handId) internal {
+        if (dealerSeedCommits[handId] != bytes32(0) && dealerSeedReveals[handId] == bytes32(0)) {
+            emit ShuffleUnverified(handId);
+            if (!paused) {
+                paused = true;
+                emit TablePaused(address(this));
+            }
+        }
+    }
+
     function _settleHand(uint8 winnerSeat) internal {
         require(winnerSeat < numSeats, "Invalid winner");
 
-        // T4.2: Soft enforcement — emit ShuffleUnverified if dealer seed was never revealed
         uint256 handId = currentHandId;
-        if (dealerSeedCommits[handId] != bytes32(0) && dealerSeedReveals[handId] == bytes32(0)) {
-            emit ShuffleUnverified(handId);
-        }
+        _checkAndFlagUnrevealedDealerSeed(handId);
 
         uint256 potAmount = currentHand.pot;
         seats[winnerSeat].stack += potAmount;
@@ -1820,6 +1839,7 @@ contract PokerTable {
         bool[MAX_SEATS] memory revealedBySeat,
         uint8 fallbackWinner
     ) internal {
+        _checkAndFlagUnrevealedDealerSeed(currentHandId);
         uint8 potCount = currentHand.sidePotCount;
         uint8 firstWinner = numSeats;
         uint256[MAX_SEATS] memory won;
@@ -1903,6 +1923,7 @@ contract PokerTable {
         uint256 bestScore,
         uint8 winnerCount
     ) internal {
+        _checkAndFlagUnrevealedDealerSeed(currentHandId);
         uint256 potAmount = currentHand.pot;
         uint256 share = potAmount / winnerCount;
         uint256 remainder = potAmount % winnerCount;

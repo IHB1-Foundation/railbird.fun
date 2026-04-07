@@ -3073,6 +3073,58 @@ contract PokerTableTest is Test {
         pokerTable.advanceToPreflop();
     }
 
+    // ============ T-R1-02: ShuffleVerification hard enforcement ============
+
+    event ShuffleUnverified(uint256 indexed handId);
+    event TablePaused(address indexed by);
+
+    // 4-seat game: button=0, SB=1, BB=2, UTG=3; preflop action order: 3→0→1→2
+    // Fold UTG(3), Button(0), SB(1) → only BB(2) remains → _settleHand(2)
+    function _foldToSettlement() internal {
+        vm.roll(block.number + 1); vm.prank(operator4); pokerTable.fold(3); // UTG
+        vm.roll(block.number + 1); vm.prank(operator1); pokerTable.fold(0); // Button
+        vm.roll(block.number + 1); vm.prank(operator2); pokerTable.fold(1); // SB → settlement
+    }
+
+    /**
+     * @notice T-R1-02: When dealer committed a seed but never revealed it at settlement,
+     *         ShuffleUnverified is emitted AND the table is auto-paused (hard enforcement).
+     */
+    function test_R1_02_UnrevealedDealerSeed_PausesTable() public {
+        _setupAllSeats();
+        _startHandToWFHC();
+
+        bytes32 seed = bytes32(uint256(0xdeadbeef));
+        pokerTable.submitDealerSeedCommit(1, keccak256(abi.encodePacked(seed)));
+
+        _submitDummyCommits(1);
+        pokerTable.advanceToPreflop();
+
+        vm.recordLogs();
+        _foldToSettlement();
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+
+        bytes32 unverifiedSig = keccak256("ShuffleUnverified(uint256)");
+        bool foundUnverified;
+        for (uint256 i = 0; i < logs.length; i++) {
+            if (logs[i].topics[0] == unverifiedSig) { foundUnverified = true; break; }
+        }
+        assertTrue(foundUnverified, "ShuffleUnverified must be emitted");
+        assertTrue(pokerTable.paused(), "Table must be paused when dealer seed was never revealed");
+    }
+
+    /**
+     * @notice T-R1-02: When dealer seed was never committed, no ShuffleUnverified and no pause.
+     */
+    function test_R1_02_NoSeedCommit_NoFlagOnSettle() public {
+        _setupAllSeats();
+        _startHandFull(); // no dealer seed commit
+
+        _foldToSettlement();
+
+        assertFalse(pokerTable.paused(), "Table should NOT be paused when no seed was committed");
+    }
+
     // ============ T-1301: Heads-Up Blind Rule (button=SB) ============
 
     function test_HeadsUp_ButtonIsSB() public {

@@ -16,7 +16,6 @@ import { GameState, NonceManager, POKER_TABLE_ABI } from "@playerco/shared";
 
 export { GameState };
 
-const MAX_SEATS = 9;
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as Address;
 
 // Action type enum matching contract
@@ -81,6 +80,7 @@ export class ChainClient {
   private smallBlindCache: bigint | null = null;
   private bigBlindCache: bigint | null = null;
   private actionTimeoutCache: bigint | null = null;
+  private maxSeatsCache: number | null = null;
   private txTimeoutMs: number;
   private nonceManager: NonceManager;
 
@@ -161,12 +161,13 @@ export class ChainClient {
       this.tableIdCache !== null &&
       this.smallBlindCache !== null &&
       this.bigBlindCache !== null &&
-      this.actionTimeoutCache !== null
+      this.actionTimeoutCache !== null &&
+      this.maxSeatsCache !== null
     ) {
       return;
     }
 
-    const [tableId, smallBlind, bigBlind, actionTimeout] = await Promise.all([
+    const [tableId, smallBlind, bigBlind, actionTimeout, maxSeats] = await Promise.all([
       this.publicClient.readContract({
         address: this.pokerTableAddress,
         abi: POKER_TABLE_ABI,
@@ -187,12 +188,18 @@ export class ChainClient {
         abi: POKER_TABLE_ABI,
         functionName: "ACTION_TIMEOUT",
       }),
+      this.publicClient.readContract({
+        address: this.pokerTableAddress,
+        abi: POKER_TABLE_ABI,
+        functionName: "MAX_SEATS",
+      }),
     ]);
 
     this.tableIdCache = tableId as bigint;
     this.smallBlindCache = smallBlind as bigint;
     this.bigBlindCache = bigBlind as bigint;
     this.actionTimeoutCache = actionTimeout as bigint;
+    this.maxSeatsCache = Number(maxSeats);
   }
 
   async getTableState(mySeatIndex: number | null = null): Promise<TableState> {
@@ -239,9 +246,9 @@ export class ChainClient {
     ]);
 
     let seats: Seat[];
-    if (mySeatIndex === null || mySeatIndex < 0 || mySeatIndex >= MAX_SEATS) {
+    if (mySeatIndex === null || mySeatIndex < 0 || mySeatIndex >= this.maxSeatsCache!) {
       const seatResults = await Promise.all(
-        Array.from({ length: MAX_SEATS }, (_, i) =>
+        Array.from({ length: this.maxSeatsCache! }, (_, i) =>
           this.publicClient.readContract({
             address: this.pokerTableAddress,
             abi: POKER_TABLE_ABI,
@@ -258,7 +265,7 @@ export class ChainClient {
         functionName: "getSeat",
         args: [mySeatIndex],
       });
-      seats = Array.from({ length: MAX_SEATS }, () => this.createEmptySeat());
+      seats = Array.from({ length: this.maxSeatsCache! }, () => this.createEmptySeat());
       seats[mySeatIndex] = this.parseSeat(mySeat);
     }
 

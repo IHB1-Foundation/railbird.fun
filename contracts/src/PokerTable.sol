@@ -1550,6 +1550,8 @@ contract PokerTable {
             }
         }
         gameState = GameState.BETTING_PRE;
+        // T-R1-04: Set action deadline so forceTimeout works from the very first preflop action
+        actionDeadline = block.timestamp + ACTION_TIMEOUT;
         // If all players are all-in from blind posting, skip pre-flop betting
         if (_countNonAllInActivePlayers() == 0) {
             _completeBettingRound();

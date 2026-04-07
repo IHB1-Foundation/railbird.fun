@@ -3036,6 +3036,26 @@ contract PokerTableTest is Test {
         assertTrue(pokerTable.isHoleCardsRevealed(1, 1), "Clean reveal should succeed");
     }
 
+    // ============ T-R1-04: advanceToPreflop sets actionDeadline ============
+
+    /**
+     * @notice T-R1-04: advanceToPreflop sets actionDeadline to block.timestamp + ACTION_TIMEOUT.
+     */
+    function test_R1_04_AdvanceToPreflop_SetsActionDeadline() public {
+        _setupAllSeats();
+        _startHandToWFHC();
+        _submitDummyCommits(1);
+
+        uint256 before = block.timestamp;
+        pokerTable.advanceToPreflop();
+
+        assertEq(
+            pokerTable.actionDeadline(),
+            before + pokerTable.ACTION_TIMEOUT(),
+            "actionDeadline must be set on advanceToPreflop"
+        );
+    }
+
     // ============ T-1301: Heads-Up Blind Rule (button=SB) ============
 
     function test_HeadsUp_ButtonIsSB() public {

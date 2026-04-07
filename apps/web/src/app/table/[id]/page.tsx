@@ -1,7 +1,11 @@
 import { getTable } from "@/lib/api";
 import { TableViewer } from "./TableViewer";
+import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
+
+/** Allow hex addresses (with or without 0x) and numeric IDs only. */
+const VALID_TABLE_ID = /^(0x[a-fA-F0-9]{1,40}|\d+)$/;
 
 export default async function TablePage({
   params,
@@ -9,6 +13,10 @@ export default async function TablePage({
   params: { id: string };
 }) {
   const { id } = await params;
+
+  if (!VALID_TABLE_ID.test(id)) {
+    notFound();
+  }
 
   let table;
   let error = null;

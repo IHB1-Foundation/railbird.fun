@@ -176,6 +176,8 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
 
   // Fetch hole cards when authenticated and hand is active
   useEffect(() => {
+    let cancelled = false;
+
     const fetchHoleCards = async () => {
       if (!isAuthenticated || !table.currentHand) {
         setHoleCards(null);
@@ -184,18 +186,21 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
 
       try {
         const cards = await getHoleCards(tableId, table.currentHand.handId);
-        setHoleCards(cards);
+        if (!cancelled) setHoleCards(cards);
       } catch (err) {
         console.error("[TableViewer] Failed to fetch hole cards:", err);
-        setHoleCards(null);
+        if (!cancelled) setHoleCards(null);
       }
     };
 
     fetchHoleCards();
+    return () => { cancelled = true; };
   }, [isAuthenticated, tableId, table.currentHand?.handId, getHoleCards]);
 
   // Fetch revealed holecards when hand is at showdown/settled
   useEffect(() => {
+    let cancelled = false;
+
     const fetchRevealed = async () => {
       if (!table.currentHand) {
         setRevealedHolecards([]);
@@ -208,12 +213,13 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
       }
       try {
         const cards = await getRevealedHolecards(tableId, table.currentHand.handId);
-        setRevealedHolecards(cards);
+        if (!cancelled) setRevealedHolecards(cards);
       } catch {
-        setRevealedHolecards([]);
+        if (!cancelled) setRevealedHolecards([]);
       }
     };
     fetchRevealed();
+    return () => { cancelled = true; };
   }, [tableId, table.currentHand?.handId, table.gameState]);
 
   // Determine which seat the current user owns (if any)

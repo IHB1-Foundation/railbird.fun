@@ -13,6 +13,15 @@ interface ConfirmDialogProps {
   danger?: boolean;
 }
 
+const FOCUSABLE = [
+  "a[href]",
+  "button:not([disabled])",
+  "input:not([disabled])",
+  "select:not([disabled])",
+  "textarea:not([disabled])",
+  "[tabindex]:not([tabindex='-1'])",
+].join(", ");
+
 export function ConfirmDialog({
   open,
   title,
@@ -24,22 +33,61 @@ export function ConfirmDialog({
   danger = false,
 }: ConfirmDialogProps) {
   const cancelRef = useRef<HTMLButtonElement>(null);
+  const confirmRef = useRef<HTMLButtonElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const prevFocusRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (!open) return;
-    cancelRef.current?.focus();
+
+    // Store the element that triggered the dialog
+    prevFocusRef.current = document.activeElement as HTMLElement | null;
+
+    // Set initial focus: Confirm for danger, Cancel otherwise
+    const target = danger ? confirmRef.current : cancelRef.current;
+    target?.focus();
+
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onCancel();
+      if (e.key === "Escape") {
+        onCancel();
+        return;
+      }
+      if (e.key !== "Tab") return;
+
+      const container = containerRef.current;
+      if (!container) return;
+      const focusable = Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE));
+      if (focusable.length === 0) return;
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (e.shiftKey) {
+        if (document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else {
+        if (document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
     };
+
     document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
-  }, [open, onCancel]);
+    return () => {
+      document.removeEventListener("keydown", handleKey);
+      // Restore focus to trigger element when dialog closes
+      prevFocusRef.current?.focus();
+    };
+  }, [open, onCancel, danger]);
 
   if (!open) return null;
 
   return (
     <div
-      role="dialog"
+      role={danger ? "alertdialog" : "dialog"}
       aria-modal="true"
       aria-labelledby="confirm-dialog-title"
       style={{
@@ -65,6 +113,7 @@ export function ConfirmDialog({
       />
       {/* Dialog box */}
       <div
+        ref={containerRef}
         style={{
           position: "relative",
           zIndex: 1,
@@ -92,6 +141,7 @@ export function ConfirmDialog({
             {cancelLabel}
           </button>
           <button
+            ref={confirmRef}
             className={danger ? "btn" : "wallet-button"}
             onClick={onConfirm}
             style={danger ? { background: "linear-gradient(135deg, var(--danger), #c0392b)" } : undefined}

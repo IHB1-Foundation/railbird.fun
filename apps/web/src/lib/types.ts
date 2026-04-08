@@ -81,7 +81,7 @@ export interface VaultSnapshotResponse {
   blockNumber: string;
 }
 
-export type LeaderboardMetric = "roi" | "pnl" | "winrate" | "mdd";
+export type LeaderboardMetric = "roi" | "pnl" | "winrate" | "mdd" | "elo";
 export type LeaderboardPeriod = "24h" | "7d" | "30d" | "all";
 
 export interface LeaderboardEntry {
@@ -93,6 +93,9 @@ export interface LeaderboardEntry {
   cumulativePnl: string;
   winrate: string;
   mdd: string;
+  elo?: string;
+  peakElo?: string;
+  eloChange?: string;
   totalHands: number;
   winningHands: number;
   losingHands: number;

@@ -34,7 +34,14 @@ const METRIC_TOOLTIPS: Record<string, string> = {
   pnl: "Profit and Loss — cumulative chip earnings",
   winrate: "Win Rate — fraction of hands won",
   mdd: "Maximum Drawdown — largest peak-to-trough decline",
+  elo: "ELO Rating — competitive ranking based on head-to-head results (1500 = starting rating)",
 };
+
+function eloColor(elo: number): string {
+  if (elo >= 1600) return "#F59E0B"; // gold
+  if (elo >= 1400) return "#22C55E"; // green
+  return "#6B7280"; // gray
+}
 
 type SortKey = "metric" | "totalHands" | "winningHands";
 type SortDir = "asc" | "desc";
@@ -159,7 +166,7 @@ export function LeaderboardTable({ data }: LeaderboardTableProps) {
                 style={{ cursor: "pointer" }}
               >
                 <Tooltip text={METRIC_TOOLTIPS[metric] ?? ""}>
-                  {metric === "roi" ? "ROI" : metric === "pnl" ? "PnL" : metric === "winrate" ? "Win Rate" : "Max DD"}
+                  {metric === "roi" ? "ROI" : metric === "pnl" ? "PnL" : metric === "winrate" ? "Win Rate" : metric === "mdd" ? "Max DD" : "ELO"}
                 </Tooltip>
                 {" "}{sortIcon("metric")}
               </th>
@@ -188,7 +195,6 @@ export function LeaderboardTable({ data }: LeaderboardTableProps) {
               const primaryValue = getPrimaryValue(entry, metric);
               const isPositive = isPrimaryPositive(entry, metric);
               const profile = getAgentProfile(entry.ownerAddress);
-              const medal = RANK_MEDALS[entry.rank];
               const isExpanded = expandedRows.has(entry.tokenAddress);
 
               return (
@@ -218,6 +224,23 @@ export function LeaderboardTable({ data }: LeaderboardTableProps) {
                         />
                         {profile ? profile.name : shortenAddress(entry.tokenAddress)}
                       </Link>
+                      {entry.elo && (
+                        <span
+                          title={`ELO: ${entry.elo}`}
+                          style={{
+                            marginLeft: "0.35rem",
+                            fontSize: "0.65rem",
+                            fontWeight: 700,
+                            color: eloColor(parseFloat(entry.elo)),
+                            background: "rgba(0,0,0,0.15)",
+                            borderRadius: "3px",
+                            padding: "1px 4px",
+                            verticalAlign: "middle",
+                          }}
+                        >
+                          {parseFloat(entry.elo).toFixed(0)}
+                        </span>
+                      )}
                     </td>
                     <td
                       className={`text-mono text-muted ${styles.addressCell} ${styles.colOwner} ${styles.hideMobile}`}
@@ -283,6 +306,7 @@ function getPrimaryNumeric(
     case "pnl": return Number(BigInt(entry.cumulativePnl)) / 1e18;
     case "winrate": return parseFloat(entry.winrate);
     case "mdd": return parseFloat(entry.mdd);
+    case "elo": return parseFloat(entry.elo ?? "1500");
     default: return 0;
   }
 }
@@ -300,6 +324,12 @@ function getPrimaryValue(
       return formatPercent(entry.winrate);
     case "mdd":
       return formatPercent(entry.mdd);
+    case "elo": {
+      const rating = parseFloat(entry.elo ?? "1500");
+      const change = parseFloat(entry.eloChange ?? "0");
+      const changeStr = change > 0 ? ` ▲+${change.toFixed(0)}` : change < 0 ? ` ▼${change.toFixed(0)}` : "";
+      return `${rating.toFixed(0)}${changeStr}`;
+    }
     default:
       return "--";
   }
@@ -318,6 +348,8 @@ function isPrimaryPositive(
       return parseFloat(entry.winrate) >= 0.5;
     case "mdd":
       return parseFloat(entry.mdd) < 0.1;
+    case "elo":
+      return parseFloat(entry.elo ?? "1500") >= 1500;
     default:
       return true;
   }

@@ -24,6 +24,8 @@ import {
   getVaultSnapshotsInPeriod,
   getAgentSettlementsInPeriod,
   getAgentHands,
+  getEloRatings,
+  getEloLeaderboard,
 } from "../db/index.js";
 import { getWsManager } from "../ws/index.js";
 import { getListenerHealth } from "../events/listenerState.js";
@@ -506,7 +508,7 @@ router.get("/agents/:address/rebalances", async (req, res) => {
 
 // ============ Leaderboard ============
 
-const VALID_METRICS: LeaderboardMetric[] = ["roi", "pnl", "winrate", "mdd"];
+const VALID_METRICS: LeaderboardMetric[] = ["roi", "pnl", "winrate", "mdd", "elo"];
 const VALID_PERIODS: LeaderboardPeriod[] = ["24h", "7d", "30d", "all"];
 
 function getPeriodStartDate(period: LeaderboardPeriod): Date | null {
@@ -577,6 +579,10 @@ router.get("/leaderboard", leaderboardRateLimit, async (req, res) => {
     // Get all agents
     const agents = await getAllAgents();
 
+    // Fetch ELO ratings for all agents in one query
+    const allTokenAddresses = agents.map((a) => a.token_address);
+    const eloMap = await getEloRatings(allTokenAddresses).catch(() => new Map<string, { rating: number; handsPlayed: number }>());
+
     // Build leaderboard entries
     const entries: LeaderboardEntry[] = [];
 
@@ -637,6 +643,7 @@ router.get("/leaderboard", leaderboardRateLimit, async (req, res) => {
         mdd = (Number(maxDrawdown) / 10000).toString();
       }
 
+      const eloData = eloMap.get(agent.token_address.toLowerCase());
       entries.push({
         rank: 0, // Will be set after sorting
         tokenAddress: agent.token_address,
@@ -646,6 +653,9 @@ router.get("/leaderboard", leaderboardRateLimit, async (req, res) => {
         cumulativePnl: cumulativePnl.toString(),
         winrate,
         mdd,
+        elo: eloData ? eloData.rating.toFixed(2) : "1500",
+        peakElo: eloData ? eloData.rating.toFixed(2) : "1500", // simplified: use current rating
+        eloChange: "0", // Would need elo_history to compute recent change
         totalHands: total,
         winningHands: wins,
         losingHands: total - wins,
@@ -667,6 +677,8 @@ router.get("/leaderboard", leaderboardRateLimit, async (req, res) => {
         case "mdd":
           // Lower MDD is better, so ascending order
           return parseFloat(a.mdd) - parseFloat(b.mdd);
+        case "elo":
+          return parseFloat(b.elo ?? "1500") - parseFloat(a.elo ?? "1500");
         default:
           return 0;
       }

@@ -16,7 +16,7 @@ interface PageProps {
   }>;
 }
 
-const VALID_METRICS: LeaderboardMetric[] = ["roi", "pnl", "winrate", "mdd"];
+const VALID_METRICS: LeaderboardMetric[] = ["roi", "pnl", "winrate", "mdd", "elo"];
 const VALID_PERIODS: LeaderboardPeriod[] = ["24h", "7d", "30d", "all"];
 const PAGE_SIZE = 20;
 

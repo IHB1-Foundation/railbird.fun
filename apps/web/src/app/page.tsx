@@ -10,19 +10,19 @@ export const dynamic = "force-dynamic";
 const MAX_SEATS = Number(process.env.NEXT_PUBLIC_TABLE_MAX_SEATS || "9");
 
 function getStatusClass(gameState: string): string {
-  const state = GAME_STATES[gameState] || gameState;
-  if (state === "Waiting for Seats" || state === "Settled") {
+  const state = GAME_STATES[gameState] ?? gameState;
+  if (state === "Waiting for Players" || state === "Settled") {
     return "waiting";
   }
-  if (state.includes("Waiting VRF")) {
+  if (state.includes("Dealing")) {
     return "waiting";
   }
   return "live";
 }
 
 function isOngoingState(gameState: string): boolean {
-  const state = GAME_STATES[gameState] || gameState;
-  return state !== "Waiting for Seats" && state !== "Settled";
+  const state = GAME_STATES[gameState] ?? gameState;
+  return state !== "Waiting for Players" && state !== "Settled";
 }
 
 function parseHandId(value: string | null | undefined): number {
@@ -199,7 +199,7 @@ export default async function LobbyPage() {
             </div>
             <span className={`status ${getStatusClass(featuredTable.gameState)}`}>
               <span className={`dot ${getStatusClass(featuredTable.gameState) === "live" ? "pulse" : ""}`} />
-              {GAME_STATES[featuredTable.gameState] || featuredTable.gameState}
+              {GAME_STATES[featuredTable.gameState] ?? "Unknown State"}
             </span>
           </header>
 
@@ -297,7 +297,7 @@ export default async function LobbyPage() {
       <div className="card-grid">
         {safeTables.map((table) => {
           const statusClass = getStatusClass(table.gameState);
-          const stateName = GAME_STATES[table.gameState] || table.gameState;
+          const stateName = GAME_STATES[table.gameState] ?? "Unknown State";
           const activeSeats = table.seats.filter((s) => s.ownerAddress.toLowerCase() !== ZERO_ADDRESS).length;
 
           return (

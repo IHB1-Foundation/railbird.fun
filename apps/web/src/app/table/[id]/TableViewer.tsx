@@ -132,9 +132,9 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
     }
   }, [availableSeats]);
 
-  const gameState = GAME_STATES[table.gameState] || table.gameState;
+  const gameState = GAME_STATES[table.gameState] ?? "Unknown State";
   const currentHand = table.currentHand;
-  const isActive = gameState !== "Waiting for Seats" && gameState !== "Settled";
+  const isActive = gameState !== "Waiting for Players" && gameState !== "Settled";
   const vrfStreet: string | null =
     table.gameState === GameState[GameState.WAITING_VRF_FLOP] ? "Flop"
     : table.gameState === GameState[GameState.WAITING_VRF_TURN] ? "Turn"
@@ -352,13 +352,13 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
         <div className={styles.tableSurface}>
           <div className={styles.tableCenter}>
             <div className={styles.communityCards}>
-              {currentHand && currentHand.communityCards.length > 0 ? (
+              {currentHand && currentHand.communityCards.filter((c) => c !== 255).length > 0 ? (
                 currentHand.communityCards
                   .filter((c) => c !== 255)
                   .map((card, i) => <PokerCard key={i} cardIndex={card} />)
-              ) : (
-                <span className="muted">No community cards</span>
-              )}
+              ) : isActive && currentHand ? (
+                <span className="muted">Waiting for deal\u2026</span>
+              ) : null}
             </div>
             <div className={styles.tablePotBlock}>
               {currentHand && (

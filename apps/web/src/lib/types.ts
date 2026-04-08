@@ -115,33 +115,42 @@ export interface CardInfo {
 }
 
 export const GAME_STATES: Record<string, string> = {
-  "0": "Waiting for Seats",
-  "1": "Hand Init",
-  "2": "Waiting for Hole Cards",
+  "0": "Waiting for Players",
+  "1": "Starting Hand",
+  "2": "Dealing Hole Cards\u2026",
   "3": "Pre-flop",
-  "4": "Waiting VRF Flop",
+  "4": "Dealing Flop\u2026",
   "5": "Flop",
-  "6": "Waiting VRF Turn",
+  "6": "Dealing Turn\u2026",
   "7": "Turn",
-  "8": "Waiting VRF River",
+  "8": "Dealing River\u2026",
   "9": "River",
-  "10": "Showdown",
+  "10": "Showdown \u2014 Reveal Cards",
   "11": "Settled",
-  WAITING_FOR_SEATS: "Waiting for Seats",
-  HAND_INIT: "Hand Init",
-  WAITING_FOR_HOLECARDS: "Waiting for Hole Cards",
+  "12": "Dealing Hole Cards\u2026",
+  "13": "Dealing Hole Cards\u2026",
+  WAITING_FOR_SEATS: "Waiting for Players",
+  HAND_INIT: "Starting Hand",
+  WAITING_FOR_HOLECARDS: "Dealing Hole Cards\u2026",
   BETTING_PRE: "Pre-flop",
-  WAITING_VRF_FLOP: "Waiting VRF Flop",
+  WAITING_VRF_FLOP: "Dealing Flop\u2026",
   BETTING_FLOP: "Flop",
-  WAITING_VRF_TURN: "Waiting VRF Turn",
+  WAITING_VRF_TURN: "Dealing Turn\u2026",
   BETTING_TURN: "Turn",
-  WAITING_VRF_RIVER: "Waiting VRF River",
+  WAITING_VRF_RIVER: "Dealing River\u2026",
   BETTING_RIVER: "River",
-  SHOWDOWN: "Showdown",
+  SHOWDOWN: "Showdown \u2014 Reveal Cards",
   SETTLED: "Settled",
+  TOURNAMENT_OVER: "Tournament Over",
+  WAITING_VRF_HOLECARDS: "Dealing Hole Cards\u2026",
 };
 
-export const ACTION_TYPES: Record<string, string> = {
+/** Fallback label when game state is not in the map. */
+export function getGameStateLabel(state: string): string {
+  return GAME_STATES[state] ?? "Unknown State";
+}
+
+export const ACTION_LABELS: Record<string, string> = {
   "0": "Fold",
   "1": "Check",
   "2": "Call",
@@ -150,4 +159,9 @@ export const ACTION_TYPES: Record<string, string> = {
   CHECK: "Check",
   CALL: "Call",
   RAISE: "Raise",
+  BET: "Bet",
+  ALL_IN: "All-in",
 };
+
+/** @deprecated Use ACTION_LABELS instead */
+export const ACTION_TYPES = ACTION_LABELS;

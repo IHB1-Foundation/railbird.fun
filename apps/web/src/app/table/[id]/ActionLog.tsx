@@ -1,11 +1,12 @@
 "use client";
 
 import { formatChips, formatTime, shortenAddress, cn, ZERO_ADDRESS } from "@/lib/utils";
-import { ACTION_TYPES } from "@/lib/types";
+import { getAgentProfile } from "@/lib/agentProfiles";
+import { ACTION_LABELS } from "@/lib/types";
 import type { TableResponse } from "@/lib/types";
 import styles from "./TableViewer.module.css";
 
-const VALID_ACTION_TYPES = new Set(Object.keys(ACTION_TYPES));
+const VALID_ACTION_TYPES = new Set(Object.keys(ACTION_LABELS));
 
 function sanitizeActionType(raw: unknown): string {
   if (typeof raw === "string" && VALID_ACTION_TYPES.has(raw)) return raw;
@@ -42,16 +43,20 @@ export function ActionLog({ streetSections, seatByIndex, maxSeats, chipSymbol }:
                   const safeSeatIndex = sanitizeSeatIndex(action.seatIndex, maxSeats);
                   const seat = seatByIndex.get(safeSeatIndex);
                   const hasOwner = !!seat && seat.ownerAddress.toLowerCase() !== ZERO_ADDRESS;
+                  const actionProfile = seat
+                    ? getAgentProfile(seat.operatorAddress) || getAgentProfile(seat.ownerAddress)
+                    : null;
+                  const actionLabel = ACTION_LABELS[safeActionType] ?? "Unknown";
 
                   return (
                     <div key={`${section.street}-${i}`} className={styles.actionItem}>
                       <div className={styles.actionMain}>
                         <span>
-                          <strong>Seat {safeSeatIndex}</strong>{" "}
-                          {ACTION_TYPES[safeActionType] ?? "UNKNOWN"}
+                          <strong>{actionProfile ? actionProfile.name : `Seat ${safeSeatIndex}`}</strong>{" "}
+                          {actionLabel}
                           {action.amount !== "0" && ` ${formatChips(action.amount)} ${chipSymbol}`}
                         </span>
-                        {hasOwner && (
+                        {hasOwner && !actionProfile && (
                           <span className={styles.actionActor}>
                             {shortenAddress(seat.ownerAddress)}
                           </span>

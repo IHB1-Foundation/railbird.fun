@@ -120,7 +120,7 @@ h5 {
   width: 100%;
   max-width: 1320px;
   margin: 0 auto;
-  padding: 0 1rem 2.5rem;
+  padding: 0 var(--space-4) 2.5rem;
 }
 
 .app-footer {
@@ -141,15 +141,15 @@ h5 {
 }
 
 .section-title {
-  font-size: clamp(1.3rem, 1.8vw, 1.8rem);
+  font-size: clamp(var(--text-xl), 1.8vw, 1.8rem);
   font-weight: 700;
-  margin-bottom: 1rem;
+  margin-bottom: var(--space-4);
 }
 
 .section-title-sm {
-  font-size: 1rem;
+  font-size: var(--text-lg);
   font-weight: 600;
-  margin-bottom: 0.75rem;
+  margin-bottom: var(--space-3);
 }
 
 .btn {
@@ -209,9 +209,9 @@ h5 {
   background: linear-gradient(160deg, var(--card-bg), var(--card-bg-strong));
   border: 1px solid var(--card-border);
   border-radius: 16px;
-  padding: 1rem;
+  padding: var(--space-4);
   box-shadow:
-    0 24px 40px rgba(2, 4, 12, 0.45),
+    var(--shadow-lg),
     inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 

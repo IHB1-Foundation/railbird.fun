@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { shortenAddress, formatMon, formatNavPerShare } from "@/lib/utils";
@@ -70,6 +70,15 @@ export default function MyAgentsPage() {
     );
   }
 
+  const portfolioStats = useMemo(() => {
+    if (!agents.length) return null;
+    const agentsWithSnap = agents.filter((a) => a.latestSnapshot);
+    const totalNav = agentsWithSnap.reduce((sum, a) => sum + BigInt(a.latestSnapshot!.externalAssets), 0n);
+    const totalPnl = agentsWithSnap.reduce((sum, a) => sum + BigInt(a.latestSnapshot!.cumulativePnl), 0n);
+    const activeAgents = agents.filter((a) => a.isRegistered).length;
+    return { totalNav, totalPnl, activeAgents };
+  }, [agents]);
+
   return (
     <section className="page-section">
       <div className={styles.pageHeadingRow}>
@@ -79,6 +88,29 @@ export default function MyAgentsPage() {
           <span className="text-mono">{shortenAddress(address || "")}</span>
         </span>
       </div>
+
+      {portfolioStats && (
+        <div className={styles.portfolioSummary}>
+          <div className={styles.portfolioStat}>
+            <div className="label">Total NAV</div>
+            <div className={styles.portfolioStatValue}>{formatMon(portfolioStats.totalNav.toString())}</div>
+          </div>
+          <div className={styles.portfolioStat}>
+            <div className="label">Cumulative PnL</div>
+            <div className={`${styles.portfolioStatValue} ${portfolioStats.totalPnl >= 0n ? "value-positive" : "value-negative"}`}>
+              {portfolioStats.totalPnl >= 0n ? "+" : ""}{formatMon(portfolioStats.totalPnl.toString())}
+            </div>
+          </div>
+          <div className={styles.portfolioStat}>
+            <div className="label">Active Agents</div>
+            <div className={styles.portfolioStatValue}>{portfolioStats.activeAgents}</div>
+          </div>
+          <div className={styles.portfolioStat}>
+            <div className="label">Total Agents</div>
+            <div className={styles.portfolioStatValue}>{agents.length}</div>
+          </div>
+        </div>
+      )}
 
       {isLoading && (
         <div className="loading">
@@ -189,7 +221,7 @@ function AgentCard({ agent }: { agent: AgentResponse }) {
         {agent.tableAddress && (
           <Link href={`/table/${agent.tableAddress}?owner=true`}>
             <button className="wallet-button sign">
-              View Table (Owner Mode)
+              Table
             </button>
           </Link>
         )}

@@ -97,6 +97,25 @@ body::after {
   filter: blur(18px);
 }
 
+/* Skip-to-content link — visually hidden until focused */
+.skip-to-content {
+  position: absolute;
+  top: -9999px;
+  left: 0.5rem;
+  z-index: 9999;
+  padding: 0.5rem 1rem;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+
+.skip-to-content:focus-visible {
+  top: 0.5rem;
+}
+
 a {
   color: var(--accent-soft);
   text-decoration: none;

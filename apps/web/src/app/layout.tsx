@@ -37,6 +37,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={roboto.variable}>
         <Providers>
+          <a href="#main-content" className="skip-to-content">Skip to main content</a>
           <div className="app-shell">
             <header className={styles.topbar}>
               <div className={styles.topbarInner}>
@@ -57,7 +58,7 @@ export default function RootLayout({
                 </div>
               </div>
             </header>
-            <main className="content-shell">{children}</main>
+            <main id="main-content" className="content-shell">{children}</main>
             <footer className="app-footer">
               <span>Powered by HashKey Chain</span>
             </footer>

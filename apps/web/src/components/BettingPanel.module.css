@@ -211,7 +211,7 @@
   border-radius: 999px;
   font-weight: 700;
   padding: 0.68rem 0.9rem;
-  background: linear-gradient(140deg, #816cf9 0%, #6d52ff 100%);
+  background: linear-gradient(140deg, var(--accent-gradient-start) 0%, var(--accent-gradient-end) 100%);
   color: #fff;
 }
 

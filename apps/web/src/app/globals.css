@@ -9,9 +9,14 @@
   --accent: #816cf9;
   --accent-hover: #6f5be2;
   --accent-soft: #c8a9ff;
+  --accent-gradient-start: #816cf9;
+  --accent-gradient-end: #6d52ff;
   --danger: #ff626e;
+  --danger-soft: #ffbbc4;
   --warning: #ffbf4d;
+  --warning-soft: #fde68a;
   --success: #39d98a;
+  --success-soft: #a9ffd0;
   --muted: #9ba3c1;
   --heart: #ff5c8a;
   --diamond: #7da4ff;
@@ -19,6 +24,30 @@
   --club: #39d98a;
   --text-mono: "JetBrains Mono", "SFMono-Regular", Menlo, Monaco, Consolas,
     "Liberation Mono", "Courier New", monospace;
+
+  /* Spacing scale */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+
+  /* Shadow tokens */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 10px 24px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 24px 40px rgba(2, 4, 12, 0.45);
+  --shadow-glow: 0 0 0 2px rgba(129, 108, 249, 0.35), 0 0 20px rgba(129, 108, 249, 0.25);
+
+  /* Typography scale */
+  --text-xs: 0.7rem;
+  --text-sm: 0.8rem;
+  --text-base: 0.92rem;
+  --text-lg: 1.1rem;
+  --text-xl: 1.3rem;
+  --text-2xl: 1.6rem;
+  --text-3xl: 2rem;
 }
 
 * {
@@ -406,7 +435,7 @@ h5 {
   font-size: 0.84rem;
   font-weight: 600;
   color: #fff;
-  background: linear-gradient(150deg, #816cf9 0%, #6d52ff 100%);
+  background: linear-gradient(150deg, var(--accent-gradient-start) 0%, var(--accent-gradient-end) 100%);
   box-shadow: 0 8px 18px rgba(104, 79, 246, 0.35);
   cursor: pointer;
   transition: filter 0.2s ease, transform 0.2s ease;

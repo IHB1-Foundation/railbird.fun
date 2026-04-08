@@ -5,6 +5,22 @@ import { AgentAvatar } from "@/components/AgentAvatar";
 import { ShareButton } from "@/components/ShareButton";
 import { getAgent, getAgentSnapshots, getAgentRebalances, getAgentHands, getTreasuryReasoningAll, type RebalanceEventResponse, type TreasuryReasoningEntry } from "@/lib/api";
 import type { HandResponse } from "@/lib/types";
+
+interface AgentHealthRag {
+  totalHands: number;
+  lastUpdated: string | null;
+}
+
+async function fetchAgentHealth(url: string): Promise<AgentHealthRag | null> {
+  try {
+    const res = await fetch(url, { next: { revalidate: 30 }, signal: AbortSignal.timeout(2000) });
+    if (!res.ok) return null;
+    const data = await res.json() as { rag?: AgentHealthRag };
+    return data.rag ?? null;
+  } catch {
+    return null;
+  }
+}
 import { NadFunTradingWidget } from "@/components/NadFunTradingWidget";
 import { NavSparkline } from "@/components/NavSparkline";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -33,6 +49,7 @@ export default async function AgentPage({
   let rebalances: RebalanceEventResponse[] = [];
   let hands: HandResponse[] = [];
   let treasuryReasonings: Map<string, TreasuryReasoningEntry> = new Map();
+  let ragStats: AgentHealthRag | null = null;
   let error = null;
 
   try {
@@ -76,6 +93,11 @@ export default async function AgentPage({
   const snapshot = agent.latestSnapshot;
   const hasSnapshot = snapshot !== null;
   const profile = getAgentProfile(agent.operatorAddress) || getAgentProfile(agent.ownerAddress);
+
+  // Fetch RAG stats from agent health endpoint (non-blocking, server-side only)
+  if (profile?.healthUrl) {
+    ragStats = await fetchAgentHealth(profile.healthUrl);
+  }
 
   // Calculate ROI if we have snapshots
   let roi = "0";
@@ -271,6 +293,63 @@ export default async function AgentPage({
           {totalActions === 0 && recentReasonings.length === 0 && (
             <p style={{ fontSize: "0.78rem", color: "var(--muted)" }}>No AI decision data yet.</p>
           )}
+        </div>
+      )}
+
+      {/* AI Learning */}
+      {(ragStats !== null || allActions.some((a) => a.reasoning?.toLowerCase().includes("past hand"))) && (
+        <div className="card" style={{ marginBottom: "1rem", padding: "1rem 1.2rem" }}>
+          <h3 className="section-title-sm" style={{ marginBottom: "0.75rem" }}>AI Learning</h3>
+          {ragStats !== null && (
+            <div style={{ marginBottom: "0.75rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.3rem" }}>
+                <span style={{ fontSize: "0.78rem", color: "var(--muted)" }}>Knowledge Base</span>
+                <span style={{ fontSize: "0.78rem", fontWeight: 600 }}>
+                  {ragStats.totalHands} / 500 hands
+                </span>
+              </div>
+              <div style={{ height: "8px", background: "rgba(255,255,255,0.08)", borderRadius: "4px", overflow: "hidden" }}>
+                <div
+                  style={{
+                    width: `${Math.min(100, Math.round((ragStats.totalHands / 500) * 100))}%`,
+                    height: "100%",
+                    background: "linear-gradient(90deg, #8B5CF6, #3B82F6)",
+                    borderRadius: "4px",
+                    transition: "width 0.3s",
+                  }}
+                />
+              </div>
+              {ragStats.lastUpdated && (
+                <p style={{ fontSize: "0.7rem", color: "var(--muted)", marginTop: "0.3rem" }}>
+                  Last updated: {new Date(ragStats.lastUpdated).toLocaleString()}
+                </p>
+              )}
+            </div>
+          )}
+          {(() => {
+            const withReasoning = allActions.filter((a) => a.reasoning);
+            const withRagRef = withReasoning.filter((a) =>
+              a.reasoning?.toLowerCase().includes("past hand") ||
+              a.reasoning?.toLowerCase().includes("similar") ||
+              a.reasoning?.toLowerCase().includes("hand #")
+            );
+            if (withReasoning.length === 0) return null;
+            const ragPct = Math.round((withRagRef.length / withReasoning.length) * 100);
+            return (
+              <div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.3rem" }}>
+                  <span style={{ fontSize: "0.78rem", color: "var(--muted)" }}>RAG-informed decisions</span>
+                  <span style={{ fontSize: "0.78rem", fontWeight: 600 }}>{ragPct}%</span>
+                </div>
+                <div style={{ height: "6px", background: "rgba(255,255,255,0.08)", borderRadius: "4px", overflow: "hidden" }}>
+                  <div style={{ width: `${ragPct}%`, height: "100%", background: "#22C55E", borderRadius: "4px" }} />
+                </div>
+                <p style={{ fontSize: "0.7rem", color: "var(--muted)", marginTop: "0.3rem" }}>
+                  {withRagRef.length} of {withReasoning.length} recent actions reference past experience
+                </p>
+              </div>
+            );
+          })()}
         </div>
       )}
 

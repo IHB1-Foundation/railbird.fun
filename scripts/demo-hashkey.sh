@@ -212,7 +212,8 @@ for i in $(seq 1 "$AGENT_COUNT"); do
     continue
   fi
 
-  echo -e "  Starting Agent ${i} ${emoji} (persona=${persona}, aggression=${aggression})..."
+  health_port=$((9099 + i))
+  echo -e "  Starting Agent ${i} ${emoji} (persona=${persona}, aggression=${aggression}, health=:${health_port})..."
   RPC_URL=$RPC_URL \
   CHAIN_ID=$CHAIN_ID \
   OPERATOR_PRIVATE_KEY=$key \
@@ -228,6 +229,7 @@ for i in $(seq 1 "$AGENT_COUNT"); do
   GEMINI_MODEL=$GEMINI_MODEL \
   GEMINI_TEMPERATURE=$GEMINI_TEMPERATURE \
   GEMINI_TIMEOUT_MS=$GEMINI_TIMEOUT_MS \
+  HEALTH_PORT=$health_port \
   node --import tsx bots/agent/src/index.ts >> "/tmp/demo-agent${i}.log" 2>&1 &
   PIDS+=($!)
   echo "    PID: ${PIDS[-1]} | Log: /tmp/demo-agent${i}.log"

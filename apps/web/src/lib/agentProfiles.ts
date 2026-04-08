@@ -19,6 +19,8 @@ export interface AgentProfile {
   accentColor: string;
   aggressionFactor: number;
   personaId?: string;
+  /** Internal health endpoint URL (server-side only). Falls back to env var. */
+  healthUrl?: string;
 }
 
 // Persona presets (mirrors bots/agent/src/strategy/persona.ts)
@@ -83,6 +85,7 @@ const AGENT_PROFILES: Record<string, AgentProfile> = {
     accentColor: "#3B82F6",
     aggressionFactor: 0.7,
     personaId: "shark",
+    healthUrl: process.env.AGENT_1_HEALTH_URL,
   },
   // Agent 2 — Maniac (Maverick)
   "0xaa256b84d3a87f7782ddc01241960023acc60392": {
@@ -92,6 +95,7 @@ const AGENT_PROFILES: Record<string, AgentProfile> = {
     accentColor: "#EF4444",
     aggressionFactor: 0.9,
     personaId: "maniac",
+    healthUrl: process.env.AGENT_2_HEALTH_URL,
   },
   // Agent 3 — Rock (Nova)
   "0x63e459ad2b1f78bbf450e541fb16a33578936eb4": {
@@ -101,6 +105,7 @@ const AGENT_PROFILES: Record<string, AgentProfile> = {
     accentColor: "#6B7280",
     aggressionFactor: 0.3,
     personaId: "rock",
+    healthUrl: process.env.AGENT_3_HEALTH_URL,
   },
   // Agent 4 — Adaptive (Rex)
   "0xda55846b0ff474e6bc3c6c5383b5604c0fb90c24": {
@@ -110,6 +115,7 @@ const AGENT_PROFILES: Record<string, AgentProfile> = {
     accentColor: "#8B5CF6",
     aggressionFactor: 0.5,
     personaId: "adaptive",
+    healthUrl: process.env.AGENT_4_HEALTH_URL,
   },
 };
 

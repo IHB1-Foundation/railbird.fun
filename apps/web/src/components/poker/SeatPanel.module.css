@@ -26,9 +26,26 @@
 }
 
 .seatPanel.folded {
-  opacity: 0.52;
-  filter: grayscale(0.85) saturate(0.55);
+  /* Apply grayscale to background only — not to dealer chip or YOU pill */
+  filter: grayscale(0.5);
   border-color: rgba(128, 133, 145, 0.45);
+}
+
+/* Dim game data elements but not identity markers */
+.seatPanel.folded .seatAddress,
+.seatPanel.folded .aggressionBadge,
+.seatPanel.folded .seatStack,
+.seatPanel.folded .seatBet,
+.seatPanel.folded .seatTurnTimer,
+.seatPanel.folded .seatActionBadge {
+  opacity: 0.52;
+}
+
+/* Dealer chip and YOU pill always full opacity */
+.seatPanel.folded .dealerChip,
+.seatPanel.folded .youPill {
+  opacity: 1;
+  filter: none;
 }
 
 .seatLabel {

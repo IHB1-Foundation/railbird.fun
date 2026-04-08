@@ -3,6 +3,7 @@ import type {
   ActionDecision,
   DecisionContext,
   HoleCards,
+  ReasoningFactors,
   Strategy,
 } from "./types.js";
 import { SimpleStrategy } from "./simpleStrategy.js";
@@ -23,6 +24,8 @@ interface GeminiRawDecision {
   action?: unknown;
   raiseAmount?: unknown;
   raiseTarget?: unknown;
+  reasoning?: unknown;
+  factors?: unknown;
 }
 
 export interface GeminiStrategyConfig {
@@ -144,7 +147,11 @@ export class GeminiStrategy implements Strategy {
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
       logger.warn({ reason }, "GeminiStrategy falling back to simple strategy");
-      return await this.fallbackStrategy.decide(context);
+      const fallbackDecision = await this.fallbackStrategy.decide(context);
+      return {
+        ...fallbackDecision,
+        reasoning: fallbackDecision.reasoning ?? `Fallback: ${reason}. Playing safe with ${fallbackDecision.action}.`,
+      };
     } finally {
       // Save state snapshot for next call's diff
       this.prevState = context.tableState;
@@ -220,7 +227,7 @@ export class GeminiStrategy implements Strategy {
           generationConfig: {
             temperature: this.temperature,
             responseMimeType: "application/json",
-            maxOutputTokens: 60,
+            maxOutputTokens: 300,
           },
         }),
         signal: controller.signal,
@@ -249,33 +256,48 @@ export class GeminiStrategy implements Strategy {
   ): ActionDecision {
     const fallback = this.defaultSafeDecision(context);
     const normalizedAction = normalizeAction(rawDecision.action);
+
+    // Extract reasoning (graceful — never blocks action decision)
+    const reasoning = typeof rawDecision.reasoning === "string" && rawDecision.reasoning.trim()
+      ? rawDecision.reasoning.trim()
+      : undefined;
+
+    // Extract factors (graceful — never blocks action decision)
+    const factors = extractReasoningFactors(rawDecision.factors);
+
     if (!normalizedAction) {
-      return fallback;
+      return { ...fallback, reasoning, factors };
     }
 
     if (normalizedAction === Decision.CHECK) {
-      return context.canCheck ? { action: Decision.CHECK } : fallback;
+      return context.canCheck
+        ? { action: Decision.CHECK, reasoning, factors }
+        : { ...fallback, reasoning, factors };
     }
 
     if (normalizedAction === Decision.CALL) {
       if (context.canCheck) {
-        return { action: Decision.CHECK };
+        return { action: Decision.CHECK, reasoning, factors };
       }
-      return context.amountToCall > 0n ? { action: Decision.CALL } : { action: Decision.CHECK };
+      return context.amountToCall > 0n
+        ? { action: Decision.CALL, reasoning, factors }
+        : { action: Decision.CHECK, reasoning, factors };
     }
 
     if (normalizedAction === Decision.FOLD) {
-      return context.canCheck ? { action: Decision.CHECK } : { action: Decision.FOLD };
+      return context.canCheck
+        ? { action: Decision.CHECK, reasoning, factors }
+        : { action: Decision.FOLD, reasoning, factors };
     }
 
     const bounds = getRaiseBounds(context);
     if (!bounds.canRaise) {
-      return fallback;
+      return { ...fallback, reasoning, factors };
     }
 
     const requestedRaise = parseBigIntValue(rawDecision.raiseTarget ?? rawDecision.raiseAmount);
     if (requestedRaise === null) {
-      return fallback;
+      return { ...fallback, reasoning, factors };
     }
 
     const clampedRaise = clampBigInt(
@@ -286,6 +308,8 @@ export class GeminiStrategy implements Strategy {
     return {
       action: Decision.RAISE,
       raiseAmount: clampedRaise,
+      reasoning,
+      factors,
     };
   }
 
@@ -357,7 +381,8 @@ export class GeminiStrategy implements Strategy {
     return [
       "You are a no-limit Texas Hold'em agent.",
       "Return exactly one compact JSON object and no extra text.",
-      'Format: {"action":"fold|check|call|raise","raiseTarget":"<integer in chip units>"}',
+      'Format: {"action":"fold|check|call|raise","raiseTarget":"<integer in chip units>","reasoning":"<1-2 sentence explanation in English>","factors":{"handStrength":"...","potOdds":"...","position":"...","opponentRead":"...","sizing":"...","riskAssessment":"..."}}',
+      "Always include reasoning explaining WHY you chose this action, referencing specific game factors.",
       "Rules: never output an illegal action; if unsure choose check or call.",
       "All-in rules: if amountToCall > stack, calling commits only your remaining stack.",
       "All-in rules: if raising, raiseTarget is capped at your stack (maxRaiseTarget).",
@@ -470,6 +495,27 @@ function describePosition(seatIndex: number, buttonSeat: number, numSeats: numbe
   if (relative === 2) return "BB";
   if (relative === numSeats - 1) return "CO";
   return `UTG+${relative - 3}`;
+}
+
+function extractReasoningFactors(raw: unknown): ReasoningFactors | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const obj = raw as Record<string, unknown>;
+  const getString = (key: string): string | undefined =>
+    typeof obj[key] === "string" ? (obj[key] as string) : undefined;
+  const handStrength = getString("handStrength");
+  const potOdds = getString("potOdds");
+  const position = getString("position");
+  const opponentRead = getString("opponentRead");
+  // All four required fields must be present
+  if (!handStrength || !potOdds || !position || !opponentRead) return undefined;
+  return {
+    handStrength,
+    potOdds,
+    position,
+    opponentRead,
+    sizing: getString("sizing"),
+    riskAssessment: getString("riskAssessment"),
+  };
 }
 
 function gameStateToLabel(state: number): string {

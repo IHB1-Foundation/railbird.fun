@@ -22,9 +22,20 @@ export enum Decision {
   RAISE = "raise",
 }
 
+export interface ReasoningFactors {
+  handStrength: string;    // e.g., "top pair, ace kicker"
+  potOdds: string;         // e.g., "25% — favorable"
+  position: string;        // e.g., "BTN — positional advantage"
+  opponentRead: string;    // e.g., "Seat 2 is tight (fold 70%), likely weak range"
+  sizing?: string;         // e.g., "65% pot — standard value bet"
+  riskAssessment?: string; // e.g., "medium risk — flush draw possible on board"
+}
+
 export interface ActionDecision {
   action: Decision;
-  raiseAmount?: bigint; // Only for RAISE
+  raiseAmount?: bigint;         // Only for RAISE
+  reasoning?: string;           // Natural language explanation of the decision
+  factors?: ReasoningFactors;   // Structured reasoning factors
 }
 
 export type MaybePromise<T> = T | Promise<T>;

@@ -77,11 +77,36 @@ async function main() {
   const health = startHealthServer({
     service: "keeper-bot",
     port: healthPort,
-    getExtras: () => ({
-      circuits: {
-        rpc: bots[0]?.getRpcCircuitState().toLowerCase() ?? "closed",
-      },
-    }),
+    getExtras: () => {
+      const primary = bots[0];
+      const allStats = bots.map((b) => b.getStats());
+      const totalStats = allStats.reduce(
+        (acc, s) => ({
+          timeoutsForced: acc.timeoutsForced + s.timeoutsForced,
+          handsStarted: acc.handsStarted + s.handsStarted,
+          showdownsSettled: acc.showdownsSettled + s.showdownsSettled,
+          vrfReRequests: acc.vrfReRequests + s.vrfReRequests,
+          errors: acc.errors + s.errors,
+          rebalancesTriggered: acc.rebalancesTriggered + s.rebalancesTriggered,
+          coordinationSkips: acc.coordinationSkips + s.coordinationSkips,
+          rpcErrors: acc.rpcErrors + s.rpcErrors,
+          apiErrors: acc.apiErrors + s.apiErrors,
+          txErrors: acc.txErrors + s.txErrors,
+        }),
+        { timeoutsForced: 0, handsStarted: 0, showdownsSettled: 0, vrfReRequests: 0, errors: 0, rebalancesTriggered: 0, coordinationSkips: 0, rpcErrors: 0, apiErrors: 0, txErrors: 0 }
+      );
+      // Last activity: latest across all bots
+      const lastActivityMs = Math.max(...allStats.map((s) => s.lastActionTime ?? 0));
+      return {
+        stats: totalStats,
+        circuits: {
+          rpc: primary?.getRpcCircuitState().toLowerCase() ?? "closed",
+          dealer: primary?.getDealerCircuitState().toLowerCase() ?? "closed",
+        },
+        lastActivity: lastActivityMs > 0 ? new Date(lastActivityMs).toISOString() : null,
+        tables: tableAddresses,
+      };
+    },
   });
   logger.info({ healthEndpoint: `http://0.0.0.0:${healthPort}/health` }, 'Health server started');
 

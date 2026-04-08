@@ -30,6 +30,8 @@ export interface BotStats {
   rpcErrors: number;
   apiErrors: number;
   txErrors: number;
+  /** Epoch ms of last successful on-chain action, or 0 if none yet. */
+  lastActionTime: number;
 }
 
 export class AgentBot {
@@ -47,6 +49,7 @@ export class AgentBot {
     rpcErrors: 0,
     apiErrors: 0,
     txErrors: 0,
+    lastActionTime: 0,
   };
 
   // Circuit breakers for external services
@@ -113,6 +116,10 @@ export class AgentBot {
 
   getRpcCircuitState(): string {
     return this.rpcCircuit.circuitState;
+  }
+
+  getOwnerViewCircuitState(): string {
+    return this.ownerViewCircuit.circuitState;
   }
 
   /**
@@ -432,6 +439,7 @@ export class AgentBot {
           break;
       }
       this.stats.actionsSubmitted++;
+      this.stats.lastActionTime = Date.now();
       logger.info({ action: decision.action }, "Action submitted successfully");
     } catch (error) {
       logger.error({ action: decision.action, error }, "Failed to submit action");

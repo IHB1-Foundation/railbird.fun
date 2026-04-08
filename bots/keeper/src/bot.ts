@@ -108,6 +108,10 @@ export class KeeperBot {
     return this.rpcCircuit.circuitState;
   }
 
+  getDealerCircuitState(): string {
+    return this.dealerCircuit.circuitState;
+  }
+
   async run(): Promise<void> {
     this.running = true;
     const pollInterval = Math.max(200, this.config.pollIntervalMs || 2000);

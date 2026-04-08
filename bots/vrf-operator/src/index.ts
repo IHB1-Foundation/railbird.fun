@@ -66,9 +66,22 @@ async function main(): Promise<void> {
   const health = startHealthServer({
     service: "vrf-operator",
     port: healthPort,
-    getExtras: () => ({
-      circuits: { rpc: bot.getRpcCircuitState().toLowerCase() },
-    }),
+    getExtras: () => {
+      const s = bot.getStats();
+      return {
+        stats: {
+          scannedRequests: s.scannedRequests,
+          fulfilledRequests: s.fulfilledRequests,
+          skippedNotReady: s.skippedNotReady,
+          errors: s.errors,
+        },
+        circuits: {
+          rpc: bot.getRpcCircuitState().toLowerCase(),
+        },
+        lastActivity: s.lastActivityTime > 0 ? new Date(s.lastActivityTime).toISOString() : null,
+        tables: pokerTableAddresses,
+      };
+    },
   });
   log.info({ port: healthPort }, "Health endpoint listening");
 

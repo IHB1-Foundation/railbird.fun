@@ -127,9 +127,26 @@ async function main() {
   const health = startHealthServer({
     service: "agent-bot",
     port: healthPort,
-    getExtras: () => ({
-      circuits: { rpc: bot.getRpcCircuitState().toLowerCase() },
-    }),
+    getExtras: () => {
+      const s = bot.getStats();
+      return {
+        stats: {
+          handsPlayed: s.handsPlayed,
+          handsWon: s.handsWon,
+          actionsSubmitted: s.actionsSubmitted,
+          errors: s.errors,
+          rpcErrors: s.rpcErrors,
+          apiErrors: s.apiErrors,
+          txErrors: s.txErrors,
+        },
+        circuits: {
+          rpc: bot.getRpcCircuitState().toLowerCase(),
+          ownerview: bot.getOwnerViewCircuitState().toLowerCase(),
+        },
+        lastActivity: s.lastActionTime > 0 ? new Date(s.lastActionTime).toISOString() : null,
+        tables: [tableAddress],
+      };
+    },
   });
   logger.info({ healthEndpoint: `http://0.0.0.0:${healthPort}/health` }, 'Health server started');
 

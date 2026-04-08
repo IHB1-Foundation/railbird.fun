@@ -25,6 +25,8 @@ export interface VrfOperatorStats {
   errors: number;
   lastFulfilledRequestId: bigint;
   lastFulfilledTxHash: string;
+  /** Epoch ms of last successful VRF fulfillment, or 0 if none yet. */
+  lastActivityTime: number;
 }
 
 /** Maximum pending VRF requests tracked at any time. */
@@ -49,6 +51,7 @@ export class VrfOperatorBot {
     errors: 0,
     lastFulfilledRequestId: 0n,
     lastFulfilledTxHash: "",
+    lastActivityTime: 0,
   };
 
   private rpcCircuit = new CircuitBreaker({ name: "RPC", failureThreshold: 5, recoveryTimeoutMs: 30_000 });
@@ -216,6 +219,7 @@ export class VrfOperatorBot {
         this.stats.fulfilledRequests += 1;
         this.stats.lastFulfilledRequestId = requestId;
         this.stats.lastFulfilledTxHash = hash;
+        this.stats.lastActivityTime = Date.now();
         this.log.info({ requestId: requestId.toString(), tx: hash }, "Fulfilled VRF request");
       } catch (error) {
         this.stats.errors += 1;

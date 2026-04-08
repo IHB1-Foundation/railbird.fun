@@ -31,11 +31,20 @@ interface ActionLogProps {
 const AGGRESSIVE_ACTIONS = new Set(["BET", "RAISE", "3"]);
 const FOLD_ACTIONS = new Set(["FOLD", "0"]);
 const ALLIN_ACTIONS = new Set(["ALL_IN"]);
+const CALL_CHECK_ACTIONS = new Set(["CALL", "CHECK", "1", "2"]);
 
 function actionColorClass(actionType: string): string {
   if (FOLD_ACTIONS.has(actionType)) return "text-muted";
   if (ALLIN_ACTIONS.has(actionType)) return "value-warning";
   if (AGGRESSIVE_ACTIONS.has(actionType)) return "value-positive";
+  return "";
+}
+
+function actionPrefix(actionType: string): string {
+  if (FOLD_ACTIONS.has(actionType)) return "⤵ ";
+  if (ALLIN_ACTIONS.has(actionType)) return "⚡ ";
+  if (AGGRESSIVE_ACTIONS.has(actionType)) return "↑ ";
+  if (CALL_CHECK_ACTIONS.has(actionType)) return "→ ";
   return "";
 }
 
@@ -70,10 +79,10 @@ export function ActionLog({ streetSections, seatByIndex, maxSeats, chipSymbol }:
                   return (
                     <div key={`${section.street}-${i}`} className={styles.actionItem}>
                       <div className={styles.actionMain}>
-                        <span>
+                        <span aria-label={`${actionProfile ? actionProfile.name : `Seat ${safeSeatIndex}`} ${actionLabel}${action.amount !== "0" ? ` ${formatChips(action.amount)} ${chipSymbol}` : ""}`}>
                           <strong>{actionProfile ? actionProfile.name : `Seat ${safeSeatIndex}`}</strong>{" "}
-                          <span className={colorClass}>
-                            {actionLabel}
+                          <span className={colorClass} aria-hidden="true">
+                            {actionPrefix(safeActionType)}{actionLabel}
                             {action.amount !== "0" && ` ${formatChips(action.amount)} ${chipSymbol}`}
                           </span>
                         </span>

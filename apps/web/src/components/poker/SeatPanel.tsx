@@ -134,12 +134,15 @@ export function SeatPanel({
 
       {/* Owner's hole cards — always shown, never collapsed */}
       {isOwner && holeCards && (
-        <div className={styles.seatHolecards}>
+        <div className={cn(styles.seatHolecards, isFolded && styles.foldedHolecards)}>
           <div className={styles.holeCardsLabel}>Your Hand</div>
           <div className={styles.holeCards}>
             <PokerCard cardIndex={holeCards.cards[0]} />
             <PokerCard cardIndex={holeCards.cards[1]} />
           </div>
+          {isFolded && (
+            <div className={styles.foldedCardsOverlay}>Folded</div>
+          )}
         </div>
       )}
     </div>

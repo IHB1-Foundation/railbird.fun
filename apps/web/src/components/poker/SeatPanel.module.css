@@ -177,6 +177,29 @@
   letter-spacing: 0.06em;
 }
 
+.foldedHolecards {
+  position: relative;
+}
+
+.foldedHolecards .holeCards {
+  opacity: 0.4;
+  filter: grayscale(0.8);
+}
+
+.foldedCardsOverlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #9ba1ba;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
 .dealerChip {
   display: inline-flex;
   align-items: center;

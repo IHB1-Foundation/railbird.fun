@@ -327,6 +327,45 @@ describe("SimpleStrategy all-in with partial bet committed", () => {
   });
 });
 
+describe("SimpleStrategy reasoning generation", () => {
+  const strategy = new SimpleStrategy(0.0);
+
+  test("always returns reasoning string", () => {
+    const ctx = createContext({ canCheck: true, amountToCall: 0n, holeCards: { card1: 12, card2: 25 } });
+    const decision = strategy.decide(ctx);
+    assert.ok(typeof decision.reasoning === "string" && decision.reasoning.length > 0, "reasoning should be a non-empty string");
+  });
+
+  test("always returns factors object", () => {
+    const ctx = createContext({ canCheck: false, amountToCall: 5n, holeCards: { card1: 12, card2: 25 } });
+    const decision = strategy.decide(ctx);
+    assert.ok(decision.factors !== undefined, "factors should be defined");
+    assert.ok(typeof decision.factors!.handStrength === "string", "factors.handStrength should be a string");
+    assert.ok(typeof decision.factors!.potOdds === "string", "factors.potOdds should be a string");
+    assert.ok(typeof decision.factors!.position === "string", "factors.position should be a string");
+    assert.ok(typeof decision.factors!.opponentRead === "string", "factors.opponentRead should be a string");
+  });
+
+  test("handStrength in factors includes score", () => {
+    const ctx = createContext({ canCheck: false, amountToCall: 10n, holeCards: { card1: 12, card2: 25 } }); // AA
+    const decision = strategy.decide(ctx);
+    assert.ok(decision.factors!.handStrength.includes("100"), "handStrength should contain score 100 for AA");
+  });
+
+  test("potOdds in factors contains percentage", () => {
+    const ctx = createContext({ canCheck: false, amountToCall: 5n, holeCards: { card1: 12, card2: 25 } });
+    const decision = strategy.decide(ctx);
+    // pot=15, call=5 → 5/(15+5)=25%
+    assert.ok(decision.factors!.potOdds.includes("%") || decision.factors!.potOdds === "n/a (no bet)", "potOdds should have a percent or n/a");
+  });
+
+  test("opponentRead is rule-based message", () => {
+    const ctx = createContext({ canCheck: true, amountToCall: 0n, holeCards: { card1: 5, card2: 13 } });
+    const decision = strategy.decide(ctx);
+    assert.ok(decision.factors!.opponentRead.toLowerCase().includes("rule-based"), "opponentRead should say rule-based");
+  });
+});
+
 describe("SimpleStrategy with aggression", () => {
   // Use high aggression and mock random to always be aggressive
   const originalRandom = Math.random;

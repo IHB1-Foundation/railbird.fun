@@ -1,7 +1,7 @@
 // Simple rule-based strategy for agent bot
 // MVP: legal actions + basic hand strength heuristics
 
-import type { Strategy, DecisionContext, ActionDecision, HoleCards } from "./types.js";
+import type { Strategy, DecisionContext, ActionDecision, HoleCards, ReasoningFactors } from "./types.js";
 import { Decision } from "./types.js";
 import { GameState, type TableState } from "../chain/client.js";
 
@@ -117,46 +117,81 @@ export class SimpleStrategy implements Strategy {
     // The contract accepts partial all-in calls, so this is always legal.
     const isAllInCall = effectiveCallAmount > myStack && myStack > 0n;
 
+    // Position description
+    const position = describeSimplePosition(mySeatIndex, tableState.buttonSeat, tableState.seats.length);
+
     // If we don't have hole cards, play very conservatively
     if (!holeCards) {
+      const factors: ReasoningFactors = {
+        handStrength: "unknown (no hole cards)",
+        potOdds: effectiveCallAmount > 0n
+          ? `${Number(effectiveCallAmount * 100n / (pot + effectiveCallAmount))}%`
+          : "n/a",
+        position,
+        opponentRead: "Rule-based: no opponent modeling",
+      };
       if (canCheck) {
-        return { action: Decision.CHECK };
+        return { action: Decision.CHECK, reasoning: "No hole cards — checking to stay in hand for free.", factors };
       }
-      // All-in call: only commit remaining stack if bet is small relative to stack
       if (isAllInCall) {
-        // Fold if all-in call is a large fraction of stack (desperate)
-        return { action: Decision.FOLD };
+        return { action: Decision.FOLD, reasoning: "No hole cards — folding all-in call to avoid committing stack blind.", factors };
       }
-      // Call small bets, fold large ones
       if (effectiveCallAmount <= bigBlind) {
-        return { action: Decision.CALL };
+        return { action: Decision.CALL, reasoning: "No hole cards — calling small bet (≤BB) speculatively.", factors };
       }
-      return { action: Decision.FOLD };
+      return { action: Decision.FOLD, reasoning: "No hole cards — folding to large bet.", factors };
     }
 
     const handScore = scoreHoleCards(holeCards);
-    const potOdds = effectiveCallAmount > 0n ? Number(pot) / Number(effectiveCallAmount) : 999;
+    const potOddsRatio = effectiveCallAmount > 0n ? Number(pot) / Number(effectiveCallAmount) : 999;
+    const potOddsPercent = effectiveCallAmount > 0n
+      ? `${Number(effectiveCallAmount * 100n / (pot + effectiveCallAmount))}%`
+      : "n/a (no bet)";
+
+    // Build hand strength description from score + bonuses
+    const handStrengthDesc = describeHandScore(handScore, holeCards);
+
+    const basefactors: ReasoningFactors = {
+      handStrength: `score ${handScore}/100 — ${handStrengthDesc}`,
+      potOdds: potOddsPercent,
+      position,
+      opponentRead: "Rule-based: no opponent modeling",
+    };
 
     // All-in call: use a higher threshold (commit entire stack only with strong hands)
     if (isAllInCall) {
       if (handScore >= 70) {
-        // Strong hand: go all-in call
-        return { action: Decision.CALL };
+        return {
+          action: Decision.CALL,
+          reasoning: `Hand score ${handScore}/100 (strong). Calling all-in with ${handStrengthDesc}.`,
+          factors: { ...basefactors, riskAssessment: "committing full stack — strong hand justifies it" },
+        };
       }
-      // Weak/medium hand: fold rather than commit all chips
-      return { action: Decision.FOLD };
+      return {
+        action: Decision.FOLD,
+        reasoning: `Hand score ${handScore}/100 (medium/weak). Folding all-in — not strong enough to commit stack.`,
+        factors: { ...basefactors, riskAssessment: "folding to avoid committing stack with marginal hand" },
+      };
     }
 
     // Can check - never fold when free
     if (canCheck) {
-      // Consider raising with strong hands
       if (handScore >= 70 && Math.random() < this.aggression) {
         const raiseAmount = this.calculateRaiseAmount(tableState, mySeatIndex);
         if (raiseAmount !== null) {
-          return { action: Decision.RAISE, raiseAmount };
+          return {
+            action: Decision.RAISE,
+            raiseAmount,
+            reasoning: `Hand score ${handScore}/100 (strong). Raising for value with ${handStrengthDesc}. Aggression ${this.aggression.toFixed(2)}.`,
+            factors: { ...basefactors, sizing: `raise to ${raiseAmount} (pot-sized)`, riskAssessment: "low — strong hand, check raise for value" },
+          };
         }
       }
-      return { action: Decision.CHECK };
+      return {
+        action: Decision.CHECK,
+        reasoning: `Hand score ${handScore}/100. Checking — ${handScore >= 70 ? "conserving aggression factor" : "hand not strong enough to raise"}.`,
+        factors: basefactors,
+      };
     }
 
     // Must call or fold
@@ -167,26 +202,51 @@ export class SimpleStrategy implements Strategy {
       if (handScore >= 80 && Math.random() < this.aggression * 1.5) {
         const raiseAmount = this.calculateRaiseAmount(tableState, mySeatIndex);
         if (raiseAmount !== null) {
-          return { action: Decision.RAISE, raiseAmount };
+          return {
+            action: Decision.RAISE,
+            raiseAmount,
+            reasoning: `Hand score ${handScore}/100 (very strong). Re-raising with ${handStrengthDesc} for value.`,
+            factors: { ...basefactors, sizing: `raise to ${raiseAmount}`, riskAssessment: "low — premium hand" },
+          };
         }
       }
-      return { action: Decision.CALL };
+      return {
+        action: Decision.CALL,
+        reasoning: `Hand score ${handScore}/100 (strong). Calling with ${handStrengthDesc}. Stack ${myStack} vs call ${effectiveCallAmount} (${(Number(effectiveCallAmount) / Number(myStack) * 100).toFixed(1)}% of stack).`,
+        factors: basefactors,
+      };
     }
 
     // Medium hand (40-60): call if pot odds are good
     if (handScore >= 40) {
-      if (potOdds >= 2 || betSizeRatio <= 3) {
-        return { action: Decision.CALL };
+      if (potOddsRatio >= 2 || betSizeRatio <= 3) {
+        return {
+          action: Decision.CALL,
+          reasoning: `Hand score ${handScore}/100 (medium). Calling — pot odds ratio ${potOddsRatio.toFixed(1)} is favorable or bet size ${betSizeRatio.toFixed(1)}x BB is small.`,
+          factors: { ...basefactors, riskAssessment: "medium — marginal hand but good odds" },
+        };
       }
-      return { action: Decision.FOLD };
+      return {
+        action: Decision.FOLD,
+        reasoning: `Hand score ${handScore}/100 (medium). Folding — pot odds ratio ${potOddsRatio.toFixed(1)} unfavorable and bet ${betSizeRatio.toFixed(1)}x BB is large.`,
+        factors: { ...basefactors, riskAssessment: "medium — folding marginal hand to large bet" },
+      };
     }
 
-    // Weak hand (<40): fold unless very small bet (or free call from small effectiveCallAmount)
-    if (betSizeRatio <= 1 && potOdds >= 4) {
-      return { action: Decision.CALL };
+    // Weak hand (<40): fold unless very small bet
+    if (betSizeRatio <= 1 && potOddsRatio >= 4) {
+      return {
+        action: Decision.CALL,
+        reasoning: `Hand score ${handScore}/100 (weak). Calling micro-bet — bet is only ${betSizeRatio.toFixed(1)}x BB with pot odds ${potOddsRatio.toFixed(1)}.`,
+        factors: { ...basefactors, riskAssessment: "low cost speculative call" },
+      };
     }
 
-    return { action: Decision.FOLD };
+    return {
+      action: Decision.FOLD,
+      reasoning: `Hand score ${handScore}/100 (weak). Folding — hand too weak for call of ${effectiveCallAmount} chips.`,
+      factors: { ...basefactors, riskAssessment: "folding weak hand to bet" },
+    };
   }
 
   private calculateRaiseAmount(
@@ -223,6 +283,38 @@ export class SimpleStrategy implements Strategy {
 
     return raiseTarget;
   }
+}
+
+function describeHandScore(score: number, cards: HoleCards): string {
+  const rank1 = getRank(cards.card1);
+  const rank2 = getRank(cards.card2);
+  const isPair = rank1 === rank2;
+  const isSuited = Math.floor(cards.card1 / 13) === Math.floor(cards.card2 / 13);
+  const high = Math.max(rank1, rank2);
+  const low = Math.min(rank1, rank2);
+  const gap = high - low;
+
+  if (isPair) {
+    const rankNames = ["2","3","4","5","6","7","8","9","T","J","Q","K","A"];
+    return `pair of ${rankNames[high]}s`;
+  }
+  const tags: string[] = [];
+  if (high === 12) tags.push("ace-high");
+  if (isSuited) tags.push("suited");
+  if (gap <= 2) tags.push("connected");
+  if (score >= 70) tags.push("strong");
+  else if (score >= 50) tags.push("medium");
+  else tags.push("weak");
+  return tags.join(", ") || "unpaired";
+}
+
+function describeSimplePosition(seatIndex: number, buttonSeat: number, numSeats: number): string {
+  const relative = (seatIndex - buttonSeat + numSeats) % numSeats;
+  if (relative === 0) return "BTN";
+  if (relative === 1) return "SB";
+  if (relative === 2) return "BB";
+  if (relative === numSeats - 1) return "CO";
+  return `UTG+${relative - 3}`;
 }
 
 // Export helper for testing

@@ -153,3 +153,10 @@ export interface RebalanceSellArgs {
   navBefore: bigint;
   navAfter: bigint;
 }
+
+export interface DecisionRevealedArgs {
+  handId: bigint;
+  seatIndex: number;
+  action: string;
+  reasoning: string;
+}

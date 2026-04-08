@@ -21,6 +21,7 @@ import type {
   TournamentWinnerArgs,
   CardIntegrityViolationArgs,
   HoleCardsRevealedArgs,
+  DecisionRevealedArgs,
   AgentRegisteredArgs,
   OperatorUpdatedArgs,
   OwnerUpdatedArgs,
@@ -338,6 +339,13 @@ export class EventListener {
           await handlers.handleHoleCardsRevealed(
             log,
             decoded.args as unknown as HoleCardsRevealedArgs,
+            tableContext
+          );
+          break;
+        case "DecisionRevealed":
+          await handlers.handleDecisionRevealed(
+            log,
+            decoded.args as unknown as DecisionRevealedArgs,
             tableContext
           );
           break;

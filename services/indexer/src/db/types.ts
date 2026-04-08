@@ -166,6 +166,10 @@ export interface ActionResponse {
   timestamp: string;
   reasoning?: string;
   factors?: ReasoningFactors;
+  /** True when the AI decision was verified on-chain via DecisionRevealed. */
+  verified?: boolean;
+  /** Transaction hash of the revealDecision() call, if verified. */
+  revealTxHash?: string;
 }
 
 export interface AgentResponse {

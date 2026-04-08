@@ -95,6 +95,7 @@ function ActionItem({
   actionIdx: number;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [verifyExpanded, setVerifyExpanded] = useState(false);
   const safeActionType = sanitizeActionType(action.actionType);
   const safeSeatIndex = sanitizeSeatIndex(action.seatIndex, maxSeats);
   const seat = seatByIndex.get(safeSeatIndex);
@@ -105,6 +106,7 @@ function ActionItem({
   const actionLabel = ACTION_LABELS[safeActionType] ?? "Unknown";
   const colorClass = actionColorClass(safeActionType);
   const hasReasoning = !!action.reasoning;
+  const isAiAction = hasReasoning;
 
   return (
     <div key={`${streetIdx}-${actionIdx}`} className={styles.actionItem}>
@@ -117,17 +119,34 @@ function ActionItem({
               {action.amount !== "0" && ` ${formatChips(action.amount)} ${chipSymbol}`}
             </span>
           </span>
-          {hasReasoning && (
-            <button
-              className={styles.reasoningBadge}
-              onClick={() => setExpanded((v) => !v)}
-              aria-expanded={expanded}
-              aria-label="Toggle AI reasoning"
-              title="AI reasoning"
-            >
-              💡
-            </button>
-          )}
+          <div className={styles.actionBadges}>
+            {hasReasoning && (
+              <button
+                className={styles.reasoningBadge}
+                onClick={() => setExpanded((v) => !v)}
+                aria-expanded={expanded}
+                aria-label="Toggle AI reasoning"
+                title="AI reasoning"
+              >
+                💡
+              </button>
+            )}
+            {isAiAction && action.verified && (
+              <button
+                className={styles.verifiedBadge}
+                onClick={() => setVerifyExpanded((v) => !v)}
+                aria-label="AI decision verified on-chain"
+                title="AI decision verified on-chain"
+              >
+                ✓ Verified
+              </button>
+            )}
+            {isAiAction && !action.verified && (
+              <span className={styles.pendingBadge} title="AI decision commitment pending on-chain reveal">
+                Pending
+              </span>
+            )}
+          </div>
         </div>
         {hasOwner && !actionProfile && (
           <span className={styles.actionActor}>
@@ -136,6 +155,14 @@ function ActionItem({
         )}
         {expanded && action.reasoning && (
           <ReasoningPanel reasoning={action.reasoning} factors={action.factors} />
+        )}
+        {verifyExpanded && action.verified && action.revealTxHash && (
+          <div className={styles.verifyDetail}>
+            <span className={styles.verifyLabel}>Reveal tx:</span>{" "}
+            <span className={styles.verifyTxHash} title={action.revealTxHash}>
+              {action.revealTxHash.slice(0, 10)}…{action.revealTxHash.slice(-6)}
+            </span>
+          </div>
         )}
       </div>
     </div>

@@ -20,6 +20,7 @@ import {
   insertVaultSnapshot,
   insertRebalanceEvent,
   insertRevealedHolecard,
+  insertDecisionVerification,
   getHand,
   getSeats,
   getEloRatings,
@@ -624,5 +625,35 @@ async function updateEloAfterSettlement(
     winnerSeat,
     updates: updates.map((u) => ({ addr: u.tokenAddress.slice(0, 8), before: u.ratingBefore, after: u.ratingAfter })),
   }, "ELO ratings updated");
+}
+
+/**
+ * Handle DecisionRevealed: store verified AI decision in DB.
+ * This allows ActionResponse.verified to be true for this (handId, seatIndex).
+ */
+export async function handleDecisionRevealed(
+  log: Log,
+  args: { handId: bigint; seatIndex: number; action: string; reasoning: string },
+  ctx: EventContext
+): Promise<void> {
+  const meta = getLogMeta(log);
+  if (!meta) return;
+  if (await isEventProcessed(meta.blockNumber, meta.logIndex)) return;
+
+  await insertDecisionVerification(
+    ctx.tableId,
+    args.handId,
+    args.seatIndex,
+    args.action,
+    args.reasoning,
+    meta.txHash,
+    meta.blockNumber
+  );
+
+  await markEventProcessed(meta.blockNumber, meta.logIndex, meta.txHash, "DecisionRevealed");
+  logger.info(
+    { handId: args.handId.toString(), seatIndex: args.seatIndex, action: args.action, txHash: meta.txHash },
+    "DecisionRevealed — AI decision verified on-chain"
+  );
 }
 

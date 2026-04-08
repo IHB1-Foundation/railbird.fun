@@ -40,6 +40,16 @@ export default function MyAgentsPage() {
     fetchOwnedAgents();
   }, [address]);
 
+  // Compute portfolio stats — must be called unconditionally (hooks rules)
+  const portfolioStats = useMemo(() => {
+    if (!agents.length) return null;
+    const agentsWithSnap = agents.filter((a) => a.latestSnapshot);
+    const totalNav = agentsWithSnap.reduce((sum, a) => sum + BigInt(a.latestSnapshot!.externalAssets), 0n);
+    const totalPnl = agentsWithSnap.reduce((sum, a) => sum + BigInt(a.latestSnapshot!.cumulativePnl), 0n);
+    const activeAgents = agents.filter((a) => a.isRegistered).length;
+    return { totalNav, totalPnl, activeAgents };
+  }, [agents]);
+
   // Not connected - Step 1
   if (!isConnected) {
     return (
@@ -97,15 +107,6 @@ export default function MyAgentsPage() {
       </div>
     );
   }
-
-  const portfolioStats = useMemo(() => {
-    if (!agents.length) return null;
-    const agentsWithSnap = agents.filter((a) => a.latestSnapshot);
-    const totalNav = agentsWithSnap.reduce((sum, a) => sum + BigInt(a.latestSnapshot!.externalAssets), 0n);
-    const totalPnl = agentsWithSnap.reduce((sum, a) => sum + BigInt(a.latestSnapshot!.cumulativePnl), 0n);
-    const activeAgents = agents.filter((a) => a.isRegistered).length;
-    return { totalNav, totalPnl, activeAgents };
-  }, [agents]);
 
   return (
     <section className="page-section">

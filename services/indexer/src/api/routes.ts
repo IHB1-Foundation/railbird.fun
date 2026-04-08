@@ -770,6 +770,8 @@ function formatActionResponse(action: any): ActionResponse {
     txHash: action.tx_hash,
     endsStreet: Boolean(action.ends_street),
     timestamp: action.created_at?.toISOString() || new Date().toISOString(),
+    verified: Boolean(action.verified),
+    revealTxHash: action.reveal_tx_hash ?? undefined,
   };
 }
 

@@ -11,6 +11,7 @@
 import { test, describe, beforeEach, mock } from "node:test";
 import assert from "node:assert/strict";
 import type { Log } from "viem";
+import type { EventContext } from "./handlers.js";
 
 // ─── Controlled implementations (swappable per-test) ──────────────────────────
 
@@ -38,6 +39,11 @@ const db = {
   insertVaultSnapshot: mock.fn(async () => {}),
   insertRebalanceEvent: mock.fn(async () => {}),
   insertRevealedHolecard: mock.fn(async () => {}),
+  insertDecisionVerification: mock.fn(async () => {}),
+  getSeats: mock.fn(async () => []),
+  getEloRatings: mock.fn(async () => new Map()),
+  upsertEloRating: mock.fn(async () => {}),
+  insertEloHistory: mock.fn(async () => {}),
   getHand: mock.fn(async (..._args: unknown[]) => getHandImpl()),
   getAllAgents: mock.fn(async () => []),
   getIndexerState: mock.fn(async () => null),
@@ -82,7 +88,7 @@ function makeLog(overrides: Partial<Log> = {}): Log {
   } as Log;
 }
 
-const CTX: handlers.EventContext = {
+const CTX: EventContext = {
   tableId: 1n,
   contractAddress: "0x0000000000000000000000000000000000000001",
   smallBlind: 10n,
@@ -125,7 +131,7 @@ describe("handleSeatUpdated", () => {
 
     // DB: upsert seat with correct stack
     assert.strictEqual(db.upsertSeat.mock.calls.length, 1);
-    const [tId, seatIdx, owner, , stack] = db.upsertSeat.mock.calls[0].arguments as [bigint, number, string, string, bigint];
+    const [tId, seatIdx, owner, , stack] = db.upsertSeat.mock.calls[0].arguments as unknown as [bigint, number, string, string, bigint];
     assert.strictEqual(tId, 1n);
     assert.strictEqual(seatIdx, 0);
     assert.strictEqual(owner, "0xowner");
@@ -174,7 +180,7 @@ describe("handleHandStarted", () => {
     await handlers.handleHandStarted(log, args, CTX);
 
     assert.strictEqual(db.insertHand.mock.calls.length, 1);
-    const [tableId, handId, pot, buttonSeat, , , state] = db.insertHand.mock.calls[0].arguments as [bigint, bigint, bigint, number, bigint, bigint, string];
+    const [tableId, handId, pot, buttonSeat, , , state] = db.insertHand.mock.calls[0].arguments as unknown as [bigint, bigint, bigint, number, bigint, bigint, string];
     assert.strictEqual(tableId, 1n);
     assert.strictEqual(handId, 1n);
     assert.strictEqual(pot, 30n); // 10 + 20
@@ -217,7 +223,7 @@ describe("handleActionTaken", () => {
     await handlers.handleActionTaken(log, args, CTX);
 
     assert.strictEqual(db.insertAction.mock.calls.length, 1);
-    const [, , , actionType, amount] = db.insertAction.mock.calls[0].arguments as [bigint, bigint, number, string, bigint];
+    const [, , , actionType, amount] = db.insertAction.mock.calls[0].arguments as unknown as [bigint, bigint, number, string, bigint];
     assert.strictEqual(actionType, "RAISE");
     assert.strictEqual(amount, 60n);
 
@@ -228,7 +234,7 @@ describe("handleActionTaken", () => {
     const log = makeLog({ blockNumber: 401n, logIndex: 0 });
     await handlers.handleActionTaken(log, { handId: 1n, seatIndex: 1, action: 0, amount: 0n, potAfter: 100n }, CTX);
 
-    const [, , , actionType] = db.insertAction.mock.calls[0].arguments as [bigint, bigint, number, string];
+    const [, , , actionType] = db.insertAction.mock.calls[0].arguments as unknown as [bigint, bigint, number, string];
     assert.strictEqual(actionType, "FOLD");
   });
 
@@ -236,7 +242,7 @@ describe("handleActionTaken", () => {
     const log = makeLog({ blockNumber: 402n, logIndex: 0 });
     await handlers.handleActionTaken(log, { handId: 1n, seatIndex: 0, action: 1, amount: 0n, potAfter: 30n }, CTX);
 
-    const [, , , actionType] = db.insertAction.mock.calls[0].arguments as [bigint, bigint, number, string];
+    const [, , , actionType] = db.insertAction.mock.calls[0].arguments as unknown as [bigint, bigint, number, string];
     assert.strictEqual(actionType, "CHECK");
   });
 
@@ -272,14 +278,14 @@ describe("handleHandSettled", () => {
     await handlers.handleHandSettled(log, args, CTX);
 
     assert.strictEqual(db.insertSettlement.mock.calls.length, 1);
-    const [tableId, handId, winnerSeat, potAmount] = db.insertSettlement.mock.calls[0].arguments as [bigint, bigint, number, bigint];
+    const [tableId, handId, winnerSeat, potAmount] = db.insertSettlement.mock.calls[0].arguments as unknown as [bigint, bigint, number, bigint];
     assert.strictEqual(tableId, 1n);
     assert.strictEqual(handId, 1n);
     assert.strictEqual(winnerSeat, 0);
     assert.strictEqual(potAmount, 200n);
 
     assert.strictEqual(db.updateTableState.mock.calls.length, 1);
-    const [, newState] = db.updateTableState.mock.calls[0].arguments as [bigint, string];
+    const [, newState] = db.updateTableState.mock.calls[0].arguments as unknown as [bigint, string];
     assert.strictEqual(newState, "SETTLED");
 
     assert.strictEqual(ws.broadcastHandSettled.mock.calls.length, 1);
@@ -317,7 +323,7 @@ describe("handleCommunityCardsDealt", () => {
 
     // WS broadcast should carry tableId, handId, street, and new cards
     assert.strictEqual(ws.broadcastCommunityCards.mock.calls.length, 1);
-    const broadcastArgs = ws.broadcastCommunityCards.mock.calls[0].arguments as [bigint, bigint, number, readonly number[]];
+    const broadcastArgs = ws.broadcastCommunityCards.mock.calls[0].arguments as unknown as [bigint, bigint, number, readonly number[]];
     assert.strictEqual(broadcastArgs[0], 1n); // tableId
     assert.strictEqual(broadcastArgs[1], 1n); // handId
     assert.strictEqual(broadcastArgs[2], 4);  // street

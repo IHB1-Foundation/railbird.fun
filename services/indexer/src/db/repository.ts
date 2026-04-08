@@ -328,13 +328,49 @@ export async function getHandActions(tableId: bigint, handId: bigint): Promise<A
          FROM processed_events pe
          WHERE pe.tx_hash = a.tx_hash
            AND pe.event_name = 'BettingRoundComplete'
-       ) AS ends_street
+       ) AS ends_street,
+       dv.reveal_tx_hash IS NOT NULL AS verified,
+       dv.reveal_tx_hash
      FROM actions a
+     LEFT JOIN decision_verifications dv
+       ON dv.table_id = a.table_id
+      AND dv.hand_id = a.hand_id
+      AND dv.seat_index = a.seat_index
      WHERE a.table_id = $1 AND a.hand_id = $2
      ORDER BY a.id`,
     [tableId.toString(), handId.toString()]
   );
   return result.rows;
+}
+
+export async function insertDecisionVerification(
+  tableId: bigint,
+  handId: bigint,
+  seatIndex: number,
+  action: string,
+  reasoning: string,
+  revealTxHash: string,
+  blockNumber: bigint
+): Promise<void> {
+  await query(
+    `INSERT INTO decision_verifications
+       (table_id, hand_id, seat_index, action, reasoning, reveal_tx_hash, block_number)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
+     ON CONFLICT (table_id, hand_id, seat_index) DO UPDATE SET
+       action = EXCLUDED.action,
+       reasoning = EXCLUDED.reasoning,
+       reveal_tx_hash = EXCLUDED.reveal_tx_hash,
+       block_number = EXCLUDED.block_number`,
+    [
+      tableId.toString(),
+      handId.toString(),
+      seatIndex,
+      action,
+      reasoning,
+      revealTxHash,
+      blockNumber.toString(),
+    ]
+  );
 }
 
 // ============ Agents ============

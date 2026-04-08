@@ -368,11 +368,31 @@
   }
 }
 
-@media (max-width: 840px) {
+@media (max-width: 768px) {
+  .featureStrip {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .featureDesc {
+    font-size: 0.82rem;
+  }
+
+  .featureItem {
+    border-color: rgba(148, 163, 184, 0.35);
+  }
+}
+
+@media (max-width: 480px) {
   .featureStrip {
     grid-template-columns: 1fr;
   }
 
+  .featureItem {
+    padding: 0.75rem;
+  }
+}
+
+@media (max-width: 840px) {
   .landingStatsGrid {
     grid-template-columns: 1fr;
   }

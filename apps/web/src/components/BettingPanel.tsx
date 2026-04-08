@@ -93,6 +93,9 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
   const [stakeInput, setStakeInput] = useState("50");
   const [notice, setNotice] = useState<{ text: string; type: "success" | "error" } | null>(null);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [showBetConfirm, setShowBetConfirm] = useState(false);
+  const [skipSmallBetConfirm, setSkipSmallBetConfirm] = useState(false);
+  const [pendingBetWei, setPendingBetWei] = useState<bigint | null>(null);
   const [mobileBankrollOpen, setMobileBankrollOpen] = useState(false);
   const [marketJustOpened, setMarketJustOpened] = useState(false);
   const prevMarketOpenRef = useRef<boolean | null>(null);
@@ -260,27 +263,30 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
     localStorage.setItem(WAGERS_KEY, JSON.stringify(nextWagers));
   }
 
-  function placeBet() {
+  function validateBet(): bigint | null {
     setNotice(null);
     if (!marketOpen || !handId) {
       showError("Betting is closed right now. Wait for the next hand.");
-      return;
+      return null;
     }
     if (!selectedMarket) {
       showError("Select an agent before placing a bet.");
-      return;
+      return null;
     }
-
     const stakeWei = parseChipInputToWei(stakeInput);
     if (!stakeWei) {
       showError(`Invalid stake: enter a positive whole number between 1 and ${MAX_STAKE_CHIPS.toLocaleString()} chips.`);
-      return;
+      return null;
     }
     if (stakeWei > bankrollWei) {
       showError("Insufficient bankroll.");
-      return;
+      return null;
     }
+    return stakeWei;
+  }
 
+  function commitBet(stakeWei: bigint) {
+    if (!selectedMarket || !handId) return;
     const nextBankroll = bankrollWei - stakeWei;
     const wager: Wager = {
       id: `${Date.now()}-${Math.floor(Math.random() * 100000)}`,
@@ -293,12 +299,23 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
       status: "open",
       placedAt: nowIso(),
     };
-
-    const nextWagers = [...wagers, wager];
-    persist(nextBankroll, nextWagers);
+    persist(nextBankroll, [...wagers, wager]);
     showSuccess(
       `Bet accepted: ${selectedMarket.profile.codename} / ${formatChips(stakeWei)} ${CHIP_SYMBOL} @ ${formatOdds(selectedMarket.oddsBps)}x`
     );
+  }
+
+  function placeBet() {
+    const stakeWei = validateBet();
+    if (!stakeWei) return;
+    // Skip confirmation for small bets when toggle enabled, or stake < 50 chips
+    const SMALL_BET = 50n * 10n ** 18n;
+    if (skipSmallBetConfirm && stakeWei < SMALL_BET) {
+      commitBet(stakeWei);
+      return;
+    }
+    setPendingBetWei(stakeWei);
+    setShowBetConfirm(true);
   }
 
   function resetBook() {
@@ -584,6 +601,15 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
           >
             Place Bet
           </button>
+
+          <label className={styles.skipConfirmToggle}>
+            <input
+              type="checkbox"
+              checked={skipSmallBetConfirm}
+              onChange={(e) => setSkipSmallBetConfirm(e.target.checked)}
+            />
+            Skip confirmation for bets under 50 chips
+          </label>
         </aside>
       </div>
 
@@ -680,6 +706,28 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
         onConfirm={() => { resetBook(); setShowResetConfirm(false); }}
         onCancel={() => setShowResetConfirm(false)}
       />
+
+      {showBetConfirm && selectedMarket && pendingBetWei && (() => {
+        const payout = (pendingBetWei * BigInt(selectedMarket.oddsBps)) / 10_000n;
+        return (
+          <ConfirmDialog
+            open
+            title={`Bet on ${selectedMarket.profile.codename}`}
+            message={`Stake ${formatChips(pendingBetWei)} ${CHIP_SYMBOL} at ${formatOdds(selectedMarket.oddsBps)}x odds — potential win: ${formatChips(payout)} ${CHIP_SYMBOL}`}
+            confirmLabel="Confirm Bet"
+            cancelLabel="Cancel"
+            onConfirm={() => {
+              commitBet(pendingBetWei);
+              setShowBetConfirm(false);
+              setPendingBetWei(null);
+            }}
+            onCancel={() => {
+              setShowBetConfirm(false);
+              setPendingBetWei(null);
+            }}
+          />
+        );
+      })()}
     </section>
   );
 }

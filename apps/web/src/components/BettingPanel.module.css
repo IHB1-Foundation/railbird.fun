@@ -279,6 +279,21 @@
   color: rgba(226, 230, 248, 0.7);
 }
 
+.skipConfirmToggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.skipConfirmToggle input {
+  width: auto;
+  accent-color: var(--accent);
+}
+
 .betSlip {
   display: grid;
   gap: 0.62rem;

@@ -39,19 +39,31 @@ function deriveWsBase(): string {
 
 const WS_BASE = deriveWsBase();
 
+interface UseWebSocketResult {
+  status: WsStatus;
+  reconnectAttempts: number;
+  nextRetryIn: number;
+}
+
+const MAX_BACKOFF_MS = 30000;
+
 export function useWebSocket({
   tableId,
   onMessage,
   pollIntervalMs = 3000,
-  maxReconnectAttempts = 5,
+  maxReconnectAttempts = 10,
   baseReconnectDelayMs = 1000,
-}: UseWebSocketOptions): WsStatus {
+}: UseWebSocketOptions): UseWebSocketResult {
   const [status, setStatus] = useState<WsStatus>("connecting");
+  const [reconnectAttempts, setReconnectAttempts] = useState(0);
+  const [nextRetryIn, setNextRetryIn] = useState(0);
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectCountRef = useRef(0);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const onMessageRef = useRef(onMessage);
+  const wasPollRef = useRef(false);
   onMessageRef.current = onMessage;
 
   const clearPoll = useCallback(() => {
@@ -65,6 +77,10 @@ export function useWebSocket({
     if (reconnectTimerRef.current) {
       clearTimeout(reconnectTimerRef.current);
       reconnectTimerRef.current = null;
+    }
+    if (countdownRef.current) {
+      clearInterval(countdownRef.current);
+      countdownRef.current = null;
     }
   }, []);
 
@@ -83,6 +99,7 @@ export function useWebSocket({
   // Falls back to polling when WebSocket is unavailable
   const startPolling = useCallback(() => {
     clearPoll();
+    wasPollRef.current = true;
     setStatus("polling");
     const indexerBase =
       (typeof process !== "undefined" && process.env.NEXT_PUBLIC_INDEXER_URL) ||
@@ -128,9 +145,22 @@ export function useWebSocket({
     setStatus("connecting");
 
     ws.onopen = () => {
+      const wasPolling = wasPollRef.current;
       reconnectCountRef.current = 0;
+      setReconnectAttempts(0);
+      setNextRetryIn(0);
       setStatus("connected");
       clearPoll();
+      wasPollRef.current = false;
+      if (wasPolling) {
+        // Notify via a special message that the connection was restored
+        onMessageRef.current({
+          type: "ws_reconnected",
+          tableId,
+          timestamp: new Date().toISOString(),
+          data: null,
+        });
+      }
     };
 
     ws.onmessage = (event) => {
@@ -152,10 +182,24 @@ export function useWebSocket({
         startPolling();
         return;
       }
-      const delay = baseReconnectDelayMs * Math.pow(2, reconnectCountRef.current);
+      const delay = Math.min(baseReconnectDelayMs * Math.pow(2, reconnectCountRef.current), MAX_BACKOFF_MS);
       reconnectCountRef.current++;
+      setReconnectAttempts(reconnectCountRef.current);
+      setNextRetryIn(Math.ceil(delay / 1000));
       setStatus("reconnecting");
-      reconnectTimerRef.current = setTimeout(connect, delay);
+      // Countdown timer
+      let remaining = Math.ceil(delay / 1000);
+      countdownRef.current = setInterval(() => {
+        remaining--;
+        setNextRetryIn(Math.max(0, remaining));
+      }, 1000);
+      reconnectTimerRef.current = setTimeout(() => {
+        if (countdownRef.current) {
+          clearInterval(countdownRef.current);
+          countdownRef.current = null;
+        }
+        connect();
+      }, delay);
     };
 
     ws.onerror = () => {
@@ -203,5 +247,5 @@ export function useWebSocket({
       document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, [connect, clearPoll, clearReconnectTimer]);
 
-  return status;
+  return { status, reconnectAttempts, nextRetryIn };
 }

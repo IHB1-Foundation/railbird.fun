@@ -50,7 +50,7 @@ interface TableViewerProps {
 type TableAction = NonNullable<TableResponse["currentHand"]>["actions"][number];
 
 export function TableViewer({ initialData, tableId }: TableViewerProps) {
-  const { table, maxSeats, timeRemaining, wsStatus, refreshError, refreshRetryCount, refreshTable } =
+  const { table, maxSeats, timeRemaining, wsStatus, reconnectAttempts, nextRetryIn, refreshError, refreshRetryCount, refreshTable } =
     useTableState(tableId, initialData);
 
   const [revealedHolecards, setRevealedHolecards] = useState<RevealedHolecardResponse[]>([]);
@@ -239,9 +239,9 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
         wsStatus === "connected" ? styles.connected : wsStatus === "polling" ? styles.polling : styles.disconnected
       )}>
         {wsStatus === "connected" && "Live"}
-        {wsStatus === "connecting" && "Connecting…"}
-        {wsStatus === "reconnecting" && "Reconnecting…"}
-        {wsStatus === "polling" && "Polling (fallback)"}
+        {wsStatus === "connecting" && "Connecting\u2026"}
+        {wsStatus === "reconnecting" && `Reconnecting in ${nextRetryIn}s (attempt ${reconnectAttempts}/10)\u2026`}
+        {wsStatus === "polling" && "Polling every 3s"}
       </div>
 
       {/* Owner Mode Banner */}

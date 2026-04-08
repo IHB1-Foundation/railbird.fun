@@ -34,6 +34,8 @@ interface UseTableStateResult {
   maxSeats: number;
   timeRemaining: string;
   wsStatus: WsStatus;
+  reconnectAttempts: number;
+  nextRetryIn: number;
   refreshError: string | null;
   refreshRetryCount: number;
   refreshTable: () => Promise<void>;
@@ -97,7 +99,7 @@ export function useTableState(
     []
   );
 
-  const wsStatus = useWebSocket({ tableId, onMessage: handleWsMessage });
+  const { status: wsStatus, reconnectAttempts, nextRetryIn } = useWebSocket({ tableId, onMessage: handleWsMessage });
 
   // Update countdown timer every second
   useEffect(() => {
@@ -115,5 +117,5 @@ export function useTableState(
     return () => clearTimeout(timer);
   }, [refreshRetryCount, refreshTable]);
 
-  return { table, maxSeats, timeRemaining, wsStatus, refreshError, refreshRetryCount, refreshTable };
+  return { table, maxSeats, timeRemaining, wsStatus, reconnectAttempts, nextRetryIn, refreshError, refreshRetryCount, refreshTable };
 }

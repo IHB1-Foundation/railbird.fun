@@ -84,3 +84,79 @@
 .infoRow {
   word-break: break-word;
 }
+
+/* ── Treasury AI Reasoning ── */
+
+.treasuryReasoningRow {
+  border-top: none;
+}
+
+.treasuryReasoningSummary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.8rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+  cursor: pointer;
+  background: rgba(129, 108, 249, 0.06);
+  list-style: none;
+}
+
+.treasuryReasoningSummary::-webkit-details-marker {
+  display: none;
+}
+
+.treasuryReasoningSummary::before {
+  content: "▶";
+  font-size: 0.6rem;
+  transition: transform 0.15s;
+}
+
+details[open] .treasuryReasoningSummary::before {
+  transform: rotate(90deg);
+}
+
+.treasuryConfidence {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.7rem;
+}
+
+.treasuryConfidenceBar {
+  display: inline-block;
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(to right, var(--danger), var(--success));
+}
+
+.treasuryReasoningBody {
+  padding: 0.5rem 0.8rem 0.6rem;
+  background: rgba(129, 108, 249, 0.04);
+  border-left: 3px solid rgba(129, 108, 249, 0.35);
+}
+
+.treasuryReasoningText {
+  font-size: 0.78rem;
+  font-style: italic;
+  color: var(--muted);
+  margin: 0 0 0.5rem;
+  line-height: 1.45;
+}
+
+.treasuryFactors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.treasuryFactor {
+  font-size: 0.7rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  background: rgba(129, 108, 249, 0.12);
+  color: var(--muted);
+  border: 1px solid rgba(129, 108, 249, 0.2);
+}

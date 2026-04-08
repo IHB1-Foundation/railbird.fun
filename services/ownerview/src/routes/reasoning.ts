@@ -147,3 +147,94 @@ export function logMemoryWarning(): void {
     "Reasoning store is in-memory — data will be lost on restart (MVP). Consider persisting to DB for production."
   );
 }
+
+// ─── Treasury Reasoning Store ─────────────────────────────────────────────────
+
+export interface TreasuryReasoningFactors {
+  navVsMarket: string;
+  pnlTrend: string;
+  sizeJustification: string;
+}
+
+export interface TreasuryReasoningEntry {
+  vaultAddress: string;
+  handId: string;
+  action: "buy" | "sell" | "skip";
+  amountBps: number;
+  reasoning: string;
+  confidence: number;
+  factors: TreasuryReasoningFactors;
+  txHash?: string;
+  timestamp: number;
+}
+
+// In-memory store: key = `${vaultAddress}:${handId}`
+const treasuryStore = new Map<string, TreasuryReasoningEntry>();
+
+function treasuryKey(vaultAddress: string, handId: string): string {
+  return `${vaultAddress.toLowerCase()}:${handId}`;
+}
+
+export function createTreasuryReasoningRouter(): Router {
+  const router = Router();
+
+  /**
+   * POST /treasury-reasoning — KeeperBot submits treasury rebalancing reasoning.
+   * Body: { vaultAddress, handId, action, amountBps, reasoning, confidence, factors, txHash? }
+   */
+  router.post("/", (req: Request, res: Response) => {
+    const { vaultAddress, handId, action, amountBps, reasoning, confidence, factors, txHash } = req.body;
+
+    if (!vaultAddress || !handId || !action || !reasoning) {
+      res.status(400).json({ error: "Missing required fields: vaultAddress, handId, action, reasoning" });
+      return;
+    }
+    if (!["buy", "sell", "skip"].includes(action)) {
+      res.status(400).json({ error: "action must be buy, sell, or skip" });
+      return;
+    }
+
+    const entry: TreasuryReasoningEntry = {
+      vaultAddress: String(vaultAddress).toLowerCase(),
+      handId: String(handId),
+      action: action as "buy" | "sell" | "skip",
+      amountBps: typeof amountBps === "number" ? amountBps : 0,
+      reasoning: String(reasoning),
+      confidence: typeof confidence === "number" ? confidence : 0.5,
+      factors: factors && typeof factors === "object" ? factors as TreasuryReasoningFactors : { navVsMarket: "", pnlTrend: "", sizeJustification: "" },
+      txHash: txHash ? String(txHash) : undefined,
+      timestamp: Date.now(),
+    };
+
+    treasuryStore.set(treasuryKey(entry.vaultAddress, entry.handId), entry);
+    logger.info({ vaultAddress: entry.vaultAddress, handId: entry.handId, action: entry.action, amountBps: entry.amountBps }, "Treasury reasoning stored");
+    res.status(201).json({ ok: true });
+  });
+
+  /**
+   * GET /treasury-reasoning?vaultAddress=&handId=
+   * Returns the treasury reasoning entry for the given vault/hand.
+   */
+  router.get("/", (req: Request, res: Response) => {
+    const { vaultAddress, handId } = req.query as Record<string, string | undefined>;
+    if (!vaultAddress) {
+      res.status(400).json({ error: "Missing required query param: vaultAddress" });
+      return;
+    }
+
+    if (handId) {
+      const entry = treasuryStore.get(treasuryKey(vaultAddress, handId));
+      res.json({ vaultAddress, handId, entry: entry ?? null });
+      return;
+    }
+
+    // Return all entries for this vault (latest 50)
+    const entries = [...treasuryStore.values()]
+      .filter((e) => e.vaultAddress === vaultAddress.toLowerCase())
+      .sort((a, b) => b.timestamp - a.timestamp)
+      .slice(0, 50);
+    res.json({ vaultAddress, entries });
+  });
+
+  return router;
+}

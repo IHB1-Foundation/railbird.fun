@@ -755,6 +755,7 @@ export class KeeperBot {
           this.stats.rebalancesTriggered++;
           this.recordAction("rebalanceBuy");
           this.log.info({ tx: hash, monAmount: monAmount.toString(), handId: handId.toString(), reasoning: rec.reasoning }, "AI-advised Vault rebalanceBuy triggered");
+          this.submitTreasuryReasoning(handId, rec, hash);
         } catch (error) {
           this.log.info({ err: String(error).split("\n")[0], handId: handId.toString() }, "AI-advised rebalanceBuy failed (accretive constraint or error)");
         }
@@ -772,11 +773,35 @@ export class KeeperBot {
           this.stats.rebalancesTriggered++;
           this.recordAction("rebalanceSell");
           this.log.info({ tx: hash, tokenAmount: tokenAmount.toString(), handId: handId.toString(), reasoning: rec.reasoning }, "AI-advised Vault rebalanceSell triggered");
+          this.submitTreasuryReasoning(handId, rec, hash);
         } catch (error) {
           this.log.info({ err: String(error).split("\n")[0], handId: handId.toString() }, "AI-advised rebalanceSell failed (accretive constraint or error)");
         }
       }
     }
+  }
+
+  /** Fire-and-forget: POST treasury reasoning to OwnerView (non-blocking). */
+  private submitTreasuryReasoning(handId: bigint, rec: import("./treasury/types.js").RebalanceRecommendation, txHash?: string): void {
+    if (!this.config.ownerviewUrl || !this.config.vaultAddress) return;
+    const url = `${this.config.ownerviewUrl.replace(/\/$/, "")}/treasury-reasoning`;
+    const body = JSON.stringify({
+      vaultAddress: this.config.vaultAddress,
+      handId: handId.toString(),
+      action: rec.action,
+      amountBps: rec.amountBps,
+      reasoning: rec.reasoning,
+      confidence: rec.confidence,
+      factors: rec.factors,
+      txHash,
+    });
+    fetchWithTimeout(url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body,
+    }, DEFAULT_REQUEST_TIMEOUT_MS).catch((err: unknown) => {
+      this.log.warn({ err: err instanceof Error ? err.message : String(err) }, "Failed to submit treasury reasoning (non-fatal)");
+    });
   }
 
   /**

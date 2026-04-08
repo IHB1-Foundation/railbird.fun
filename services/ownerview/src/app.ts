@@ -8,7 +8,7 @@ import { HoleCardStore } from "./holecards/index.js";
 import { DealerService, HandStartedEventListener } from "./dealer/index.js";
 import { DealerSeedStore } from "./dealer/dealerSeedStore.js";
 import { createAuthMiddleware } from "./middleware/index.js";
-import { createAuthRoutes, createOwnerRoutes, createDealerRoutes, createReasoningRoutes } from "./routes/index.js";
+import { createAuthRoutes, createOwnerRoutes, createDealerRoutes, createReasoningRoutes, createTreasuryReasoningRouter } from "./routes/index.js";
 import { logMemoryWarning } from "./routes/reasoning.js";
 
 const DEFAULT_ALLOWED_ORIGINS = [
@@ -174,6 +174,8 @@ export async function createApp(config: AppConfig): Promise<AppContext> {
 
   // Reasoning routes (public — POST requires operator signature in production)
   app.use("/reasoning", createReasoningRoutes());
+  // Treasury reasoning routes (KeeperBot POSTs after rebalancing)
+  app.use("/treasury-reasoning", createTreasuryReasoningRouter());
   logMemoryWarning();
 
   // Dealer routes (protected with API key when configured)

@@ -3,6 +3,7 @@ import {
   http,
   type PublicClient,
   type Log,
+  type Abi,
   parseAbiItem,
   decodeEventLog,
 } from "viem";
@@ -308,8 +309,8 @@ export class HandStartedEventListener {
   private async getHoleCardVRFRandomness(handId: string): Promise<bigint> {
     const randomness = await this.client.readContract({
       address: this.pokerTableAddress,
-      abi: PokerTableABI,
-      functionName: "holeCardVRFRandomness",
+      abi: PokerTableABI as Abi,
+      functionName: "holeCardVRFRandomnessHash",
       args: [BigInt(handId)],
     });
     return randomness as bigint;

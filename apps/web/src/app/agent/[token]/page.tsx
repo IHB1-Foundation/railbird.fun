@@ -3,7 +3,7 @@ import { Breadcrumb } from "@/components/Breadcrumb";
 import { Tooltip } from "@/components/Tooltip";
 import { AgentAvatar } from "@/components/AgentAvatar";
 import { ShareButton } from "@/components/ShareButton";
-import { getAgent, getAgentSnapshots, getAgentRebalances, getAgentHands, type RebalanceEventResponse } from "@/lib/api";
+import { getAgent, getAgentSnapshots, getAgentRebalances, getAgentHands, getTreasuryReasoningAll, type RebalanceEventResponse, type TreasuryReasoningEntry } from "@/lib/api";
 import type { HandResponse } from "@/lib/types";
 import { NadFunTradingWidget } from "@/components/NadFunTradingWidget";
 import { NavSparkline } from "@/components/NavSparkline";
@@ -32,20 +32,23 @@ export default async function AgentPage({
   let snapshots;
   let rebalances: RebalanceEventResponse[] = [];
   let hands: HandResponse[] = [];
+  let treasuryReasonings: Map<string, TreasuryReasoningEntry> = new Map();
   let error = null;
 
   try {
     agent = await getAgent(token);
     const fetchHands = getAgentHands(token, 20).catch(() => [] as HandResponse[]);
     if (agent.vaultAddress) {
-      const [s, r, h] = await Promise.all([
+      const [s, r, h, tr] = await Promise.all([
         getAgentSnapshots(token, 50),
         getAgentRebalances(token, 50).catch(() => []),
         fetchHands,
+        getTreasuryReasoningAll(agent.vaultAddress).catch(() => []),
       ]);
       snapshots = s;
       rebalances = r;
       hands = h;
+      treasuryReasonings = new Map(tr.map((e) => [e.handId, e]));
     } else {
       hands = await fetchHands;
     }
@@ -497,23 +500,62 @@ export default async function AgentPage({
                 </tr>
               </thead>
               <tbody>
-                {rebalances.map((r) => (
-                  <tr key={r.id}>
-                    <td>#{r.handId}</td>
-                    <td>
-                      <span className={r.direction === "buy" ? "value-positive" : "value-negative"}>
-                        {r.direction === "buy" ? "Buy" : "Sell"}
-                      </span>
-                    </td>
-                    <td>{formatMon(r.amountIn)}</td>
-                    <td>{formatMon(r.amountOut)}</td>
-                    <td>{formatNavPerShare(r.navBefore)}</td>
-                    <td className={BigInt(r.navAfter) >= BigInt(r.navBefore) ? "value-positive" : "value-negative"}>
-                      {formatNavPerShare(r.navAfter)}
-                    </td>
-                    <td className="text-muted">{formatTime(r.timestamp)}</td>
-                  </tr>
-                ))}
+                {rebalances.map((r) => {
+                  const tReasoning = treasuryReasonings.get(r.handId);
+                  return (
+                    <>
+                      <tr key={r.id}>
+                        <td>#{r.handId}</td>
+                        <td>
+                          <span className={r.direction === "buy" ? "value-positive" : "value-negative"}>
+                            {r.direction === "buy" ? "Buy" : "Sell"}
+                          </span>
+                        </td>
+                        <td>{formatMon(r.amountIn)}</td>
+                        <td>{formatMon(r.amountOut)}</td>
+                        <td>{formatNavPerShare(r.navBefore)}</td>
+                        <td className={BigInt(r.navAfter) >= BigInt(r.navBefore) ? "value-positive" : "value-negative"}>
+                          {formatNavPerShare(r.navAfter)}
+                        </td>
+                        <td className="text-muted">{formatTime(r.timestamp)}</td>
+                      </tr>
+                      {tReasoning && (
+                        <tr key={`${r.id}-reasoning`}>
+                          <td colSpan={7} style={{ padding: 0 }}>
+                            <details className={styles.treasuryReasoningRow}>
+                              <summary className={styles.treasuryReasoningSummary}>
+                                💡 AI Analysis
+                                <span className={styles.treasuryConfidence}>
+                                  Confidence: {Math.round(tReasoning.confidence * 100)}%
+                                  <span
+                                    className={styles.treasuryConfidenceBar}
+                                    style={{ width: `${Math.round(tReasoning.confidence * 60)}px` }}
+                                  />
+                                </span>
+                              </summary>
+                              <div className={styles.treasuryReasoningBody}>
+                                <p className={styles.treasuryReasoningText}>{tReasoning.reasoning}</p>
+                                {tReasoning.factors && (
+                                  <div className={styles.treasuryFactors}>
+                                    {tReasoning.factors.navVsMarket && (
+                                      <span className={styles.treasuryFactor}><b>NAV vs Market:</b> {tReasoning.factors.navVsMarket}</span>
+                                    )}
+                                    {tReasoning.factors.pnlTrend && (
+                                      <span className={styles.treasuryFactor}><b>PnL Trend:</b> {tReasoning.factors.pnlTrend}</span>
+                                    )}
+                                    {tReasoning.factors.sizeJustification && (
+                                      <span className={styles.treasuryFactor}><b>Size:</b> {tReasoning.factors.sizeJustification}</span>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </details>
+                          </td>
+                        </tr>
+                      )}
+                    </>
+                  );
+                })}
               </tbody>
             </table>
           </div>

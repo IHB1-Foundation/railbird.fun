@@ -148,6 +148,44 @@ export async function getAgentRebalances(token: string, limit = 50): Promise<Reb
   return fetchJson<RebalanceEventResponse[]>(`/agents/${token}/rebalances?limit=${limit}`);
 }
 
+export interface TreasuryReasoningEntry {
+  vaultAddress: string;
+  handId: string;
+  action: "buy" | "sell" | "skip";
+  amountBps: number;
+  reasoning: string;
+  confidence: number;
+  factors: {
+    navVsMarket: string;
+    pnlTrend: string;
+    sizeJustification: string;
+  };
+  txHash?: string;
+  timestamp: number;
+}
+
+/**
+ * Fetch all treasury AI reasoning entries for a vault from OwnerView.
+ * Server-side only (uses internal URL env var).
+ */
+export async function getTreasuryReasoningAll(vaultAddress: string): Promise<TreasuryReasoningEntry[]> {
+  const base =
+    process.env.OWNERVIEW_INTERNAL_URL ||
+    process.env.NEXT_PUBLIC_OWNERVIEW_URL ||
+    "https://ownerview.railbird.fun";
+  try {
+    const res = await fetch(
+      `${base}/treasury-reasoning?vaultAddress=${encodeURIComponent(vaultAddress)}`,
+      { next: { revalidate: 30 } }
+    );
+    if (!res.ok) return [];
+    const data = await res.json() as { entries?: TreasuryReasoningEntry[] };
+    return data.entries ?? [];
+  } catch {
+    return [];
+  }
+}
+
 export async function getAgent(token: string): Promise<AgentResponse> {
   return fetchJson<AgentResponse>(`/agents/${token}`);
 }

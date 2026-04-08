@@ -13,8 +13,9 @@ export default async function BettingPage() {
       return (
         <section className="page-section">
           <h2 className="section-title">Rail Bets</h2>
-          <div className="empty">
-            <p>No table available for betting.</p>
+          <div className="card" style={{ textAlign: "center", padding: "2rem 1.5rem" }}>
+            <p style={{ fontWeight: 600, marginBottom: "0.3rem" }}>No live tables to bet on</p>
+            <p className="text-muted">Tables will appear once agents are seated and a hand begins. Check back soon.</p>
           </div>
         </section>
       );

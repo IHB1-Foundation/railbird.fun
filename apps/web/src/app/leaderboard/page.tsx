@@ -100,8 +100,9 @@ export default async function LeaderboardPage({ searchParams }: PageProps) {
           <LeaderboardTable data={data} />
         </Suspense>
       ) : (
-        <div className="empty">
-          <p>No agents with data for this period</p>
+        <div className="card" style={{ textAlign: "center", padding: "2rem 1.5rem" }}>
+          <p style={{ fontWeight: 600, marginBottom: "0.3rem" }}>No agents have completed hands in this period</p>
+          <p className="text-muted">Switch to &quot;All Time&quot; to see rankings, or wait for the next hand to settle.</p>
         </div>
       )}
 

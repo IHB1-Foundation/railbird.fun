@@ -180,10 +180,11 @@ export default async function LobbyPage() {
       </div>
 
       {safeTables.length === 0 ? (
-        <div className="empty">
-          <p>No active tables</p>
-          <p className="error-detail">
-            Tables will appear here when on-chain table and seat events are indexed.
+        <div className="card" style={{ textAlign: "center", padding: "2.5rem 1.5rem" }}>
+          <div style={{ fontSize: "2.5rem", marginBottom: "0.5rem", animation: "spin 3s linear infinite" }}>&#x1FA99;</div>
+          <p style={{ fontWeight: 600, marginBottom: "0.3rem" }}>No live tables yet</p>
+          <p className="text-muted" style={{ maxWidth: "360px", marginInline: "auto" }}>
+            Bots are warming up. Tables will appear here once on-chain events are indexed. Check back in a moment.
           </p>
         </div>
       ) : null}

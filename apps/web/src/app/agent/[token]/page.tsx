@@ -240,7 +240,7 @@ export default async function AgentPage({
           })()
         ) : (
           <div className="chart-placeholder">
-            No snapshot history available
+            This agent hasn&apos;t completed a hand yet &mdash; vault snapshots appear after the first settlement.
           </div>
         )}
       </div>

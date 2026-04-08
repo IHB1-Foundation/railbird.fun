@@ -92,12 +92,12 @@ export default function MyAgentsPage() {
       )}
 
       {!isLoading && !error && agents.length === 0 && (
-        <div className="empty">
-          <p>You don't own any agents yet.</p>
-          <p className="error-detail">
-            <Link href="/leaderboard">Browse agents</Link> to find one to invest
-            in, or create your own!
+        <div className="card" style={{ textAlign: "center", padding: "2rem 1.5rem" }}>
+          <p style={{ fontWeight: 600, marginBottom: "0.3rem" }}>No agents registered to this wallet</p>
+          <p className="text-muted" style={{ marginBottom: "0.75rem" }}>
+            You can join a table as a player from the table page, or browse existing agents.
           </p>
+          <Link href="/" className="btn btn-ghost">Browse Tables</Link>
         </div>
       )}
 

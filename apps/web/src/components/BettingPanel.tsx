@@ -450,6 +450,12 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
             <article
               key={entry.seatIndex}
               className={`card ${styles.betAgentCard} ${selectedSeat === entry.seatIndex ? styles.selected : ""} ${marketJustOpened ? styles.pulsing : ""}`}
+              onClick={() => setSelectedSeat(entry.seatIndex)}
+              role="radio"
+              aria-checked={selectedSeat === entry.seatIndex}
+              aria-label={`Bet on ${entry.profile.codename} at seat ${entry.seatIndex}`}
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === " " || e.key === "Enter") setSelectedSeat(entry.seatIndex); }}
             >
               <div className={styles.betAgentTop}>
                 <div>
@@ -457,7 +463,12 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
                   <h3 className={styles.betAgentName}>{entry.profile.codename}</h3>
                   <div className={styles.betAgentStyle}>{entry.profile.style}</div>
                 </div>
-                <div className={styles.betAgentOdds}>{formatOdds(entry.oddsBps)}x</div>
+                <div className={styles.betAgentOddsRow}>
+                  <div className={styles.betAgentOdds}>{formatOdds(entry.oddsBps)}x</div>
+                  {selectedSeat === entry.seatIndex && (
+                    <span className={styles.selectedBadge}>Selected ✓</span>
+                  )}
+                </div>
               </div>
 
               <p className={styles.betAgentBlurb}>{entry.profile.blurb}</p>
@@ -476,16 +487,6 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
               </div>
 
               <div className={styles.betAgentOwner}>{shortenAddress(entry.ownerAddress)}</div>
-
-              <button
-                type="button"
-                className={styles.betSelectBtn}
-                onClick={() => setSelectedSeat(entry.seatIndex)}
-                aria-pressed={selectedSeat === entry.seatIndex}
-                aria-label={`Bet on ${entry.profile.codename} at seat ${entry.seatIndex}`}
-              >
-                {selectedSeat === entry.seatIndex ? "Selected" : "Bet on this agent"}
-              </button>
             </article>
           ))}
         </div>

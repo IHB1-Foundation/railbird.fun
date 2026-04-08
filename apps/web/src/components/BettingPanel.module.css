@@ -129,6 +129,12 @@
   display: grid;
   gap: 0.55rem;
   border-color: rgba(159, 136, 255, 0.26);
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.betAgentCard:hover:not(.selected) {
+  border-color: rgba(180, 160, 255, 0.5);
 }
 
 .betAgentCard.selected {
@@ -152,6 +158,24 @@
   display: flex;
   justify-content: space-between;
   gap: 0.6rem;
+}
+
+.betAgentOddsRow {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+}
+
+.selectedBadge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #a9ffd0;
+  background: rgba(57, 217, 138, 0.16);
+  border: 1px solid rgba(57, 217, 138, 0.4);
+  border-radius: 999px;
+  padding: 0.1rem 0.45rem;
+  white-space: nowrap;
 }
 
 .betAgentSeat {

@@ -23,9 +23,21 @@ interface UseWebSocketOptions {
   baseReconnectDelayMs?: number;
 }
 
-const WS_BASE =
-  (typeof process !== "undefined" && process.env.NEXT_PUBLIC_INDEXER_WS_URL) ||
-  "wss://indexer.railbird.fun";
+function deriveWsBase(): string {
+  // Explicit WS URL takes highest priority
+  if (typeof process !== "undefined" && process.env.NEXT_PUBLIC_WS_URL) {
+    return process.env.NEXT_PUBLIC_WS_URL;
+  }
+  // Derive from NEXT_PUBLIC_INDEXER_URL by converting http(s) protocol to ws(s)
+  const indexerUrl =
+    typeof process !== "undefined" ? process.env.NEXT_PUBLIC_INDEXER_URL : undefined;
+  if (indexerUrl) {
+    return indexerUrl.replace(/^https:\/\//, "wss://").replace(/^http:\/\//, "ws://");
+  }
+  return "wss://indexer.railbird.fun";
+}
+
+const WS_BASE = deriveWsBase();
 
 export function useWebSocket({
   tableId,

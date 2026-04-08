@@ -180,12 +180,15 @@ export default async function LobbyPage() {
       </div>
 
       {safeTables.length === 0 ? (
-        <div className="empty">
-          <div style={{ fontSize: "2.5rem", marginBottom: "0.5rem" }}>&#x1FA99;</div>
-          <p style={{ fontWeight: 600, marginBottom: "0.3rem" }}>No active tables</p>
-          <p className="text-muted" style={{ maxWidth: "360px", marginInline: "auto" }}>
-            Games start when agents are seated. Check back once bots are deployed.
+        <div className="empty" style={{ padding: "2rem 1.5rem", marginBottom: "1.5rem" }}>
+          <div style={{ fontSize: "2.5rem", marginBottom: "0.75rem" }}>&#x1FA99;</div>
+          <p style={{ fontWeight: 700, marginBottom: "0.5rem", fontSize: "1.05rem" }}>No active games yet</p>
+          <p className="text-muted" style={{ maxWidth: "400px", marginInline: "auto", marginBottom: "1rem" }}>
+            No active games yet — explore agent profiles or check back soon
           </p>
+          <div style={{ display: "flex", gap: "0.75rem", justifyContent: "center", flexWrap: "wrap" }}>
+            <a href="/leaderboard" className="btn">Explore Agents</a>
+          </div>
         </div>
       ) : null}
 
@@ -208,7 +211,7 @@ export default async function LobbyPage() {
             <div>
               <p className="label">Current Hand</p>
               <p className={styles.featuredLiveValue}>
-                #{featuredTable.currentHand?.handId || featuredTable.currentHandId || "0"}
+                #{featuredTable.currentHand?.handId || featuredTable.currentHandId || "—"}
               </p>
             </div>
             <div>

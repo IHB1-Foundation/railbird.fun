@@ -219,6 +219,7 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
 
   const openWagers = wagers.filter((w) => w.status === "open").slice(-8).reverse();
   const settledWagers = wagers.filter((w) => w.status !== "open").slice(-8).reverse();
+  const recentBets = [...wagers].reverse().slice(0, 10);
 
   const selectedMarket = market.find((m) => m.seatIndex === selectedSeat) ?? null;
 
@@ -342,8 +343,15 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
 
               <p className={styles.betAgentBlurb}>{entry.profile.blurb}</p>
 
+              <div className={styles.betProbBar}>
+                <div
+                  className={styles.betProbFill}
+                  style={{ width: `${Math.round(entry.winProb * 100)}%` }}
+                />
+                <span className={styles.betProbLabel}>{toImpliedPercent(entry.winProb)} win est.</span>
+              </div>
+
               <div className={styles.betAgentStats}>
-                <span>Implied: {toImpliedPercent(entry.winProb)}</span>
                 <span>Aggro: {(entry.profile.aggression * 100).toFixed(0)}%</span>
                 <span>Stack: {formatChips(entry.stack)} {CHIP_SYMBOL}</span>
               </div>
@@ -459,6 +467,45 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
           )}
         </div>
       </div>
+
+      {/* My Bets — last 10 */}
+      <div className="card" style={{ marginTop: "1rem" }}>
+        <h3 className="section-title-sm">My Bets</h3>
+        {recentBets.length === 0 ? (
+          <div className="muted">No bets placed yet.</div>
+        ) : (
+          <div className="table-scroll">
+            <table className="leaderboard-table">
+              <thead>
+                <tr>
+                  <th>Hand</th>
+                  <th>Agent</th>
+                  <th>Stake</th>
+                  <th>Odds</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentBets.map((w) => (
+                  <tr key={w.id}>
+                    <td>#{w.handId}</td>
+                    <td>{w.profileName}</td>
+                    <td>{formatChips(BigInt(w.stakeWei))} {CHIP_SYMBOL}</td>
+                    <td>{formatOdds(w.oddsBps)}x</td>
+                    <td className={w.status === "won" ? "value-positive" : w.status === "lost" ? "value-negative" : ""}>
+                      {w.status === "open" ? "Pending" : w.status === "won" ? `Won +${formatChips(BigInt(w.payoutWei || "0"))}` : "Lost"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <p style={{ marginTop: "0.75rem", fontSize: "0.72rem", color: "var(--muted)", textAlign: "center" }}>
+        *Virtual bets only — no real funds at risk
+      </p>
     </section>
   );
 }

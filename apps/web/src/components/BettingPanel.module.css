@@ -147,6 +147,33 @@
   line-height: 1.45;
 }
 
+.betProbBar {
+  position: relative;
+  height: 22px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+  margin-bottom: 0.4rem;
+}
+
+.betProbFill {
+  height: 100%;
+  border-radius: 6px;
+  background: linear-gradient(90deg, rgba(74, 222, 128, 0.35), rgba(74, 222, 128, 0.55));
+  transition: width 0.4s ease;
+}
+
+.betProbLabel {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
 .betAgentStats {
   display: flex;
   flex-wrap: wrap;

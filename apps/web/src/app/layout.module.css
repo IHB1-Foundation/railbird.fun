@@ -73,6 +73,23 @@
   background: linear-gradient(160deg, rgba(129, 108, 249, 0.24), rgba(70, 56, 140, 0.18));
 }
 
+/* Active nav link */
+.navLinkActive {
+  color: #fff !important;
+  border-color: transparent !important;
+  background: transparent !important;
+  box-shadow: 0 2px 0 0 var(--accent) !important;
+  border-bottom-color: var(--accent) !important;
+}
+
+@media (max-width: 768px) {
+  .navLinkActive {
+    box-shadow: none !important;
+    background: linear-gradient(160deg, rgba(129, 108, 249, 0.28), rgba(70, 56, 140, 0.22)) !important;
+    border-color: rgba(196, 176, 255, 0.42) !important;
+  }
+}
+
 .topbarActions {
   display: flex;
   align-items: center;

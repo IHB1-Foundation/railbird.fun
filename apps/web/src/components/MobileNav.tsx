@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import styles from "@/app/layout.module.css";
 
 const NAV_LINKS = [
@@ -11,8 +12,14 @@ const NAV_LINKS = [
   { href: "/me", label: "My Agents" },
 ];
 
+function isActive(href: string, pathname: string): boolean {
+  if (href === "/") return pathname === "/";
+  return pathname.startsWith(href);
+}
+
 export function MobileNav() {
   const [open, setOpen] = useState(false);
+  const pathname = usePathname();
 
   return (
     <>
@@ -24,9 +31,18 @@ export function MobileNav() {
       >
         {open ? "\u2715" : "\u2630"}
       </button>
-      <nav className={`${styles.topNav} ${open ? styles.open : ""}`}>
+      <nav
+        className={`${styles.topNav} ${open ? styles.open : ""}`}
+        aria-label="Main navigation"
+      >
         {NAV_LINKS.map((link) => (
-          <Link key={link.href} href={link.href} onClick={() => setOpen(false)}>
+          <Link
+            key={link.href}
+            href={link.href}
+            onClick={() => setOpen(false)}
+            className={isActive(link.href, pathname) ? styles.navLinkActive : ""}
+            aria-current={isActive(link.href, pathname) ? "page" : undefined}
+          >
             {link.label}
           </Link>
         ))}

@@ -643,6 +643,11 @@ h5 {
   50% { box-shadow: 0 0 0 3px rgba(255, 213, 79, 0.55), 0 0 32px rgba(255, 183, 50, 0.4); }
 }
 
+@keyframes timer-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
 [data-winner="true"] {
   border-color: rgba(255, 213, 79, 0.85) !important;
   box-shadow: 0 0 0 2px rgba(255, 213, 79, 0.35), 0 0 20px rgba(255, 183, 50, 0.25);

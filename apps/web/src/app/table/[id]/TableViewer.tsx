@@ -18,6 +18,7 @@ import { GameState } from "@playerco/shared";
 import { getRevealedHolecards, type RevealedHolecardResponse } from "@/lib/api";
 import { PokerCard } from "@/components/poker/PokerCard";
 import { VrfStatusWidget } from "@/components/poker/VrfStatusWidget";
+import { TimerRing } from "@/components/poker/TimerRing";
 import { SeatPanel } from "@/components/poker/SeatPanel";
 import { ShowdownResultsPanel } from "@/components/poker/ShowdownResultsPanel";
 import { useTableState } from "./useTableState";
@@ -326,11 +327,7 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
                   Pot: {formatChips(currentHand.pot)} {CHIP_SYMBOL}
                 </div>
               )}
-              {table.actionDeadline && (
-                <div className={cn("timer", timeRemaining === "Expired" && "urgent")}>
-                  {timeRemaining}
-                </div>
-              )}
+              <TimerRing deadline={table.actionDeadline} />
               {vrfStreet && <VrfStatusWidget street={vrfStreet} />}
             </div>
           </div>

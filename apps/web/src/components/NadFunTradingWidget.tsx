@@ -192,6 +192,9 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
   const [deadlineMinutes, setDeadlineMinutes] = useState(30);
   const [quote, setQuote] = useState<string | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
+  const [quoteExpiresAt, setQuoteExpiresAt] = useState<number | null>(null);
+  const [quoteSecondsLeft, setQuoteSecondsLeft] = useState<number>(0);
+  const [quoteDebouncing, setQuoteDebouncing] = useState(false);
   const [txLoading, setTxLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
@@ -243,12 +246,27 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
       .catch(() => setStage("unknown"));
   }, [lensAddress, tokenAddress]);
 
+  // ── Quote countdown ──────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!quoteExpiresAt) return;
+    const id = setInterval(() => {
+      const left = Math.max(0, Math.ceil((quoteExpiresAt - Date.now()) / 1000));
+      setQuoteSecondsLeft(left);
+      if (left === 0) { setQuote(null); setQuoteExpiresAt(null); }
+    }, 500);
+    return () => clearInterval(id);
+  }, [quoteExpiresAt]);
+
   // ── Get quote ────────────────────────────────────────────────────────────
   const getQuote = useCallback(async () => {
     if (!lensAddress) return;
+    // Debounce: disable for 500ms after click
+    setQuoteDebouncing(true);
+    setTimeout(() => setQuoteDebouncing(false), 500);
     setQuoteLoading(true);
     setError(null);
     setQuote(null);
+    setQuoteExpiresAt(null);
 
     try {
       const amountWei = parseUnits(amountInput || "0", 18);
@@ -268,6 +286,7 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
           args: [tokenAddress as Address, amountWei],
         });
         setQuote(`~${formatUnits(result, 18)} tokens out`);
+        setQuoteExpiresAt(Date.now() + 10_000);
       } else {
         result = await client.readContract({
           address: lensAddress,
@@ -276,6 +295,7 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
           args: [tokenAddress as Address, amountWei],
         });
         setQuote(`~${formatUnits(result, 18)} MON out`);
+        setQuoteExpiresAt(Date.now() + 10_000);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to get quote");
@@ -556,17 +576,22 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
             type="button"
             className={styles.nadfunQuoteBtn}
             onClick={getQuote}
-            disabled={quoteLoading}
+            disabled={quoteLoading || quoteDebouncing}
             aria-busy={quoteLoading}
             aria-label="Get price quote"
           >
-            {quoteLoading ? "Getting quote…" : "Get Quote"}
+            {quoteLoading ? "Fetching…" : "Get Quote"}
           </button>
 
           {quote && (
             <div className={styles.nadfunQuoteResult} role="status" aria-live="polite">
               {quote}
               {` (slippage ${(slippageBps / 100).toFixed(1)}%)`}
+              {quoteSecondsLeft > 0 && (
+                <span style={{ fontSize: "0.7rem", opacity: 0.7, marginLeft: "0.5rem" }}>
+                  · valid {quoteSecondsLeft}s
+                </span>
+              )}
             </div>
           )}
 

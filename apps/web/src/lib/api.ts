@@ -19,9 +19,18 @@ const API_BASE = INDEXER_BASE;
 const DEFAULT_TIMEOUT_MS = 10_000;
 const MAX_RETRIES = 2;
 
+function generateRequestId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  // Fallback for environments without crypto.randomUUID
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+}
+
 async function fetchJson<T>(path: string, timeoutMs = DEFAULT_TIMEOUT_MS): Promise<T> {
   let lastError: Error | null = null;
   let retryAfterMs: number | null = null;
+  const requestId = generateRequestId();
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     const controller = new AbortController();
@@ -31,6 +40,7 @@ async function fetchJson<T>(path: string, timeoutMs = DEFAULT_TIMEOUT_MS): Promi
       const res = await fetch(`${API_BASE}/api${path}`, {
         cache: "no-store",
         signal: controller.signal,
+        headers: { "X-Request-ID": requestId },
       });
 
       if (!res.ok) {

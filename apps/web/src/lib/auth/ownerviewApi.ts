@@ -31,24 +31,34 @@ function readCsrfToken(): string {
   return match ? match.slice(CSRF_COOKIE_NAME.length + 1) : "";
 }
 
+function generateRequestId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+}
+
 /**
  * Build fetch options for an authenticated request.
  * In cookie mode: credentials: 'include' + X-CSRF-Token header.
  * In bearer mode: Authorization: Bearer <token> header.
  */
 function authHeaders(token?: string): RequestInit {
+  const requestId = generateRequestId();
   if (COOKIE_SESSION_ENABLED) {
     return {
       credentials: "include" as RequestCredentials,
       headers: {
         "Content-Type": "application/json",
         "X-CSRF-Token": readCsrfToken(),
+        "X-Request-ID": requestId,
       },
     };
   }
   return {
     headers: {
       "Content-Type": "application/json",
+      "X-Request-ID": requestId,
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
   };
@@ -59,8 +69,8 @@ function authHeaders(token?: string): RequestInit {
  */
 export async function getNonce(address: string): Promise<NonceResponse> {
   const fetchOptions: RequestInit = COOKIE_SESSION_ENABLED
-    ? { credentials: "include" }
-    : {};
+    ? { credentials: "include", headers: { "X-Request-ID": generateRequestId() } }
+    : { headers: { "X-Request-ID": generateRequestId() } };
 
   const res = await fetch(
     `${OWNERVIEW_URL}/auth/nonce?address=${encodeURIComponent(address)}`,
@@ -87,7 +97,7 @@ export async function verifySignature(
 ): Promise<VerifyResponse> {
   const fetchOptions: RequestInit = {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "X-Request-ID": generateRequestId() },
     body: JSON.stringify({ address, nonce, signature }),
     ...(COOKIE_SESSION_ENABLED ? { credentials: "include" as RequestCredentials } : {}),
   };

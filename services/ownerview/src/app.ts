@@ -89,11 +89,24 @@ export async function createApp(config: AppConfig): Promise<AppContext> {
       res.header("Access-Control-Allow-Credentials", "true");
     }
     res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-CSRF-Token");
+    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-CSRF-Token, X-Request-ID");
+    res.header("Access-Control-Expose-Headers", "X-Request-ID");
     if (req.method === "OPTIONS") {
       res.status(204).end();
       return;
     }
+    next();
+  });
+
+  // X-Request-ID correlation tracing
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    const incoming = req.headers["x-request-id"];
+    const requestId =
+      (typeof incoming === "string" && incoming.length > 0 ? incoming : null) ??
+      crypto.randomUUID();
+    res.locals["requestId"] = requestId;
+    res.setHeader("X-Request-ID", requestId);
+    logger.debug({ method: req.method, path: req.path, requestId }, "Incoming request");
     next();
   });
 
@@ -217,7 +230,8 @@ export async function createApp(config: AppConfig): Promise<AppContext> {
 
   // Error handler
   app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
-    logger.error({ err }, 'Unhandled error');
+    const requestId = res.locals["requestId"] as string | undefined;
+    logger.error({ err, requestId }, 'Unhandled error');
     res.status(500).json({
       error: "Internal server error",
       code: "INTERNAL_ERROR",

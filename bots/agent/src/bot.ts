@@ -6,6 +6,9 @@ import { SimpleStrategy, type Strategy, Decision, type DecisionContext, type Hol
 import { signMessage } from "viem/accounts";
 import { deriveEncryptionKeyPair } from "./auth/encryptionKey.js";
 import { CircuitBreaker, CircuitOpenError, createLogger } from "@playerco/shared";
+import type { VectorStore } from "./rag/vectorStore.js";
+import { embedHand } from "./rag/embedder.js";
+import type { HandSummary } from "./rag/types.js";
 
 const logger = createLogger({ service: "agent-bot" });
 
@@ -18,6 +21,7 @@ export interface AgentBotConfig {
   pollIntervalMs?: number;
   turnActionDelayMs?: number;
   strategy?: Strategy;
+  vectorStore?: VectorStore;
 }
 
 export interface BotStats {
@@ -56,6 +60,15 @@ export class AgentBot {
   private ownerViewCircuit = new CircuitBreaker({ name: "OwnerView", failureThreshold: 5, recoveryTimeoutMs: 30_000 });
   private rpcCircuit = new CircuitBreaker({ name: "RPC", failureThreshold: 5, recoveryTimeoutMs: 30_000 });
 
+  // RAG: per-hand tracking for VectorStore recording
+  private vectorStore: VectorStore | undefined;
+  private currentHandActions: string[] = [];
+  private currentHandOpponentActions: string[] = [];
+  private currentHandHoleCards: string = "unknown";
+  private currentHandReasoning: string | undefined = undefined;
+  private currentHandCommunityCards: string = "";
+  private currentHandPosition: string = "unknown";
+
   // T-R3-02: Escalating logging for persistent hole card failures
   /** Whether we've already emitted the first circuit-open WARN (suppresses duplicates). */
   private circuitOpenWarnLogged: boolean = false;
@@ -90,6 +103,7 @@ export class AgentBot {
     });
 
     this.strategy = config.strategy || new SimpleStrategy(0.3);
+    this.vectorStore = config.vectorStore;
 
     // Setup OwnerView client if URL provided
     if (config.ownerviewUrl) {
@@ -120,6 +134,10 @@ export class AgentBot {
 
   getOwnerViewCircuitState(): string {
     return this.ownerViewCircuit.circuitState;
+  }
+
+  getVectorStoreSize(): number {
+    return this.vectorStore?.size ?? 0;
   }
 
   /**
@@ -280,8 +298,9 @@ export class AgentBot {
         // Hand ended, update stats
         this.stats.handsPlayed++;
         const currentStack = state.seats[this.mySeatIndex].stack;
+        let profit = 0n;
         if (this.lastStack !== null) {
-          const profit = currentStack - this.lastStack;
+          profit = currentStack - this.lastStack;
           this.stats.totalProfit += profit;
           if (profit > 0n) {
             this.stats.handsWon++;
@@ -289,6 +308,41 @@ export class AgentBot {
         }
         this.lastStack = currentStack;
         logger.info({ handId: String(this.lastHandId), handsPlayed: this.stats.handsPlayed, handsWon: this.stats.handsWon }, "Hand complete");
+
+        // Record hand to VectorStore for RAG
+        if (this.vectorStore && this.currentHandActions.length > 0) {
+          try {
+            const result: "won" | "lost" | "split" = profit > 0n ? "won" : profit === 0n ? "split" : "lost";
+            const summary: HandSummary = {
+              handId: String(this.lastHandId),
+              position: this.currentHandPosition,
+              holeCards: this.currentHandHoleCards,
+              communityCards: this.currentHandCommunityCards,
+              actions: [...this.currentHandActions],
+              result,
+              pnl: profit,
+              boardTexture: inferBoardTexture(this.currentHandCommunityCards),
+              opponentActions: [...this.currentHandOpponentActions],
+              reasoning: this.currentHandReasoning,
+            };
+            const embedding = embedHand(summary);
+            this.vectorStore.add({ handId: summary.handId, summary, embedding });
+            logger.debug({ handId: summary.handId, result, ragSize: this.vectorStore.size }, "Hand recorded to VectorStore");
+            // Persist async (non-blocking)
+            this.vectorStore.persist().catch((err: unknown) => {
+              logger.warn({ err: err instanceof Error ? err.message : String(err) }, "VectorStore persist failed (non-fatal)");
+            });
+          } catch (err) {
+            logger.warn({ err: err instanceof Error ? err.message : String(err) }, "Failed to record hand to VectorStore (non-fatal)");
+          }
+        }
+        // Reset per-hand tracking
+        this.currentHandActions = [];
+        this.currentHandOpponentActions = [];
+        this.currentHandHoleCards = "unknown";
+        this.currentHandReasoning = undefined;
+        this.currentHandCommunityCards = "";
+        this.currentHandPosition = "unknown";
       }
       this.lastHandId = state.currentHandId;
     }
@@ -418,6 +472,20 @@ export class AgentBot {
       amountToCall,
     };
 
+    // Track position for RAG
+    if (this.mySeatIndex !== null) {
+      this.currentHandPosition = describePositionSimple(this.mySeatIndex, state.buttonSeat, state.seats.length);
+    }
+    // Track hole cards for RAG
+    if (holeCards) {
+      this.currentHandHoleCards = formatHoleCardsSimple(holeCards);
+    }
+    // Track community cards for RAG
+    const commCards = state.communityCards.filter((c: number) => c !== 255).map(formatCardSimple).join(" ");
+    if (commCards) {
+      this.currentHandCommunityCards = commCards;
+    }
+
     // Get decision from strategy
     const decision = await this.strategy.decide(context);
     logger.info(
@@ -432,6 +500,7 @@ export class AgentBot {
 
     if (decision.reasoning) {
       logger.debug({ reasoning: decision.reasoning }, "AI reasoning");
+      this.currentHandReasoning = decision.reasoning;
     }
 
     // Submit action
@@ -454,6 +523,9 @@ export class AgentBot {
       this.stats.actionsSubmitted++;
       this.stats.lastActionTime = Date.now();
       logger.info({ action: decision.action, txHash }, "Action submitted successfully");
+      // Track action for RAG recording
+      const actionStr = decision.raiseAmount ? `raise ${decision.raiseAmount}` : decision.action;
+      this.currentHandActions.push(actionStr);
 
       // Fire-and-forget: send reasoning to OwnerView (non-blocking)
       if (decision.reasoning && this.ownerviewClient) {
@@ -501,4 +573,46 @@ export class AgentBot {
       message.includes("requests limited")
     );
   }
+}
+
+// ─── RAG helpers (module-level, no import needed) ─────────────────────────────
+
+const SUIT_SYMBOLS: Record<number, string> = { 0: "c", 1: "d", 2: "h", 3: "s" };
+const RANK_SYMBOLS = ["2", "3", "4", "5", "6", "7", "8", "9", "T", "J", "Q", "K", "A"];
+
+function formatCardSimple(card: number): string {
+  const rank = RANK_SYMBOLS[card % 13] ?? "?";
+  const suit = SUIT_SYMBOLS[Math.floor(card / 13)] ?? "?";
+  return `${rank}${suit}`;
+}
+
+function formatHoleCardsSimple(holeCards: { card1: number; card2: number }): string {
+  return `${formatCardSimple(holeCards.card1)} ${formatCardSimple(holeCards.card2)}`;
+}
+
+function describePositionSimple(seatIndex: number, buttonSeat: number, totalSeats: number): string {
+  const offset = (seatIndex - buttonSeat + totalSeats) % totalSeats;
+  if (offset === 0) return "BTN";
+  if (offset === 1) return "SB";
+  if (offset === 2) return "BB";
+  if (offset === totalSeats - 1) return "CO";
+  return "MP";
+}
+
+function inferBoardTexture(communityCards: string): string {
+  if (!communityCards) return "preflop";
+  const cards = communityCards.split(" ").filter(Boolean);
+  if (cards.length === 0) return "preflop";
+  const suits = cards.map((c) => c[c.length - 1]);
+  const uniqueSuits = new Set(suits).size;
+  const ranks = cards.map((c) => {
+    const r = "23456789TJQKA".indexOf(c[0]);
+    return r >= 0 ? r : 0;
+  }).sort((a, b) => a - b);
+  const gaps = ranks.slice(1).map((r, i) => r - ranks[i]);
+  const isConnected = gaps.every((g) => g <= 2);
+  if (uniqueSuits === 1) return "flush draw";
+  if (uniqueSuits === 2 && cards.length >= 3) return "two tone";
+  if (isConnected && cards.length >= 3) return "low connected";
+  return "dry rainbow";
 }

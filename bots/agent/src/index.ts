@@ -5,6 +5,7 @@ import { AgentBot } from "./bot.js";
 import { GeminiStrategy, SimpleStrategy, type Strategy } from "./strategy/index.js";
 import { getPersona } from "./strategy/persona.js";
 import type { PersonaConfig } from "./strategy/persona.js";
+import { VectorStore } from "./rag/vectorStore.js";
 import {
   startHealthServer,
   validateChainIdWithRpc,
@@ -48,7 +49,7 @@ function loadPersona(): PersonaConfig | undefined {
   return persona;
 }
 
-function createStrategy(aggressionFactor: number): {
+function createStrategy(aggressionFactor: number, vectorStore?: VectorStore): {
   strategy: Strategy;
   engine: DecisionEngine;
   geminiModel: string | null;
@@ -79,6 +80,7 @@ function createStrategy(aggressionFactor: number): {
     timeoutMs,
     fallbackStrategy: fallback,
     persona,
+    vectorStore,
   });
 
   return { strategy, engine: "gemini", geminiModel: model, persona };
@@ -91,7 +93,14 @@ async function main() {
   const defaultPollIntervalMs = 1000;
   const aggressionFactor = parseBoundedFloat("AGGRESSION_FACTOR", 0.3);
   const turnActionDelayMs = parsePositiveInt("TURN_ACTION_DELAY_MS", defaultTurnActionDelayMs);
-  const { strategy, engine, geminiModel, persona } = createStrategy(aggressionFactor);
+
+  // Initialize VectorStore for RAG (load existing hands from disk)
+  const ragPersistPath = process.env.RAG_PERSIST_PATH || "./data/rag/vectors.json";
+  const vectorStore = new VectorStore(ragPersistPath);
+  await vectorStore.load();
+  logger.info({ ragSize: vectorStore.size, path: ragPersistPath }, "VectorStore ready");
+
+  const { strategy, engine, geminiModel, persona } = createStrategy(aggressionFactor, vectorStore);
 
   // AGENT_TABLE_ADDRESS is deprecated — use POKER_TABLE_ADDRESS instead
   if (process.env.AGENT_TABLE_ADDRESS) {
@@ -114,6 +123,7 @@ async function main() {
     pollIntervalMs: parsePositiveInt("POLL_INTERVAL_MS", defaultPollIntervalMs),
     turnActionDelayMs,
     strategy,
+    vectorStore,
   };
 
   const maxHands = parseInt(optionalEnv("MAX_HANDS", "0"));
@@ -166,6 +176,10 @@ async function main() {
         },
         lastActivity: s.lastActionTime > 0 ? new Date(s.lastActionTime).toISOString() : null,
         tables: [tableAddress],
+        rag: {
+          totalHands: bot.getVectorStoreSize(),
+          lastUpdated: s.lastActionTime > 0 ? new Date(s.lastActionTime).toISOString() : null,
+        },
         ...(persona ? {
           persona: {
             id: persona.id,

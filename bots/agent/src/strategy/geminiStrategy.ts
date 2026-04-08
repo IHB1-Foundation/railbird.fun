@@ -8,6 +8,8 @@ import type {
 } from "./types.js";
 import type { PersonaConfig } from "./persona.js";
 import { SimpleStrategy } from "./simpleStrategy.js";
+import type { VectorStore } from "../rag/vectorStore.js";
+import { buildQueryVector } from "../rag/embedder.js";
 import { createLogger } from "@playerco/shared";
 import type { TableState } from "../chain/client.js";
 
@@ -37,6 +39,7 @@ export interface GeminiStrategyConfig {
   endpointBaseUrl?: string;
   fallbackStrategy?: Strategy;
   persona?: PersonaConfig;
+  vectorStore?: VectorStore;
 }
 
 interface RaiseBounds {
@@ -120,6 +123,7 @@ export class GeminiStrategy implements Strategy {
   private readonly endpointBaseUrl: string;
   private readonly fallbackStrategy: Strategy;
   private readonly persona: PersonaConfig | undefined;
+  private readonly vectorStore: VectorStore | undefined;
   private readonly opponentModel = new OpponentModel();
 
   /** Previous table state snapshot for action inference between our turns. */
@@ -133,6 +137,7 @@ export class GeminiStrategy implements Strategy {
     this.timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
     this.endpointBaseUrl = config.endpointBaseUrl || DEFAULT_ENDPOINT_BASE_URL;
     this.persona = config.persona;
+    this.vectorStore = config.vectorStore;
     this.fallbackStrategy = config.fallbackStrategy || new SimpleStrategy(
       config.persona?.aggression ?? 0.3
     );
@@ -233,7 +238,7 @@ export class GeminiStrategy implements Strategy {
           generationConfig: {
             temperature: this.temperature,
             responseMimeType: "application/json",
-            maxOutputTokens: 300,
+            maxOutputTokens: this.vectorStore ? 400 : 300,
           },
         }),
         signal: controller.signal,
@@ -329,6 +334,37 @@ export class GeminiStrategy implements Strategy {
     return { action: Decision.CHECK };
   }
 
+  private buildRagContext(context: DecisionContext, position: string): string | null {
+    if (!this.vectorStore || this.vectorStore.size === 0) return null;
+
+    // Build a query vector from the current situation
+    const holeCardsFormatted = formatHoleCards(context.holeCards).join(" ") || "unknown";
+    const state = context.tableState;
+    const communityCount = state.communityCards.filter(c => c !== 255).length;
+    const boardTexture = communityCount === 0 ? "preflop" : communityCount <= 3 ? "flop" : "turn or river";
+
+    const queryVec = buildQueryVector({
+      position,
+      holeCards: holeCardsFormatted,
+      boardTexture,
+    });
+
+    const similar = this.vectorStore.search(queryVec, 3);
+    if (similar.length === 0) return null;
+
+    const lines = similar.map((v, i) => {
+      const s = v.summary;
+      const pnlStr = s.pnl >= 0n ? `+${s.pnl}` : String(s.pnl);
+      return `  - Hand #${v.handId} (${s.position}, ${s.holeCards}): ${s.actions.join("→")} → ${s.result} ${pnlStr} chips.${s.reasoning ? ` Reasoning: "${s.reasoning.slice(0, 80)}..."` : ""}`;
+    });
+
+    return [
+      "Similar past hands for reference:",
+      ...lines,
+      "Use these as reference but make your own judgment based on current conditions.",
+    ].join("\n");
+  }
+
   private buildPrompt(context: DecisionContext): string {
     const state = context.tableState;
     const seat = state.seats[context.mySeatIndex];
@@ -392,11 +428,15 @@ export class GeminiStrategy implements Strategy {
       } : {}),
     };
 
+    // Build RAG context from similar past hands
+    const ragSection = this.buildRagContext(context, position);
+
     const systemLine = this.persona?.systemPromptOverride
       ?? "You are a no-limit Texas Hold'em agent.";
 
     return [
       systemLine,
+      ...(ragSection ? [ragSection] : []),
       "Return exactly one compact JSON object and no extra text.",
       'Format: {"action":"fold|check|call|raise","raiseTarget":"<integer in chip units>","reasoning":"<1-2 sentence explanation in English>","factors":{"handStrength":"...","potOdds":"...","position":"...","opponentRead":"...","sizing":"...","riskAssessment":"..."}}',
       "Always include reasoning explaining WHY you chose this action, referencing specific game factors.",

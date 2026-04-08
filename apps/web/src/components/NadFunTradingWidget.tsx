@@ -195,6 +195,7 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
   const [quoteExpiresAt, setQuoteExpiresAt] = useState<number | null>(null);
   const [quoteSecondsLeft, setQuoteSecondsLeft] = useState<number>(0);
   const [quoteDebouncing, setQuoteDebouncing] = useState(false);
+  const [quoteExpired, setQuoteExpired] = useState(false);
   const [txLoading, setTxLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
@@ -260,7 +261,7 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
     const id = setInterval(() => {
       const left = Math.max(0, Math.ceil((quoteExpiresAt - Date.now()) / 1000));
       setQuoteSecondsLeft(left);
-      if (left === 0) { setQuote(null); setQuoteExpiresAt(null); }
+      if (left === 0) { setQuote(null); setQuoteExpiresAt(null); setQuoteExpired(true); }
     }, 500);
     return () => clearInterval(id);
   }, [quoteExpiresAt]);
@@ -275,6 +276,7 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
     setError(null);
     setQuote(null);
     setQuoteExpiresAt(null);
+    setQuoteExpired(false);
 
     try {
       const amountWei = parseUnits(amountInput || "0", 18);
@@ -508,7 +510,7 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
               role="tab"
               aria-selected={direction === "buy"}
               className={`${styles.nadfunTab} ${direction === "buy" ? styles.active : ""}`}
-              onClick={() => { setDirection("buy"); setQuote(null); }}
+              onClick={() => { setDirection("buy"); setQuote(null); setQuoteExpired(false); }}
             >
               Buy
             </button>
@@ -517,7 +519,7 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
               role="tab"
               aria-selected={direction === "sell"}
               className={`${styles.nadfunTab} ${direction === "sell" ? styles.active : ""}`}
-              onClick={() => { setDirection("sell"); setQuote(null); }}
+              onClick={() => { setDirection("sell"); setQuote(null); setQuoteExpired(false); }}
             >
               Sell
             </button>
@@ -613,13 +615,20 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
 
           {quote && (
             <div className={styles.nadfunQuoteResult} role="status" aria-live="polite">
-              {quote}
-              {` (slippage ${(slippageBps / 100).toFixed(1)}%)`}
+              <span>{quote}{` (slippage ${(slippageBps / 100).toFixed(1)}%)`}</span>
               {quoteSecondsLeft > 0 && (
-                <span style={{ fontSize: "0.7rem", opacity: 0.7, marginLeft: "0.5rem" }}>
-                  · valid {quoteSecondsLeft}s
+                <span className={`${styles.nadfunCountdownBadge} ${quoteSecondsLeft <= 5 ? styles.nadfunCountdownUrgent : ""}`}
+                  aria-label={`Quote valid for ${quoteSecondsLeft} seconds`}
+                >
+                  ⏱ {quoteSecondsLeft}s
                 </span>
               )}
+            </div>
+          )}
+
+          {quoteExpired && !quote && !quoteLoading && (
+            <div className={styles.nadfunQuoteExpired} role="status" aria-live="polite">
+              Quote expired — get a new quote
             </div>
           )}
 

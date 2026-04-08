@@ -71,6 +71,15 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
     }, 1000);
     return () => clearInterval(id);
   }, [lastUpdatedAt]);
+  const [pollingToastShown, setPollingToastShown] = useState(false);
+
+  // Show one-time toast when falling back to polling
+  useEffect(() => {
+    if (wsStatus === "polling" && !pollingToastShown) {
+      setPollingToastShown(true);
+    }
+  }, [wsStatus, pollingToastShown]);
+
   const [joinSeatIndex, setJoinSeatIndex] = useState<number>(0);
   const [joinBuyIn, setJoinBuyIn] = useState<string>("1000");
   const [joinOperator, setJoinOperator] = useState<string>("");
@@ -258,12 +267,40 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
         {wsStatus === "connected" && "Live"}
         {wsStatus === "connecting" && "Connecting\u2026"}
         {wsStatus === "reconnecting" && "Reconnecting\u2026"}
-        {wsStatus === "polling" && "Polling"}
-        {" · "}
-        <span style={secondsAgo > 60 ? { color: "var(--warning)" } : undefined}>
-          Updated {secondsAgo}s ago
-        </span>
+        {wsStatus === "polling" && (
+          <>
+            Polling
+            {" · "}
+            <button
+              onClick={() => window.location.reload()}
+              style={{ background: "none", border: "none", color: "inherit", cursor: "pointer", fontSize: "inherit", textDecoration: "underline", padding: 0 }}
+            >
+              Reconnect
+            </button>
+          </>
+        )}
+        {wsStatus !== "polling" && (
+          <>
+            {" · "}
+            <span style={secondsAgo > 60 ? { color: "var(--warning)" } : undefined}>
+              Updated {secondsAgo}s ago
+            </span>
+          </>
+        )}
+        {wsStatus === "polling" && (
+          <>
+            {" · "}
+            <span style={secondsAgo > 60 ? { color: "var(--warning)" } : undefined}>
+              Updated {secondsAgo}s ago
+            </span>
+          </>
+        )}
       </div>
+      {wsStatus === "polling" && pollingToastShown && (
+        <div role="alert" style={{ background: "rgba(255,191,77,0.12)", color: "#ffd7a1", padding: "0.4rem 0.8rem", borderRadius: "8px", fontSize: "0.8rem", marginBottom: "0.5rem", border: "1px solid rgba(255,191,77,0.35)" }}>
+          Live connection unavailable — refreshing every 3 seconds
+        </div>
+      )}
 
       {/* Owner Mode Banner */}
       {isAuthenticated && ownedSeatIndex !== null && (

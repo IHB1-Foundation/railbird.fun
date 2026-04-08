@@ -8,6 +8,7 @@ interface ToastItem {
   id: number;
   type: ToastType;
   message: string;
+  exiting?: boolean;
 }
 
 interface ToastContextValue {
@@ -30,13 +31,17 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
   const dismiss = useCallback((id: number) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
+    // Set exiting state, then remove after animation
+    setToasts((prev) => prev.map((t) => t.id === id ? { ...t, exiting: true } : t));
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 260);
   }, []);
 
   const add = useCallback((type: ToastType, message: string) => {
     const id = ++nextId;
     setToasts((prev) => {
-      const updated = [...prev, { id, type, message }];
+      const updated = [...prev, { id, type, message, exiting: false }];
       return updated.slice(-3); // max 3
     });
     if (type !== "error") {
@@ -113,7 +118,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               }`,
               backdropFilter: "blur(8px)",
               boxShadow: "0 8px 24px rgba(0,0,0,0.3)",
-              animation: "toast-in 0.25s ease-out",
+              animation: t.exiting ? "toast-out 0.25s ease-in forwards" : "toast-in 0.25s ease-out",
               display: "flex",
               justifyContent: "space-between",
               alignItems: "flex-start",

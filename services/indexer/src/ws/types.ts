@@ -32,6 +32,15 @@ export interface WsActionData {
   potAfter: string;
   blockNumber: string;
   txHash: string;
+  reasoning?: string;
+  factors?: {
+    handStrength: string;
+    potOdds: string;
+    position: string;
+    opponentRead: string;
+    sizing?: string;
+    riskAssessment?: string;
+  };
 }
 
 export interface WsHandStartedData {

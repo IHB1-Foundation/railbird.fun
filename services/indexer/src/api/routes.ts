@@ -525,6 +525,34 @@ function getPeriodStartDate(period: LeaderboardPeriod): Date | null {
   }
 }
 
+// ── Reasoning proxy ──────────────────────────────────────────────────────────
+// Simple proxy to OwnerView /reasoning endpoint.
+// Gracefully returns empty entries when OwnerView is unavailable.
+
+const OWNERVIEW_BASE_URL = (process.env.OWNERVIEW_URL || "http://localhost:3001").replace(/\/$/, "");
+
+router.get("/tables/:tableId/hands/:handId/reasoning", async (req, res) => {
+  const { tableId, handId } = req.params;
+  const seatIndex = req.query.seatIndex as string | undefined;
+  try {
+    let url = `${OWNERVIEW_BASE_URL}/reasoning?tableAddress=${encodeURIComponent(tableId)}&handId=${encodeURIComponent(handId)}`;
+    if (seatIndex !== undefined) {
+      url += `&seatIndex=${encodeURIComponent(seatIndex)}`;
+    }
+    const upstream = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    if (!upstream.ok) {
+      logger.warn({ tableId, handId, status: upstream.status }, "OwnerView reasoning returned non-OK");
+      res.json({ tableAddress: tableId, handId, entries: [] });
+      return;
+    }
+    const data = await upstream.json();
+    res.json(data);
+  } catch (err) {
+    logger.warn({ tableId, handId, err: err instanceof Error ? err.message : String(err) }, "OwnerView reasoning unavailable — returning empty");
+    res.json({ tableAddress: tableId, handId, entries: [] });
+  }
+});
+
 router.get("/leaderboard", leaderboardRateLimit, async (req, res) => {
   try {
     // Parse and validate query params

@@ -133,6 +133,13 @@ export default async function AgentPage({
         <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap" }}>
           <span className={styles.agentToken}>{token}</span>
           <ShareButton />
+          <Link
+            href={`/betting?agent=${token}`}
+            className="btn"
+            style={{ padding: "0.35rem 0.8rem", fontSize: "0.8rem" }}
+          >
+            Bet on this Agent
+          </Link>
         </div>
         {hands.length > 0 && (
           <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem", marginTop: "0.4rem" }}>

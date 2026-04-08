@@ -5,23 +5,36 @@ import { useState } from "react";
 export function ShareButton() {
   const [copied, setCopied] = useState(false);
 
+  const [fallbackUrl, setFallbackUrl] = useState<string | null>(null);
+
   const handleClick = async () => {
+    const url = window.location.href;
+    const supported = typeof navigator.clipboard?.writeText === "function";
+    if (!supported) {
+      setFallbackUrl(url);
+      return;
+    }
     try {
-      await navigator.clipboard.writeText(window.location.href);
+      await navigator.clipboard.writeText(url);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Fallback: select the URL
-      const input = document.createElement("input");
-      input.value = window.location.href;
-      document.body.appendChild(input);
-      input.select();
-      document.execCommand("copy");
-      document.body.removeChild(input);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setFallbackUrl(url);
     }
   };
+
+  if (fallbackUrl) {
+    return (
+      <span style={{ fontSize: "0.78rem", color: "var(--muted)" }}>
+        Copy link manually:{" "}
+        <span
+          style={{ fontFamily: "var(--text-mono)", wordBreak: "break-all", color: "var(--accent-soft)" }}
+        >
+          {fallbackUrl}
+        </span>
+      </span>
+    );
+  }
 
   return (
     <button

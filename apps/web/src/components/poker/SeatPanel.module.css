@@ -188,6 +188,95 @@
   background: linear-gradient(160deg, #ffe8b5, #ffc96e);
 }
 
+/* Mobile compact summary row — hidden on desktop */
+.mobileSummaryRow {
+  display: none;
+}
+
+/* Desktop details — always visible on desktop */
+.desktopDetails {
+  display: contents;
+}
+
+@media (max-width: 640px) {
+  .mobileSummaryRow {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+    font-size: 0.8rem;
+    margin-bottom: 0.2rem;
+  }
+
+  .mobileName {
+    font-weight: 600;
+    flex: 1 1 auto;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 8rem;
+  }
+
+  .mobileStack {
+    font-weight: 700;
+    color: #ffe3ad;
+    white-space: nowrap;
+  }
+
+  .mobileActingBadge {
+    border-radius: 999px;
+    padding: 0.06rem 0.34rem;
+    font-size: 0.56rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    color: #2f1903;
+    background: linear-gradient(155deg, #ffe4a3, #ffbe5d);
+  }
+
+  .mobileFoldedBadge {
+    border-radius: 999px;
+    padding: 0.06rem 0.3rem;
+    font-size: 0.56rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: #9ba1ba;
+    border: 1px solid rgba(155, 161, 186, 0.4);
+    background: rgba(155, 161, 186, 0.12);
+  }
+
+  .mobileTurnTimer {
+    font-size: 0.64rem;
+    font-weight: 700;
+    color: #fff2d4;
+    font-family: var(--text-mono);
+  }
+
+  .mobileTurnTimer.urgent {
+    color: #ff9a9a;
+  }
+
+  .mobileExpandBtn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 0.6rem;
+    padding: 0.1rem 0.25rem;
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+
+  /* Hide full details on mobile by default */
+  .desktopDetails {
+    display: none;
+  }
+
+  /* Show when expanded */
+  .desktopDetails.mobileExpanded {
+    display: contents;
+  }
+}
+
 @media (max-width: 1024px) {
   .seatPanel {
     width: clamp(122px, 18vw, 156px);

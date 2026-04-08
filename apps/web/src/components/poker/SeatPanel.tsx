@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { cn, formatChips, shortenAddress, CHIP_SYMBOL, ZERO_ADDRESS } from "@/lib/utils";
 import { getAgentProfile } from "@/lib/agentProfiles";
 import type { HoleCardsResponse } from "@/lib/auth";
@@ -37,6 +38,8 @@ export function SeatPanel({
   holeCards,
   turnTimeRemaining,
 }: SeatPanelProps) {
+  const [expanded, setExpanded] = useState(false);
+
   if (seat.ownerAddress.toLowerCase() === ZERO_ADDRESS) {
     return (
       <div className={styles.seatPanel}>
@@ -47,6 +50,7 @@ export function SeatPanel({
   }
 
   const profile = getAgentProfile(seat.operatorAddress ?? "") || getAgentProfile(seat.ownerAddress);
+  const isFolded = isHandActive && !seat.isActive;
 
   return (
     <div
@@ -54,7 +58,7 @@ export function SeatPanel({
         styles.seatPanel,
         isActor && styles.active,
         isOwner && styles.owner,
-        isHandActive && !seat.isActive && styles.folded
+        isFolded && styles.folded
       )}
       style={profile ? { borderColor: profile.accentColor } : undefined}
       data-winner={isWinner ? "true" : undefined}
@@ -64,39 +68,71 @@ export function SeatPanel({
         {isButton && <span className={styles.dealerChip}>D</span>}
         {isOwner && <span className={styles.youPill}>YOU</span>}
       </div>
-      <div className={styles.seatAddress} title={seat.ownerAddress}>
-        {profile ? profile.name : shortenAddress(seat.ownerAddress)}
-      </div>
-      {profile && (
-        <div
-          className={styles.aggressionBadge}
-          style={{ background: profile.accentColor, color: profile.colorHex }}
+
+      {/* Mobile compact summary row */}
+      <div className={styles.mobileSummaryRow}>
+        <span className={styles.mobileName}>
+          {profile ? profile.name : shortenAddress(seat.ownerAddress)}
+        </span>
+        <span className={styles.mobileStack}>{formatChips(seat.stack)} {CHIP_SYMBOL}</span>
+        {isActor && (
+          <span className={styles.mobileActingBadge}>ACTING</span>
+        )}
+        {isFolded && (
+          <span className={styles.mobileFoldedBadge}>FOLDED</span>
+        )}
+        {isActor && turnTimeRemaining !== "--" && (
+          <span className={cn(styles.mobileTurnTimer, turnTimeRemaining === "Expired" && styles.urgent)}>
+            {turnTimeRemaining}
+          </span>
+        )}
+        <button
+          className={styles.mobileExpandBtn}
+          onClick={() => setExpanded((v) => !v)}
+          aria-expanded={expanded}
+          aria-label={expanded ? "Collapse seat details" : "Expand seat details"}
         >
-          {profile.aggressionLabel}
-        </div>
-      )}
-      <div className={styles.seatStack}>
-        {formatChips(seat.stack)} {CHIP_SYMBOL}
+          {expanded ? "▲" : "▼"}
+        </button>
       </div>
-      {seat.currentBet !== "0" && (
-        <div className={styles.seatBet}>
-          <span className={styles.seatBetChip} />
-          This Round: {formatChips(seat.currentBet)} {CHIP_SYMBOL}
+
+      {/* Full details — always shown on desktop, collapsible on mobile */}
+      <div className={cn(styles.desktopDetails, expanded && styles.mobileExpanded)}>
+        <div className={styles.seatAddress} title={seat.ownerAddress}>
+          {profile ? profile.name : shortenAddress(seat.ownerAddress)}
         </div>
-      )}
-      {isHandActive && !seat.isActive && <div className={styles.foldedBadge}>FOLDED</div>}
-      {isActor && <div className={styles.seatActionBadge}>ACTING</div>}
-      {isActor && turnTimeRemaining !== "--" && (
-        <div
-          className={cn(
-            styles.seatTurnTimer,
-            turnTimeRemaining === "Expired" && styles.urgent
-          )}
-        >
-          {turnTimeRemaining}
+        {profile && (
+          <div
+            className={styles.aggressionBadge}
+            style={{ background: profile.accentColor, color: profile.colorHex }}
+          >
+            {profile.aggressionLabel}
+          </div>
+        )}
+        <div className={styles.seatStack}>
+          {formatChips(seat.stack)} {CHIP_SYMBOL}
         </div>
-      )}
-      {/* Owner's hole cards — only shown to the seat owner */}
+        {seat.currentBet !== "0" && (
+          <div className={styles.seatBet}>
+            <span className={styles.seatBetChip} />
+            This Round: {formatChips(seat.currentBet)} {CHIP_SYMBOL}
+          </div>
+        )}
+        {isFolded && <div className={styles.foldedBadge}>FOLDED</div>}
+        {isActor && <div className={styles.seatActionBadge}>ACTING</div>}
+        {isActor && turnTimeRemaining !== "--" && (
+          <div
+            className={cn(
+              styles.seatTurnTimer,
+              turnTimeRemaining === "Expired" && styles.urgent
+            )}
+          >
+            {turnTimeRemaining}
+          </div>
+        )}
+      </div>
+
+      {/* Owner's hole cards — always shown, never collapsed */}
       {isOwner && holeCards && (
         <div className={styles.seatHolecards}>
           <div className={styles.holeCardsLabel}>Your Hand</div>

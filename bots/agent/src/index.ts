@@ -3,6 +3,8 @@
 
 import { AgentBot } from "./bot.js";
 import { GeminiStrategy, SimpleStrategy, type Strategy } from "./strategy/index.js";
+import { getPersona } from "./strategy/persona.js";
+import type { PersonaConfig } from "./strategy/persona.js";
 import {
   startHealthServer,
   validateChainIdWithRpc,
@@ -35,22 +37,35 @@ function parseDecisionEngine(): DecisionEngine {
   return "simple";
 }
 
+function loadPersona(): PersonaConfig | undefined {
+  const personaId = process.env.AGENT_PERSONA?.trim().toLowerCase();
+  if (!personaId) return undefined;
+  const persona = getPersona(personaId);
+  if (!persona) {
+    logger.warn({ personaId }, 'Unknown AGENT_PERSONA — ignoring (valid: shark, maniac, rock, adaptive)');
+    return undefined;
+  }
+  return persona;
+}
+
 function createStrategy(aggressionFactor: number): {
   strategy: Strategy;
   engine: DecisionEngine;
   geminiModel: string | null;
+  persona: PersonaConfig | undefined;
 } {
-  const fallback = new SimpleStrategy(aggressionFactor);
+  const persona = loadPersona();
+  const fallback = new SimpleStrategy(aggressionFactor, persona);
   const engine = parseDecisionEngine();
 
   if (engine !== "gemini") {
-    return { strategy: fallback, engine: "simple", geminiModel: null };
+    return { strategy: fallback, engine: "simple", geminiModel: null, persona };
   }
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     logger.warn({}, 'AGENT_DECISION_ENGINE=gemini but GEMINI_API_KEY is missing — using simple strategy');
-    return { strategy: fallback, engine: "simple", geminiModel: null };
+    return { strategy: fallback, engine: "simple", geminiModel: null, persona };
   }
 
   const model = process.env.GEMINI_MODEL || "gemini-2.0-flash";
@@ -63,9 +78,10 @@ function createStrategy(aggressionFactor: number): {
     temperature,
     timeoutMs,
     fallbackStrategy: fallback,
+    persona,
   });
 
-  return { strategy, engine: "gemini", geminiModel: model };
+  return { strategy, engine: "gemini", geminiModel: model, persona };
 }
 
 async function main() {
@@ -75,7 +91,7 @@ async function main() {
   const defaultPollIntervalMs = 1000;
   const aggressionFactor = parseBoundedFloat("AGGRESSION_FACTOR", 0.3);
   const turnActionDelayMs = parsePositiveInt("TURN_ACTION_DELAY_MS", defaultTurnActionDelayMs);
-  const { strategy, engine, geminiModel } = createStrategy(aggressionFactor);
+  const { strategy, engine, geminiModel, persona } = createStrategy(aggressionFactor);
 
   // AGENT_TABLE_ADDRESS is deprecated — use POKER_TABLE_ADDRESS instead
   if (process.env.AGENT_TABLE_ADDRESS) {
@@ -108,6 +124,10 @@ async function main() {
     process.exit(1);
   });
 
+  if (persona) {
+    logger.info({ personaId: persona.id, personaName: persona.name, emoji: persona.emoji }, 'Persona loaded');
+  }
+
   logger.info({
     rpcUrl: config.rpcUrl,
     table: config.pokerTableAddress,
@@ -118,6 +138,7 @@ async function main() {
     aggression: aggressionFactor.toFixed(2),
     decisionEngine: engine,
     ...(geminiModel ? { geminiModel } : {}),
+    ...(persona ? { persona: persona.id } : {}),
     maxHands: maxHands || "unlimited",
   }, 'Configuration');
 
@@ -145,6 +166,15 @@ async function main() {
         },
         lastActivity: s.lastActionTime > 0 ? new Date(s.lastActionTime).toISOString() : null,
         tables: [tableAddress],
+        ...(persona ? {
+          persona: {
+            id: persona.id,
+            name: persona.name,
+            emoji: persona.emoji,
+            aggression: persona.aggression,
+            tightness: persona.tightness,
+          },
+        } : {}),
       };
     },
   });

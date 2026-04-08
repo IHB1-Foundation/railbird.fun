@@ -3,6 +3,7 @@
 
 import type { Strategy, DecisionContext, ActionDecision, HoleCards, ReasoningFactors } from "./types.js";
 import { Decision } from "./types.js";
+import type { PersonaConfig } from "./persona.js";
 import { GameState, type TableState } from "../chain/client.js";
 
 /**
@@ -93,8 +94,10 @@ export class SimpleStrategy implements Strategy {
   // Configurable aggression factor (0 = passive, 1 = aggressive)
   private aggression: number;
 
-  constructor(aggression: number = 0.3) {
-    this.aggression = Math.max(0, Math.min(1, aggression));
+  constructor(aggression: number = 0.3, persona?: PersonaConfig) {
+    // Persona aggression overrides the explicit aggression parameter
+    const effective = persona?.aggression ?? aggression;
+    this.aggression = Math.max(0, Math.min(1, effective));
   }
 
   decide(context: DecisionContext): ActionDecision {

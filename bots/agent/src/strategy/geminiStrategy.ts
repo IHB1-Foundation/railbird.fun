@@ -6,6 +6,7 @@ import type {
   ReasoningFactors,
   Strategy,
 } from "./types.js";
+import type { PersonaConfig } from "./persona.js";
 import { SimpleStrategy } from "./simpleStrategy.js";
 import { createLogger } from "@playerco/shared";
 import type { TableState } from "../chain/client.js";
@@ -35,6 +36,7 @@ export interface GeminiStrategyConfig {
   timeoutMs?: number;
   endpointBaseUrl?: string;
   fallbackStrategy?: Strategy;
+  persona?: PersonaConfig;
 }
 
 interface RaiseBounds {
@@ -117,6 +119,7 @@ export class GeminiStrategy implements Strategy {
   private readonly timeoutMs: number;
   private readonly endpointBaseUrl: string;
   private readonly fallbackStrategy: Strategy;
+  private readonly persona: PersonaConfig | undefined;
   private readonly opponentModel = new OpponentModel();
 
   /** Previous table state snapshot for action inference between our turns. */
@@ -129,7 +132,10 @@ export class GeminiStrategy implements Strategy {
     this.temperature = config.temperature ?? DEFAULT_TEMPERATURE;
     this.timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
     this.endpointBaseUrl = config.endpointBaseUrl || DEFAULT_ENDPOINT_BASE_URL;
-    this.fallbackStrategy = config.fallbackStrategy || new SimpleStrategy(0.3);
+    this.persona = config.persona;
+    this.fallbackStrategy = config.fallbackStrategy || new SimpleStrategy(
+      config.persona?.aggression ?? 0.3
+    );
   }
 
   async decide(context: DecisionContext): Promise<ActionDecision> {
@@ -376,13 +382,25 @@ export class GeminiStrategy implements Strategy {
         maxRaiseTarget: raiseBounds.maxRaiseTarget.toString(),
       },
       opponents: opponentInfo,
+      ...(this.persona ? {
+        personality: {
+          aggression: this.persona.aggression,
+          tightness: this.persona.tightness,
+          bluffFrequency: this.persona.bluffFrequency,
+          style: `${this.persona.name} — ${this.persona.description}`,
+        },
+      } : {}),
     };
 
+    const systemLine = this.persona?.systemPromptOverride
+      ?? "You are a no-limit Texas Hold'em agent.";
+
     return [
-      "You are a no-limit Texas Hold'em agent.",
+      systemLine,
       "Return exactly one compact JSON object and no extra text.",
       'Format: {"action":"fold|check|call|raise","raiseTarget":"<integer in chip units>","reasoning":"<1-2 sentence explanation in English>","factors":{"handStrength":"...","potOdds":"...","position":"...","opponentRead":"...","sizing":"...","riskAssessment":"..."}}',
       "Always include reasoning explaining WHY you chose this action, referencing specific game factors.",
+      "Stay in character as described above.",
       "Rules: never output an illegal action; if unsure choose check or call.",
       "All-in rules: if amountToCall > stack, calling commits only your remaining stack.",
       "All-in rules: if raising, raiseTarget is capped at your stack (maxRaiseTarget).",

@@ -208,15 +208,33 @@
   font-size: 0.84rem;
 }
 
+.nadfunConfigError {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  font-size: 0.84rem;
+  color: var(--muted);
+  padding: 0.5rem 0;
+}
+
 .nadfunError {
   margin-bottom: 0.75rem;
   border-radius: 10px;
-  text-align: center;
   padding: 0.68rem;
   font-size: 0.84rem;
   color: var(--danger-soft);
   border: 1px solid rgba(255, 98, 110, 0.45);
   background: rgba(255, 98, 110, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  text-align: center;
+}
+
+.nadfunErrorFallback {
+  font-size: 0.78rem;
+  color: #ffd7a1;
+  opacity: 0.85;
 }
 
 .nadfunSuccess {

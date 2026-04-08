@@ -413,7 +413,10 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
       setTxHash(hash);
     } catch (err) {
       const raw = err instanceof Error ? err.message : "Transaction failed";
-      setError(mapContractError(raw));
+      console.error("[NadFunTradingWidget] trade error:", err);
+      const mapped = mapContractError(raw);
+      // If not specifically mapped, use a generic catch-all
+      setError(mapped !== raw ? mapped : "Transaction failed. Please try again or adjust your slippage.");
     } finally {
       setTxLoading(false);
     }
@@ -422,12 +425,11 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
   // ── Render ────────────────────────────────────────────────────────────────
 
   if (configErrors.length > 0) {
+    // Log technical details for operators; show friendly message to users
+    console.error("[NadFunTradingWidget] config errors:", configErrors);
     return (
-      <div role="alert" style={{ color: "#fca5a5", fontSize: "0.85rem", padding: "0.5rem 0" }}>
-        <strong>Trading widget misconfigured:</strong>
-        <ul style={{ margin: "0.3rem 0 0.5rem 1rem" }}>
-          {configErrors.map((e) => <li key={e}>{e}</li>)}
-        </ul>
+      <div role="alert" className={styles.nadfunConfigError}>
+        <p>Trading is not available for this token. You can trade on nad.fun directly.</p>
         <a
           href={`https://nad.fun/token/${tokenAddress}`}
           target="_blank"
@@ -618,7 +620,15 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
       {/* Feedback */}
       {error && (
         <div className={styles.nadfunError} role="alert" aria-live="assertive">
-          {error}
+          <span>{error}</span>
+          <a
+            href={`https://nad.fun/token/${tokenAddress}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={styles.nadfunErrorFallback}
+          >
+            Open on nad.fun ↗
+          </a>
         </div>
       )}
       {txHash && (

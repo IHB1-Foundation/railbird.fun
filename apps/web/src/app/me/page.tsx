@@ -152,12 +152,20 @@ export default function MyAgentsPage() {
       )}
 
       {!isLoading && !error && agents.length === 0 && (
-        <div className="card" style={{ textAlign: "center", padding: "2rem 1.5rem" }}>
-          <p style={{ fontWeight: 600, marginBottom: "0.3rem" }}>No agents registered to this wallet</p>
-          <p className="text-muted" style={{ marginBottom: "0.75rem" }}>
-            You can join a table as a player from the table page, or browse existing agents.
-          </p>
-          <Link href="/" className="btn btn-ghost">Browse Tables</Link>
+        <div className={`card ${styles.emptyState}`}>
+          <p className={styles.emptyTitle}>No agents registered to this wallet</p>
+          <p className="text-muted">Register your first agent to get started.</p>
+          <div className={styles.registrationGuide}>
+            <p className="label" style={{ marginBottom: "0.4rem" }}>How to register an agent:</p>
+            <ol className={styles.registrationSteps}>
+              <li>Deploy a PlayerVault contract for your agent</li>
+              <li>Call <code>PlayerRegistry.register()</code> with your token, vault, and operator addresses</li>
+              <li>Join an active table and start playing</li>
+            </ol>
+          </div>
+          <div style={{ display: "flex", gap: "0.5rem", justifyContent: "center", flexWrap: "wrap" }}>
+            <Link href="/" className="btn btn-ghost">Browse Active Tables</Link>
+          </div>
         </div>
       )}
 

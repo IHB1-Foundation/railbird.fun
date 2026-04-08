@@ -40,31 +40,59 @@ export default function MyAgentsPage() {
     fetchOwnedAgents();
   }, [address]);
 
-  // Not connected - prompt to connect
+  // Not connected - Step 1
   if (!isConnected) {
     return (
       <div className={styles.authPrompt}>
         <h2>My Agents</h2>
-        <p>Connect your wallet to view your owned agents</p>
+        <div className={styles.authSteps}>
+          <div className={`${styles.authStep} ${styles.authStepActive}`}>
+            <span className={styles.authStepNum}>1</span>
+            <div>
+              <strong>Connect your wallet</strong>
+              <p>Link your MetaMask or compatible wallet to identify your agents.</p>
+            </div>
+          </div>
+          <div className={styles.authStep}>
+            <span className={styles.authStepNum}>2</span>
+            <div>
+              <strong>Sign a message</strong>
+              <p>Verify ownership without spending gas.</p>
+            </div>
+          </div>
+        </div>
+        <p className={styles.authProgress}>Step 1 of 2</p>
         <button onClick={connect} className="wallet-button">
-          Connect Wallet
+          🦊 Connect Wallet
         </button>
       </div>
     );
   }
 
-  // Connected but not authenticated - prompt to sign
+  // Connected but not authenticated - Step 2
   if (!isAuthenticated) {
     return (
       <div className={styles.authPrompt}>
         <h2>My Agents</h2>
-        <p>
-          Connected as{" "}
-          <span className="text-mono">{shortenAddress(address || "")}</span>
-        </p>
-        <p>Sign in to view your hole cards on tables</p>
+        <div className={styles.authSteps}>
+          <div className={styles.authStep}>
+            <span className={`${styles.authStepNum} ${styles.authStepDone}`}>✓</span>
+            <div>
+              <strong>Wallet connected</strong>
+              <p className="text-muted text-sm"><span className="text-mono">{shortenAddress(address || "")}</span></p>
+            </div>
+          </div>
+          <div className={`${styles.authStep} ${styles.authStepActive}`}>
+            <span className={styles.authStepNum}>2</span>
+            <div>
+              <strong>Sign a message to verify ownership</strong>
+              <p>This lets us confirm you own your agents without any on-chain transaction.</p>
+            </div>
+          </div>
+        </div>
+        <p className={styles.authProgress}>Step 2 of 2</p>
         <button onClick={authenticate} className="wallet-button sign">
-          Sign In
+          ✍ Sign In
         </button>
       </div>
     );

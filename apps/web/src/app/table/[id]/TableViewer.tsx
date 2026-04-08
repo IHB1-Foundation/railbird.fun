@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
 import { isAddress, type Address } from "viem";
 import { useAuth, type HoleCardsResponse } from "@/lib/auth";
@@ -99,6 +99,11 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
 
   const { isConnected, isAuthenticated, address, connect, getHoleCards } = useAuth();
 
+  // Cache decrypted hole cards per hand to avoid re-fetching on every WS update.
+  // Keyed by "${handId}-${seatIndex}". Cleared when hand changes or wallet disconnects.
+  const holeCardCache = useRef<Map<string, HoleCardsResponse>>(new Map());
+  const lastCachedHandIdRef = useRef<string | null>(null);
+
   useEffect(() => {
     void (async () => {
       try {
@@ -188,7 +193,18 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
     return () => clearInterval(interval);
   }, [table.actionDeadline]);
 
-  // Fetch hole cards when authenticated and hand is active
+  // Clear hole card cache on wallet disconnect
+  useEffect(() => {
+    if (!isAuthenticated) {
+      holeCardCache.current.clear();
+      lastCachedHandIdRef.current = null;
+      setHoleCards(null);
+    }
+  }, [isAuthenticated]);
+
+  // Fetch hole cards when authenticated and hand is active.
+  // Uses a per-hand cache to avoid re-deriving the encryption key and re-decrypting
+  // on every WebSocket update when the hand hasn't changed.
   useEffect(() => {
     let cancelled = false;
 
@@ -198,9 +214,30 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
         return;
       }
 
+      const handId = table.currentHand.handId;
+
+      // Clear cache when a new hand begins
+      if (lastCachedHandIdRef.current !== null && lastCachedHandIdRef.current !== handId) {
+        holeCardCache.current.clear();
+      }
+      lastCachedHandIdRef.current = handId;
+
+      // Check cache before fetching
+      const cacheKey = handId;
+      const cached = holeCardCache.current.get(cacheKey);
+      if (cached) {
+        if (!cancelled) setHoleCards(cached);
+        return;
+      }
+
       try {
-        const cards = await getHoleCards(tableId, table.currentHand.handId);
-        if (!cancelled) setHoleCards(cards);
+        const cards = await getHoleCards(tableId, handId);
+        if (!cancelled) {
+          if (cards) {
+            holeCardCache.current.set(cacheKey, cards);
+          }
+          setHoleCards(cards);
+        }
       } catch (err) {
         console.error("[TableViewer] Failed to fetch hole cards:", err);
         if (!cancelled) setHoleCards(null);

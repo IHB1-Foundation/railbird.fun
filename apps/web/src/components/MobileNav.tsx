@@ -21,6 +21,7 @@ export function MobileNav() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const firstLinkRef = useRef<HTMLAnchorElement>(null);
+  const hamburgerRef = useRef<HTMLButtonElement>(null);
 
   // Focus trap: focus first link when drawer opens
   useEffect(() => {
@@ -32,17 +33,24 @@ export function MobileNav() {
   // Close on Escape key
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && open) setOpen(false);
+      if (e.key === "Escape" && open) {
+        setOpen(false);
+        hamburgerRef.current?.focus();
+      }
     };
     document.addEventListener("keydown", handleKey);
     return () => document.removeEventListener("keydown", handleKey);
   }, [open]);
 
-  const close = () => setOpen(false);
+  const close = () => {
+    setOpen(false);
+    hamburgerRef.current?.focus();
+  };
 
   return (
     <>
       <button
+        ref={hamburgerRef}
         className={styles.hamburger}
         onClick={() => setOpen(!open)}
         aria-label="Toggle navigation"

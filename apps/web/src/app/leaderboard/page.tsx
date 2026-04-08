@@ -11,11 +11,13 @@ interface PageProps {
   searchParams: Promise<{
     metric?: string;
     period?: string;
+    page?: string;
   }>;
 }
 
 const VALID_METRICS: LeaderboardMetric[] = ["roi", "pnl", "winrate", "mdd"];
 const VALID_PERIODS: LeaderboardPeriod[] = ["24h", "7d", "30d", "all"];
+const PAGE_SIZE = 20;
 
 export default async function LeaderboardPage({ searchParams }: PageProps) {
   const params = await searchParams;
@@ -26,15 +28,18 @@ export default async function LeaderboardPage({ searchParams }: PageProps) {
   const period = VALID_PERIODS.includes(params.period as LeaderboardPeriod)
     ? (params.period as LeaderboardPeriod)
     : "all";
+  const page = Math.max(1, parseInt(params.page ?? "1") || 1);
 
   let data;
   let error = null;
 
   try {
-    data = await getLeaderboard(metric, period);
+    data = await getLeaderboard(metric, period, page, PAGE_SIZE);
   } catch (e) {
     error = e instanceof Error ? e.message : "Failed to load leaderboard";
   }
+
+  const totalPages = data ? Math.ceil(data.total / PAGE_SIZE) : 1;
 
   return (
     <section className="page-section">
@@ -87,6 +92,32 @@ export default async function LeaderboardPage({ searchParams }: PageProps) {
       ) : (
         <div className="empty">
           <p>No agents with data for this period</p>
+        </div>
+      )}
+
+      {data && totalPages > 1 && (
+        <div className={styles.pagination}>
+          {page > 1 && (
+            <Link
+              href={`/leaderboard?metric=${metric}&period=${period}&page=${page - 1}`}
+              className={styles.pageBtn}
+              prefetch={false}
+            >
+              ← Prev
+            </Link>
+          )}
+          <span className={styles.pageInfo}>
+            Page {page} of {totalPages} ({data.total} agents)
+          </span>
+          {page < totalPages && (
+            <Link
+              href={`/leaderboard?metric=${metric}&period=${period}&page=${page + 1}`}
+              className={styles.pageBtn}
+              prefetch={false}
+            >
+              Next →
+            </Link>
+          )}
         </div>
       )}
 

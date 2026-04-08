@@ -438,6 +438,26 @@ export async function getAllAgents(): Promise<Agent[]> {
   return result.rows;
 }
 
+export async function getAllAgentsPaginated(
+  page: number,
+  limit: number
+): Promise<{ rows: Agent[]; total: number }> {
+  const offset = (page - 1) * limit;
+  const [dataResult, countResult] = await Promise.all([
+    query<Agent>(
+      `SELECT * FROM agents WHERE is_registered = true ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
+      [limit, offset]
+    ),
+    query<{ count: string }>(
+      `SELECT COUNT(*) AS count FROM agents WHERE is_registered = true`
+    ),
+  ]);
+  return {
+    rows: dataResult.rows,
+    total: parseInt(countResult.rows[0]?.count ?? "0", 10),
+  };
+}
+
 export async function getAgentsByOwner(ownerAddress: string): Promise<Agent[]> {
   const result = await query<Agent>(
     `SELECT * FROM agents WHERE is_registered = true AND owner_address = $1 ORDER BY created_at DESC`,

@@ -15,6 +15,7 @@ import {
   getHandActions,
   getAgent,
   getAllAgents,
+  getAllAgentsPaginated,
   getAgentsByOwner,
   getRebalanceEvents,
   getRevealedHolecards,
@@ -37,6 +38,7 @@ import type {
   LeaderboardResponse,
   LeaderboardMetric,
   LeaderboardPeriod,
+  PaginatedResponse,
 } from "../db/types.js";
 
 // ============ Simple in-memory rate limiter ============
@@ -358,12 +360,29 @@ router.get("/tables/:tableId/hands/:handId/revealed-holecards", async (req, res)
 router.get("/agents", async (req, res) => {
   try {
     const ownerParam = req.query.owner as string | undefined;
-    const agents = ownerParam
-      ? await getAgentsByOwner(ownerParam)
-      : await getAllAgents();
 
-    const response = await Promise.all(
-      agents.map(async (agent) => {
+    if (ownerParam) {
+      // Owner-filtered query — no pagination (small result set)
+      const agents = await getAgentsByOwner(ownerParam);
+      const data = await Promise.all(
+        agents.map(async (agent) => {
+          const snapshot = agent.vault_address
+            ? await getLatestVaultSnapshot(agent.vault_address)
+            : null;
+          return formatAgentResponse(agent, snapshot);
+        })
+      );
+      res.json(data);
+      return;
+    }
+
+    // Paginated agents list
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.min(Math.max(1, parseInt(req.query.limit as string) || 20), 100);
+
+    const { rows, total } = await getAllAgentsPaginated(page, limit);
+    const data = await Promise.all(
+      rows.map(async (agent) => {
         const snapshot = agent.vault_address
           ? await getLatestVaultSnapshot(agent.vault_address)
           : null;
@@ -371,6 +390,7 @@ router.get("/agents", async (req, res) => {
       })
     );
 
+    const response: PaginatedResponse<AgentResponse> = { data, total, page, limit };
     res.json(response);
   } catch (error) {
     logger.error({ err: error }, "Error fetching agents:");
@@ -474,6 +494,8 @@ router.get("/leaderboard", leaderboardRateLimit, async (req, res) => {
     // Parse and validate query params
     const metric = (req.query.metric as string || "roi").toLowerCase() as LeaderboardMetric;
     const period = (req.query.period as string || "all").toLowerCase() as LeaderboardPeriod;
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.min(Math.max(1, parseInt(req.query.limit as string) || 20), 100);
 
     if (!VALID_METRICS.includes(metric)) {
       return res.status(400).json({
@@ -586,16 +608,23 @@ router.get("/leaderboard", leaderboardRateLimit, async (req, res) => {
       }
     });
 
-    // Assign ranks
+    // Assign ranks (global rank before pagination slice)
     entries.forEach((entry, index) => {
       entry.rank = index + 1;
     });
 
+    const total = entries.length;
+    const start = (page - 1) * limit;
+    const pagedEntries = entries.slice(start, start + limit);
+
     const response: LeaderboardResponse = {
       metric,
       period,
-      entries,
+      entries: pagedEntries,
       updatedAt: new Date().toISOString(),
+      total,
+      page,
+      limit,
     };
 
     res.json(response);

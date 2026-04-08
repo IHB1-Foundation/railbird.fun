@@ -250,9 +250,19 @@ export interface LeaderboardEntry {
   initialNavPerShare: string;
 }
 
+export interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
 export interface LeaderboardResponse {
   metric: LeaderboardMetric;
   period: LeaderboardPeriod;
   entries: LeaderboardEntry[];
   updatedAt: string;
+  total: number;
+  page: number;
+  limit: number;
 }

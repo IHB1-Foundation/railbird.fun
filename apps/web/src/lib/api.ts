@@ -8,6 +8,7 @@ import type {
   LeaderboardPeriod,
   VaultSnapshotResponse,
   HandResponse,
+  PaginatedResponse,
 } from "./types";
 
 export const INDEXER_BASE = process.env.NEXT_PUBLIC_INDEXER_URL || "https://indexer.railbird.fun";
@@ -106,8 +107,13 @@ export async function getRevealedHolecards(
 
 // Agents
 
-export async function getAgents(): Promise<AgentResponse[]> {
-  return fetchJson<AgentResponse[]>("/agents");
+export async function getAgents(
+  page = 1,
+  limit = 20
+): Promise<PaginatedResponse<AgentResponse>> {
+  return fetchJson<PaginatedResponse<AgentResponse>>(
+    `/agents?page=${page}&limit=${limit}`
+  );
 }
 
 export async function getAgentsByOwner(ownerAddress: string): Promise<AgentResponse[]> {
@@ -149,10 +155,12 @@ export async function getAgentSnapshots(
 
 export async function getLeaderboard(
   metric: LeaderboardMetric = "roi",
-  period: LeaderboardPeriod = "all"
+  period: LeaderboardPeriod = "all",
+  page = 1,
+  limit = 20
 ): Promise<LeaderboardResponse> {
   return fetchJson<LeaderboardResponse>(
-    `/leaderboard?metric=${metric}&period=${period}`
+    `/leaderboard?metric=${metric}&period=${period}&page=${page}&limit=${limit}`
   );
 }
 

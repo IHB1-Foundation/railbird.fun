@@ -28,12 +28,12 @@ describe("API client error handling", () => {
     await expect(getAgents()).rejects.toThrow("API error: 500");
   });
 
-  it("returns parsed JSON on success", async () => {
-    const data = [{ id: "1", name: "Agent 1" }];
-    mockFetch(200, data);
+  it("returns paginated JSON on success", async () => {
+    const paginated = { data: [{ id: "1", name: "Agent 1" }], total: 1, page: 1, limit: 20 };
+    mockFetch(200, paginated);
     const { getAgents } = await import("../api");
     const result = await getAgents();
-    expect(result).toEqual(data);
+    expect(result).toEqual(paginated);
   });
 
   it("getAgentsByOwner encodes owner address in query param", async () => {

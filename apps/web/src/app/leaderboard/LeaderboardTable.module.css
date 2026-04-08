@@ -91,3 +91,30 @@
   color: var(--muted);
   font-size: 0.75rem;
 }
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+
+.pageBtn {
+  padding: 0.4rem 0.9rem;
+  border: 1px solid rgba(145, 153, 196, 0.3);
+  border-radius: 6px;
+  color: var(--accent-soft);
+  font-size: 0.85rem;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+
+.pageBtn:hover {
+  background: rgba(129, 108, 249, 0.15);
+}
+
+.pageInfo {
+  color: var(--muted);
+  font-size: 0.82rem;
+}

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Breadcrumb } from "@/components/Breadcrumb";
+import { Tooltip } from "@/components/Tooltip";
 import { getAgent, getAgentSnapshots, getAgentRebalances, getAgentHands, type RebalanceEventResponse } from "@/lib/api";
 import type { HandResponse } from "@/lib/types";
 import { NadFunTradingWidget } from "@/components/NadFunTradingWidget";
@@ -113,25 +114,33 @@ export default async function AgentPage({
       {/* Stats Grid */}
       <div className={styles.statsGrid}>
         <div className={styles.statCard}>
-          <div className={styles.statLabel}>External Assets (A)</div>
+          <div className={styles.statLabel}>
+            <Tooltip text="Total value of non-token assets in the agent's vault">External Assets (A)</Tooltip>
+          </div>
           <div className={styles.statValue}>
             {hasSnapshot ? formatMon(snapshot.externalAssets) : "--"}
           </div>
         </div>
         <div className={styles.statCard}>
-          <div className={styles.statLabel}>Treasury Shares (B)</div>
+          <div className={styles.statLabel}>
+            <Tooltip text="Agent tokens held by the vault — reduces circulating supply">Treasury Shares (B)</Tooltip>
+          </div>
           <div className={styles.statValue}>
             {hasSnapshot ? formatMon(snapshot.treasuryShares) : "--"}
           </div>
         </div>
         <div className={styles.statCard}>
-          <div className={styles.statLabel}>Outstanding (N)</div>
+          <div className={styles.statLabel}>
+            <Tooltip text="Tokens in circulation (Total Supply minus Treasury Shares)">Outstanding (N)</Tooltip>
+          </div>
           <div className={styles.statValue}>
             {hasSnapshot ? formatMon(snapshot.outstandingShares) : "--"}
           </div>
         </div>
         <div className={styles.statCard}>
-          <div className={styles.statLabel}>NAV/Share (P)</div>
+          <div className={styles.statLabel}>
+            <Tooltip text="Net Asset Value per token — vault assets divided by outstanding tokens">NAV/Share (P)</Tooltip>
+          </div>
           <div className={styles.statValue}>
             {hasSnapshot ? formatNavPerShare(snapshot.navPerShare) : "--"}
           </div>
@@ -153,7 +162,9 @@ export default async function AgentPage({
           </div>
         </div>
         <div className={styles.statCard}>
-          <div className={styles.statLabel}>ROI</div>
+          <div className={styles.statLabel}>
+            <Tooltip text="Return on Investment — cumulative profit as percentage of initial capital">ROI</Tooltip>
+          </div>
           <div
             className={`${styles.statValue} ${
               parseFloat(roi) >= 0 ? "positive" : "negative"

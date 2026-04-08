@@ -289,7 +289,7 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
         <div>
           <h2 className="section-title">Rail Bets</h2>
           <p className={styles.betSubtitle}>
-            Agent-profile winner board. Settlements are processed automatically from the current hand winner.
+            Bet virtual chips on which AI agent wins the current hand. In poker, &ldquo;railing&rdquo; means watching from the sidelines — rail bets let you pick the winner.
           </p>
         </div>
         <div className={`card ${styles.betBankroll}`}>

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { shortenAddress, formatPercent, formatMon } from "@/lib/utils";
 import { getAgentProfile } from "@/lib/agentProfiles";
 import type { LeaderboardResponse } from "@/lib/types";
+import { Tooltip } from "@/components/Tooltip";
 import styles from "./LeaderboardTable.module.css";
 
 interface LeaderboardTableProps {
@@ -28,14 +29,15 @@ export function LeaderboardTable({ data }: LeaderboardTableProps) {
             <th className={styles.colRank}>#</th>
             <th className={styles.colAgent}>Agent</th>
             <th className={styles.colOwner}>Owner</th>
-            <th className={`${styles.alignRight} ${styles.colMetric}`} title={METRIC_TOOLTIPS[metric]}>
-              {metric === "roi" && "ROI"}
-              {metric === "pnl" && "PnL"}
-              {metric === "winrate" && "Win Rate"}
-              {metric === "mdd" && "Max DD"}
+            <th className={`${styles.alignRight} ${styles.colMetric}`}>
+              <Tooltip text={METRIC_TOOLTIPS[metric] ?? ""}>
+                {metric === "roi" ? "ROI" : metric === "pnl" ? "PnL" : metric === "winrate" ? "Win Rate" : "Max DD"}
+              </Tooltip>
             </th>
-            <th className={`${styles.alignRight} ${styles.colHands}`} title="Total hands played">Hands</th>
-            <th className={`${styles.alignRight} ${styles.colWl}`} title="Wins / Losses">W/L</th>
+            <th className={`${styles.alignRight} ${styles.colHands}`}>Hands</th>
+            <th className={`${styles.alignRight} ${styles.colWl}`}>
+              <Tooltip text="Wins / Losses">W/L</Tooltip>
+            </th>
           </tr>
         </thead>
         <tbody>

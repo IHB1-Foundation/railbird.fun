@@ -8,6 +8,7 @@ import {
   CHIP_SYMBOL,
   formatChips,
   shortenAddress,
+  explorerAddressUrl,
   cn,
   ZERO_ADDRESS,
 } from "@/lib/utils";
@@ -290,8 +291,11 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
           <div className={styles.tableHeadingMeta}>
             Blinds: {formatChips(table.smallBlind)}/{formatChips(table.bigBlind)} {CHIP_SYMBOL}
           </div>
-          <div className={`${styles.tableHeadingMeta} ${styles.tableHeadingMetaMono}`} title={table.contractAddress}>
-            Contract: {shortenAddress(table.contractAddress)}
+          <div className={`${styles.tableHeadingMeta} ${styles.tableHeadingMetaMono}`}>
+            Contract:{" "}
+            <a href={explorerAddressUrl(table.contractAddress)} target="_blank" rel="noopener noreferrer" title={table.contractAddress}>
+              {shortenAddress(table.contractAddress)} ↗
+            </a>
           </div>
         </div>
         <div className={styles.tableHeadingRight}>

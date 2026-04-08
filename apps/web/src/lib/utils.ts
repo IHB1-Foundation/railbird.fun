@@ -86,6 +86,15 @@ export function shortenAddress(address: string): string {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
+// Block explorer URL
+const EXPLORER_BASE = process.env.NEXT_PUBLIC_BLOCK_EXPLORER || "https://testnet-explorer.hsk.xyz";
+export function explorerAddressUrl(address: string): string {
+  return `${EXPLORER_BASE}/address/${address}`;
+}
+export function explorerTxUrl(txHash: string): string {
+  return `${EXPLORER_BASE}/tx/${txHash}`;
+}
+
 // Format percentage
 export function formatPercent(value: string | number): string {
   const num = typeof value === "string" ? parseFloat(value) : value;

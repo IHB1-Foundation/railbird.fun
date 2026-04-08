@@ -14,6 +14,7 @@ import {
   formatPercent,
   formatNavPerShare,
   formatTime,
+  explorerAddressUrl,
 } from "@/lib/utils";
 import styles from "./page.module.css";
 export const dynamic = "force-dynamic";
@@ -218,16 +219,22 @@ export default async function AgentPage({
         <div className={styles.infoGrid}>
           <div className={styles.infoRow}>
             <span className="label">Owner:</span>{" "}
-            <span className="text-mono">{shortenAddress(agent.ownerAddress)}</span>
+            <a href={explorerAddressUrl(agent.ownerAddress)} target="_blank" rel="noopener noreferrer" className="text-mono" title={agent.ownerAddress}>
+              {shortenAddress(agent.ownerAddress)} ↗
+            </a>
           </div>
           <div className={styles.infoRow}>
             <span className="label">Operator:</span>{" "}
-            <span className="text-mono">{shortenAddress(agent.operatorAddress)}</span>
+            <a href={explorerAddressUrl(agent.operatorAddress)} target="_blank" rel="noopener noreferrer" className="text-mono" title={agent.operatorAddress}>
+              {shortenAddress(agent.operatorAddress)} ↗
+            </a>
           </div>
           {agent.vaultAddress && (
             <div className={styles.infoRow}>
               <span className="label">Vault:</span>{" "}
-              <span className="text-mono">{shortenAddress(agent.vaultAddress)}</span>
+              <a href={explorerAddressUrl(agent.vaultAddress)} target="_blank" rel="noopener noreferrer" className="text-mono" title={agent.vaultAddress}>
+                {shortenAddress(agent.vaultAddress)} ↗
+              </a>
             </div>
           )}
           {agent.tableAddress && (

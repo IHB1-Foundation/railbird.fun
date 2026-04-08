@@ -283,6 +283,22 @@ export class ChainClient {
     });
   }
 
+  async reRequestHoleCardVRF(): Promise<Hash> {
+    return this.nonceManager.withNonce(async (nonce) => {
+      const hash = await this.walletClient.writeContract({
+        chain: this.chain,
+        account: this.account,
+        address: this.pokerTableAddress,
+        abi: POKER_TABLE_ABI,
+        functionName: "reRequestHoleCardVRF",
+        args: [],
+        nonce,
+      });
+      await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });
+      return hash;
+    });
+  }
+
   async submitHoleCommit(handId: bigint, seatIndex: number, commitment: `0x${string}`): Promise<Hash> {
     return this.nonceManager.withNonce(async (nonce) => {
       const hash = await this.walletClient.writeContract({
@@ -446,5 +462,9 @@ export class ChainClient {
       state === GameState.WAITING_VRF_TURN ||
       state === GameState.WAITING_VRF_RIVER
     );
+  }
+
+  isHoleCardVRFWaitingState(state: GameState): boolean {
+    return state === GameState.WAITING_VRF_HOLECARDS;
   }
 }

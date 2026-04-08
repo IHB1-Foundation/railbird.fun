@@ -299,6 +299,9 @@ contract PokerTable {
     /// @notice Emitted when shuffle verification succeeds after dealer seed reveal
     event ShuffleVerified(uint256 indexed handId, bytes32 dealerSeed);
 
+    /// @notice Emitted when a hand is aborted (e.g., max VRF retries exceeded) and blinds are returned
+    event HandAborted(uint256 indexed handId, string reason);
+
     /// @notice Emitted when admin address is updated
     event AdminUpdated(address indexed oldAdmin, address indexed newAdmin);
 
@@ -392,6 +395,11 @@ contract PokerTable {
     // T1.3: Hole card VRF randomness per hand — hash only; raw value stays off-chain
     mapping(uint256 => bytes32) public holeCardVRFRandomnessHash;  // handId => keccak256(randomness)
     uint256 public pendingHoleCardVRFRequestId;                     // current pending hole-card VRF
+
+    /// @notice Maximum number of hole card VRF re-requests before the hand is aborted.
+    uint8 public constant MAX_HOLE_CARD_VRF_RETRIES = 3;
+    /// @notice Tracks how many times hole card VRF has been re-requested per hand.
+    mapping(uint256 => uint8) public holeCardVRFRetryCount;
 
     /// @notice HashKey Chain KYC SBT checker. address(0) = KYC gate disabled.
     address public kycSBT;
@@ -1555,16 +1563,64 @@ contract PokerTable {
         require(vrfAdapter != address(0), "No VRF adapter");
         if (block.timestamp <= vrfRequestTimestamp + VRF_TIMEOUT) revert VRFTimeoutNotReached();
 
+        uint256 handId = currentHandId;
+
+        // Increment retry count
+        holeCardVRFRetryCount[handId]++;
+
+        // If max retries exceeded, abort hand and return blinds
+        if (holeCardVRFRetryCount[handId] > MAX_HOLE_CARD_VRF_RETRIES) {
+            _abortHandReturnBlinds("Max VRF retries exceeded");
+            return;
+        }
+
         uint256 oldRequestId = pendingHoleCardVRFRequestId;
         uint256 newRequestId = IVRFAdapter(vrfAdapter).requestRandomness(
             tableId,
-            currentHandId,
+            handId,
             uint8(GameState.WAITING_VRF_HOLECARDS)
         );
         pendingHoleCardVRFRequestId = newRequestId;
         vrfRequestTimestamp = block.timestamp;
 
-        emit HoleCardVRFReRequested(currentHandId, oldRequestId, newRequestId);
+        emit HoleCardVRFReRequested(handId, oldRequestId, newRequestId);
+    }
+
+    /**
+     * @notice Abort the current hand and return each seat's posted bets back.
+     * @dev Called when hole card VRF fails permanently (max retries exceeded).
+     *      Each seat's totalHandBet is returned to their stack. State transitions to SETTLED.
+     */
+    function _abortHandReturnBlinds(string memory reason) internal {
+        uint256 handId = currentHandId;
+
+        // Return each active seat's bet contribution back to their stack
+        for (uint8 i = 0; i < numSeats; i++) {
+            uint256 betAmount = seats[i].totalHandBet;
+            if (betAmount > 0) {
+                seats[i].stack += betAmount;
+                emit SeatUpdated(i, seats[i].owner, seats[i].operator, seats[i].stack);
+            }
+        }
+
+        emit HandAborted(handId, reason);
+
+        // Prepare for next hand
+        gameState = GameState.SETTLED;
+        pendingHoleCardVRFRequestId = 0;
+        showdownStartTimestamp = 0;
+        _advanceButton();
+
+        // Reset hand state
+        currentHand.pot = 0;
+        currentHand.sidePotCount = 0;
+        for (uint8 i = 0; i < numSeats; i++) {
+            seats[i].currentBet = 0;
+            seats[i].isActive = false;
+            seats[i].isAllIn = false;
+            seats[i].totalHandBet = 0;
+        }
+        _evictBustedSeats();
     }
 
     /**

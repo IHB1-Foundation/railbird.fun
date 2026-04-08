@@ -43,6 +43,7 @@ contract PokerTableTest is Test {
     event HoleCommitSubmitted(uint256 indexed handId, uint8 indexed seatIndex, bytes32 commitment);
     event HoleCardsRevealed(uint256 indexed handId, uint8 indexed seatIndex, uint8 card1, uint8 card2);
     event VRFReRequested(uint256 indexed handId, PokerTable.GameState street, uint256 oldRequestId, uint256 newRequestId);
+    event HandAborted(uint256 indexed handId, string reason);
 
     function setUp() public {
         mockVRF = new MockVRFAdapter();
@@ -888,6 +889,107 @@ contract PokerTableTest is Test {
         // Only latest request should work
         mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
         assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.BETTING_FLOP));
+    }
+
+    // ============ Hole Card VRF Max Retry → Abort Tests (T-R16-03) ============
+
+    function _setupAndStartHandToHoleCardVRF() internal {
+        _setupAllSeats();
+        pokerTable.startHand();
+        assertEq(
+            uint256(pokerTable.gameState()),
+            uint256(PokerTable.GameState.WAITING_VRF_HOLECARDS),
+            "should be in WAITING_VRF_HOLECARDS"
+        );
+    }
+
+    function test_ReRequestHoleCardVRF_SuccessBeforeMaxRetries() public {
+        _setupAndStartHandToHoleCardVRF();
+        uint256 handId = pokerTable.currentHandId();
+
+        // Re-request twice (within limit)
+        for (uint8 i = 0; i < 3; i++) {
+            vm.warp(block.timestamp + 6 minutes);
+            pokerTable.reRequestHoleCardVRF();
+            assertEq(
+                uint256(pokerTable.gameState()),
+                uint256(PokerTable.GameState.WAITING_VRF_HOLECARDS),
+                "should still be waiting for hole card VRF"
+            );
+            assertEq(pokerTable.holeCardVRFRetryCount(handId), i + 1, "retry count should increment");
+        }
+    }
+
+    function test_ReRequestHoleCardVRF_AbortAfterMaxRetries() public {
+        _setupAndStartHandToHoleCardVRF();
+        uint256 handId = pokerTable.currentHandId();
+
+        // Re-request MAX_HOLE_CARD_VRF_RETRIES times
+        uint8 maxRetries = pokerTable.MAX_HOLE_CARD_VRF_RETRIES();
+        for (uint8 i = 0; i < maxRetries; i++) {
+            vm.warp(block.timestamp + 6 minutes);
+            pokerTable.reRequestHoleCardVRF();
+        }
+        // One more call triggers abort
+        vm.warp(block.timestamp + 6 minutes);
+        vm.expectEmit(true, false, false, true, address(pokerTable));
+        emit HandAborted(handId, "Max VRF retries exceeded");
+        pokerTable.reRequestHoleCardVRF();
+
+        // Should now be SETTLED
+        assertEq(
+            uint256(pokerTable.gameState()),
+            uint256(PokerTable.GameState.SETTLED),
+            "should be SETTLED after abort"
+        );
+
+        // Blinds should be returned — check SB seat (seat1) and BB seat (seat2)
+        // After blind return, their stacks should be restored to buy-in
+        PokerTable.Seat memory seat1 = pokerTable.getSeat(1);
+        PokerTable.Seat memory seat2 = pokerTable.getSeat(2);
+        assertEq(seat1.stack, BUY_IN, "SB stack should be fully restored");
+        assertEq(seat2.stack, BUY_IN, "BB stack should be fully restored");
+    }
+
+    function test_ReRequestHoleCardVRF_RevertBeforeTimeout() public {
+        _setupAndStartHandToHoleCardVRF();
+
+        vm.expectRevert(abi.encodeWithSelector(PokerTable.VRFTimeoutNotReached.selector));
+        pokerTable.reRequestHoleCardVRF();
+    }
+
+    function test_ReRequestHoleCardVRF_RevertNotInState() public {
+        _setupAllSeats();
+        _startHandFull();
+
+        // Now in BETTING_PRE — reRequestHoleCardVRF should revert
+        vm.expectRevert("Not waiting for hole card VRF");
+        pokerTable.reRequestHoleCardVRF();
+    }
+
+    function test_ReRequestHoleCardVRF_AbortResetsForNextHand() public {
+        _setupAndStartHandToHoleCardVRF();
+        uint256 firstHandId = pokerTable.currentHandId();
+
+        uint8 maxRetries = pokerTable.MAX_HOLE_CARD_VRF_RETRIES();
+        for (uint8 i = 0; i <= maxRetries; i++) {
+            vm.warp(block.timestamp + 6 minutes);
+            pokerTable.reRequestHoleCardVRF();
+        }
+
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.SETTLED));
+
+        // Start next hand
+        pokerTable.startHand();
+        uint256 secondHandId = pokerTable.currentHandId();
+        assertGt(secondHandId, firstHandId, "next hand should have new ID");
+        assertEq(
+            uint256(pokerTable.gameState()),
+            uint256(PokerTable.GameState.WAITING_VRF_HOLECARDS),
+            "new hand should be in WAITING_VRF_HOLECARDS"
+        );
+        // Retry count for new hand starts fresh
+        assertEq(pokerTable.holeCardVRFRetryCount(secondHandId), 0, "new hand retry count should be 0");
     }
 
     // ============ Settlement Tests (T-0105) ============

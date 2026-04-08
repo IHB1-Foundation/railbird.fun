@@ -175,6 +175,7 @@ export class KeeperBot {
     // T-R3-03: Trigger vault rebalancing after settlement
     await this.checkAndTriggerRebalancing(state, currentBlock);
     await this.checkAndReRequestVRF(state, currentTimestamp);
+    await this.checkAndReRequestHoleCardVRF(state, currentTimestamp);
     await this.checkAndStartHand(state);
     await this.checkAndSettleShowdown(state);
   }
@@ -261,6 +262,50 @@ export class KeeperBot {
         this.handleCoordinationRace("reRequestVRF", error);
       } else {
         this.log.error({ err: error }, "Failed to re-request VRF");
+        this.stats.errors++;
+      }
+    }
+  }
+
+  /**
+   * Check if hole card VRF fulfillment is delayed and re-request if timeout exceeded.
+   * Also handles auto-abort after MAX_HOLE_CARD_VRF_RETRIES on-chain.
+   */
+  private async checkAndReRequestHoleCardVRF(
+    state: TableState,
+    currentTimestamp: bigint
+  ): Promise<void> {
+    if (!this.chainClient.isHoleCardVRFWaitingState(state.gameState)) {
+      return;
+    }
+
+    if (state.vrfRequestTimestamp === 0n) {
+      return;
+    }
+
+    // VRF_TIMEOUT is 5 minutes = 300 seconds
+    const vrfTimeout = 300n;
+    if (currentTimestamp <= state.vrfRequestTimestamp + vrfTimeout) {
+      return;
+    }
+
+    this.log.info(
+      { vrfRequestTs: state.vrfRequestTimestamp.toString(), current: currentTimestamp.toString() },
+      "Hole card VRF delayed, re-requesting (may abort hand if retries exceeded)"
+    );
+
+    await this.coordinationJitter();
+
+    try {
+      const hash = await this.chainClient.reRequestHoleCardVRF();
+      this.stats.vrfReRequests++;
+      this.recordAction("reRequestHoleCardVRF");
+      this.log.info({ tx: hash }, "Re-requested hole card VRF");
+    } catch (error) {
+      if (isVrfAlreadyReRequested(error)) {
+        this.handleCoordinationRace("reRequestHoleCardVRF", error);
+      } else {
+        this.log.error({ err: error }, "Failed to re-request hole card VRF");
         this.stats.errors++;
       }
     }

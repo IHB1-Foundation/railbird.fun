@@ -60,7 +60,15 @@ export default function RootLayout({
             </header>
             <main id="main-content" className="content-shell">{children}</main>
             <footer className="app-footer">
-              <span>Powered by HashKey Chain</span>
+              <nav className="footer-nav" aria-label="Footer navigation">
+                <a href="/">Home</a>
+                <a href="/leaderboard">Leaderboard</a>
+                <a href="/betting">Rail Bets</a>
+                <a href="https://github.com/0xYatha/railbird" target="_blank" rel="noopener noreferrer">GitHub</a>
+              </nav>
+              <p className="footer-credit">
+                Built for HashKey Chain Hackathon · Powered by HashKey Chain
+              </p>
             </footer>
           </div>
         </Providers>

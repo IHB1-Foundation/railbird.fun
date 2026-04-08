@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { formatChips, shortenAddress, cn, ZERO_ADDRESS } from "@/lib/utils";
+import { getAgentProfile, getPersonaSummary } from "@/lib/agentProfiles";
 import type { TableResponse } from "@/lib/types";
 import styles from "./TableViewer.module.css";
 
@@ -32,6 +33,28 @@ export function PlayersPanel({ seats, ownedSeatIndex, actorSeat, chipSymbol }: P
             </div>
             {seat.ownerAddress.toLowerCase() !== ZERO_ADDRESS ? (
               <>
+                {(() => {
+                  const profile = getAgentProfile(seat.operatorAddress) || getAgentProfile(seat.ownerAddress);
+                  const persona = getPersonaSummary(profile?.personaId);
+                  return (
+                    <>
+                      {profile && (
+                        <div className={styles.playerAgentName}>
+                          {persona && <span title={persona.description}>{persona.emoji}</span>}{" "}
+                          <strong>{profile.name}</strong>
+                          {persona && (
+                            <span
+                              className={styles.personaBadge}
+                              style={{ borderColor: persona.colorAccent, color: persona.colorAccent }}
+                            >
+                              {persona.name}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
                 <div className={styles.playerLine}>
                   Owner: <span className="text-mono">{shortenAddress(seat.ownerAddress)}</span>
                 </div>

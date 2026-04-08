@@ -493,6 +493,25 @@
   color: var(--accent-soft);
 }
 
+.playerAgentName {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.25rem;
+  font-size: 0.9rem;
+}
+
+.personaBadge {
+  display: inline-block;
+  font-size: 0.65rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid;
+  opacity: 0.85;
+  white-space: nowrap;
+}
+
 .playerLine {
   font-size: 0.875rem;
   margin-top: 0.2rem;

@@ -8,7 +8,8 @@ import type { HandResponse } from "@/lib/types";
 import { NadFunTradingWidget } from "@/components/NadFunTradingWidget";
 import { NavSparkline } from "@/components/NavSparkline";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { getAgentProfile } from "@/lib/agentProfiles";
+import { getAgentProfile, getPersonaSummary } from "@/lib/agentProfiles";
+import { PersonaRadar } from "@/components/PersonaRadar";
 import {
   formatMon,
   shortenAddress,
@@ -85,6 +86,7 @@ export default async function AgentPage({
   }
 
   const agentDisplayName = profile ? profile.name : shortenAddress(token);
+  const persona = getPersonaSummary(profile?.personaId);
 
   // Performance summary for header
   const wins = hands.filter((h) => h.winnerSeat !== null && h.winnerSeat !== undefined).length;
@@ -122,14 +124,25 @@ export default async function AgentPage({
           <div className={styles.agentColorBar} style={{ background: profile.accentColor }} />
         )}
         <h2>{profile ? profile.name : "Agent"}</h2>
-        {profile && (
+        {persona ? (
+          <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+            <span style={{ fontSize: "1.2rem" }}>{persona.emoji}</span>
+            <span
+              className={styles.agentAggressionBadge}
+              style={{ background: persona.colorAccent + "22", color: persona.colorAccent, border: `1px solid ${persona.colorAccent}55` }}
+              title={persona.description}
+            >
+              {persona.name}
+            </span>
+          </div>
+        ) : profile ? (
           <span
             className={styles.agentAggressionBadge}
             style={{ background: profile.accentColor, color: profile.colorHex }}
           >
             {profile.aggressionLabel}
           </span>
-        )}
+        ) : null}
         <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap" }}>
           <span className={styles.agentToken}>{token}</span>
           <ShareButton />
@@ -157,6 +170,34 @@ export default async function AgentPage({
           </div>
         )}
       </div>
+
+      {/* Persona Section */}
+      {persona && (
+        <div className="card" style={{ marginBottom: "1rem", padding: "1rem 1.2rem" }}>
+          <h3 className="section-title-sm" style={{ marginBottom: "0.75rem" }}>AI Strategy Profile</h3>
+          <div style={{ display: "flex", gap: "1.5rem", alignItems: "flex-start", flexWrap: "wrap" }}>
+            <PersonaRadar persona={persona} size="large" />
+            <div style={{ flex: 1, minWidth: "180px" }}>
+              <div style={{ fontSize: "1.5rem", marginBottom: "0.25rem" }}>{persona.emoji} <strong>{persona.name}</strong></div>
+              <p style={{ fontSize: "0.82rem", color: "var(--muted)", marginBottom: "0.75rem" }}>{persona.description}</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem", fontSize: "0.8rem" }}>
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ color: "var(--muted)" }}>Aggression</span>
+                  <span style={{ color: persona.colorAccent, fontWeight: 600 }}>{Math.round(persona.aggression * 100)}%</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ color: "var(--muted)" }}>Tightness</span>
+                  <span style={{ fontWeight: 600 }}>{Math.round(persona.tightness * 100)}%</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ color: "var(--muted)" }}>Bluff Frequency</span>
+                  <span style={{ fontWeight: 600 }}>{Math.round(persona.bluffFrequency * 100)}%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Stats Grid */}
       <div className={styles.statsGrid}>

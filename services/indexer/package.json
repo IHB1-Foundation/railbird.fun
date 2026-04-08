@@ -17,6 +17,7 @@
   "dependencies": {
     "@playerco/shared": "workspace:*",
     "express": "^4.18.2",
+    "ioredis": "^5.10.1",
     "pg": "^8.11.3",
     "prom-client": "^15.1.3",
     "viem": "^2.21.0",

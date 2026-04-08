@@ -5,6 +5,7 @@ import { router } from "./routes.js";
 import { createLogger, registry, metricsContentType } from "@playerco/shared";
 import { apiLatencyHistogram, wsConnectionsGauge, wsTablesGauge } from "../metrics.js";
 import { getWsManager } from "../ws/index.js";
+import { rateLimiterMiddleware } from "../middleware/rateLimiter.js";
 
 const logger = createLogger({ service: "indexer" });
 
@@ -103,6 +104,9 @@ export function createApp(): express.Application {
       res.status(500).send("Error collecting metrics");
     }
   });
+
+  // Rate limiting (60 req/min per IP; Redis-backed if REDIS_URL is set)
+  app.use("/api", rateLimiterMiddleware);
 
   // API routes
   app.use("/api", router);

@@ -6,6 +6,7 @@ import { EventListener } from "./events/index.js";
 import { setListenerStatus } from "./events/listenerState.js";
 import { getPool, closePool } from "./db/index.js";
 import { createWsServer } from "./ws/index.js";
+import { initRateLimiter } from "./middleware/rateLimiter.js";
 import type { Address } from "viem";
 import { createServer } from "http";
 
@@ -76,6 +77,9 @@ async function main(): Promise<void> {
       });
     }
   }
+
+  // Initialize rate limiter (Redis if REDIS_URL set, otherwise in-memory)
+  await initRateLimiter();
 
   // Start REST API with HTTP server
   const app = createApp();

@@ -220,21 +220,26 @@ h5 {
   font-weight: 700;
   letter-spacing: 0.03em;
   color: #fff;
-  background: linear-gradient(135deg, #f97316 0%, #ef4444 100%);
-  box-shadow: 0 12px 24px rgba(239, 68, 68, 0.28);
+  background: linear-gradient(135deg, var(--accent-gradient-start) 0%, var(--accent-gradient-end) 100%);
+  box-shadow: 0 12px 24px rgba(104, 79, 246, 0.28);
   transition: transform 0.2s ease, filter 0.2s ease;
 }
 
 .btn:hover {
   color: #fff;
-  filter: brightness(1.07);
+  filter: brightness(1.1);
   transform: translateY(-1px);
+}
+
+.btn-danger {
+  background: linear-gradient(135deg, var(--danger) 0%, #c0392b 100%);
+  box-shadow: 0 12px 24px rgba(255, 98, 110, 0.28);
 }
 
 .btn-ghost {
   background: rgba(255, 255, 255, 0.04);
-  border-color: rgba(253, 186, 116, 0.55);
-  color: #ffd8b1;
+  border-color: rgba(129, 108, 249, 0.45);
+  color: var(--accent-soft);
   box-shadow: none;
 }
 

@@ -23,6 +23,7 @@ import {
   getVaultSnapshots,
   getVaultSnapshotsInPeriod,
   getAgentSettlementsInPeriod,
+  getAgentHands,
 } from "../db/index.js";
 import { getWsManager } from "../ws/index.js";
 import { getListenerHealth } from "../events/listenerState.js";
@@ -432,6 +433,41 @@ router.get("/agents/:address/snapshots", async (req, res) => {
     res.json(snapshots.map(formatSnapshotResponse));
   } catch (error) {
     logger.error({ err: error }, "Error fetching snapshots:");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/agents/:address/hands", async (req, res) => {
+  try {
+    const tokenAddress = req.params.address.toLowerCase();
+    const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
+
+    const agent = await getAgent(tokenAddress);
+    if (!agent) {
+      return res.status(404).json({ error: "Agent not found" });
+    }
+
+    const hands = await getAgentHands(tokenAddress, limit);
+    const formatted = await Promise.all(
+      hands.map(async (hand) => {
+        const actions = await getHandActions(BigInt(hand.table_id), BigInt(hand.hand_id));
+        const actionResponses: ActionResponse[] = actions.map((a) => ({
+          seatIndex: a.seat_index,
+          actionType: a.action_type,
+          amount: a.amount,
+          potAfter: a.pot_after,
+          blockNumber: a.block_number,
+          txHash: a.tx_hash,
+          endsStreet: (a as any).ends_street ?? false,
+          timestamp: a.created_at?.toISOString?.() ?? new Date().toISOString(),
+        }));
+        return formatHandResponse(hand, actionResponses);
+      })
+    );
+
+    res.json(formatted);
+  } catch (error) {
+    logger.error({ err: error }, "Error fetching agent hands:");
     res.status(500).json({ error: "Internal server error" });
   }
 });

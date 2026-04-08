@@ -152,6 +152,10 @@ export async function getAgent(token: string): Promise<AgentResponse> {
   return fetchJson<AgentResponse>(`/agents/${token}`);
 }
 
+export async function getAgentHands(token: string, limit = 20): Promise<HandResponse[]> {
+  return fetchJson<HandResponse[]>(`/agents/${token}/hands?limit=${limit}`);
+}
+
 export async function getAgentSnapshots(
   token: string,
   limit = 100

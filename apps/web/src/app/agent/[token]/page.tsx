@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { getAgent, getAgentSnapshots, getAgentRebalances, type RebalanceEventResponse } from "@/lib/api";
+import { getAgent, getAgentSnapshots, getAgentRebalances, getAgentHands, type RebalanceEventResponse } from "@/lib/api";
+import type { HandResponse } from "@/lib/types";
 import { NadFunTradingWidget } from "@/components/NadFunTradingWidget";
 import { NavSparkline } from "@/components/NavSparkline";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -24,15 +25,23 @@ export default async function AgentPage({
   let agent;
   let snapshots;
   let rebalances: RebalanceEventResponse[] = [];
+  let hands: HandResponse[] = [];
   let error = null;
 
   try {
     agent = await getAgent(token);
+    const fetchHands = getAgentHands(token, 20).catch(() => [] as HandResponse[]);
     if (agent.vaultAddress) {
-      [snapshots, rebalances] = await Promise.all([
+      const [s, r, h] = await Promise.all([
         getAgentSnapshots(token, 50),
         getAgentRebalances(token, 50).catch(() => []),
+        fetchHands,
       ]);
+      snapshots = s;
+      rebalances = r;
+      hands = h;
+    } else {
+      hands = await fetchHands;
     }
   } catch (e) {
     error = e instanceof Error ? e.message : "Failed to load agent";
@@ -233,6 +242,53 @@ export default async function AgentPage({
           <div className="chart-placeholder">
             No snapshot history available
           </div>
+        )}
+      </div>
+
+      {/* Recent Hands */}
+      <div className="card section-card">
+        <h3 className="section-title-sm">Recent Hands</h3>
+        {hands.length > 0 ? (
+          <div className="table-scroll">
+            <table className="leaderboard-table">
+              <thead>
+                <tr>
+                  <th>Hand</th>
+                  <th>Table</th>
+                  <th>Result</th>
+                  <th>Pot</th>
+                  <th>Community</th>
+                </tr>
+              </thead>
+              <tbody>
+                {hands.map((h) => {
+                  const isWinner = h.winnerSeat !== null;
+                  const isFold = h.gameState === "SETTLED" && h.winnerSeat !== null;
+                  return (
+                    <tr key={`${h.tableId}-${h.handId}`}>
+                      <td>#{h.handId}</td>
+                      <td>
+                        <Link href={`/table/${h.tableId}`} className="text-mono">
+                          {h.tableId.slice(0, 8)}
+                        </Link>
+                      </td>
+                      <td className={isWinner ? "value-positive" : "value-negative"}>
+                        {isWinner ? "Win" : isFold ? "Fold" : "Loss"}
+                      </td>
+                      <td>{formatMon(h.pot)}</td>
+                      <td>
+                        {h.communityCards.filter((c) => c !== 255).length > 0
+                          ? `${h.communityCards.filter((c) => c !== 255).length} cards`
+                          : "-"}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="chart-placeholder">No hands played yet</div>
         )}
       </div>
 

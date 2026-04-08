@@ -458,6 +458,26 @@ export async function getAllAgentsPaginated(
   };
 }
 
+export async function getAgentHands(
+  tokenAddress: string,
+  limit = 20
+): Promise<Hand[]> {
+  const agent = await getAgent(tokenAddress);
+  if (!agent) return [];
+
+  const result = await query<Hand>(
+    `SELECT DISTINCT h.*
+     FROM hands h
+     JOIN seats s ON s.table_id::text = h.table_id
+     WHERE s.owner_address = $1
+       AND h.game_state IN ('10', '11', 'SHOWDOWN', 'SETTLED', 'TOURNAMENT_OVER')
+     ORDER BY h.settled_at DESC NULLS LAST, h.hand_id DESC
+     LIMIT $2`,
+    [agent.owner_address.toLowerCase(), limit]
+  );
+  return result.rows;
+}
+
 export async function getAgentsByOwner(ownerAddress: string): Promise<Agent[]> {
   const result = await query<Agent>(
     `SELECT * FROM agents WHERE is_registered = true AND owner_address = $1 ORDER BY created_at DESC`,

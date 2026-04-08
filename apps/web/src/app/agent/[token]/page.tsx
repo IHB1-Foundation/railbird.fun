@@ -91,6 +91,28 @@ export default async function AgentPage({
   // Performance summary for header
   const wins = hands.filter((h) => h.winnerSeat !== null && h.winnerSeat !== undefined).length;
   const losses = hands.length - wins;
+
+  // AI Decision Pattern — compute from recent hands
+  const allActions = hands.flatMap((h) => h.actions);
+  const actionCounts = { fold: 0, check: 0, call: 0, raise: 0 };
+  for (const a of allActions) {
+    const t = a.actionType?.toLowerCase();
+    if (t === "fold") actionCounts.fold++;
+    else if (t === "check") actionCounts.check++;
+    else if (t === "call") actionCounts.call++;
+    else if (t === "raise" || t === "bet") actionCounts.raise++;
+  }
+  const totalActions = allActions.length;
+  // Recent reasonings: last 3 hands that have at least one action with reasoning
+  const handsWithReasoning = hands
+    .filter((h) => h.actions.some((a) => a.reasoning))
+    .slice(0, 3);
+  const recentReasonings = handsWithReasoning
+    .map((h) => ({
+      handId: h.handId,
+      reasoning: h.actions.find((a) => a.reasoning)?.reasoning ?? "",
+    }))
+    .filter((r) => r.reasoning);
   const roiPct = parseFloat(roi) * 100;
   const roiPositive = roiPct >= 0;
   // Streak: count consecutive wins/losses from most recent
@@ -196,6 +218,56 @@ export default async function AgentPage({
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* AI Decision Pattern */}
+      {(totalActions > 0 || recentReasonings.length > 0) && (
+        <div className="card" style={{ marginBottom: "1rem", padding: "1rem 1.2rem" }}>
+          <h3 className="section-title-sm" style={{ marginBottom: "0.75rem" }}>AI Decision Pattern</h3>
+          {totalActions > 0 && (
+            <div style={{ marginBottom: "0.75rem" }}>
+              <p style={{ fontSize: "0.78rem", color: "var(--muted)", marginBottom: "0.5rem" }}>
+                Action distribution across recent {hands.length} hands ({totalActions} total actions)
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
+                {(["raise", "call", "check", "fold"] as const).map((type) => {
+                  const count = actionCounts[type];
+                  const pct = totalActions > 0 ? Math.round((count / totalActions) * 100) : 0;
+                  const colors: Record<string, string> = { raise: "#EF4444", call: "#3B82F6", check: "#22C55E", fold: "#6B7280" };
+                  return (
+                    <div key={type} style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                      <span style={{ fontSize: "0.72rem", color: "var(--muted)", width: "2.5rem", textTransform: "capitalize" }}>{type}</span>
+                      <div style={{ flex: 1, height: "8px", background: "rgba(255,255,255,0.08)", borderRadius: "4px", overflow: "hidden" }}>
+                        <div style={{ width: `${pct}%`, height: "100%", background: colors[type], borderRadius: "4px", transition: "width 0.3s" }} />
+                      </div>
+                      <span style={{ fontSize: "0.72rem", fontWeight: 600, width: "2.5rem", textAlign: "right" }}>{pct}%</span>
+                      <span style={{ fontSize: "0.72rem", color: "var(--muted)", width: "1.5rem" }}>×{count}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          {recentReasonings.length > 0 && (
+            <div>
+              <p style={{ fontSize: "0.78rem", color: "var(--muted)", marginBottom: "0.4rem" }}>Recent AI reasoning:</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+                {recentReasonings.map(({ handId, reasoning }) => {
+                  const firstSentence = reasoning.split(/[.!?]/)[0].trim();
+                  return (
+                    <div key={handId} style={{ fontSize: "0.78rem", fontStyle: "italic", color: "var(--text-secondary)", borderLeft: "2px solid var(--accent, #8B5CF6)", paddingLeft: "0.6rem" }}>
+                      <span style={{ color: "var(--muted)", fontSize: "0.7rem" }}>Hand #{handId}: </span>
+                      {firstSentence}.
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          {totalActions === 0 && recentReasonings.length === 0 && (
+            <p style={{ fontSize: "0.78rem", color: "var(--muted)" }}>No AI decision data yet.</p>
+          )}
         </div>
       )}
 

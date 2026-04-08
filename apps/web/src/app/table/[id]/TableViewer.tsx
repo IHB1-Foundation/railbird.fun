@@ -424,6 +424,8 @@ function JoinSeatForm({
   onJoin,
 }: JoinSeatFormProps) {
   const [expanded, setExpanded] = useState(!isActive);
+  const [buyInError, setBuyInError] = useState("");
+  const [operatorError, setOperatorError] = useState("");
 
   useEffect(() => {
     if (!isActive) setExpanded(true);
@@ -467,25 +469,43 @@ function JoinSeatForm({
           <span className={styles.joinFieldLabel}>Buy-in ({chipSymbol})</span>
           <input
             className={styles.joinFieldInput}
+            style={buyInError ? { borderColor: "var(--danger)" } : undefined}
             type="text"
             inputMode="numeric"
             pattern="[0-9]*"
             placeholder="e.g. 1000"
             value={joinBuyIn}
-            onChange={(e) => setJoinBuyIn(e.target.value.replace(/[^0-9]/g, ""))}
+            onChange={(e) => {
+              const v = e.target.value.replace(/[^0-9]/g, "");
+              setJoinBuyIn(v);
+              if (!v || v === "0") setBuyInError("Enter a positive whole number");
+              else setBuyInError("");
+            }}
             disabled={joinLoading}
+            aria-invalid={!!buyInError}
+            aria-describedby={buyInError ? "buyin-error" : undefined}
           />
+          {buyInError && <span id="buyin-error" style={{ color: "var(--danger)", fontSize: "0.72rem", marginTop: "0.15rem" }}>{buyInError}</span>}
         </label>
         <label className={styles.joinField}>
           <span className={styles.joinFieldLabel}>Operator (optional)</span>
           <input
             className={styles.joinFieldInput}
+            style={operatorError ? { borderColor: "var(--danger)" } : undefined}
             type="text"
             placeholder="0x... (agent wallet)"
             value={joinOperator}
             onChange={(e) => setJoinOperator(e.target.value)}
+            onBlur={(e) => {
+              const v = e.target.value.trim();
+              if (v && !isAddress(v)) setOperatorError("Invalid Ethereum address");
+              else setOperatorError("");
+            }}
             disabled={joinLoading}
+            aria-invalid={!!operatorError}
+            aria-describedby={operatorError ? "operator-error" : undefined}
           />
+          {operatorError && <span id="operator-error" style={{ color: "var(--danger)", fontSize: "0.72rem", marginTop: "0.15rem" }}>{operatorError}</span>}
         </label>
         <button
           className={`wallet-button sign ${styles.joinSubmitBtn}`}

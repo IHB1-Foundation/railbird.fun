@@ -389,14 +389,37 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
           </div>
 
           <label className={styles.betInputLabel} htmlFor="stake-input">Stake ({CHIP_SYMBOL})</label>
-          <input
-            id="stake-input"
-            className={styles.betInput}
-            value={stakeInput}
-            onChange={(e) => setStakeInput(e.target.value)}
-            placeholder="e.g. 50"
-            inputMode="decimal"
-          />
+          {(() => {
+            const stakeNum = parseFloat(stakeInput);
+            const stakeWeiCheck = parseChipInputToWei(stakeInput);
+            const exceedsBankroll = stakeWeiCheck !== null && stakeWeiCheck > bankrollWei;
+            const invalid = stakeInput !== "" && (!stakeWeiCheck || exceedsBankroll);
+            return (
+              <>
+                <input
+                  id="stake-input"
+                  className={styles.betInput}
+                  style={invalid ? { borderColor: "var(--danger)" } : undefined}
+                  value={stakeInput}
+                  onChange={(e) => setStakeInput(e.target.value)}
+                  placeholder="e.g. 50"
+                  inputMode="decimal"
+                  aria-invalid={invalid}
+                  aria-describedby={invalid ? "stake-error" : undefined}
+                />
+                {exceedsBankroll && (
+                  <span id="stake-error" style={{ color: "var(--danger)", fontSize: "0.72rem" }}>
+                    Exceeds bankroll ({formatChips(bankrollWei)} available)
+                  </span>
+                )}
+                {!exceedsBankroll && stakeInput !== "" && !stakeWeiCheck && (
+                  <span id="stake-error" style={{ color: "var(--danger)", fontSize: "0.72rem" }}>
+                    Enter a valid amount
+                  </span>
+                )}
+              </>
+            );
+          })()}
 
           <div className={styles.betQuickRow}>
             {["10", "25", "50", "100"].map((preset) => (

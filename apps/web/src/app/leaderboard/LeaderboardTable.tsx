@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { shortenAddress, formatPercent, formatMon } from "@/lib/utils";
 import { getAgentProfile } from "@/lib/agentProfiles";
@@ -30,6 +30,8 @@ export function LeaderboardTable({ data }: LeaderboardTableProps) {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [sortKey, setSortKey] = useState<SortKey>("metric");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [hasOverflow, setHasOverflow] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -50,6 +52,27 @@ export function LeaderboardTable({ data }: LeaderboardTableProps) {
     };
   }, []);
 
+  // Debounce search 300ms
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleSearchChange = useCallback((v: string) => {
+    setSearch(v);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setDebouncedSearch(v), 300);
+  }, []);
+
+  // Filter entries by search
+  const filteredEntries = debouncedSearch
+    ? entries.filter((e) => {
+        const q = debouncedSearch.toLowerCase();
+        const profile = getAgentProfile(e.ownerAddress);
+        return (
+          e.tokenAddress.toLowerCase().includes(q) ||
+          e.ownerAddress.toLowerCase().includes(q) ||
+          (profile?.name.toLowerCase().includes(q) ?? false)
+        );
+      })
+    : entries;
+
   const toggleRow = (tokenAddress: string) => {
     setExpandedRows((prev) => {
       const next = new Set(prev);
@@ -68,7 +91,7 @@ export function LeaderboardTable({ data }: LeaderboardTableProps) {
     }
   };
 
-  const sortedEntries = [...entries].sort((a, b) => {
+  const sortedEntries = [...filteredEntries].sort((a, b) => {
     let av = 0;
     let bv = 0;
     if (sortKey === "metric") {
@@ -91,6 +114,19 @@ export function LeaderboardTable({ data }: LeaderboardTableProps) {
 
   return (
     <div className={styles.tableWrapper}>
+      <div className={styles.searchRow}>
+        <input
+          type="search"
+          className={styles.searchInput}
+          placeholder="Search by name or address…"
+          value={search}
+          onChange={(e) => handleSearchChange(e.target.value)}
+          aria-label="Search agents"
+        />
+        {debouncedSearch && filteredEntries.length === 0 && (
+          <p className={styles.searchEmpty}>No agents matching &ldquo;{debouncedSearch}&rdquo;</p>
+        )}
+      </div>
       <div
         ref={scrollRef}
         className={styles.tableScroll}

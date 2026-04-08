@@ -128,6 +128,27 @@
   border-color: rgba(197, 180, 255, 0.7);
 }
 
+.nadfunInputError {
+  border-color: rgba(255, 98, 110, 0.65) !important;
+}
+
+.nadfunSlippageTip {
+  color: var(--muted);
+  font-size: 0.7rem;
+  cursor: help;
+  margin-left: 0.2rem;
+}
+
+.nadfunSlippageWarn {
+  font-size: 0.7rem;
+  color: var(--warning-soft);
+}
+
+.nadfunSlippageError {
+  font-size: 0.7rem;
+  color: var(--danger-soft);
+}
+
 .nadfunControlsRow {
   display: flex;
   gap: 0.7rem;

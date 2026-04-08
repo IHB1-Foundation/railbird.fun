@@ -13,7 +13,7 @@
  * Update LENS_ABI / BONDING_ROUTER_ABI / DEX_ROUTER_ABI to match the deployed contracts.
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { createPublicClient, createWalletClient, custom, http, isAddress, parseUnits, formatUnits, type Address } from "viem";
 import { useAuth } from "@/lib/auth";
 import styles from "./NadFunTradingWidget.module.css";
@@ -217,6 +217,14 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
   const dexRouter = dexRouterRaw === "INVALID" ? null : dexRouterRaw;
   const wmonAddress = wmonAddressRaw === "INVALID" ? null : wmonAddressRaw;
 
+  const slippageWarning = useMemo(() => {
+    const pct = slippageBps / 100;
+    if (pct > 49) return { level: "error" as const, msg: "Maximum slippage is 49%" };
+    if (pct > 10) return { level: "warn" as const, msg: "High slippage increases risk of unfavorable execution" };
+    if (pct < 0.5) return { level: "warn" as const, msg: "Low slippage may cause transaction to fail" };
+    return null;
+  }, [slippageBps]);
+
   const isConfigured = !!lensAddress && configErrors.length === 0;
   // Graduated stage also requires WMON_ADDRESS for the swap path
   const isTradeable =
@@ -316,6 +324,10 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
     }
     if (!isTradeable) {
       setError("Token is not currently tradeable.");
+      return;
+    }
+    if (slippageBps > 4900) {
+      setError("Maximum slippage is 49%. Please reduce slippage to proceed.");
       return;
     }
 
@@ -530,18 +542,32 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
           {/* Slippage + Deadline */}
           <div className={styles.nadfunControlsRow}>
             <div className={`${styles.nadfunField} ${styles.nadfunFieldSm}`}>
-              <label className={styles.nadfunLabel} htmlFor="nadfun-slippage">Slippage (%)</label>
+              <label className={styles.nadfunLabel} htmlFor="nadfun-slippage">
+                Slippage (%)
+                <span className={styles.nadfunSlippageTip} title="Maximum price difference allowed. 1% is standard."> ⓘ</span>
+              </label>
               <input
                 id="nadfun-slippage"
-                className={styles.nadfunInput}
+                className={`${styles.nadfunInput} ${slippageWarning?.level === "error" ? styles.nadfunInputError : ""}`}
                 type="number"
                 min="0.1"
-                max="50"
+                max="49"
                 step="0.1"
                 value={(slippageBps / 100).toFixed(1)}
                 onChange={(e) => setSlippageBps(Math.round(parseFloat(e.target.value) * 100))}
                 aria-label="Slippage tolerance in percent"
+                aria-describedby={slippageWarning ? "slippage-warning" : undefined}
+                aria-invalid={slippageWarning?.level === "error"}
               />
+              {slippageWarning && (
+                <span
+                  id="slippage-warning"
+                  className={slippageWarning.level === "error" ? styles.nadfunSlippageError : styles.nadfunSlippageWarn}
+                  role={slippageWarning.level === "error" ? "alert" : "status"}
+                >
+                  {slippageWarning.msg}
+                </span>
+              )}
             </div>
             <div className={`${styles.nadfunField} ${styles.nadfunFieldSm}`}>
               <label className={styles.nadfunLabel} htmlFor="nadfun-deadline">Deadline (min)</label>

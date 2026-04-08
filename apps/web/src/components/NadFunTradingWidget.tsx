@@ -196,6 +196,7 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
   const [quoteSecondsLeft, setQuoteSecondsLeft] = useState<number>(0);
   const [quoteDebouncing, setQuoteDebouncing] = useState(false);
   const [quoteExpired, setQuoteExpired] = useState(false);
+  const [tabSwitchNotice, setTabSwitchNotice] = useState<"buy" | "sell" | null>(null);
   const [txLoading, setTxLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
@@ -254,6 +255,13 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
       })
       .catch(() => setStage("unknown"));
   }, [lensAddress, tokenAddress]);
+
+  // ── Tab switch notice auto-dismiss ───────────────────────────────────────
+  useEffect(() => {
+    if (!tabSwitchNotice) return;
+    const t = setTimeout(() => setTabSwitchNotice(null), 4000);
+    return () => clearTimeout(t);
+  }, [tabSwitchNotice]);
 
   // ── Quote countdown ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -510,7 +518,14 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
               role="tab"
               aria-selected={direction === "buy"}
               className={`${styles.nadfunTab} ${direction === "buy" ? styles.active : ""}`}
-              onClick={() => { setDirection("buy"); setQuote(null); setQuoteExpired(false); }}
+              onClick={() => {
+                if (direction !== "buy") {
+                  setDirection("buy");
+                  setQuote(null);
+                  setQuoteExpired(false);
+                  setTabSwitchNotice("buy");
+                }
+              }}
             >
               Buy
             </button>
@@ -519,7 +534,14 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
               role="tab"
               aria-selected={direction === "sell"}
               className={`${styles.nadfunTab} ${direction === "sell" ? styles.active : ""}`}
-              onClick={() => { setDirection("sell"); setQuote(null); setQuoteExpired(false); }}
+              onClick={() => {
+                if (direction !== "sell") {
+                  setDirection("sell");
+                  setQuote(null);
+                  setQuoteExpired(false);
+                  setTabSwitchNotice("sell");
+                }
+              }}
             >
               Sell
             </button>
@@ -629,6 +651,11 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
           {quoteExpired && !quote && !quoteLoading && (
             <div className={styles.nadfunQuoteExpired} role="status" aria-live="polite">
               Quote expired — get a new quote
+            </div>
+          )}
+          {tabSwitchNotice && !quote && (
+            <div className={styles.nadfunTabSwitchNotice} role="status" aria-live="polite">
+              Switched to {tabSwitchNotice} — click Get Quote for a new price
             </div>
           )}
 

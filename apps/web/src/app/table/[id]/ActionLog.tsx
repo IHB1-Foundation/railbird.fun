@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { formatChips, formatTime, shortenAddress, cn, ZERO_ADDRESS } from "@/lib/utils";
 import { getAgentProfile } from "@/lib/agentProfiles";
 import { ACTION_LABELS } from "@/lib/types";
-import type { TableResponse } from "@/lib/types";
+import type { TableResponse, ReasoningFactors } from "@/lib/types";
 import styles from "./TableViewer.module.css";
 
 const VALID_ACTION_TYPES = new Set(Object.keys(ACTION_LABELS));
@@ -49,6 +49,101 @@ function actionPrefix(actionType: string): string {
   return "";
 }
 
+// ── AI Reasoning sub-component ───────────────────────────────────────────────
+
+const FACTOR_LABELS: Record<keyof ReasoningFactors, string> = {
+  handStrength: "Hand",
+  potOdds: "Odds",
+  position: "Pos",
+  opponentRead: "Read",
+  sizing: "Size",
+  riskAssessment: "Risk",
+};
+
+function ReasoningPanel({ reasoning, factors }: { reasoning: string; factors?: ReasoningFactors }) {
+  return (
+    <div className={styles.reasoningPanel}>
+      <p className={styles.reasoningText}>{reasoning}</p>
+      {factors && (
+        <div className={styles.reasoningFactors}>
+          {(Object.keys(FACTOR_LABELS) as Array<keyof ReasoningFactors>)
+            .filter((k) => factors[k] !== undefined)
+            .map((k) => (
+              <span key={k} className={styles.reasoningPill} title={factors[k]}>
+                <span className={styles.reasoningPillLabel}>{FACTOR_LABELS[k]}:</span> {factors[k]}
+              </span>
+            ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ActionItem({
+  action,
+  seatByIndex,
+  maxSeats,
+  chipSymbol,
+  streetIdx,
+  actionIdx,
+}: {
+  action: TableAction;
+  seatByIndex: Map<number, TableSeat>;
+  maxSeats: number;
+  chipSymbol: string;
+  streetIdx: number;
+  actionIdx: number;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const safeActionType = sanitizeActionType(action.actionType);
+  const safeSeatIndex = sanitizeSeatIndex(action.seatIndex, maxSeats);
+  const seat = seatByIndex.get(safeSeatIndex);
+  const hasOwner = !!seat && seat.ownerAddress.toLowerCase() !== ZERO_ADDRESS;
+  const actionProfile = seat
+    ? getAgentProfile(seat.operatorAddress) || getAgentProfile(seat.ownerAddress)
+    : null;
+  const actionLabel = ACTION_LABELS[safeActionType] ?? "Unknown";
+  const colorClass = actionColorClass(safeActionType);
+  const hasReasoning = !!action.reasoning;
+
+  return (
+    <div key={`${streetIdx}-${actionIdx}`} className={styles.actionItem}>
+      <div className={styles.actionMain}>
+        <div className={styles.actionRow}>
+          <span aria-label={`${actionProfile ? actionProfile.name : `Seat ${safeSeatIndex}`} ${actionLabel}${action.amount !== "0" ? ` ${formatChips(action.amount)} ${chipSymbol}` : ""}`}>
+            <strong>{actionProfile ? actionProfile.name : `Seat ${safeSeatIndex}`}</strong>{" "}
+            <span className={colorClass} aria-hidden="true">
+              {actionPrefix(safeActionType)}{actionLabel}
+              {action.amount !== "0" && ` ${formatChips(action.amount)} ${chipSymbol}`}
+            </span>
+          </span>
+          {hasReasoning && (
+            <button
+              className={styles.reasoningBadge}
+              onClick={() => setExpanded((v) => !v)}
+              aria-expanded={expanded}
+              aria-label="Toggle AI reasoning"
+              title="AI reasoning"
+            >
+              💡
+            </button>
+          )}
+        </div>
+        {hasOwner && !actionProfile && (
+          <span className={styles.actionActor}>
+            {shortenAddress(seat.ownerAddress)}
+          </span>
+        )}
+        {expanded && action.reasoning && (
+          <ReasoningPanel reasoning={action.reasoning} factors={action.factors} />
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Main ActionLog ────────────────────────────────────────────────────────────
+
 export function ActionLog({ streetSections, seatByIndex, maxSeats, chipSymbol }: ActionLogProps) {
   // Show newest streets first
   const reversed = [...streetSections].reverse();
@@ -71,43 +166,24 @@ export function ActionLog({ streetSections, seatByIndex, maxSeats, chipSymbol }:
       <div ref={logRef} className={styles.actionLog}>
         {reversed.length > 0 ? (
           <div className={styles.streetLog}>
-            {reversed.map((section) => (
+            {reversed.map((section, si) => (
               <div key={section.street} className={styles.streetBlock}>
                 <div className={styles.streetDivider}>
                   <hr className={styles.streetHr} />
                   <span className={styles.streetDividerLabel}>{section.street}</span>
                   <hr className={styles.streetHr} />
                 </div>
-                {[...section.actions].reverse().map((action, i) => {
-                  const safeActionType = sanitizeActionType(action.actionType);
-                  const safeSeatIndex = sanitizeSeatIndex(action.seatIndex, maxSeats);
-                  const seat = seatByIndex.get(safeSeatIndex);
-                  const hasOwner = !!seat && seat.ownerAddress.toLowerCase() !== ZERO_ADDRESS;
-                  const actionProfile = seat
-                    ? getAgentProfile(seat.operatorAddress) || getAgentProfile(seat.ownerAddress)
-                    : null;
-                  const actionLabel = ACTION_LABELS[safeActionType] ?? "Unknown";
-                  const colorClass = actionColorClass(safeActionType);
-
-                  return (
-                    <div key={`${section.street}-${i}`} className={styles.actionItem}>
-                      <div className={styles.actionMain}>
-                        <span aria-label={`${actionProfile ? actionProfile.name : `Seat ${safeSeatIndex}`} ${actionLabel}${action.amount !== "0" ? ` ${formatChips(action.amount)} ${chipSymbol}` : ""}`}>
-                          <strong>{actionProfile ? actionProfile.name : `Seat ${safeSeatIndex}`}</strong>{" "}
-                          <span className={colorClass} aria-hidden="true">
-                            {actionPrefix(safeActionType)}{actionLabel}
-                            {action.amount !== "0" && ` ${formatChips(action.amount)} ${chipSymbol}`}
-                          </span>
-                        </span>
-                        {hasOwner && !actionProfile && (
-                          <span className={styles.actionActor}>
-                            {shortenAddress(seat.ownerAddress)}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
+                {[...section.actions].reverse().map((action, ai) => (
+                  <ActionItem
+                    key={`${section.street}-${ai}`}
+                    action={action}
+                    seatByIndex={seatByIndex}
+                    maxSeats={maxSeats}
+                    chipSymbol={chipSymbol}
+                    streetIdx={si}
+                    actionIdx={ai}
+                  />
+                ))}
               </div>
             ))}
           </div>

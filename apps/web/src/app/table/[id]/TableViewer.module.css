@@ -369,10 +369,82 @@
   border-bottom: none;
 }
 
+.actionRow {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
 .actionTime {
   font-size: 0.75rem;
   color: var(--muted);
   white-space: nowrap;
+}
+
+/* ── AI Reasoning ── */
+
+.reasoningBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.85rem;
+  line-height: 1;
+  padding: 0.1rem 0.25rem;
+  border-radius: 4px;
+  opacity: 0.75;
+  transition: opacity 0.15s, background 0.15s;
+}
+
+.reasoningBadge:hover,
+.reasoningBadge[aria-expanded="true"] {
+  opacity: 1;
+  background: rgba(129, 108, 249, 0.12);
+}
+
+.reasoningPanel {
+  margin-top: 0.4rem;
+  padding: 0.55rem 0.7rem;
+  background: var(--bg-surface, #1a1d2e);
+  border-left: 3px solid rgba(129, 108, 249, 0.6);
+  border-radius: 0 6px 6px 0;
+}
+
+.reasoningText {
+  font-size: 0.78rem;
+  font-style: italic;
+  color: var(--muted);
+  line-height: 1.45;
+  margin: 0 0 0.4rem 0;
+}
+
+.reasoningFactors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.reasoningPill {
+  display: inline-block;
+  font-size: 0.68rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(129, 108, 249, 0.15);
+  border: 1px solid rgba(129, 108, 249, 0.3);
+  color: var(--muted);
+  max-width: 18ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.reasoningPillLabel {
+  font-weight: 600;
+  color: rgba(195, 175, 255, 0.8);
 }
 
 .ownerBanner {

@@ -38,6 +38,15 @@ export interface HandResponse {
   actions: ActionResponse[];
 }
 
+export interface ReasoningFactors {
+  handStrength: string;
+  potOdds: string;
+  position: string;
+  opponentRead: string;
+  sizing?: string;
+  riskAssessment?: string;
+}
+
 export interface ActionResponse {
   seatIndex: number;
   actionType: string;
@@ -47,6 +56,8 @@ export interface ActionResponse {
   txHash: string;
   endsStreet: boolean;
   timestamp: string;
+  reasoning?: string;
+  factors?: ReasoningFactors;
 }
 
 export interface AgentResponse {

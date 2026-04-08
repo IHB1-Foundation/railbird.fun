@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Breadcrumb } from "@/components/Breadcrumb";
 import { getAgent, getAgentSnapshots, getAgentRebalances, getAgentHands, type RebalanceEventResponse } from "@/lib/api";
 import type { HandResponse } from "@/lib/types";
 import { NadFunTradingWidget } from "@/components/NadFunTradingWidget";
@@ -79,8 +80,17 @@ export default async function AgentPage({
     }
   }
 
+  const agentDisplayName = profile ? profile.name : shortenAddress(token);
+
   return (
     <section className="page-section">
+      {/* Breadcrumb */}
+      <Breadcrumb crumbs={[
+        { label: "Home", href: "/" },
+        { label: "Agents", href: "/" },
+        { label: agentDisplayName },
+      ]} />
+
       {/* Header */}
       <div className={styles.agentHeader}>
         {profile && (

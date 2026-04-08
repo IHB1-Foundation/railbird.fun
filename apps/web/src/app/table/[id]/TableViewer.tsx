@@ -25,6 +25,7 @@ import { useTableState } from "./useTableState";
 import { useHoleCards } from "./useHoleCards";
 import { ActionLog } from "./ActionLog";
 import { PlayersPanel } from "./PlayersPanel";
+import { Breadcrumb } from "@/components/Breadcrumb";
 import styles from "./TableViewer.module.css";
 
 const TABLE_MAX_SEATS = Number(process.env.NEXT_PUBLIC_TABLE_MAX_SEATS || "9");
@@ -255,6 +256,13 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
           )}
         </div>
       )}
+
+      {/* Breadcrumb */}
+      <Breadcrumb crumbs={[
+        { label: "Home", href: "/" },
+        { label: "Tables", href: "/" },
+        { label: `Table #${tableId}` },
+      ]} />
 
       {/* Header */}
       <div className={styles.tableHeader}>

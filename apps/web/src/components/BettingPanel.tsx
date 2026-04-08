@@ -5,6 +5,7 @@ import { CHIP_SYMBOL, cn, formatChips, shortenAddress } from "@/lib/utils";
 import type { TableResponse } from "@/lib/types";
 import { buildSeatMarket, formatOdds, toImpliedPercent } from "@/lib/betting";
 import { INDEXER_BASE } from "@/lib/api";
+import { ConfirmDialog } from "./ConfirmDialog";
 import styles from "./BettingPanel.module.css";
 const BANKROLL_KEY = "railbird_bet_bankroll_v1";
 const WAGERS_KEY = "railbird_wagers_v1";
@@ -91,6 +92,7 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
   const [selectedSeat, setSelectedSeat] = useState<number | null>(null);
   const [stakeInput, setStakeInput] = useState("50");
   const [notice, setNotice] = useState<{ text: string; type: "success" | "error" } | null>(null);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   const showSuccess = useCallback((text: string) => setNotice({ text, type: "success" }), []);
   const showError   = useCallback((text: string) => setNotice({ text, type: "error" }),   []);
@@ -297,7 +299,7 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
           <div className={styles.betBankrollValue}>
             {formatChips(bankrollWei)} {CHIP_SYMBOL}
           </div>
-          <button className="ghost-btn" onClick={resetBook} type="button" aria-label="Reset virtual bankroll to default">
+          <button className="ghost-btn" onClick={() => setShowResetConfirm(true)} type="button" aria-label="Reset virtual bankroll to default">
             Reset
           </button>
         </div>
@@ -529,6 +531,17 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
       <p style={{ marginTop: "0.75rem", fontSize: "0.72rem", color: "var(--muted)", textAlign: "center" }}>
         *Virtual bets only — no real funds at risk
       </p>
+
+      <ConfirmDialog
+        open={showResetConfirm}
+        title="Reset Bankroll"
+        message="Reset your virtual bankroll to 1000 chips? All bet history will be cleared."
+        confirmLabel="Reset"
+        cancelLabel="Cancel"
+        danger
+        onConfirm={() => { resetBook(); setShowResetConfirm(false); }}
+        onCancel={() => setShowResetConfirm(false)}
+      />
     </section>
   );
 }

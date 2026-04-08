@@ -183,7 +183,7 @@ interface NadFunTradingWidgetProps {
 }
 
 export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) {
-  const { isConnected, address } = useAuth();
+  const { isConnected, address, connect } = useAuth();
 
   const [stage, setStage] = useState<TokenStage>("unknown");
   const [direction, setDirection] = useState<TradeDirection>("buy");
@@ -676,7 +676,15 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
             </button>
           ) : (
             <div className={styles.nadfunConnectNotice} role="note">
-              Connect wallet to trade
+              <span>Connect wallet to trade</span>
+              <button
+                type="button"
+                className={styles.nadfunConnectBtn}
+                onClick={connect}
+                aria-label="Connect wallet to enable trading"
+              >
+                Connect Wallet
+              </button>
             </div>
           )}
         </>

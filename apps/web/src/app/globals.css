@@ -25,6 +25,16 @@
   --text-mono: "JetBrains Mono", "SFMono-Regular", Menlo, Monaco, Consolas,
     "Liberation Mono", "Courier New", monospace;
 
+  /* Missing utility tokens */
+  --text-muted: #6b7280;
+  --border-color: rgba(31, 41, 55, 0.9);
+
+  /* Border-radius scale */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+
   /* Spacing scale */
   --space-1: 0.25rem;
   --space-2: 0.5rem;
@@ -304,7 +314,7 @@ h5 {
 .card {
   background: linear-gradient(160deg, var(--card-bg), var(--card-bg-strong));
   border: 1px solid var(--card-border);
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   padding: var(--space-4);
   box-shadow:
     var(--shadow-lg),

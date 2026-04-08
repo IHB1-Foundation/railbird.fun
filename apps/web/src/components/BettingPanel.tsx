@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CHIP_SYMBOL, cn, formatChips, shortenAddress } from "@/lib/utils";
 import type { TableResponse } from "@/lib/types";
 import { buildSeatMarket, formatOdds, toImpliedPercent } from "@/lib/betting";
@@ -94,6 +94,8 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
   const [notice, setNotice] = useState<{ text: string; type: "success" | "error" } | null>(null);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [mobileBankrollOpen, setMobileBankrollOpen] = useState(false);
+  const [marketJustOpened, setMarketJustOpened] = useState(false);
+  const prevMarketOpenRef = useRef<boolean | null>(null);
   const [jargonExpanded, setJargonExpanded] = useState(() => {
     if (typeof window === "undefined") return false;
     return !localStorage.getItem("railbird_railing_intro_seen");
@@ -156,23 +158,44 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
     }
   }, [showError]);
 
-  // Only poll while a hand is in progress — stops wasting RPC budget between hands.
+  // Poll while market is open (5s) — stop wasting RPC budget when settled
   useEffect(() => {
     if (!marketOpen) return;
-
     const id = setInterval(async () => {
       try {
         const res = await fetch(`${INDEXER_BASE}/api/tables/${table.tableId}`, { cache: "no-store" });
         if (!res.ok) return;
         const next = (await res.json()) as TableResponse;
         setTable(next);
-      } catch {
-        // ignore transient fetch errors
-      }
+      } catch { /* ignore */ }
     }, 5000);
-
     return () => clearInterval(id);
   }, [marketOpen, table.tableId]);
+
+  // Poll while market is closed (3s) to detect when next hand opens
+  useEffect(() => {
+    if (marketOpen) return;
+    const id = setInterval(async () => {
+      try {
+        const res = await fetch(`${INDEXER_BASE}/api/tables/${table.tableId}`, { cache: "no-store" });
+        if (!res.ok) return;
+        const next = (await res.json()) as TableResponse;
+        setTable(next);
+      } catch { /* ignore */ }
+    }, 3000);
+    return () => clearInterval(id);
+  }, [marketOpen, table.tableId]);
+
+  // Detect market-open transition → toast + pulse
+  useEffect(() => {
+    if (prevMarketOpenRef.current === false && marketOpen) {
+      showSuccess("Betting is open! Place your bets.");
+      setMarketJustOpened(true);
+      const t = setTimeout(() => setMarketJustOpened(false), 3000);
+      return () => clearTimeout(t);
+    }
+    prevMarketOpenRef.current = marketOpen;
+  }, [marketOpen, showSuccess]);
 
   useEffect(() => {
     if (!handId || winnerSeat === null) return;
@@ -398,7 +421,9 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
       </div>
 
       <div className={`${styles.betMarketState} ${marketOpen ? styles.open : styles.closed}`} aria-live="polite" aria-atomic="true">
-        {marketOpen ? `Hand #${handId} market open` : "Market closed (waiting for next hand)"}
+        {marketOpen
+          ? `Hand #${handId} market open`
+          : "Market closed — Refreshing status..."}
       </div>
 
       {notice && (
@@ -424,7 +449,7 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
           {market.map((entry) => (
             <article
               key={entry.seatIndex}
-              className={`card ${styles.betAgentCard} ${selectedSeat === entry.seatIndex ? styles.selected : ""}`}
+              className={`card ${styles.betAgentCard} ${selectedSeat === entry.seatIndex ? styles.selected : ""} ${marketJustOpened ? styles.pulsing : ""}`}
             >
               <div className={styles.betAgentTop}>
                 <div>

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { shortenAddress, formatPercent, formatMon } from "@/lib/utils";
+import { getAgentProfile } from "@/lib/agentProfiles";
 import type { LeaderboardResponse } from "@/lib/types";
 import styles from "./LeaderboardTable.module.css";
 
@@ -32,6 +33,7 @@ export function LeaderboardTable({ data }: LeaderboardTableProps) {
           {entries.map((entry) => {
             const primaryValue = getPrimaryValue(entry, metric);
             const isPositive = isPrimaryPositive(entry, metric);
+            const profile = getAgentProfile(entry.ownerAddress);
 
             return (
               <tr key={entry.tokenAddress}>
@@ -39,10 +41,10 @@ export function LeaderboardTable({ data }: LeaderboardTableProps) {
                 <td className={styles.colAgent}>
                   <Link
                     href={`/agent/${entry.tokenAddress}`}
-                    className={`text-mono ${styles.addressLink}`}
+                    className={`${profile ? "" : "text-mono"} ${styles.addressLink}`}
                     title={entry.tokenAddress}
                   >
-                    {shortenAddress(entry.tokenAddress)}
+                    {profile ? profile.name : shortenAddress(entry.tokenAddress)}
                   </Link>
                 </td>
                 <td

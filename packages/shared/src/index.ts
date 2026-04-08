@@ -53,6 +53,10 @@ export {
 // Contract ABIs (generated from Foundry artifacts)
 export { POKER_TABLE_ABI, PLAYER_REGISTRY_ABI, PLAYER_VAULT_ABI } from "./abis/index.js";
 
+// Agent profiles
+export { getAgentProfile } from "./agentProfiles.js";
+export type { AgentProfile } from "./agentProfiles.js";
+
 // Env parsing utilities
 export {
   validatePrivateKey,

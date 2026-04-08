@@ -1,6 +1,7 @@
 "use client";
 
 import { cn, formatChips, shortenAddress, CHIP_SYMBOL, ZERO_ADDRESS } from "@/lib/utils";
+import { getAgentProfile } from "@/lib/agentProfiles";
 import type { HoleCardsResponse } from "@/lib/auth";
 import { PokerCard } from "./PokerCard";
 import styles from "./SeatPanel.module.css";
@@ -9,6 +10,7 @@ import styles from "./SeatPanel.module.css";
 interface SeatShape {
   seatIndex: number;
   ownerAddress: string;
+  operatorAddress?: string;
   stack: string;
   currentBet: string;
   isActive: boolean;
@@ -42,6 +44,8 @@ export function SeatPanel({
     );
   }
 
+  const profile = getAgentProfile(seat.operatorAddress ?? "") || getAgentProfile(seat.ownerAddress);
+
   return (
     <div
       className={cn(
@@ -50,6 +54,7 @@ export function SeatPanel({
         isOwner && styles.owner,
         isHandActive && !seat.isActive && styles.folded
       )}
+      style={profile ? { borderColor: profile.accentColor } : undefined}
     >
       <div className={styles.seatLabel}>
         <span>Seat {seat.seatIndex}</span>
@@ -57,8 +62,16 @@ export function SeatPanel({
         {isOwner && <span className={styles.youPill}>YOU</span>}
       </div>
       <div className={styles.seatAddress} title={seat.ownerAddress}>
-        {shortenAddress(seat.ownerAddress)}
+        {profile ? profile.name : shortenAddress(seat.ownerAddress)}
       </div>
+      {profile && (
+        <div
+          className={styles.aggressionBadge}
+          style={{ background: profile.accentColor, color: profile.colorHex }}
+        >
+          {profile.aggressionLabel}
+        </div>
+      )}
       <div className={styles.seatStack}>
         {formatChips(seat.stack)} {CHIP_SYMBOL}
       </div>

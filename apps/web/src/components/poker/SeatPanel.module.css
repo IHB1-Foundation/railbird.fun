@@ -54,6 +54,17 @@
   text-overflow: ellipsis;
 }
 
+.aggressionBadge {
+  display: inline-block;
+  margin-bottom: 0.18rem;
+  padding: 0.06rem 0.38rem;
+  border-radius: 999px;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .seatStack {
   font-size: 0.82rem;
   font-weight: 700;

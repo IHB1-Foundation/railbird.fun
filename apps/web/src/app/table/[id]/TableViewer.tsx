@@ -11,6 +11,7 @@ import {
   cn,
   ZERO_ADDRESS,
 } from "@/lib/utils";
+import { getAgentProfile } from "@/lib/agentProfiles";
 import type { TableResponse } from "@/lib/types";
 import { GAME_STATES } from "@/lib/types";
 import { GameState } from "@playerco/shared";
@@ -274,7 +275,10 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
           {currentHand && <div className={styles.tableHandId}>Hand #{currentHand.handId}</div>}
           {actorSeat !== null && actorSeatData ? (
             <div className={styles.tableTurnIndicator}>
-              NOW ACTING: Seat {actorSeat} ({shortenAddress(actorSeatData.ownerAddress)})
+              NOW ACTING: {(() => {
+                const actorProfile = getAgentProfile(actorSeatData.operatorAddress) || getAgentProfile(actorSeatData.ownerAddress);
+                return actorProfile ? actorProfile.name : `Seat ${actorSeat} (${shortenAddress(actorSeatData.ownerAddress)})`;
+              })()}
             </div>
           ) : null}
         </div>

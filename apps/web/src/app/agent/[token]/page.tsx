@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getAgent, getAgentSnapshots, getAgentRebalances, type RebalanceEventResponse } from "@/lib/api";
 import { NadFunTradingWidget } from "@/components/NadFunTradingWidget";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { getAgentProfile } from "@/lib/agentProfiles";
 import {
   formatMon,
   shortenAddress,
@@ -55,6 +56,7 @@ export default async function AgentPage({
 
   const snapshot = agent.latestSnapshot;
   const hasSnapshot = snapshot !== null;
+  const profile = getAgentProfile(agent.operatorAddress) || getAgentProfile(agent.ownerAddress);
 
   // Calculate ROI if we have snapshots
   let roi = "0";
@@ -71,7 +73,18 @@ export default async function AgentPage({
     <section className="page-section">
       {/* Header */}
       <div className={styles.agentHeader}>
-        <h2>Agent</h2>
+        {profile && (
+          <div className={styles.agentColorBar} style={{ background: profile.accentColor }} />
+        )}
+        <h2>{profile ? profile.name : "Agent"}</h2>
+        {profile && (
+          <span
+            className={styles.agentAggressionBadge}
+            style={{ background: profile.accentColor, color: profile.colorHex }}
+          >
+            {profile.aggressionLabel}
+          </span>
+        )}
         <div className={styles.agentToken}>
           {token}
         </div>

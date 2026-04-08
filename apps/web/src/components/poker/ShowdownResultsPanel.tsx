@@ -1,6 +1,7 @@
 "use client";
 
 import { cn, formatChips, shortenAddress, CHIP_SYMBOL, ZERO_ADDRESS } from "@/lib/utils";
+import { getAgentProfile } from "@/lib/agentProfiles";
 import type { TableResponse } from "@/lib/types";
 import type { RevealedHolecardResponse } from "@/lib/api";
 import { PokerCard } from "./PokerCard";
@@ -111,6 +112,9 @@ export function ShowdownResultsPanel({
           const isWinner = winnerSeat === h.seatIndex;
           const handRank = evaluateHandRank([h.card1, h.card2], communityCards);
           const seat = seatMap.get(h.seatIndex);
+          const seatProfile = seat
+            ? getAgentProfile(seat.operatorAddress) || getAgentProfile(seat.ownerAddress)
+            : null;
 
           return (
             <div
@@ -121,13 +125,16 @@ export function ShowdownResultsPanel({
               )}
             >
               <div className="showdown-seat-header">
-                <span className="showdown-seat-label">Seat {h.seatIndex}</span>
+                <span className="showdown-seat-label">
+                  {seatProfile ? seatProfile.name : `Seat ${h.seatIndex}`}
+                </span>
                 {isWinner && (
                   <span className="showdown-winner-badge">Winner</span>
                 )}
               </div>
               {seat &&
-                seat.ownerAddress.toLowerCase() !== ZERO_ADDRESS && (
+                seat.ownerAddress.toLowerCase() !== ZERO_ADDRESS &&
+                !seatProfile && (
                   <div className="showdown-owner">
                     {shortenAddress(seat.ownerAddress)}
                   </div>

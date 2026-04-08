@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Breadcrumb } from "@/components/Breadcrumb";
 import { Tooltip } from "@/components/Tooltip";
 import { AgentAvatar } from "@/components/AgentAvatar";
+import { ShareButton } from "@/components/ShareButton";
 import { getAgent, getAgentSnapshots, getAgentRebalances, getAgentHands, type RebalanceEventResponse } from "@/lib/api";
 import type { HandResponse } from "@/lib/types";
 import { NadFunTradingWidget } from "@/components/NadFunTradingWidget";
@@ -129,8 +130,9 @@ export default async function AgentPage({
             {profile.aggressionLabel}
           </span>
         )}
-        <div className={styles.agentToken}>
-          {token}
+        <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap" }}>
+          <span className={styles.agentToken}>{token}</span>
+          <ShareButton />
         </div>
         {hands.length > 0 && (
           <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem", marginTop: "0.4rem" }}>

@@ -27,6 +27,7 @@ import { useHoleCards } from "./useHoleCards";
 import { ActionLog } from "./ActionLog";
 import { PlayersPanel } from "./PlayersPanel";
 import { Breadcrumb } from "@/components/Breadcrumb";
+import { ShareButton } from "@/components/ShareButton";
 import styles from "./TableViewer.module.css";
 
 const TABLE_MAX_SEATS = Number(process.env.NEXT_PUBLIC_TABLE_MAX_SEATS || "9");
@@ -344,6 +345,7 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
           {currentHand && Number(currentHand.handId) > 0 && (
             <div className={styles.tableHandId}>Hand #{currentHand.handId}</div>
           )}
+          <ShareButton />
         </div>
       </div>
 

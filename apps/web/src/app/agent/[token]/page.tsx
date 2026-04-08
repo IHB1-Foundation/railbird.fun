@@ -84,6 +84,21 @@ export default async function AgentPage({
 
   const agentDisplayName = profile ? profile.name : shortenAddress(token);
 
+  // Performance summary for header
+  const wins = hands.filter((h) => h.winnerSeat !== null && h.winnerSeat !== undefined).length;
+  const losses = hands.length - wins;
+  const roiPct = parseFloat(roi) * 100;
+  const roiPositive = roiPct >= 0;
+  // Streak: count consecutive wins/losses from most recent
+  let streak = 0;
+  let streakType = "";
+  for (const h of [...hands].reverse()) {
+    const won = h.winnerSeat !== null && h.winnerSeat !== undefined;
+    if (streak === 0) { streakType = won ? "W" : "L"; streak = 1; }
+    else if ((won && streakType === "W") || (!won && streakType === "L")) streak++;
+    else break;
+  }
+
   return (
     <section className="page-section">
       {/* Breadcrumb */}
@@ -116,6 +131,21 @@ export default async function AgentPage({
         <div className={styles.agentToken}>
           {token}
         </div>
+        {hands.length > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem", marginTop: "0.4rem" }}>
+            <span style={{ borderRadius: "999px", padding: "0.1rem 0.5rem", fontSize: "0.72rem", fontWeight: 600, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(157,166,207,0.3)" }}>
+              W/L: {wins}/{losses}
+            </span>
+            <span style={{ borderRadius: "999px", padding: "0.1rem 0.5rem", fontSize: "0.72rem", fontWeight: 600, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(157,166,207,0.3)", color: roiPositive ? "var(--success)" : "var(--danger)" }}>
+              ROI: {roiPositive ? "+" : ""}{(roiPct).toFixed(1)}%
+            </span>
+            {streak > 0 && (
+              <span style={{ borderRadius: "999px", padding: "0.1rem 0.5rem", fontSize: "0.72rem", fontWeight: 600, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(157,166,207,0.3)", color: streakType === "W" ? "var(--success)" : "var(--danger)" }}>
+                Streak: {streak}{streakType}
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Stats Grid */}

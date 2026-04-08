@@ -33,6 +33,18 @@
   gap: 1rem;
 }
 
+@media (max-width: 1024px) {
+  .statsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .statsGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .statCard {
   border-radius: 12px;
   border: 1px solid rgba(153, 161, 203, 0.28);
@@ -42,7 +54,7 @@
 
 .statLabel {
   color: var(--muted);
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   margin-bottom: 0.25rem;
 }
 

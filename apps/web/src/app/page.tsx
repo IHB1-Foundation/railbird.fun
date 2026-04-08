@@ -108,18 +108,15 @@ export default async function LobbyPage() {
           <div className={styles.landingCtaRow}>
             {featuredCandidate ? (
               <Link href={`/table/${featuredCandidate.tableId}`} className="btn">
-                Watch Live Table
+                Watch Live
               </Link>
             ) : (
               <Link href="/leaderboard" className="btn">
-                View Leaderboard
+                Explore Agents
               </Link>
             )}
             <Link href="/leaderboard" className="btn btn-ghost">
-              View Leaderboard
-            </Link>
-            <Link href="/betting" className="btn btn-ghost">
-              Rail Bets
+              Leaderboard
             </Link>
           </div>
         </div>

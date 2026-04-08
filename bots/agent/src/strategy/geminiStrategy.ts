@@ -7,6 +7,7 @@ import type {
 } from "./types.js";
 import { SimpleStrategy } from "./simpleStrategy.js";
 import { createLogger } from "@playerco/shared";
+import type { TableState } from "../chain/client.js";
 
 const logger = createLogger({ service: "agent-bot:gemini" });
 
@@ -39,10 +40,72 @@ interface RaiseBounds {
   canRaise: boolean;
 }
 
+// ─── Opponent Model ────────────────────────────────────────────────────────────
+
+interface SeatStats {
+  foldCount: number;
+  callCount: number;
+  raiseCount: number;
+  checkCount: number;
+}
+
+/**
+ * Per-seat action frequency tracker.
+ * Infers opponent tendencies by comparing successive table state snapshots.
+ * Frequencies are lifetime-cumulative (reset on new GeminiStrategy instance only).
+ */
+class OpponentModel {
+  private stats = new Map<number, SeatStats>();
+
+  private getOrCreate(seatIndex: number): SeatStats {
+    let s = this.stats.get(seatIndex);
+    if (!s) {
+      s = { foldCount: 0, callCount: 0, raiseCount: 0, checkCount: 0 };
+      this.stats.set(seatIndex, s);
+    }
+    return s;
+  }
+
+  recordFold(seatIndex: number) { this.getOrCreate(seatIndex).foldCount++; }
+  recordCall(seatIndex: number) { this.getOrCreate(seatIndex).callCount++; }
+  recordRaise(seatIndex: number) { this.getOrCreate(seatIndex).raiseCount++; }
+  recordCheck(seatIndex: number) { this.getOrCreate(seatIndex).checkCount++; }
+
+  /**
+   * Returns a human-readable tendency label for a seat.
+   * "tight" = mostly folds, "aggressive" = mostly raises, "passive" = calls, "balanced" = mix.
+   */
+  getTendency(seatIndex: number): string {
+    const s = this.stats.get(seatIndex);
+    if (!s) return "unknown";
+    const total = s.foldCount + s.callCount + s.raiseCount + s.checkCount;
+    if (total < 3) return "unknown";
+    const foldRate = s.foldCount / total;
+    const raiseRate = s.raiseCount / total;
+    const callRate = s.callCount / total;
+    if (foldRate > 0.6) return "tight";
+    if (raiseRate > 0.4) return "aggressive";
+    if (callRate > 0.5 && raiseRate < 0.15) return "calling-station";
+    return "balanced";
+  }
+
+  getSummary(seatIndex: number): string {
+    const s = this.stats.get(seatIndex);
+    if (!s) return "no data";
+    const total = s.foldCount + s.callCount + s.raiseCount + s.checkCount;
+    if (total === 0) return "no data";
+    return `${total} actions: fold=${s.foldCount} call=${s.callCount} raise=${s.raiseCount} check=${s.checkCount} (${this.getTendency(seatIndex)})`;
+  }
+}
+
+// ─── Constants ─────────────────────────────────────────────────────────────────
+
 const DEFAULT_MODEL = "gemini-2.0-flash";
 const DEFAULT_ENDPOINT_BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
-const DEFAULT_TIMEOUT_MS = 8000;
+const DEFAULT_TIMEOUT_MS = 10_000;
 const DEFAULT_TEMPERATURE = 0.2;
+
+// ─── Strategy ──────────────────────────────────────────────────────────────────
 
 export class GeminiStrategy implements Strategy {
   private readonly apiKey: string;
@@ -51,6 +114,11 @@ export class GeminiStrategy implements Strategy {
   private readonly timeoutMs: number;
   private readonly endpointBaseUrl: string;
   private readonly fallbackStrategy: Strategy;
+  private readonly opponentModel = new OpponentModel();
+
+  /** Previous table state snapshot for action inference between our turns. */
+  private prevState: TableState | null = null;
+  private prevHandId: bigint = 0n;
 
   constructor(config: GeminiStrategyConfig) {
     this.apiKey = config.apiKey;
@@ -62,6 +130,9 @@ export class GeminiStrategy implements Strategy {
   }
 
   async decide(context: DecisionContext): Promise<ActionDecision> {
+    // Update opponent model from state diff before deciding
+    this._updateOpponentModel(context.tableState, context.mySeatIndex);
+
     try {
       const prompt = this.buildPrompt(context);
       const modelDecision = await this.requestDecision(prompt);
@@ -72,8 +143,62 @@ export class GeminiStrategy implements Strategy {
       return this.sanitizeDecision(parsed, context);
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
-      logger.warn({ reason }, 'GeminiStrategy falling back to simple strategy');
+      logger.warn({ reason }, "GeminiStrategy falling back to simple strategy");
       return await this.fallbackStrategy.decide(context);
+    } finally {
+      // Save state snapshot for next call's diff
+      this.prevState = context.tableState;
+      this.prevHandId = context.tableState.currentHandId;
+    }
+  }
+
+  /**
+   * Infer opponent actions by comparing current state with the previous snapshot.
+   * Called at the start of each decide() before building the prompt.
+   */
+  private _updateOpponentModel(state: TableState, mySeatIndex: number): void {
+    const prev = this.prevState;
+    if (!prev) return;
+    // Reset tracking if a new hand started
+    if (state.currentHandId !== this.prevHandId) return;
+
+    const numSeats = state.seats.length;
+    for (let i = 0; i < numSeats; i++) {
+      if (i === mySeatIndex) continue;
+      const cur = state.seats[i];
+      const old = prev.seats[i];
+      if (!old || !cur) continue;
+
+      // Opponent folded
+      if (old.isActive && !cur.isActive) {
+        this.opponentModel.recordFold(i);
+        logger.debug({ seatIndex: i }, "OpponentModel: inferred fold");
+        continue;
+      }
+
+      // Opponent's bet increased → called or raised
+      if (cur.currentBet > old.currentBet) {
+        const delta = cur.currentBet - old.currentBet;
+        if (delta > (state.bigBlind * 2n) && cur.currentBet > prev.hand.currentBet) {
+          this.opponentModel.recordRaise(i);
+          logger.debug({ seatIndex: i, delta: String(delta) }, "OpponentModel: inferred raise");
+        } else {
+          this.opponentModel.recordCall(i);
+          logger.debug({ seatIndex: i, delta: String(delta) }, "OpponentModel: inferred call");
+        }
+        continue;
+      }
+
+      // Bet unchanged and seat still active — likely checked (or no action yet this tick)
+      if (cur.isActive && old.isActive && cur.currentBet === old.currentBet &&
+          state.hand.actorSeat !== i) {
+        // Only record check if we think they had a chance to act
+        // (actionsInRound increased but their bet didn't change)
+        if ((state.hand as any).actionsInRound > (prev.hand as any).actionsInRound) {
+          this.opponentModel.recordCheck(i);
+          logger.debug({ seatIndex: i }, "OpponentModel: inferred check");
+        }
+      }
     }
   }
 
@@ -175,32 +300,58 @@ export class GeminiStrategy implements Strategy {
   }
 
   private buildPrompt(context: DecisionContext): string {
-    const seat = context.tableState.seats[context.mySeatIndex];
+    const state = context.tableState;
+    const seat = state.seats[context.mySeatIndex];
     const raiseBounds = getRaiseBounds(context);
     const isAllInCall = context.amountToCall > seat.stack && seat.stack > 0n;
+
+    // Pot odds
+    const potOddsStr = context.amountToCall > 0n && context.amountToCall <= seat.stack
+      ? `${Number((context.amountToCall * 100n) / (state.hand.pot + context.amountToCall))}%`
+      : "n/a";
+
+    // Community cards description
+    const communityDesc = state.communityCards.length > 0
+      ? state.communityCards.filter(c => c !== 255).map(formatCard).join(" ") || "none"
+      : "none";
+
+    // Position
+    const position = describePosition(context.mySeatIndex, state.buttonSeat, state.seats.length);
+
+    // Opponent tendencies
+    const opponentInfo: Record<number, string> = {};
+    for (let i = 0; i < state.seats.length; i++) {
+      if (i === context.mySeatIndex) continue;
+      if (state.seats[i].owner !== "0x0000000000000000000000000000000000000000") {
+        opponentInfo[i] = this.opponentModel.getSummary(i);
+      }
+    }
+
     const summary = {
-      stage: gameStateToLabel(context.tableState.gameState),
-      handId: context.tableState.currentHandId.toString(),
+      stage: gameStateToLabel(state.gameState),
+      handId: state.currentHandId.toString(),
+      position,
       mySeatIndex: context.mySeatIndex,
       canCheck: context.canCheck,
       amountToCall: context.amountToCall.toString(),
+      potOdds: potOddsStr,
       stack: seat.stack.toString(),
       myCurrentBet: seat.currentBet.toString(),
-      tableCurrentBet: context.tableState.hand.currentBet.toString(),
-      pot: context.tableState.hand.pot.toString(),
-      bigBlind: context.tableState.bigBlind.toString(),
+      tableCurrentBet: state.hand.currentBet.toString(),
+      pot: state.hand.pot.toString(),
+      bigBlind: state.bigBlind.toString(),
       holeCards: formatHoleCards(context.holeCards),
+      communityCards: communityDesc,
       allInSituation: {
         isAllInCall,
-        // If calling would put you all-in, this is the amount you'd actually put in
         effectiveCallAmount: isAllInCall ? seat.stack.toString() : context.amountToCall.toString(),
       },
       raise: {
         canRaise: raiseBounds.canRaise,
         minRaiseTarget: raiseBounds.minRaiseTarget.toString(),
-        // Capped at stack (all-in raise)
         maxRaiseTarget: raiseBounds.maxRaiseTarget.toString(),
       },
+      opponents: opponentInfo,
     };
 
     return [
@@ -208,12 +359,16 @@ export class GeminiStrategy implements Strategy {
       "Return exactly one compact JSON object and no extra text.",
       'Format: {"action":"fold|check|call|raise","raiseTarget":"<integer in chip units>"}',
       "Rules: never output an illegal action; if unsure choose check or call.",
-      "All-in rules: if amountToCall > stack, calling commits only your remaining stack (all-in).",
+      "All-in rules: if amountToCall > stack, calling commits only your remaining stack.",
       "All-in rules: if raising, raiseTarget is capped at your stack (maxRaiseTarget).",
+      "Pot odds: if potOdds is high (>40%), calling/raising is expensive; fold marginal hands.",
+      "Opponent tendencies: use opponents field to exploit — raise tight players, be cautious vs aggressive.",
       `Game context: ${JSON.stringify(summary)}`,
     ].join("\n");
   }
 }
+
+// ─── Helpers ───────────────────────────────────────────────────────────────────
 
 function normalizeAction(value: unknown): Decision | null {
   if (typeof value !== "string") {
@@ -296,7 +451,25 @@ function getRaiseBounds(context: DecisionContext): RaiseBounds {
 
 function formatHoleCards(cards: HoleCards | null): string[] {
   if (!cards) return [];
-  return [cards.card1.toString(), cards.card2.toString()];
+  return [formatCard(cards.card1), formatCard(cards.card2)];
+}
+
+/** Convert a 0–51 card index into a human-readable string like "Ah", "Ts", "2d". */
+function formatCard(cardIndex: number): string {
+  if (cardIndex === 255) return "?";
+  const ranks = ["2", "3", "4", "5", "6", "7", "8", "9", "T", "J", "Q", "K", "A"];
+  const suits = ["c", "d", "h", "s"];
+  return `${ranks[cardIndex % 13]}${suits[Math.floor(cardIndex / 13)]}`;
+}
+
+/** Describe our position at the table relative to the button. */
+function describePosition(seatIndex: number, buttonSeat: number, numSeats: number): string {
+  const relative = (seatIndex - buttonSeat + numSeats) % numSeats;
+  if (relative === 0) return "BTN";
+  if (relative === 1) return "SB";
+  if (relative === 2) return "BB";
+  if (relative === numSeats - 1) return "CO";
+  return `UTG+${relative - 3}`;
 }
 
 function gameStateToLabel(state: number): string {

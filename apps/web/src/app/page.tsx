@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { getTable, getTables } from "@/lib/api";
+import { getAgentProfile } from "@/lib/agentProfiles";
 import { CHIP_SYMBOL, formatChips, shortenAddress, ZERO_ADDRESS } from "@/lib/utils";
 import { GAME_STATES } from "@/lib/types";
 import styles from "./page.module.css";
@@ -46,16 +47,15 @@ export default async function LobbyPage() {
       <section className="page-section">
         <article className={`landing-hero card ${styles.landingHero}`}>
           <div className={styles.landingHeroCopy}>
-            <p className={styles.landingEyebrow}>Railbird · HashKey Chain Testnet</p>
-            <h1 className={styles.landingTitle}>Live Poker Tables</h1>
+            <p className={styles.landingEyebrow}>Railbird · HashKey Chain Testnet · Hackathon Demo</p>
+            <h1 className={styles.landingTitle}>AI Agents Play On-Chain Poker.</h1>
             <p className={styles.landingSubtitle}>
-              Track active hands, watch agent behavior, and monitor table flow in real time.
+              Autonomous Gemini-powered agents compete at verifiable poker tables with VRF-dealt cards and encrypted hole cards. Watch every hand live.
             </p>
           </div>
         </article>
         <div className="empty">
-          <p>Unable to load tables</p>
-          <p className="error-detail">{error}</p>
+          <p>Tables are loading. The indexer may be starting up — try again in a moment.</p>
         </div>
       </section>
     );
@@ -71,6 +71,10 @@ export default async function LobbyPage() {
   const livePot = safeTables.reduce(
     (acc, table) => acc + BigInt(table.currentHand?.pot || "0"),
     0n
+  );
+  const totalHands = safeTables.reduce(
+    (acc, table) => acc + parseHandId(table.currentHandId),
+    0
   );
 
   const featuredCandidate = [...safeTables]
@@ -93,20 +97,26 @@ export default async function LobbyPage() {
     <section className="page-section">
       <article className={`card ${styles.landingHero}`}>
         <div className={styles.landingHeroCopy}>
-          <p className={styles.landingEyebrow}>Railbird · HashKey Chain Testnet</p>
-          <h1 className={styles.landingTitle}>Live Poker Tables</h1>
+          <p className={styles.landingEyebrow}>Railbird · HashKey Chain Testnet · Hackathon Demo</p>
+          <h1 className={styles.landingTitle}>AI Agents Play On-Chain Poker.</h1>
           <p className={styles.landingSubtitle}>
-            Built for transparent agent play. Follow seats, pot movement, and hand-by-hand action flow.
+            Autonomous Gemini-powered agents compete at verifiable poker tables with VRF-dealt cards and encrypted hole cards. Watch every hand live.
           </p>
           <div className={styles.landingCtaRow}>
-            <Link href="/leaderboard" className="btn">
-              Open Leaderboard
+            {featuredCandidate ? (
+              <Link href={`/table/${featuredCandidate.tableId}`} className="btn">
+                Watch Live Table
+              </Link>
+            ) : (
+              <Link href="/leaderboard" className="btn">
+                View Leaderboard
+              </Link>
+            )}
+            <Link href="/leaderboard" className="btn btn-ghost">
+              View Leaderboard
             </Link>
             <Link href="/betting" className="btn btn-ghost">
-              Open Rail Bets
-            </Link>
-            <Link href="/me" className="btn btn-ghost btn-join">
-              Join with Your Agent
+              Rail Bets
             </Link>
           </div>
         </div>
@@ -130,7 +140,11 @@ export default async function LobbyPage() {
               <p className={styles.landingStatLabel}>Occupied Seats</p>
               <p className={styles.landingStatValue}>{occupiedSeats}</p>
             </div>
-            <div className={`${styles.landingStat} ${styles.span2}`}>
+            <div className={styles.landingStat}>
+              <p className={styles.landingStatLabel}>Total Hands</p>
+              <p className={styles.landingStatValue}>{totalHands}</p>
+            </div>
+            <div className={styles.landingStat}>
               <p className={styles.landingStatLabel}>Live Pot Total</p>
               <p className={styles.landingStatValue}>
                 {formatChips(livePot)} {CHIP_SYMBOL}
@@ -139,6 +153,31 @@ export default async function LobbyPage() {
           </div>
         </div>
       </article>
+
+      {/* Feature strip */}
+      <div className={styles.featureStrip}>
+        <div className={styles.featureItem}>
+          <span className={styles.featureIcon}>&#x1F3B2;</span>
+          <div>
+            <p className={styles.featureTitle}>Trustless Dealer</p>
+            <p className={styles.featureDesc}>VRF shuffle + ECIES encrypted hole cards</p>
+          </div>
+        </div>
+        <div className={styles.featureItem}>
+          <span className={styles.featureIcon}>&#x1F916;</span>
+          <div>
+            <p className={styles.featureTitle}>Gemini AI Agents</p>
+            <p className={styles.featureDesc}>4 autonomous agents with distinct personalities</p>
+          </div>
+        </div>
+        <div className={styles.featureItem}>
+          <span className={styles.featureIcon}>&#x1F512;</span>
+          <div>
+            <p className={styles.featureTitle}>KYC-Gated Table</p>
+            <p className={styles.featureDesc}>HashKey Chain KYC SBT integration</p>
+          </div>
+        </div>
+      </div>
 
       {safeTables.length === 0 ? (
         <div className="empty">
@@ -207,13 +246,15 @@ export default async function LobbyPage() {
           </div>
 
           <div className={styles.featuredLiveSeats}>
-            {featuredTable.seats.map((seat) => (
+            {featuredTable.seats.map((seat) => {
+              const seatProfile = getAgentProfile(seat.operatorAddress) || getAgentProfile(seat.ownerAddress);
+              return (
               <div key={seat.seatIndex} className={styles.featuredLiveSeat}>
                 <div className={styles.seatChipLabel}>Seat {seat.seatIndex}</div>
                 {seat.ownerAddress.toLowerCase() !== ZERO_ADDRESS ? (
                   <>
-                    <div className={`${styles.seatAddr} text-mono`} title={seat.ownerAddress}>
-                      {shortenAddress(seat.ownerAddress)}
+                    <div className={`${styles.seatAddr} ${seatProfile ? "" : "text-mono"}`} title={seat.ownerAddress}>
+                      {seatProfile ? seatProfile.name : shortenAddress(seat.ownerAddress)}
                     </div>
                     <div className={`value-accent ${styles.seatStackLine}`}>
                       {formatChips(seat.stack)} {CHIP_SYMBOL}
@@ -223,7 +264,8 @@ export default async function LobbyPage() {
                   <div className="muted">Empty</div>
                 )}
               </div>
-            ))}
+              );
+            })}
           </div>
 
           {featuredTable.currentHand?.actions?.length ? (

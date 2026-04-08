@@ -132,8 +132,39 @@
   color: #fff7ed;
 }
 
-.landingStat.span2 {
-  grid-column: span 2;
+.featureStrip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1.2rem;
+}
+
+.featureItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.85rem;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(10, 13, 24, 0.65);
+}
+
+.featureIcon {
+  font-size: 1.35rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.featureTitle {
+  font-weight: 700;
+  font-size: 0.85rem;
+  margin-bottom: 0.15rem;
+}
+
+.featureDesc {
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.35;
 }
 
 .featuredLiveCard {
@@ -338,12 +369,12 @@
 }
 
 @media (max-width: 840px) {
-  .landingStatsGrid {
+  .featureStrip {
     grid-template-columns: 1fr;
   }
 
-  .landingStat.span2 {
-    grid-column: span 1;
+  .landingStatsGrid {
+    grid-template-columns: 1fr;
   }
 
   .featuredLiveGrid {

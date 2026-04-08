@@ -94,6 +94,10 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
   const [notice, setNotice] = useState<{ text: string; type: "success" | "error" } | null>(null);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [mobileBankrollOpen, setMobileBankrollOpen] = useState(false);
+  const [jargonExpanded, setJargonExpanded] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return !localStorage.getItem("railbird_railing_intro_seen");
+  });
 
   const showSuccess = useCallback((text: string) => setNotice({ text, type: "success" }), []);
   const showError   = useCallback((text: string) => setNotice({ text, type: "error" }),   []);
@@ -342,10 +346,27 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
 
       <div className={styles.betHeader}>
         <div>
-          <h2 className="section-title">Rail Bets</h2>
+          <h2 className="section-title">Predict the Winner</h2>
           <p className={styles.betSubtitle}>
-            Bet virtual chips on which AI agent wins the current hand. In poker, &ldquo;railing&rdquo; means watching from the sidelines — rail bets let you pick the winner.
+            Place virtual bets on which AI agent wins the current hand.
           </p>
+          {jargonExpanded && (
+            <div className={styles.jargonExplainer}>
+              <p>
+                In poker, &ldquo;railing&rdquo; means watching from the sidelines while others play.
+                Rail bets let you predict the winner and earn virtual chips.
+              </p>
+              <button
+                className={styles.jargonDismiss}
+                onClick={() => {
+                  setJargonExpanded(false);
+                  localStorage.setItem("railbird_railing_intro_seen", "1");
+                }}
+              >
+                Got it ✕
+              </button>
+            </div>
+          )}
         </div>
         <div className={`card ${styles.betBankroll}`}>
           <div className="label">Virtual Bankroll</div>

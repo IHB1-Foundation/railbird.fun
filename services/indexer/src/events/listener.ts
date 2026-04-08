@@ -2,6 +2,7 @@
 
 import { createPublicClient, http, type Log, decodeEventLog, type Address } from "viem";
 import { createLogger, getChainConfig } from "@playerco/shared";
+import { eventsProcessedTotal } from "../metrics.js";
 
 const logger = createLogger({ service: "indexer" });
 import { pokerTableAbi, playerRegistryAbi, playerVaultAbi, gameStateToString } from "./abis.js";
@@ -247,6 +248,7 @@ export class EventListener {
         data: log.data,
         topics: log.topics,
       });
+      eventsProcessedTotal.inc({ event_type: decoded.eventName as string });
 
       switch (decoded.eventName as string) {
         case "SeatUpdated":
@@ -352,6 +354,7 @@ export class EventListener {
         data: log.data,
         topics: log.topics,
       });
+      eventsProcessedTotal.inc({ event_type: decoded.eventName as string });
 
       switch (decoded.eventName) {
         case "AgentRegistered": {
@@ -391,6 +394,7 @@ export class EventListener {
         data: log.data,
         topics: log.topics,
       });
+      eventsProcessedTotal.inc({ event_type: decoded.eventName as string });
 
       switch (decoded.eventName) {
         case "VaultSnapshot":

@@ -1,7 +1,9 @@
 // Minimal HTTP health-check server for bot processes.
 // Responds to GET /health with { status: "ok", uptime, service }.
+// Also exposes GET /metrics in Prometheus text format.
 
 import http from "http";
+import { getMetricsText, metricsContentType } from "./metrics.js";
 
 export interface HealthServerOptions {
   port?: number;
@@ -19,13 +21,14 @@ export interface HealthServer {
  * Returns an object with a `close()` method for graceful shutdown.
  *
  * GET /health  → 200 { status: "ok", uptime: <seconds>, service: "<name>" }
+ * GET /metrics → 200 Prometheus text format
  * Anything else → 404
  */
 export function startHealthServer(options: HealthServerOptions): HealthServer {
   const port = options.port ?? parseInt(process.env.HEALTH_PORT || "9000", 10);
   const startTime = Date.now();
 
-  const server = http.createServer((req, res) => {
+  const server = http.createServer(async (req, res) => {
     if (req.method === "GET" && req.url === "/health") {
       const extras = options.getExtras ? options.getExtras() : {};
       const body = JSON.stringify({
@@ -36,6 +39,15 @@ export function startHealthServer(options: HealthServerOptions): HealthServer {
       });
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(body);
+    } else if (req.method === "GET" && req.url === "/metrics") {
+      try {
+        const text = await getMetricsText();
+        res.writeHead(200, { "Content-Type": metricsContentType });
+        res.end(text);
+      } catch {
+        res.writeHead(500);
+        res.end("Error collecting metrics");
+      }
     } else {
       res.writeHead(404);
       res.end("Not found");

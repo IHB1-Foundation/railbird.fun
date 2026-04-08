@@ -40,6 +40,16 @@ export type { NonceManagerOptions } from "./nonceManager.js";
 export { startHealthServer } from "./healthServer.js";
 export type { HealthServerOptions, HealthServer } from "./healthServer.js";
 
+// Prometheus metrics
+export {
+  registry,
+  botActionsTotal,
+  botErrorsTotal,
+  botCircuitState,
+  getMetricsText,
+  metricsContentType,
+} from "./metrics.js";
+
 // Contract ABIs (generated from Foundry artifacts)
 export { POKER_TABLE_ABI, PLAYER_REGISTRY_ABI, PLAYER_VAULT_ABI } from "./abis/index.js";
 

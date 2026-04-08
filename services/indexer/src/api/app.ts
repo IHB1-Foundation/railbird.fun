@@ -2,7 +2,9 @@
 
 import express from "express";
 import { router } from "./routes.js";
-import { createLogger } from "@playerco/shared";
+import { createLogger, registry, metricsContentType } from "@playerco/shared";
+import { apiLatencyHistogram, wsConnectionsGauge, wsTablesGauge } from "../metrics.js";
+import { getWsManager } from "../ws/index.js";
 
 const logger = createLogger({ service: "indexer" });
 
@@ -19,6 +21,13 @@ function getAllowedOrigins(): Set<string> {
     .map((value) => value.trim())
     .filter(Boolean);
   return new Set([...DEFAULT_ALLOWED_ORIGINS, ...configured]);
+}
+
+// Normalise route path for metric labels (replace dynamic segments with placeholders)
+function normaliseRoute(path: string): string {
+  return path
+    .replace(/\/\d+/g, "/:id")
+    .replace(/\/0x[0-9a-fA-F]+/g, "/:address");
 }
 
 export function createApp(): express.Application {
@@ -59,6 +68,40 @@ export function createApp(): express.Application {
     res.setHeader("X-Request-ID", requestId);
     logger.debug({ method: req.method, path: req.path, requestId }, "Incoming request");
     next();
+  });
+
+  // API latency tracking middleware
+  app.use((req, res, next) => {
+    const startMs = Date.now();
+    res.on("finish", () => {
+      const durationSec = (Date.now() - startMs) / 1000;
+      apiLatencyHistogram.observe(
+        {
+          method: req.method,
+          route: normaliseRoute(req.path),
+          status_code: String(res.statusCode),
+        },
+        durationSec
+      );
+    });
+    next();
+  });
+
+  // Prometheus metrics endpoint (outside /api to avoid auth/rate-limit middleware)
+  app.get("/metrics", async (_req, res) => {
+    try {
+      // Update WS gauges on each scrape so values are fresh
+      const wsStats = getWsManager().getStats();
+      wsConnectionsGauge.set(wsStats.totalConnections);
+      wsTablesGauge.set(wsStats.tables);
+
+      const text = await registry.metrics();
+      res.setHeader("Content-Type", metricsContentType);
+      res.send(text);
+    } catch (err) {
+      logger.error({ err }, "Error collecting metrics");
+      res.status(500).send("Error collecting metrics");
+    }
   });
 
   // API routes

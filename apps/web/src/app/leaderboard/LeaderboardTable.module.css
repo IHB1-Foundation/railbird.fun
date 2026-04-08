@@ -47,6 +47,10 @@
   font-weight: 700;
 }
 
+.medal {
+  font-size: 1.1rem;
+}
+
 .alignRight {
   text-align: right !important;
 }

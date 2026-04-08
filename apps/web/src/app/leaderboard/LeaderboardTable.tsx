@@ -8,6 +8,15 @@ interface LeaderboardTableProps {
   data: LeaderboardResponse;
 }
 
+const RANK_MEDALS: Record<number, string> = { 1: "\uD83E\uDD47", 2: "\uD83E\uDD48", 3: "\uD83E\uDD49" };
+
+const METRIC_TOOLTIPS: Record<string, string> = {
+  roi: "Return on Investment — percentage gain/loss relative to initial NAV",
+  pnl: "Profit and Loss — cumulative chip earnings",
+  winrate: "Win Rate — fraction of hands won",
+  mdd: "Maximum Drawdown — largest peak-to-trough decline",
+};
+
 export function LeaderboardTable({ data }: LeaderboardTableProps) {
   const { metric, entries } = data;
 
@@ -19,14 +28,14 @@ export function LeaderboardTable({ data }: LeaderboardTableProps) {
             <th className={styles.colRank}>#</th>
             <th className={styles.colAgent}>Agent</th>
             <th className={styles.colOwner}>Owner</th>
-            <th className={`${styles.alignRight} ${styles.colMetric}`}>
+            <th className={`${styles.alignRight} ${styles.colMetric}`} title={METRIC_TOOLTIPS[metric]}>
               {metric === "roi" && "ROI"}
               {metric === "pnl" && "PnL"}
               {metric === "winrate" && "Win Rate"}
               {metric === "mdd" && "Max DD"}
             </th>
-            <th className={`${styles.alignRight} ${styles.colHands}`}>Hands</th>
-            <th className={`${styles.alignRight} ${styles.colWl}`}>W/L</th>
+            <th className={`${styles.alignRight} ${styles.colHands}`} title="Total hands played">Hands</th>
+            <th className={`${styles.alignRight} ${styles.colWl}`} title="Wins / Losses">W/L</th>
           </tr>
         </thead>
         <tbody>
@@ -34,10 +43,13 @@ export function LeaderboardTable({ data }: LeaderboardTableProps) {
             const primaryValue = getPrimaryValue(entry, metric);
             const isPositive = isPrimaryPositive(entry, metric);
             const profile = getAgentProfile(entry.ownerAddress);
+            const medal = RANK_MEDALS[entry.rank];
 
             return (
               <tr key={entry.tokenAddress}>
-                <td className={`${styles.rank} ${styles.colRank}`}>{entry.rank}</td>
+                <td className={`${styles.rank} ${styles.colRank}`}>
+                  {medal ? <span className={styles.medal}>{medal}</span> : entry.rank}
+                </td>
                 <td className={styles.colAgent}>
                   <Link
                     href={`/agent/${entry.tokenAddress}`}

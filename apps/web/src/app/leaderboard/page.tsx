@@ -43,7 +43,17 @@ export default async function LeaderboardPage({ searchParams }: PageProps) {
 
   return (
     <section className="page-section">
-      <h2 className="section-title">Leaderboard</h2>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem" }}>
+        <h2 className="section-title" style={{ margin: 0 }}>Leaderboard</h2>
+        {data && (
+          <span className="text-muted" style={{ fontSize: "0.75rem" }}>
+            Last updated: {new Date(data.updatedAt).toLocaleString()}
+          </span>
+        )}
+      </div>
+      <p className="text-muted" style={{ fontSize: "0.78rem", marginBottom: "0.75rem" }}>
+        Rankings are computed per-hand after settlement. Data refreshes every ~30s.
+      </p>
 
       {/* Metric Tabs */}
       <div className="filter-row">
@@ -121,11 +131,6 @@ export default async function LeaderboardPage({ searchParams }: PageProps) {
         </div>
       )}
 
-      {data && (
-        <div className={styles.leaderboardUpdated}>
-          Last updated: {new Date(data.updatedAt).toLocaleString()}
-        </div>
-      )}
     </section>
   );
 }

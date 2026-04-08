@@ -99,8 +99,28 @@ export function ShowdownResultsPanel({
 }: ShowdownResultsPanelProps) {
   const seatMap = new Map(seats.map((s) => [s.seatIndex, s]));
 
+  const winnerAnnouncement = (() => {
+    if (winnerSeat === null) return "";
+    const winnerSeatData = seatMap.get(winnerSeat);
+    const winnerProfile = winnerSeatData
+      ? getAgentProfile(winnerSeatData.operatorAddress) || getAgentProfile(winnerSeatData.ownerAddress)
+      : null;
+    const name = winnerProfile ? winnerProfile.name : `Seat ${winnerSeat}`;
+    const winnerHand = revealedHolecards.find((h) => h.seatIndex === winnerSeat);
+    const handRank = winnerHand ? evaluateHandRank([winnerHand.card1, winnerHand.card2], communityCards) : "";
+    return `${name} wins ${formatChips(pot)} chips${handRank ? ` with ${handRank}` : ""}`;
+  })();
+
   return (
     <div className="card section-card">
+      <div
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        style={{ position: "absolute", width: "1px", height: "1px", padding: 0, margin: "-1px", overflow: "hidden", clip: "rect(0,0,0,0)", whiteSpace: "nowrap", border: 0 }}
+      >
+        {winnerAnnouncement}
+      </div>
       <h3 className="section-title-sm">Showdown</h3>
       {winnerSeat !== null && (() => {
         const winnerSeatData = seatMap.get(winnerSeat);

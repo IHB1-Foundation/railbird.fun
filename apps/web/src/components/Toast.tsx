@@ -50,10 +50,34 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   const EXPLORER = process.env.NEXT_PUBLIC_BLOCK_EXPLORER || "https://testnet-explorer.hsk.xyz";
 
+  const srStyle: React.CSSProperties = {
+    position: "absolute",
+    width: "1px",
+    height: "1px",
+    padding: 0,
+    margin: "-1px",
+    overflow: "hidden",
+    clip: "rect(0,0,0,0)",
+    whiteSpace: "nowrap",
+    border: 0,
+  };
+
+  const errorToasts = toasts.filter((t) => t.type === "error");
+  const otherToasts = toasts.filter((t) => t.type !== "error");
+
   return (
     <ToastContext.Provider value={{ success, error, info }}>
       {children}
+      {/* Screen-reader live regions */}
+      <div aria-live="assertive" aria-atomic="true" style={srStyle}>
+        {errorToasts.map((t) => t.message).join(" ")}
+      </div>
+      <div aria-live="polite" aria-atomic="true" style={srStyle}>
+        {otherToasts.map((t) => t.message).join(" ")}
+      </div>
       <div
+        role="status"
+        aria-label="Notifications"
         style={{
           position: "fixed",
           bottom: "1rem",

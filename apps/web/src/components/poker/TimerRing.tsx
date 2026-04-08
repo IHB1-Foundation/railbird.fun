@@ -37,8 +37,23 @@ export function TimerRing({ deadline }: TimerRingProps) {
   const minutes = Math.floor(remaining / 60);
   const seconds = remaining % 60;
 
+  const srStyle: React.CSSProperties = {
+    position: "absolute",
+    width: "1px",
+    height: "1px",
+    padding: 0,
+    margin: "-1px",
+    overflow: "hidden",
+    clip: "rect(0,0,0,0)",
+    whiteSpace: "nowrap",
+    border: 0,
+  };
+
   return (
-    <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+    <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
+      <div aria-live="assertive" aria-atomic="true" style={srStyle}>
+        {remaining === 0 ? "Time expired" : ""}
+      </div>
       <svg
         width="88"
         height="88"
@@ -85,3 +100,4 @@ export function TimerRing({ deadline }: TimerRingProps) {
     </div>
   );
 }
+

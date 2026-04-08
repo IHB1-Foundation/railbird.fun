@@ -454,6 +454,20 @@
   margin-top: 1.5rem;
 }
 
+.refreshErrorBanner {
+  position: sticky;
+  top: 72px;
+  z-index: 30;
+  background: rgba(58, 26, 26, 0.95);
+  color: var(--danger);
+  padding: 0.5rem 1rem;
+  margin-bottom: 0.5rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  border: 1px solid rgba(255, 98, 110, 0.35);
+  backdrop-filter: blur(8px);
+}
+
 .connectionStatus {
   position: fixed;
   right: 1rem;

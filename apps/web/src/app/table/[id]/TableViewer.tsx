@@ -252,9 +252,9 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
 
   return (
     <div>
-      {/* Refresh error banner */}
+      {/* Refresh error banner — sticky below topbar */}
       {refreshError && (
-        <div role="alert" style={{ background: "#3a1a1a", color: "#f87171", padding: "0.5rem 1rem", marginBottom: "0.5rem", borderRadius: "4px", fontSize: "0.875rem" }}>
+        <div role="alert" className={styles.refreshErrorBanner}>
           {refreshError}
           {refreshRetryCount > 0 && ` (attempt ${refreshRetryCount})`}
         </div>

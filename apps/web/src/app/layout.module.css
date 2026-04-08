@@ -128,6 +128,74 @@
   line-height: 1;
 }
 
+/* Mobile overlay backdrop */
+.mobileBackdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 38;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
+  animation: fade-in 0.2s ease-out;
+}
+
+.mobileBackdrop.visible {
+  display: block;
+}
+
+/* Mobile slide-in nav drawer */
+.mobileDrawer {
+  display: none;
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 39;
+  width: min(80vw, 280px);
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 4rem 1.2rem 1.5rem;
+  background: linear-gradient(160deg, rgba(12, 13, 28, 0.98), rgba(18, 19, 38, 0.98));
+  border-left: 1px solid var(--card-border);
+  transform: translateX(100%);
+  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mobileDrawer.open {
+  display: flex;
+  transform: translateX(0);
+}
+
+.mobileDrawer a {
+  padding: 0.7rem 1rem;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 500;
+  color: rgba(247, 248, 255, 0.82);
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.mobileDrawer a:hover {
+  color: #fff;
+  border-color: rgba(196, 176, 255, 0.42);
+  background: linear-gradient(160deg, rgba(129, 108, 249, 0.24), rgba(70, 56, 140, 0.18));
+}
+
+.mobileDrawerClose {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: none;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 8px;
+  color: var(--foreground);
+  font-size: 1.2rem;
+  padding: 0.3rem 0.5rem;
+  cursor: pointer;
+  line-height: 1;
+}
+
 @media (max-width: 768px) {
   .hamburger {
     display: block;

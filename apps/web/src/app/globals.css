@@ -210,6 +210,10 @@ h5 {
   color: var(--danger);
 }
 
+.value-warning {
+  color: var(--warning);
+}
+
 .positive {
   color: var(--success);
 }

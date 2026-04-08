@@ -28,17 +28,35 @@ interface ActionLogProps {
   chipSymbol: string;
 }
 
+const AGGRESSIVE_ACTIONS = new Set(["BET", "RAISE", "3"]);
+const FOLD_ACTIONS = new Set(["FOLD", "0"]);
+const ALLIN_ACTIONS = new Set(["ALL_IN"]);
+
+function actionColorClass(actionType: string): string {
+  if (FOLD_ACTIONS.has(actionType)) return "text-muted";
+  if (ALLIN_ACTIONS.has(actionType)) return "value-warning";
+  if (AGGRESSIVE_ACTIONS.has(actionType)) return "value-positive";
+  return "";
+}
+
 export function ActionLog({ streetSections, seatByIndex, maxSeats, chipSymbol }: ActionLogProps) {
+  // Show newest streets first
+  const reversed = [...streetSections].reverse();
+
   return (
     <div className={`card ${styles.sectionCard}`}>
       <h3 className="section-title-sm">Action Log</h3>
       <div className={styles.actionLog}>
-        {streetSections.length > 0 ? (
+        {reversed.length > 0 ? (
           <div className={styles.streetLog}>
-            {streetSections.map((section) => (
+            {reversed.map((section) => (
               <div key={section.street} className={styles.streetBlock}>
-                <div className={styles.streetTitle}>{section.street}</div>
-                {section.actions.map((action, i) => {
+                <div className={styles.streetDivider}>
+                  <hr className={styles.streetHr} />
+                  <span className={styles.streetDividerLabel}>{section.street}</span>
+                  <hr className={styles.streetHr} />
+                </div>
+                {[...section.actions].reverse().map((action, i) => {
                   const safeActionType = sanitizeActionType(action.actionType);
                   const safeSeatIndex = sanitizeSeatIndex(action.seatIndex, maxSeats);
                   const seat = seatByIndex.get(safeSeatIndex);
@@ -47,14 +65,17 @@ export function ActionLog({ streetSections, seatByIndex, maxSeats, chipSymbol }:
                     ? getAgentProfile(seat.operatorAddress) || getAgentProfile(seat.ownerAddress)
                     : null;
                   const actionLabel = ACTION_LABELS[safeActionType] ?? "Unknown";
+                  const colorClass = actionColorClass(safeActionType);
 
                   return (
                     <div key={`${section.street}-${i}`} className={styles.actionItem}>
                       <div className={styles.actionMain}>
                         <span>
                           <strong>{actionProfile ? actionProfile.name : `Seat ${safeSeatIndex}`}</strong>{" "}
-                          {actionLabel}
-                          {action.amount !== "0" && ` ${formatChips(action.amount)} ${chipSymbol}`}
+                          <span className={colorClass}>
+                            {actionLabel}
+                            {action.amount !== "0" && ` ${formatChips(action.amount)} ${chipSymbol}`}
+                          </span>
                         </span>
                         {hasOwner && !actionProfile && (
                           <span className={styles.actionActor}>
@@ -62,10 +83,6 @@ export function ActionLog({ streetSections, seatByIndex, maxSeats, chipSymbol }:
                           </span>
                         )}
                       </div>
-                      <span className={styles.actionTime} title={`Block #${action.blockNumber}`}>
-                        {formatTime(action.timestamp)}{" "}
-                        <span className={styles.actionBlock}>#{action.blockNumber}</span>
-                      </span>
                     </div>
                   );
                 })}

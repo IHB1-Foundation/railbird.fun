@@ -128,9 +128,9 @@ type TokenStage = "bonding_curve" | "locked" | "graduated" | "unknown";
 type TradeDirection = "buy" | "sell";
 
 const STAGE_LABELS: Record<TokenStage, string> = {
-  bonding_curve: "Bonding Curve",
-  locked: "Locked",
-  graduated: "Graduated (DEX)",
+  bonding_curve: "📈 Bonding Curve",
+  locked: "🔒 Locked",
+  graduated: "✅ Graduated (DEX)",
   unknown: "Unknown",
 };
 

@@ -28,20 +28,20 @@
 
 .nadfunStageBadge.stageBonding {
   color: var(--warning-soft);
-  background: rgba(251, 191, 36, 0.14);
-  border-color: rgba(251, 191, 36, 0.44);
+  background: rgba(var(--warning), 0.14);
+  border-color: rgba(255, 191, 77, 0.44);
 }
 
 .nadfunStageBadge.stageLocked {
-  color: #c0c4dd;
-  background: rgba(155, 163, 193, 0.16);
-  border-color: rgba(155, 163, 193, 0.4);
+  color: var(--muted);
+  background: rgba(155, 163, 193, 0.12);
+  border-color: rgba(155, 163, 193, 0.35);
 }
 
 .nadfunStageBadge.stageGraduated {
   color: var(--success-soft);
-  background: rgba(57, 217, 138, 0.16);
-  border-color: rgba(57, 217, 138, 0.45);
+  background: rgba(57, 217, 138, 0.14);
+  border-color: rgba(57, 217, 138, 0.42);
 }
 
 .nadfunStageBadge.stageUnknown {

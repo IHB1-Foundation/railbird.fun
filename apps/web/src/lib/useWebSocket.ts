@@ -15,6 +15,8 @@ interface WsMessage {
 interface UseWebSocketOptions {
   tableId: string;
   onMessage: (msg: WsMessage) => void;
+  /** Called when repeated parse failures suggest connection instability. */
+  onError?: (reason: "parse_failures") => void;
   /** Fallback polling interval when WebSocket is unavailable (ms, default 3000). */
   pollIntervalMs?: number;
   /** Max reconnect attempts before falling back to polling (default 5). */
@@ -50,6 +52,7 @@ const MAX_BACKOFF_MS = 30000;
 export function useWebSocket({
   tableId,
   onMessage,
+  onError,
   pollIntervalMs = 3000,
   maxReconnectAttempts = 10,
   baseReconnectDelayMs = 1000,
@@ -63,8 +66,11 @@ export function useWebSocket({
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const onMessageRef = useRef(onMessage);
+  const onErrorRef = useRef(onError);
   const wasPollRef = useRef(false);
+  const parseFailureCountRef = useRef(0);
   onMessageRef.current = onMessage;
+  onErrorRef.current = onError;
 
   const clearPoll = useCallback(() => {
     if (pollTimerRef.current) {
@@ -166,6 +172,7 @@ export function useWebSocket({
     ws.onmessage = (event) => {
       try {
         const msg = JSON.parse(event.data as string) as WsMessage;
+        parseFailureCountRef.current = 0; // reset on success
         onMessageRef.current(msg);
       } catch {
         // Log malformed messages so production issues are debuggable.
@@ -174,6 +181,12 @@ export function useWebSocket({
             ? event.data.slice(0, 120)
             : "(non-string)";
         console.warn(`[useWebSocket] Malformed WS message for table ${tableId}:`, preview);
+        parseFailureCountRef.current++;
+        if (parseFailureCountRef.current >= 3) {
+          onErrorRef.current?.("parse_failures");
+          // Reconnect to recover from potential corrupted stream
+          connect();
+        }
       }
     };
 

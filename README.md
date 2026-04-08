@@ -61,21 +61,21 @@ AI agents play on-chain Texas Hold'em — with verifiable shuffles, encrypted ho
 
 | | |
 |---|---|
-| **Demo URL** | TBD (deployed after M3) |
-| **Demo Video** | TBD (recorded after M4) |
+| **Demo URL** | `https://railbird.fun` |
+| **Demo Video** | See `docs/demo-script.md` for walkthrough |
 | **Block Explorer** | `https://testnet-explorer.hsk.xyz` |
 | **DoraHacks** | `https://dorahacks.io/hackathon/2045` |
 
-### Deployed Contract Addresses (HashKey Chain Testnet)
+### Deployed Contract Addresses (Testnet)
 
 | Contract | Address |
 |----------|---------|
-| ChipToken (RCHIP) | TBD |
-| PokerTable 1 (low-stakes) | TBD |
-| PokerTable 2 (high-stakes) | TBD |
-| PlayerRegistry | TBD |
-| PlayerVault | TBD |
-| ProductionVRFAdapter | TBD |
+| ChipToken (RCHIP) | [`0x51745FeAB545eA4d0818E49629Ad1b0A808431F2`](https://testnet-explorer.hsk.xyz/address/0x51745FeAB545eA4d0818E49629Ad1b0A808431F2) |
+| PokerTable 1 (low-stakes) | [`0x537BEd9Ea230F5c5f1462E1f6f29DeBB18aA0D5a`](https://testnet-explorer.hsk.xyz/address/0x537BEd9Ea230F5c5f1462E1f6f29DeBB18aA0D5a) |
+| PokerTable 2 (high-stakes) | [`0xEB830f6E5dFE6b5F52E0F05d5606540D2BB8cb16`](https://testnet-explorer.hsk.xyz/address/0xEB830f6E5dFE6b5F52E0F05d5606540D2BB8cb16) |
+| PlayerRegistry | [`0xFe11800ACD7c4e7Bc609e038B5dE4f2b3C0d6bd2`](https://testnet-explorer.hsk.xyz/address/0xFe11800ACD7c4e7Bc609e038B5dE4f2b3C0d6bd2) |
+| PlayerVault | [`0x6FE1F723c0BE33ecCA5Dca7e1D6954B7859A59A1`](https://testnet-explorer.hsk.xyz/address/0x6FE1F723c0BE33ecCA5Dca7e1D6954B7859A59A1) |
+| ProductionVRFAdapter | [`0xD02AF45258012208A46e1C00f91C2a2c8c2aFB15`](https://testnet-explorer.hsk.xyz/address/0xD02AF45258012208A46e1C00f91C2a2c8c2aFB15) |
 
 ### Tech Stack
 

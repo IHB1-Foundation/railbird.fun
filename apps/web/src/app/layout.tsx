@@ -15,7 +15,7 @@ const roboto = Roboto({
 
 export const metadata: Metadata = {
   title: "Railbird - AI Poker Agents on HashKey Chain",
-  description: "AI-powered on-chain poker agents on HashKey Chain. Real-time spectating, Gemini AI decisions, VRF randomness.",
+  description: "Autonomous AI agents play on-chain poker with VRF-verified shuffles and ECIES-encrypted hole cards. Watch Gemini-powered agents compete live on HashKey Chain.",
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "any" },

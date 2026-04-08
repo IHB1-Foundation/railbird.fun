@@ -824,3 +824,108 @@ export async function getRevealedHolecards(
   );
   return result.rows;
 }
+
+// ============ ELO Ratings ============
+
+export interface EloRow {
+  token_address: string;
+  rating: string;
+  hands_played: number;
+  peak_rating: string;
+  updated_at: Date;
+}
+
+/**
+ * Get ELO ratings for the given token addresses.
+ * Returns a Map for O(1) lookup.
+ */
+export async function getEloRatings(
+  tokenAddresses: string[]
+): Promise<Map<string, { rating: number; handsPlayed: number }>> {
+  if (tokenAddresses.length === 0) return new Map();
+  const placeholders = tokenAddresses.map((_, i) => `$${i + 1}`).join(", ");
+  const result = await query<EloRow>(
+    `SELECT token_address, rating, hands_played FROM elo_ratings WHERE token_address IN (${placeholders})`,
+    tokenAddresses.map((a) => a.toLowerCase())
+  );
+  const map = new Map<string, { rating: number; handsPlayed: number }>();
+  for (const row of result.rows) {
+    map.set(row.token_address, {
+      rating: parseFloat(row.rating),
+      handsPlayed: row.hands_played,
+    });
+  }
+  return map;
+}
+
+/**
+ * Upsert ELO rating for one agent (use inside a transaction).
+ */
+export async function upsertEloRating(
+  tokenAddress: string,
+  newRating: number,
+  handsIncrement: number = 1
+): Promise<void> {
+  await query(
+    `INSERT INTO elo_ratings (token_address, rating, hands_played, peak_rating)
+     VALUES ($1, $2, $3, $2)
+     ON CONFLICT (token_address) DO UPDATE SET
+       rating = EXCLUDED.rating,
+       hands_played = elo_ratings.hands_played + $3,
+       peak_rating = GREATEST(elo_ratings.peak_rating, EXCLUDED.rating),
+       updated_at = NOW()`,
+    [tokenAddress.toLowerCase(), newRating.toFixed(2), handsIncrement]
+  );
+}
+
+/**
+ * Insert one ELO history record.
+ */
+export async function insertEloHistory(
+  tokenAddress: string,
+  handId: bigint,
+  opponentAddress: string,
+  outcome: "win" | "loss" | "draw",
+  ratingBefore: number,
+  ratingAfter: number,
+  k: number
+): Promise<void> {
+  await query(
+    `INSERT INTO elo_history
+       (token_address, hand_id, opponent_address, outcome, rating_before, rating_after, k_factor)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+    [
+      tokenAddress.toLowerCase(),
+      handId.toString(),
+      opponentAddress.toLowerCase(),
+      outcome,
+      ratingBefore.toFixed(2),
+      ratingAfter.toFixed(2),
+      k,
+    ]
+  );
+}
+
+/**
+ * Get ELO leaderboard sorted by rating descending.
+ */
+export async function getEloLeaderboard(limit = 100, offset = 0): Promise<Array<{
+  token_address: string;
+  rating: string;
+  hands_played: number;
+  peak_rating: string;
+}>> {
+  const result = await query<{
+    token_address: string;
+    rating: string;
+    hands_played: number;
+    peak_rating: string;
+  }>(
+    `SELECT token_address, rating, hands_played, peak_rating
+     FROM elo_ratings
+     ORDER BY rating DESC
+     LIMIT $1 OFFSET $2`,
+    [limit, offset]
+  );
+  return result.rows;
+}

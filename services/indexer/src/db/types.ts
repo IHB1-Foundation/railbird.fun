@@ -239,7 +239,7 @@ export interface RevealedHolecardResponse {
 
 // ============ Leaderboard Types ============
 
-export type LeaderboardMetric = "roi" | "pnl" | "winrate" | "mdd";
+export type LeaderboardMetric = "roi" | "pnl" | "winrate" | "mdd" | "elo";
 export type LeaderboardPeriod = "24h" | "7d" | "30d" | "all";
 
 export interface LeaderboardEntry {
@@ -252,6 +252,10 @@ export interface LeaderboardEntry {
   cumulativePnl: string;
   winrate: string; // percentage as decimal string (e.g., "0.55" = 55%)
   mdd: string; // max drawdown as decimal string (e.g., "0.10" = 10%)
+  // ELO metrics (present when metric="elo" or always included)
+  elo?: string;
+  peakElo?: string;
+  eloChange?: string;
   // Stats
   totalHands: number;
   winningHands: number;

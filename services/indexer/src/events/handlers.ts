@@ -21,7 +21,12 @@ import {
   insertRebalanceEvent,
   insertRevealedHolecard,
   getHand,
+  getSeats,
+  getEloRatings,
+  upsertEloRating,
+  insertEloHistory,
 } from "../db/index.js";
+import { computeHandEloUpdates } from "../elo/calculator.js";
 import { gameStateToString, actionTypeToString } from "./abis.js";
 import { createLogger } from "@playerco/shared";
 
@@ -279,6 +284,11 @@ export async function handleHandSettled(
 
   await markEventProcessed(meta.blockNumber, meta.logIndex, meta.txHash, "HandSettled");
   logger.info({ handId: args.handId.toString(), winnerSeat: args.winnerSeat, pot: args.potAmount.toString() }, 'HandSettled');
+
+  // Update ELO ratings for all participants (non-blocking, best-effort)
+  updateEloAfterSettlement(ctx.tableId, args.handId, args.winnerSeat).catch((err: unknown) => {
+    logger.warn({ err: err instanceof Error ? err.message : String(err) }, "ELO update failed (non-fatal)");
+  });
 
   // Broadcast to WebSocket clients
   broadcastHandSettled(ctx.tableId, args.handId, args.winnerSeat, args.potAmount);
@@ -547,3 +557,72 @@ export async function handleRebalanceSell(
   await markEventProcessed(meta.blockNumber, meta.logIndex, meta.txHash, "RebalanceSell");
   logger.info({ vaultAddress, handId: args.handId.toString(), tokenIn: args.tokenIn.toString(), monOut: args.monOut.toString() }, 'RebalanceSell');
 }
+
+// ─── ELO helpers ─────────────────────────────────────────────────────────────
+
+/**
+ * Update ELO ratings for all participants of the settled hand.
+ * Seats without a linked agent token address are skipped.
+ */
+async function updateEloAfterSettlement(
+  tableId: bigint,
+  handId: bigint,
+  winnerSeat: number
+): Promise<void> {
+  const seats = await getSeats(tableId);
+  // Only seats with an agent token address participate in ELO
+  const participants = seats
+    .filter((s): s is typeof s & { token_address: string } =>
+      !!(s as any).token_address &&
+      (s as any).token_address !== "0x0000000000000000000000000000000000000000"
+    )
+    .map((s) => ({
+      tokenAddress: (s as any).token_address as string,
+      seatIndex: s.seat_index,
+    }));
+
+  if (participants.length < 2) return;
+
+  // Load current ratings and hands-played counts
+  const tokenAddresses = participants.map((p) => p.tokenAddress);
+  const currentRatingsMap = await getEloRatings(tokenAddresses);
+
+  const ratings = new Map(
+    tokenAddresses.map((addr) => [addr, currentRatingsMap.get(addr)?.rating ?? 1500])
+  );
+  const handsPlayed = new Map(
+    tokenAddresses.map((addr) => [addr, currentRatingsMap.get(addr)?.handsPlayed ?? 0])
+  );
+
+  const updates = computeHandEloUpdates(participants, winnerSeat, ratings, handsPlayed);
+  const winner = participants.find((p) => p.seatIndex === winnerSeat);
+
+  // Persist all updates
+  for (const update of updates) {
+    await upsertEloRating(update.tokenAddress, update.ratingAfter, 1);
+    // Insert history record for the winner/loser pair
+    const isWinner = winner?.tokenAddress === update.tokenAddress;
+    const opponent = isWinner
+      ? participants.find((p) => p.seatIndex !== winnerSeat)?.tokenAddress ?? ""
+      : winner?.tokenAddress ?? "";
+    if (opponent) {
+      await insertEloHistory(
+        update.tokenAddress,
+        handId,
+        opponent,
+        isWinner ? "win" : "loss",
+        update.ratingBefore,
+        update.ratingAfter,
+        update.kFactor
+      );
+    }
+  }
+
+  logger.info({
+    handId: handId.toString(),
+    participants: updates.length,
+    winnerSeat,
+    updates: updates.map((u) => ({ addr: u.tokenAddress.slice(0, 8), before: u.ratingBefore, after: u.ratingAfter })),
+  }, "ELO ratings updated");
+}
+

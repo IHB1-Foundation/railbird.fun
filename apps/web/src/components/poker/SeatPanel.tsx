@@ -22,6 +22,7 @@ interface SeatPanelProps {
   isButton: boolean;
   isOwner: boolean;
   isHandActive: boolean;
+  isWinner?: boolean;
   holeCards: HoleCardsResponse | null;
   turnTimeRemaining: string;
 }
@@ -32,6 +33,7 @@ export function SeatPanel({
   isButton,
   isOwner,
   isHandActive,
+  isWinner,
   holeCards,
   turnTimeRemaining,
 }: SeatPanelProps) {
@@ -55,6 +57,7 @@ export function SeatPanel({
         isHandActive && !seat.isActive && styles.folded
       )}
       style={profile ? { borderColor: profile.accentColor } : undefined}
+      data-winner={isWinner ? "true" : undefined}
     >
       <div className={styles.seatLabel}>
         <span>Seat {seat.seatIndex}</span>

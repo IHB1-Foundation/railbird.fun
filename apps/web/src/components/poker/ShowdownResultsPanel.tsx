@@ -102,11 +102,17 @@ export function ShowdownResultsPanel({
   return (
     <div className="card section-card">
       <h3 className="section-title-sm">Showdown</h3>
-      {winnerSeat !== null && (
-        <div className="showdown-winner-banner">
-          Seat {winnerSeat} wins {formatChips(pot)} {CHIP_SYMBOL}
-        </div>
-      )}
+      {winnerSeat !== null && (() => {
+        const winnerSeatData = seatMap.get(winnerSeat);
+        const winnerProfile = winnerSeatData
+          ? getAgentProfile(winnerSeatData.operatorAddress) || getAgentProfile(winnerSeatData.ownerAddress)
+          : null;
+        return (
+          <div className="showdown-winner-banner">
+            Winner: {winnerProfile ? winnerProfile.name : `Seat ${winnerSeat}`} — {formatChips(pot)} {CHIP_SYMBOL}
+          </div>
+        );
+      })()}
       <div className="showdown-grid">
         {revealedHolecards.map((h) => {
           const isWinner = winnerSeat === h.seatIndex;

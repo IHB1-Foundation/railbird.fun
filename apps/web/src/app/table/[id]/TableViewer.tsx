@@ -348,6 +348,7 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
                   isButton={table.buttonSeat === seat.seatIndex}
                   isOwner={ownedSeatIndex === seat.seatIndex}
                   isHandActive={isActive && !!currentHand}
+                  isWinner={currentHand?.winnerSeat === seat.seatIndex}
                   holeCards={ownedSeatIndex === seat.seatIndex ? holeCards : null}
                   turnTimeRemaining={timeRemaining}
                 />

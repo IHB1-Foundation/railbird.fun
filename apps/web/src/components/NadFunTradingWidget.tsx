@@ -200,6 +200,7 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
   const [txLoading, setTxLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
+  const [txStatus, setTxStatus] = useState<"submitted" | "confirming" | null>(null);
 
   const lensAddressRaw = getLensAddress();
   const bondingRouterRaw = getBondingRouterAddress();
@@ -344,6 +345,7 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
     setTxLoading(true);
     setError(null);
     setTxHash(null);
+    setTxStatus(null);
 
     try {
       const amountWei = parseUnits(amountInput || "0", 18);
@@ -433,6 +435,7 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
       }
 
       setTxHash(hash);
+      setTxStatus("submitted");
     } catch (err) {
       const raw = err instanceof Error ? err.message : "Transaction failed";
       console.error("[NadFunTradingWidget] trade error:", err);
@@ -695,8 +698,16 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
       )}
       {txHash && (
         <div className={styles.nadfunSuccess} role="status" aria-live="polite">
-          Transaction submitted:{" "}
-          <span className="text-mono">{txHash.slice(0, 10)}…{txHash.slice(-8)}</span>
+          <span>Transaction submitted — confirming…</span>
+          <a
+            href={`${process.env.NEXT_PUBLIC_BLOCK_EXPLORER || "https://testnet-explorer.hsk.xyz"}/tx/${txHash}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={styles.nadfunTxLink}
+            aria-label="View transaction on block explorer"
+          >
+            View on Explorer ↗
+          </a>
         </div>
       )}
     </div>

@@ -375,6 +375,8 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
           joinStatus={joinStatus}
           chipSymbol={CHIP_SYMBOL}
           onJoin={handleJoinSeat}
+          isConnected={isConnected}
+          onConnect={connect}
         />
       )}
 
@@ -469,6 +471,8 @@ interface JoinSeatFormProps {
   joinStatus: string;
   chipSymbol: string;
   onJoin: () => void;
+  isConnected: boolean;
+  onConnect: () => void;
 }
 
 function JoinSeatForm({
@@ -484,6 +488,8 @@ function JoinSeatForm({
   joinStatus,
   chipSymbol,
   onJoin,
+  isConnected,
+  onConnect,
 }: JoinSeatFormProps) {
   const [expanded, setExpanded] = useState(!isActive);
   const [buyInError, setBuyInError] = useState("");
@@ -493,12 +499,16 @@ function JoinSeatForm({
     if (!isActive) setExpanded(true);
   }, [isActive]);
 
+  // During active hand: show a brief message instead of form
   if (isActive && !expanded) {
     return (
       <div className={`card ${styles.sectionCard}`}>
-        <button className={styles.joinToggleBtn} onClick={() => setExpanded(true)}>
-          + Join Table
-        </button>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5rem", flexWrap: "wrap" }}>
+          <span className="text-muted" style={{ fontSize: "0.82rem" }}>Join available between hands</span>
+          <button className={styles.joinToggleBtn} onClick={() => setExpanded(true)}>
+            + Join Table
+          </button>
+        </div>
       </div>
     );
   }
@@ -565,10 +575,21 @@ function JoinSeatForm({
             }}
             disabled={joinLoading}
             aria-invalid={!!operatorError}
-            aria-describedby={operatorError ? "operator-error" : undefined}
+            aria-describedby="operator-help operator-error"
           />
+          <span id="operator-help" style={{ color: "var(--muted)", fontSize: "0.72rem", marginTop: "0.15rem", lineHeight: 1.4 }}>
+            The wallet address that will submit poker actions for this seat (usually your bot&apos;s address)
+          </span>
           {operatorError && <span id="operator-error" style={{ color: "var(--danger)", fontSize: "0.72rem", marginTop: "0.15rem" }}>{operatorError}</span>}
         </label>
+        {!isConnected && (
+          <div style={{ marginBottom: "0.5rem", display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+            <span className="text-muted" style={{ fontSize: "0.82rem" }}>Connect wallet to join</span>
+            <button className="wallet-button" onClick={onConnect} style={{ padding: "0.35rem 0.75rem", fontSize: "0.8rem" }}>
+              Connect Wallet
+            </button>
+          </div>
+        )}
         <button
           className={`wallet-button sign ${styles.joinSubmitBtn}`}
           onClick={onJoin}

@@ -6,11 +6,15 @@ const FULL_PERIOD = Number(process.env.NEXT_PUBLIC_ACTION_DEADLINE_SECONDS || "1
 const RADIUS = 36;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
-function getColor(pct: number): string {
-  if (pct > 0.6) return "#4ade80"; // green
-  if (pct > 0.3) return "#facc15"; // yellow
-  if (pct > 0.1) return "#fb923c"; // orange
-  return "#ef4444"; // red
+/** Hybrid color: absolute seconds + ratio fallback so short deadlines still feel urgent */
+function getColor(remaining: number, pct: number): string {
+  if (remaining > 300) return "#4ade80"; // > 5 min: green
+  if (remaining > 120) return "#facc15"; // 2-5 min: yellow
+  if (remaining > 60)  return "#fb923c"; // 1-2 min: orange
+  if (remaining > 0)   return "#ef4444"; // < 1 min: red
+  // pct-based minimum: always at least yellow if <= 10%
+  if (pct <= 0.1) return "#facc15";
+  return "#4ade80";
 }
 
 interface TimerRingProps {
@@ -32,8 +36,8 @@ export function TimerRing({ deadline }: TimerRingProps) {
   const remaining = Math.max(0, Math.floor((deadlineMs - now) / 1000));
   const pct = Math.min(1, remaining / FULL_PERIOD);
   const offset = CIRCUMFERENCE * (1 - pct);
-  const color = getColor(pct);
-  const isPulsing = pct < 0.05 && pct > 0;
+  const color = getColor(remaining, pct);
+  const isPulsing = remaining < 60 && remaining > 0;
   const minutes = Math.floor(remaining / 60);
   const seconds = remaining % 60;
 

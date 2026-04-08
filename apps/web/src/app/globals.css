@@ -647,6 +647,11 @@ h5 {
   50% { box-shadow: 0 0 0 3px rgba(255, 213, 79, 0.55), 0 0 32px rgba(255, 183, 50, 0.4); }
 }
 
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 @keyframes timer-pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }

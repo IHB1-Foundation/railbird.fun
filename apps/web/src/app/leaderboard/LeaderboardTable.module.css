@@ -1,8 +1,25 @@
+.tableWrapper {
+  position: relative;
+}
+
 .tableScroll {
   overflow-x: auto;
   border: 1px solid rgba(145, 153, 196, 0.2);
   border-radius: 12px;
   background: rgba(10, 12, 25, 0.55);
+  position: relative;
+}
+
+.scrollFade {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 48px;
+  background: linear-gradient(to right, transparent, rgba(10, 12, 25, 0.85));
+  pointer-events: none;
+  z-index: 2;
+  border-radius: 0 12px 12px 0;
 }
 
 .leaderboardTable {
@@ -34,7 +51,7 @@
   backdrop-filter: blur(8px);
 }
 
-.leaderboardTable tr:hover {
+.dataRow:hover {
   background: rgba(129, 108, 249, 0.1);
 }
 
@@ -80,6 +97,13 @@
   width: 90px;
 }
 
+.colExpand {
+  width: 36px;
+  text-align: center !important;
+  color: var(--muted);
+  font-size: 0.65rem;
+}
+
 .addressLink,
 .addressCell {
   display: inline-block;
@@ -89,46 +113,57 @@
   text-overflow: ellipsis;
 }
 
+/* Mobile-only column show/hide */
+.hideMobile {
+  /* visible by default */
+}
+
+.showMobile {
+  display: none;
+}
+
+.expandedRow {
+  display: none;
+}
+
+.expandedDetails {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 0.4rem 0;
+  font-size: 0.82rem;
+}
+
+.expandedLabel {
+  color: var(--muted);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-right: 0.35rem;
+}
+
+@media (max-width: 768px) {
+  .leaderboardTable {
+    min-width: 0;
+    table-layout: auto;
+  }
+
+  .hideMobile {
+    display: none;
+  }
+
+  .showMobile {
+    display: table-cell;
+  }
+
+  .expandedRow {
+    display: table-row;
+  }
+}
+
 .leaderboardUpdated {
   margin-top: 1rem;
   text-align: right;
   color: var(--muted);
   font-size: 0.75rem;
-}
-
-.pagination {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 1rem;
-  margin-top: 1.25rem;
-}
-
-.pageBtn {
-  padding: 0.4rem 0.9rem;
-  border: 1px solid rgba(145, 153, 196, 0.3);
-  border-radius: 6px;
-  color: var(--accent-soft);
-  font-size: 0.85rem;
-  text-decoration: none;
-  transition: background 0.15s;
-}
-
-.pageBtn:hover {
-  background: rgba(129, 108, 249, 0.15);
-}
-
-.pageInfo {
-  color: var(--muted);
-  font-size: 0.82rem;
-}
-
-@media (max-width: 768px) {
-  .leaderboardTable {
-    min-width: 500px;
-  }
-
-  .colOwner {
-    display: none;
-  }
 }

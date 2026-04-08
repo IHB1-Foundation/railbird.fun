@@ -55,6 +55,21 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
     useTableState(tableId, initialData);
 
   const [revealedHolecards, setRevealedHolecards] = useState<RevealedHolecardResponse[]>([]);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<number>(() => Date.now());
+  const [secondsAgo, setSecondsAgo] = useState(0);
+
+  // Track when table data changes
+  useEffect(() => {
+    setLastUpdatedAt(Date.now());
+  }, [table]);
+
+  // Update "X seconds ago" counter
+  useEffect(() => {
+    const id = setInterval(() => {
+      setSecondsAgo(Math.floor((Date.now() - lastUpdatedAt) / 1000));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [lastUpdatedAt]);
   const [joinSeatIndex, setJoinSeatIndex] = useState<number>(0);
   const [joinBuyIn, setJoinBuyIn] = useState<string>("1000");
   const [joinOperator, setJoinOperator] = useState<string>("");
@@ -241,8 +256,12 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
       )}>
         {wsStatus === "connected" && "Live"}
         {wsStatus === "connecting" && "Connecting\u2026"}
-        {wsStatus === "reconnecting" && `Reconnecting in ${nextRetryIn}s (attempt ${reconnectAttempts}/10)\u2026`}
-        {wsStatus === "polling" && "Polling every 3s"}
+        {wsStatus === "reconnecting" && "Reconnecting\u2026"}
+        {wsStatus === "polling" && "Polling"}
+        {" · "}
+        <span style={secondsAgo > 60 ? { color: "var(--warning)" } : undefined}>
+          Updated {secondsAgo}s ago
+        </span>
       </div>
 
       {/* Owner Mode Banner */}

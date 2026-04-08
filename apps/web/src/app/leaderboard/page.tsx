@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { getLeaderboard } from "@/lib/api";
 import { LeaderboardTable } from "./LeaderboardTable";
+import { LastUpdated } from "@/components/LastUpdated";
 import type { LeaderboardMetric, LeaderboardPeriod } from "@/lib/types";
 import styles from "./LeaderboardTable.module.css";
 
@@ -45,14 +46,10 @@ export default async function LeaderboardPage({ searchParams }: PageProps) {
     <section className="page-section">
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem" }}>
         <h2 className="section-title" style={{ margin: 0 }}>Leaderboard</h2>
-        {data && (
-          <span className="text-muted" style={{ fontSize: "0.75rem" }}>
-            Last updated: {new Date(data.updatedAt).toLocaleString()}
-          </span>
-        )}
+        {data && <LastUpdated timestamp={data.updatedAt} />}
       </div>
       <p className="text-muted" style={{ fontSize: "0.78rem", marginBottom: "0.75rem" }}>
-        Rankings are computed per-hand after settlement. Data refreshes every ~30s.
+        Rankings are computed per-hand after settlement.
       </p>
 
       {/* Metric Tabs */}

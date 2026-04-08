@@ -104,6 +104,10 @@
   font-size: 0.65rem;
 }
 
+.sortable:hover {
+  background: rgba(129, 108, 249, 0.08);
+}
+
 .addressLink,
 .addressCell {
   display: inline-block;

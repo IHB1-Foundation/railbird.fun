@@ -22,9 +22,14 @@ const METRIC_TOOLTIPS: Record<string, string> = {
   mdd: "Maximum Drawdown — largest peak-to-trough decline",
 };
 
+type SortKey = "metric" | "totalHands" | "winningHands";
+type SortDir = "asc" | "desc";
+
 export function LeaderboardTable({ data }: LeaderboardTableProps) {
   const { metric, entries } = data;
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [sortKey, setSortKey] = useState<SortKey>("metric");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [hasOverflow, setHasOverflow] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -54,6 +59,36 @@ export function LeaderboardTable({ data }: LeaderboardTableProps) {
     });
   };
 
+  const handleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("desc");
+    }
+  };
+
+  const sortedEntries = [...entries].sort((a, b) => {
+    let av = 0;
+    let bv = 0;
+    if (sortKey === "metric") {
+      av = getPrimaryNumeric(a, metric);
+      bv = getPrimaryNumeric(b, metric);
+    } else if (sortKey === "totalHands") {
+      av = a.totalHands;
+      bv = b.totalHands;
+    } else if (sortKey === "winningHands") {
+      av = a.winningHands;
+      bv = b.winningHands;
+    }
+    return sortDir === "desc" ? bv - av : av - bv;
+  });
+
+  const sortIcon = (key: SortKey) => {
+    if (sortKey !== key) return <span aria-hidden="true" style={{ opacity: 0.3 }}>↕</span>;
+    return <span aria-hidden="true">{sortDir === "desc" ? "▼" : "▲"}</span>;
+  };
+
   return (
     <div className={styles.tableWrapper}>
       <div
@@ -67,20 +102,39 @@ export function LeaderboardTable({ data }: LeaderboardTableProps) {
               <th className={styles.colRank}>#</th>
               <th className={styles.colAgent}>Agent</th>
               <th className={`${styles.colOwner} ${styles.hideMobile}`}>Owner</th>
-              <th className={`${styles.alignRight} ${styles.colMetric}`}>
+              <th
+                className={`${styles.alignRight} ${styles.colMetric} ${styles.sortable}`}
+                onClick={() => handleSort("metric")}
+                aria-sort={sortKey === "metric" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
+                style={{ cursor: "pointer" }}
+              >
                 <Tooltip text={METRIC_TOOLTIPS[metric] ?? ""}>
                   {metric === "roi" ? "ROI" : metric === "pnl" ? "PnL" : metric === "winrate" ? "Win Rate" : "Max DD"}
                 </Tooltip>
+                {" "}{sortIcon("metric")}
               </th>
-              <th className={`${styles.alignRight} ${styles.colHands} ${styles.hideMobile}`}>Hands</th>
-              <th className={`${styles.alignRight} ${styles.colWl} ${styles.hideMobile}`}>
+              <th
+                className={`${styles.alignRight} ${styles.colHands} ${styles.hideMobile} ${styles.sortable}`}
+                onClick={() => handleSort("totalHands")}
+                aria-sort={sortKey === "totalHands" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
+                style={{ cursor: "pointer" }}
+              >
+                Hands {sortIcon("totalHands")}
+              </th>
+              <th
+                className={`${styles.alignRight} ${styles.colWl} ${styles.hideMobile} ${styles.sortable}`}
+                onClick={() => handleSort("winningHands")}
+                aria-sort={sortKey === "winningHands" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
+                style={{ cursor: "pointer" }}
+              >
                 <Tooltip text="Wins / Losses">W/L</Tooltip>
+                {" "}{sortIcon("winningHands")}
               </th>
               <th className={`${styles.colExpand} ${styles.showMobile}`} aria-label="Expand row" />
             </tr>
           </thead>
           <tbody>
-            {entries.map((entry) => {
+            {sortedEntries.map((entry) => {
               const primaryValue = getPrimaryValue(entry, metric);
               const isPositive = isPrimaryPositive(entry, metric);
               const profile = getAgentProfile(entry.ownerAddress);
@@ -168,6 +222,19 @@ export function LeaderboardTable({ data }: LeaderboardTableProps) {
       </div>
     </div>
   );
+}
+
+function getPrimaryNumeric(
+  entry: LeaderboardResponse["entries"][0],
+  metric: LeaderboardResponse["metric"]
+): number {
+  switch (metric) {
+    case "roi": return parseFloat(entry.roi);
+    case "pnl": return Number(BigInt(entry.cumulativePnl)) / 1e18;
+    case "winrate": return parseFloat(entry.winrate);
+    case "mdd": return parseFloat(entry.mdd);
+    default: return 0;
+  }
 }
 
 function getPrimaryValue(

@@ -350,6 +350,7 @@
   display: grid;
   gap: 0.18rem;
   font-size: 0.8rem;
+  transition: all 0.3s ease;
 }
 
 .betTicket.won {
@@ -360,6 +361,26 @@
 .betTicket.lost {
   border-color: rgba(255, 98, 110, 0.45);
   background: rgba(255, 98, 110, 0.1);
+}
+
+@keyframes flash-won {
+  0%   { background: rgba(57, 217, 138, 0.45); }
+  60%  { background: rgba(57, 217, 138, 0.2); }
+  100% { background: rgba(57, 217, 138, 0.1); }
+}
+
+@keyframes flash-lost {
+  0%   { background: rgba(255, 98, 110, 0.45); }
+  60%  { background: rgba(255, 98, 110, 0.2); }
+  100% { background: rgba(255, 98, 110, 0.1); }
+}
+
+.betTicket.flashWon {
+  animation: flash-won 0.8s ease-out forwards;
+}
+
+.betTicket.flashLost {
+  animation: flash-lost 0.8s ease-out forwards;
 }
 
 /* Mobile sticky bankroll summary */

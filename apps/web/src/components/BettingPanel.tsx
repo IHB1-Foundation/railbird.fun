@@ -96,6 +96,7 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
   const [showBetConfirm, setShowBetConfirm] = useState(false);
   const [skipSmallBetConfirm, setSkipSmallBetConfirm] = useState(false);
   const [pendingBetWei, setPendingBetWei] = useState<bigint | null>(null);
+  const [flashIds, setFlashIds] = useState<Map<string, "won" | "lost">>(new Map());
   const [mobileBankrollOpen, setMobileBankrollOpen] = useState(false);
   const [marketJustOpened, setMarketJustOpened] = useState(false);
   const prevMarketOpenRef = useRef<boolean | null>(null);
@@ -242,6 +243,18 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
     localStorage.setItem(WAGERS_KEY, JSON.stringify(nextWagers));
     localStorage.setItem(BANKROLL_KEY, nextBankroll.toString());
     localStorage.setItem(SETTLED_HANDS_KEY, JSON.stringify(Array.from(nextSettled)));
+
+    // Build flash map for newly settled wagers
+    const newFlash = new Map<string, "won" | "lost">();
+    for (const w of nextWagers) {
+      if (w.status !== "open" && !wagers.find((ow) => ow.id === w.id && ow.status !== "open")) {
+        newFlash.set(w.id, w.status as "won" | "lost");
+      }
+    }
+    if (newFlash.size > 0) {
+      setFlashIds(newFlash);
+      setTimeout(() => setFlashIds(new Map()), 2500);
+    }
 
     if (realized > 0n) {
       showSuccess(`Hand #${handId} settled: +${formatChips(realized)} ${CHIP_SYMBOL}`);
@@ -639,19 +652,24 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
             <div className="muted">No settled bets yet.</div>
           ) : (
             <div className={styles.betTicketList}>
-              {settledWagers.map((wager) => (
-                <div key={wager.id} className={`${styles.betTicket} ${wager.status === "won" ? styles.won : styles.lost}`}>
-                  <div>
-                    Hand #{wager.handId} · Seat {wager.seatIndex}
+              {settledWagers.map((wager) => {
+                const isFlashing = flashIds.has(wager.id);
+                const flashType = flashIds.get(wager.id);
+                return (
+                  <div
+                    key={wager.id}
+                    className={`${styles.betTicket} ${wager.status === "won" ? styles.won : styles.lost} ${isFlashing ? (flashType === "won" ? styles.flashWon : styles.flashLost) : ""}`}
+                  >
+                    <div>Hand #{wager.handId} · Seat {wager.seatIndex}</div>
+                    <div>{wager.profileName}</div>
+                    <div>
+                      {wager.status === "won"
+                        ? `🎉 +${formatChips(BigInt(wager.payoutWei || "0"))} ${CHIP_SYMBOL}`
+                        : `-${formatChips(BigInt(wager.stakeWei))} ${CHIP_SYMBOL}`}
+                    </div>
                   </div>
-                  <div>{wager.profileName}</div>
-                  <div>
-                    {wager.status === "won"
-                      ? `✓ WIN +${formatChips(BigInt(wager.payoutWei || "0"))} ${CHIP_SYMBOL}`
-                      : "✗ LOSE"}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

@@ -330,6 +330,30 @@
   gap: 0.4rem;
 }
 
+.betPresetBtn {
+  flex: 1;
+  border-radius: 999px;
+  border: 1px solid rgba(149, 158, 204, 0.3);
+  background: rgba(129, 108, 249, 0.1);
+  color: var(--accent-soft);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.32rem 0.5rem;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.betPresetBtn:hover {
+  background: rgba(129, 108, 249, 0.22);
+  border-color: rgba(129, 108, 249, 0.5);
+}
+
+.betPresetBtn.betPresetActive {
+  background: rgba(129, 108, 249, 0.35);
+  border-color: rgba(172, 151, 255, 0.65);
+  color: #ece6ff;
+}
+
 .betHistoryGrid {
   margin-top: 1rem;
   display: grid;

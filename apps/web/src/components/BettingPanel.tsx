@@ -576,8 +576,10 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
               <button
                 key={preset}
                 type="button"
-                className="ghost-btn"
+                className={`${styles.betPresetBtn} ${stakeInput === preset ? styles.betPresetActive : ""}`}
                 onClick={() => setStakeInput(preset)}
+                aria-label={`Set stake to ${preset} chips`}
+                aria-pressed={stakeInput === preset}
               >
                 {preset}
               </button>

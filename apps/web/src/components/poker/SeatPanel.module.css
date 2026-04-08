@@ -205,3 +205,13 @@
     font-size: 0.69rem;
   }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .dealerChip {
+    animation: none;
+  }
+
+  .seatActionBadge {
+    animation: none;
+  }
+}

@@ -6,7 +6,8 @@ interface AgentAvatarProps {
 }
 
 export function AgentAvatar({ name, accentColor, colorHex, size = 32 }: AgentAvatarProps) {
-  const letter = name ? name.charAt(0).toUpperCase() : "?";
+  // Extract first alphabetic character; fallback to "?" if none found
+  const letter = name?.match(/[a-z]/i)?.[0]?.toUpperCase() ?? "?";
   const bg = accentColor || "rgba(129, 108, 249, 0.6)";
   const fg = colorHex || "#ffffff";
 
@@ -28,9 +29,10 @@ export function AgentAvatar({ name, accentColor, colorHex, size = 32 }: AgentAva
         boxShadow: `0 2px 8px rgba(0,0,0,0.3)`,
         userSelect: "none",
       }}
-      aria-hidden="true"
+      aria-label={name || "Unknown agent"}
+      role="img"
     >
-      {name ? letter : "♠"}
+      {letter}
     </span>
   );
 }

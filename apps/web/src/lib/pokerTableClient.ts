@@ -51,18 +51,20 @@ function asHexString(value: unknown, context: string): `0x${string}` {
 }
 
 
-function getPublicClient() {
-  return createPublicClient({
-    chain: CHAIN,
-    transport: http(getRpcUrl()),
-  });
-}
+// Module-level singleton — one PublicClient per page lifecycle.
+// The RPC URL is resolved once at module load time from the env variable.
+const publicClient = createPublicClient({
+  chain: CHAIN,
+  transport: http(getRpcUrl()),
+});
 
 function getProvider() {
   if (typeof window === "undefined") return null;
   return window.ethereum ?? null;
 }
 
+// WalletClient is created lazily because it depends on window.ethereum which
+// is only available client-side and may not be injected at module load time.
 function getWalletClient() {
   const provider = getProvider();
   if (!provider) return null;
@@ -91,8 +93,7 @@ export interface RegisterSeatResult {
 }
 
 export async function getPokerTableMaxSeats(tableAddress: Address): Promise<number> {
-  const client = getPublicClient();
-  const result = await client.readContract({
+  const result = await publicClient.readContract({
     address: tableAddress,
     abi: POKER_TABLE_ABI,
     functionName: "MAX_SEATS",
@@ -110,7 +111,6 @@ export async function registerSeat(params: RegisterSeatParams): Promise<Register
     throw new Error("No account available");
   }
 
-  const publicClient = getPublicClient();
   const buyIn = parseUnits(params.buyInKaia, 18);
   if (buyIn <= 0n) {
     throw new Error("Buy-in must be greater than 0");
@@ -161,8 +161,6 @@ export async function registerEncryptionKeyOnChain(
   const [account] = await walletClient.getAddresses();
   if (!account) throw new Error("No account available");
 
-  const publicClient = getPublicClient();
-
   // Check if the same key is already registered — skip if so
   const existingRaw = await publicClient.readContract({
     address: params.tableAddress,
@@ -199,7 +197,6 @@ export async function getEncryptionKeyOnChain(
   tableAddress: Address,
   seatIndex: number
 ): Promise<Uint8Array | null> {
-  const publicClient = getPublicClient();
   let hex: `0x${string}`;
   try {
     const raw = await publicClient.readContract({

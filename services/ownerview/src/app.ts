@@ -8,7 +8,8 @@ import { HoleCardStore } from "./holecards/index.js";
 import { DealerService, HandStartedEventListener } from "./dealer/index.js";
 import { DealerSeedStore } from "./dealer/dealerSeedStore.js";
 import { createAuthMiddleware } from "./middleware/index.js";
-import { createAuthRoutes, createOwnerRoutes, createDealerRoutes } from "./routes/index.js";
+import { createAuthRoutes, createOwnerRoutes, createDealerRoutes, createReasoningRoutes } from "./routes/index.js";
+import { logMemoryWarning } from "./routes/reasoning.js";
 
 const DEFAULT_ALLOWED_ORIGINS = [
   "http://localhost:3000",
@@ -170,6 +171,10 @@ export async function createApp(config: AppConfig): Promise<AppContext> {
 
   // Auth routes (public)
   app.use("/auth", createAuthRoutes(authService));
+
+  // Reasoning routes (public — POST requires operator signature in production)
+  app.use("/reasoning", createReasoningRoutes());
+  logMemoryWarning();
 
   // Dealer routes (protected with API key when configured)
   app.use("/dealer", createDealerRoutes(dealerService, config.dealerApiKey));

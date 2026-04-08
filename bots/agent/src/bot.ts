@@ -420,27 +420,57 @@ export class AgentBot {
 
     // Get decision from strategy
     const decision = await this.strategy.decide(context);
-    logger.info({ handId: String(state.currentHandId), action: decision.action, raiseAmount: decision.raiseAmount ? String(decision.raiseAmount) : undefined }, "Deciding action");
+    logger.info(
+      {
+        handId: String(state.currentHandId),
+        action: decision.action,
+        raiseAmount: decision.raiseAmount ? String(decision.raiseAmount) : undefined,
+        hasReasoning: !!decision.reasoning,
+      },
+      "Deciding action"
+    );
+
+    if (decision.reasoning) {
+      logger.debug({ reasoning: decision.reasoning }, "AI reasoning");
+    }
 
     // Submit action
+    let txHash: string | undefined;
     try {
       switch (decision.action) {
         case Decision.FOLD:
-          await this.chainClient.fold(seatIndex);
+          txHash = await this.chainClient.fold(seatIndex);
           break;
         case Decision.CHECK:
-          await this.chainClient.check(seatIndex);
+          txHash = await this.chainClient.check(seatIndex);
           break;
         case Decision.CALL:
-          await this.chainClient.call(seatIndex);
+          txHash = await this.chainClient.call(seatIndex);
           break;
         case Decision.RAISE:
-          await this.chainClient.raise(seatIndex, decision.raiseAmount!);
+          txHash = await this.chainClient.raise(seatIndex, decision.raiseAmount!);
           break;
       }
       this.stats.actionsSubmitted++;
       this.stats.lastActionTime = Date.now();
-      logger.info({ action: decision.action }, "Action submitted successfully");
+      logger.info({ action: decision.action, txHash }, "Action submitted successfully");
+
+      // Fire-and-forget: send reasoning to OwnerView (non-blocking)
+      if (decision.reasoning && this.ownerviewClient) {
+        const reasoningParams = {
+          tableAddress: this.config.pokerTableAddress,
+          handId: String(state.currentHandId),
+          seatIndex,
+          txHash,
+          action: decision.action,
+          raiseAmount: decision.raiseAmount ? String(decision.raiseAmount) : undefined,
+          reasoning: decision.reasoning,
+          factors: decision.factors,
+        };
+        this.ownerviewClient.submitReasoning(reasoningParams).catch((err: unknown) => {
+          logger.warn({ err: err instanceof Error ? err.message : String(err) }, "Failed to submit reasoning (non-fatal)");
+        });
+      }
     } catch (error) {
       logger.error({ action: decision.action, error }, "Failed to submit action");
       this.stats.errors++;

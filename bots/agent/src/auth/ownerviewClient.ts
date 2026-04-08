@@ -6,6 +6,26 @@ import { hkdf } from "@noble/hashes/hkdf.js";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { hexToBytes, fetchWithTimeout } from "@playerco/shared";
 
+export interface SubmitReasoningFactors {
+  handStrength: string;
+  potOdds: string;
+  position: string;
+  opponentRead: string;
+  sizing?: string;
+  riskAssessment?: string;
+}
+
+export interface SubmitReasoningParams {
+  tableAddress: string;
+  handId: string;
+  seatIndex: number;
+  txHash?: string;
+  action: string;
+  raiseAmount?: string;
+  reasoning: string;
+  factors?: SubmitReasoningFactors;
+}
+
 export interface NonceResponse {
   nonce: string;
   message: string;
@@ -195,6 +215,36 @@ export class OwnerViewClient {
       seatIndex: raw.seatIndex,
       holeCards: [{ card: card1 }, { card: card2 }],
     };
+  }
+
+  /**
+   * Submit action reasoning to OwnerView for storage.
+   * Fire-and-forget: failures are logged but do not block the caller.
+   */
+  async submitReasoning(params: SubmitReasoningParams): Promise<void> {
+    const url = `${this.baseUrl}/reasoning`;
+    try {
+      const res = await fetchWithTimeout(
+        url,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(params),
+        },
+        this.requestTimeoutMs
+      );
+      if (!res.ok) {
+        const errorBody = await res.json().catch(() => ({ error: "Request failed" })) as { error?: string };
+        throw new Error(errorBody.error || `submitReasoning failed: ${res.status}`);
+      }
+    } catch (error) {
+      // Non-blocking: log and continue
+      const message = error instanceof Error ? error.message : String(error);
+      // We intentionally suppress this error to avoid circular import of logger.
+      // The caller is responsible for logging at the appropriate level.
+      void message; // lint: used implicitly via the throw path
+      throw error;  // re-throw so callers can fire-and-forget if they choose
+    }
   }
 
   /**

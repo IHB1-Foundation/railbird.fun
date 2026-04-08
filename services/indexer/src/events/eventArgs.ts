@@ -160,3 +160,13 @@ export interface DecisionRevealedArgs {
   action: string;
   reasoning: string;
 }
+
+export interface StrategyUpdatedArgs {
+  agent: string;
+  version: bigint;
+  configHash: `0x${string}`;
+  personaId: string;
+  aggressionBps: number;
+  tightnessBps: number;
+  bluffFreqBps: number;
+}

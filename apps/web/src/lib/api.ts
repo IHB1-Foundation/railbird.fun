@@ -225,3 +225,28 @@ export async function getHealth(): Promise<{
 }> {
   return fetchJson("/health");
 }
+
+// Strategy history
+
+export interface StrategyHistoryEntry {
+  version: string;
+  configHash: string;
+  personaId: string;
+  aggressionBps: number;
+  tightnessBps: number;
+  bluffFreqBps: number;
+  blockNumber: string;
+  txHash: string;
+  timestamp: string;
+}
+
+export async function getAgentStrategies(address: string, limit = 20): Promise<StrategyHistoryEntry[]> {
+  try {
+    const data = await fetchJson<{ agent: string; strategies: StrategyHistoryEntry[] }>(
+      `/agents/${address}/strategies?limit=${limit}`
+    );
+    return data.strategies ?? [];
+  } catch {
+    return [];
+  }
+}

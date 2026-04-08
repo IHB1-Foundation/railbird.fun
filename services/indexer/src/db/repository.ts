@@ -965,3 +965,60 @@ export async function getEloLeaderboard(limit = 100, offset = 0): Promise<Array<
   );
   return result.rows;
 }
+
+// ============ Strategy History ============
+
+export async function insertStrategyRecord(
+  agent: string,
+  version: bigint,
+  configHash: string,
+  personaId: string,
+  aggressionBps: number,
+  tightnessBps: number,
+  bluffFreqBps: number,
+  blockNumber: bigint,
+  txHash: string
+): Promise<void> {
+  await query(
+    `INSERT INTO strategy_history
+       (agent, version, config_hash, persona_id, aggression_bps, tightness_bps, bluff_freq_bps, block_number, tx_hash)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+     ON CONFLICT (agent, version) DO NOTHING`,
+    [
+      agent.toLowerCase(),
+      version.toString(),
+      configHash,
+      personaId,
+      aggressionBps,
+      tightnessBps,
+      bluffFreqBps,
+      blockNumber.toString(),
+      txHash,
+    ]
+  );
+}
+
+export interface StrategyRecord {
+  agent: string;
+  version: string;
+  config_hash: string;
+  persona_id: string;
+  aggression_bps: number;
+  tightness_bps: number;
+  bluff_freq_bps: number;
+  block_number: string;
+  tx_hash: string;
+  created_at: Date;
+}
+
+export async function getAgentStrategies(agent: string, limit = 50): Promise<StrategyRecord[]> {
+  const result = await query<StrategyRecord>(
+    `SELECT agent, version, config_hash, persona_id, aggression_bps, tightness_bps, bluff_freq_bps, block_number, tx_hash, created_at
+     FROM strategy_history
+     WHERE agent = $1
+     ORDER BY version DESC
+     LIMIT $2`,
+    [agent.toLowerCase(), limit]
+  );
+  return result.rows;
+}

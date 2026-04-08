@@ -21,6 +21,7 @@ import {
   insertRebalanceEvent,
   insertRevealedHolecard,
   insertDecisionVerification,
+  insertStrategyRecord,
   getHand,
   getSeats,
   getEloRatings,
@@ -657,3 +658,38 @@ export async function handleDecisionRevealed(
   );
 }
 
+
+export async function handleStrategyUpdated(
+  log: import("viem").Log,
+  args: {
+    agent: string;
+    version: bigint;
+    configHash: `0x${string}`;
+    personaId: string;
+    aggressionBps: number;
+    tightnessBps: number;
+    bluffFreqBps: number;
+  }
+): Promise<void> {
+  const meta = getLogMeta(log);
+  if (!meta) return;
+  if (await isEventProcessed(meta.blockNumber, meta.logIndex)) return;
+
+  await insertStrategyRecord(
+    args.agent,
+    args.version,
+    args.configHash,
+    args.personaId,
+    args.aggressionBps,
+    args.tightnessBps,
+    args.bluffFreqBps,
+    meta.blockNumber,
+    meta.txHash,
+  );
+
+  await markEventProcessed(meta.blockNumber, meta.logIndex, meta.txHash, "StrategyUpdated");
+  logger.info(
+    { agent: args.agent, version: args.version.toString(), personaId: args.personaId },
+    "StrategyUpdated — on-chain strategy version recorded"
+  );
+}

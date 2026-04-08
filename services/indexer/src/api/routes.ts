@@ -26,6 +26,7 @@ import {
   getAgentHands,
   getEloRatings,
   getEloLeaderboard,
+  getAgentStrategies,
 } from "../db/index.js";
 import { getWsManager } from "../ws/index.js";
 import { broadcastAiCommentary } from "../ws/broadcaster.js";
@@ -503,6 +504,31 @@ router.get("/agents/:address/rebalances", async (req, res) => {
     );
   } catch (error) {
     logger.error({ err: error }, "Error fetching rebalance events:");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/agents/:address/strategies", async (req, res) => {
+  try {
+    const address = req.params.address.toLowerCase();
+    const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
+    const records = await getAgentStrategies(address, limit);
+    res.json({
+      agent: address,
+      strategies: records.map((r) => ({
+        version: r.version,
+        configHash: r.config_hash,
+        personaId: r.persona_id,
+        aggressionBps: r.aggression_bps,
+        tightnessBps: r.tightness_bps,
+        bluffFreqBps: r.bluff_freq_bps,
+        blockNumber: r.block_number,
+        txHash: r.tx_hash,
+        timestamp: r.created_at.toISOString(),
+      })),
+    });
+  } catch (error) {
+    logger.error({ err: error }, "Error fetching agent strategies:");
     res.status(500).json({ error: "Internal server error" });
   }
 });

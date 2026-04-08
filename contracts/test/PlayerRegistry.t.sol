@@ -109,4 +109,117 @@ contract PlayerRegistryTest is Test {
         vm.expectRevert("Not agent owner");
         registry.updateOperator(agent1, address(0x9999));
     }
+
+    // ============ Strategy Registry Tests ============
+
+    bytes32 constant HASH_V1 = keccak256("strategy-config-v1");
+    bytes32 constant HASH_V2 = keccak256("strategy-config-v2");
+
+    function _registerAgent1() internal {
+        vm.prank(agent1);
+        registry.registerAgent(vaultAddr1, pokerTable1, operatorAddr1, metaURI1);
+    }
+
+    function test_UpdateStrategy_OwnerCanSet() public {
+        _registerAgent1();
+        vm.prank(agent1); // owner
+        registry.updateStrategy(agent1, HASH_V1, "shark", 7000, 7000, 3000);
+
+        assertEq(registry.getStrategyCount(agent1), 1);
+    }
+
+    function test_UpdateStrategy_OperatorCanSet() public {
+        _registerAgent1();
+        vm.prank(operatorAddr1); // operator
+        registry.updateStrategy(agent1, HASH_V1, "shark", 7000, 7000, 3000);
+
+        assertEq(registry.getStrategyCount(agent1), 1);
+    }
+
+    function test_UpdateStrategy_UnauthorizedReverts() public {
+        _registerAgent1();
+        vm.prank(agent2);
+        vm.expectRevert("Not authorized");
+        registry.updateStrategy(agent1, HASH_V1, "shark", 7000, 7000, 3000);
+    }
+
+    function test_UpdateStrategy_VersionAutoIncrements() public {
+        _registerAgent1();
+        vm.prank(agent1);
+        registry.updateStrategy(agent1, HASH_V1, "shark", 7000, 7000, 3000);
+        vm.prank(agent1);
+        registry.updateStrategy(agent1, HASH_V2, "maniac", 9000, 2000, 7000);
+
+        assertEq(registry.getStrategyCount(agent1), 2);
+        (PlayerRegistry.StrategyRecord memory rec, bool exists) = registry.getLatestStrategy(agent1);
+        assertTrue(exists);
+        assertEq(rec.version, 2);
+        assertEq(rec.configHash, HASH_V2);
+        assertEq(rec.personaId, "maniac");
+    }
+
+    function test_UpdateStrategy_EmitsEvent() public {
+        _registerAgent1();
+        vm.prank(agent1);
+        vm.expectEmit(true, false, false, true);
+        emit PlayerRegistry.StrategyUpdated(agent1, 1, HASH_V1, "shark", 7000, 7000, 3000);
+        registry.updateStrategy(agent1, HASH_V1, "shark", 7000, 7000, 3000);
+    }
+
+    function test_UpdateStrategy_OutOfRangeReverts() public {
+        _registerAgent1();
+        vm.prank(agent1);
+        vm.expectRevert("aggressionBps out of range");
+        registry.updateStrategy(agent1, HASH_V1, "shark", 10001, 7000, 3000);
+    }
+
+    function test_GetLatestStrategy_NoHistory() public {
+        _registerAgent1();
+        (PlayerRegistry.StrategyRecord memory rec, bool exists) = registry.getLatestStrategy(agent1);
+        assertFalse(exists);
+        assertEq(rec.version, 0);
+    }
+
+    function test_GetStrategyHistory_Pagination() public {
+        _registerAgent1();
+        for (uint16 i = 0; i < 5; i++) {
+            vm.prank(agent1);
+            registry.updateStrategy(agent1, bytes32(uint256(i)), "shark", i * 1000, 5000, 2000);
+        }
+        assertEq(registry.getStrategyCount(agent1), 5);
+
+        PlayerRegistry.StrategyRecord[] memory page = registry.getStrategyHistory(agent1, 0, 3);
+        assertEq(page.length, 3);
+        assertEq(page[0].version, 1);
+        assertEq(page[2].version, 3);
+
+        PlayerRegistry.StrategyRecord[] memory page2 = registry.getStrategyHistory(agent1, 3, 3);
+        assertEq(page2.length, 2);
+        assertEq(page2[0].version, 4);
+    }
+
+    function test_GetStrategyHistory_EmptyOnOffset() public {
+        _registerAgent1();
+        vm.prank(agent1);
+        registry.updateStrategy(agent1, HASH_V1, "shark", 7000, 7000, 3000);
+
+        PlayerRegistry.StrategyRecord[] memory page = registry.getStrategyHistory(agent1, 999, 10);
+        assertEq(page.length, 0);
+    }
+
+    function test_UpdateStrategy_FieldsStoredCorrectly() public {
+        _registerAgent1();
+        vm.prank(agent1);
+        registry.updateStrategy(agent1, HASH_V1, "adaptive", 5000, 5000, 3000);
+
+        (PlayerRegistry.StrategyRecord memory rec, bool exists) = registry.getLatestStrategy(agent1);
+        assertTrue(exists);
+        assertEq(rec.configHash, HASH_V1);
+        assertEq(rec.personaId, "adaptive");
+        assertEq(rec.aggressionBps, 5000);
+        assertEq(rec.tightnessBps, 5000);
+        assertEq(rec.bluffFreqBps, 3000);
+        assertEq(rec.version, 1);
+        assertGt(rec.timestamp, 0);
+    }
 }

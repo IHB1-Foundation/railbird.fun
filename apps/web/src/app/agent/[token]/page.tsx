@@ -3,7 +3,7 @@ import { Breadcrumb } from "@/components/Breadcrumb";
 import { Tooltip } from "@/components/Tooltip";
 import { AgentAvatar } from "@/components/AgentAvatar";
 import { ShareButton } from "@/components/ShareButton";
-import { getAgent, getAgentSnapshots, getAgentRebalances, getAgentHands, getTreasuryReasoningAll, type RebalanceEventResponse, type TreasuryReasoningEntry } from "@/lib/api";
+import { getAgent, getAgentSnapshots, getAgentRebalances, getAgentHands, getTreasuryReasoningAll, getAgentStrategies, type RebalanceEventResponse, type TreasuryReasoningEntry, type StrategyHistoryEntry } from "@/lib/api";
 import type { HandResponse } from "@/lib/types";
 
 interface AgentHealthRag {
@@ -49,6 +49,7 @@ export default async function AgentPage({
   let rebalances: RebalanceEventResponse[] = [];
   let hands: HandResponse[] = [];
   let treasuryReasonings: Map<string, TreasuryReasoningEntry> = new Map();
+  let strategyHistory: StrategyHistoryEntry[] = [];
   let ragStats: AgentHealthRag | null = null;
   let error = null;
 
@@ -56,16 +57,18 @@ export default async function AgentPage({
     agent = await getAgent(token);
     const fetchHands = getAgentHands(token, 20).catch(() => [] as HandResponse[]);
     if (agent.vaultAddress) {
-      const [s, r, h, tr] = await Promise.all([
+      const [s, r, h, tr, strats] = await Promise.all([
         getAgentSnapshots(token, 50),
         getAgentRebalances(token, 50).catch(() => []),
         fetchHands,
         getTreasuryReasoningAll(agent.vaultAddress).catch(() => []),
+        getAgentStrategies(token, 20).catch(() => []),
       ]);
       snapshots = s;
       rebalances = r;
       hands = h;
       treasuryReasonings = new Map(tr.map((e) => [e.handId, e]));
+      strategyHistory = strats;
     } else {
       hands = await fetchHands;
     }
@@ -350,6 +353,41 @@ export default async function AgentPage({
               </div>
             );
           })()}
+        </div>
+      )}
+
+      {/* Strategy History (T-1102) */}
+      {strategyHistory.length > 0 && (
+        <div className="card" style={{ marginBottom: "1rem", padding: "1rem 1.2rem" }}>
+          <h3 className="section-title-sm" style={{ marginBottom: "0.75rem" }}>Strategy Version History</h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+            {strategyHistory.map((s, i) => {
+              const prev = strategyHistory[i + 1];
+              const aggrDiff = prev ? s.aggressionBps - prev.aggressionBps : 0;
+              const tightDiff = prev ? s.tightnessBps - prev.tightnessBps : 0;
+              return (
+                <div key={s.version} style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start", padding: "0.5rem", background: "rgba(255,255,255,0.04)", borderRadius: "6px" }}>
+                  <span style={{ fontSize: "0.7rem", color: "var(--muted)", whiteSpace: "nowrap", paddingTop: "0.15rem", minWidth: "32px" }}>v{s.version}</span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap", marginBottom: "0.2rem" }}>
+                      <span style={{ fontSize: "0.82rem", fontWeight: 600 }}>{s.personaId}</span>
+                      <span style={{ fontSize: "0.72rem", color: "var(--muted)" }}>
+                        Aggr: {(s.aggressionBps / 100).toFixed(0)}%{aggrDiff !== 0 && <span style={{ color: aggrDiff > 0 ? "#22C55E" : "#EF4444" }}> ({aggrDiff > 0 ? "+" : ""}{(aggrDiff / 100).toFixed(0)}%)</span>}
+                        {" · "}Tight: {(s.tightnessBps / 100).toFixed(0)}%{tightDiff !== 0 && <span style={{ color: tightDiff > 0 ? "#22C55E" : "#EF4444" }}> ({tightDiff > 0 ? "+" : ""}{(tightDiff / 100).toFixed(0)}%)</span>}
+                        {" · "}Bluff: {(s.bluffFreqBps / 100).toFixed(0)}%
+                      </span>
+                    </div>
+                    <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                      <a href={explorerAddressUrl(s.txHash)} target="_blank" rel="noopener noreferrer" style={{ fontSize: "0.68rem", color: "var(--muted)", fontFamily: "monospace" }}>
+                        {s.txHash.slice(0, 10)}…
+                      </a>
+                      <span style={{ fontSize: "0.68rem", color: "var(--muted)" }}>{new Date(s.timestamp).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 

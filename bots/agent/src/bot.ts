@@ -4,9 +4,10 @@ import { ChainClient, GameState, type TableState } from "./chain/client.js";
 import { OwnerViewClient, type HoleCardsResponse } from "./auth/ownerviewClient.js";
 import { SimpleStrategy, type Strategy, Decision, type DecisionContext, type HoleCards } from "./strategy/index.js";
 import { signMessage } from "viem/accounts";
-import { keccak256, encodeAbiParameters } from "viem";
+import { keccak256, encodeAbiParameters, createWalletClient, http } from "viem";
+import type { Chain } from "viem";
 import { deriveEncryptionKeyPair } from "./auth/encryptionKey.js";
-import { CircuitBreaker, CircuitOpenError, createLogger } from "@playerco/shared";
+import { CircuitBreaker, CircuitOpenError, createLogger, PLAYER_REGISTRY_ABI } from "@playerco/shared";
 import type { VectorStore } from "./rag/vectorStore.js";
 import { embedHand } from "./rag/embedder.js";
 import type { HandSummary } from "./rag/types.js";
@@ -24,6 +25,8 @@ export interface AgentBotConfig {
   turnActionDelayMs?: number;
   strategy?: Strategy;
   vectorStore?: VectorStore;
+  /** PlayerRegistry contract address for on-chain strategy registration. */
+  playerRegistryAddress?: `0x${string}`;
 }
 
 export interface BotStats {
@@ -153,6 +156,52 @@ export class AgentBot {
   }
 
   /**
+   * T-1102: Register current strategy on the PlayerRegistry contract.
+   * Called at startup and after each evolution update.
+   * Fails silently — must not block game play.
+   */
+  async registerStrategyOnChain(overrideParams?: { aggressionBps: number; tightnessBps: number; bluffFreqBps: number; personaId: string }): Promise<void> {
+    const registryAddress = this.config.playerRegistryAddress;
+    if (!registryAddress) return;
+
+    const strat = this.strategy as unknown as { persona?: { id: string; aggression: number; tightness: number; bluffFrequency: number } };
+    const persona = strat.persona;
+    const personaId = overrideParams?.personaId ?? persona?.id ?? "unknown";
+    const aggressionBps = overrideParams?.aggressionBps ?? Math.round((persona?.aggression ?? 0.5) * 10000);
+    const tightnessBps = overrideParams?.tightnessBps ?? Math.round((persona?.tightness ?? 0.5) * 10000);
+    const bluffFreqBps = overrideParams?.bluffFreqBps ?? Math.round((persona?.bluffFrequency ?? 0.3) * 10000);
+
+    const configData = JSON.stringify({ personaId, aggressionBps, tightnessBps, bluffFreqBps });
+    const configHash = keccak256(new TextEncoder().encode(configData) as unknown as `0x${string}`);
+
+    const chain: Chain = {
+      id: this.config.chainId || 133,
+      name: "HashKey Chain Testnet",
+      nativeCurrency: { name: "HashKey", symbol: "HSK", decimals: 18 },
+      rpcUrls: { default: { http: [this.config.rpcUrl] } },
+    };
+
+    const account = (await import("viem/accounts")).privateKeyToAccount(this.config.privateKey);
+    const walletClient = createWalletClient({ account, chain, transport: http(this.config.rpcUrl) });
+
+    await walletClient.writeContract({
+      address: registryAddress,
+      abi: PLAYER_REGISTRY_ABI,
+      functionName: "updateStrategy",
+      args: [
+        account.address,
+        configHash as `0x${string}`,
+        personaId,
+        aggressionBps,
+        tightnessBps,
+        bluffFreqBps,
+      ],
+    });
+
+    logger.info({ personaId, aggressionBps, tightnessBps, bluffFreqBps }, "Strategy registered on-chain");
+  }
+
+  /**
    * Run the bot for a specified number of hands (or indefinitely if 0)
    */
   async run(maxHands: number = 0): Promise<void> {
@@ -183,6 +232,11 @@ export class AgentBot {
     } catch (error) {
       logger.warn({ error }, "Failed to derive encryption key pair");
     }
+
+    // Register current strategy on-chain (T-1102)
+    await this.registerStrategyOnChain().catch((err: unknown) => {
+      logger.warn({ err: err instanceof Error ? err.message : String(err) }, "Strategy on-chain registration failed (non-fatal)");
+    });
 
     while (this.running) {
       try {

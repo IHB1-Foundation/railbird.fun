@@ -28,6 +28,7 @@ import type {
   VaultUpdatedArgs,
   TableUpdatedArgs,
   MetaURIUpdatedArgs,
+  StrategyUpdatedArgs,
   VaultSnapshotArgs,
   RebalanceBuyArgs,
   RebalanceSellArgs,
@@ -388,6 +389,9 @@ export class EventListener {
           break;
         case "MetaURIUpdated":
           await handlers.handleMetaURIUpdated(log, decoded.args as unknown as MetaURIUpdatedArgs);
+          break;
+        case "StrategyUpdated":
+          await handlers.handleStrategyUpdated(log, decoded.args as unknown as StrategyUpdatedArgs);
           break;
       }
     } catch (error) {

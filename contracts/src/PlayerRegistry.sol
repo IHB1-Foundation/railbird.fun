@@ -59,6 +59,28 @@ contract PlayerRegistry {
 
     event AgentDeregistered(address indexed agent, address indexed owner);
 
+    event StrategyUpdated(
+        address indexed agent,
+        uint256 version,
+        bytes32 configHash,
+        string personaId,
+        uint16 aggressionBps,
+        uint16 tightnessBps,
+        uint16 bluffFreqBps
+    );
+
+    // ============ Structs ============
+
+    struct StrategyRecord {
+        bytes32 configHash;
+        string  personaId;
+        uint16  aggressionBps;   // 0–10000
+        uint16  tightnessBps;    // 0–10000
+        uint16  bluffFreqBps;    // 0–10000
+        uint256 version;         // monotonically increasing
+        uint256 timestamp;
+    }
+
     // ============ State Variables ============
 
     // agent wallet address => AgentInfo
@@ -67,11 +89,23 @@ contract PlayerRegistry {
     // Array of all registered agent addresses for enumeration
     address[] public registeredAgents;
 
+    // agent wallet address => strategy history (append-only)
+    mapping(address => StrategyRecord[]) private _strategyHistory;
+
     // ============ Modifiers ============
 
     modifier onlyAgentOwner(address agent) {
         require(agents[agent].isRegistered, "Agent not registered");
         require(msg.sender == agents[agent].owner, "Not agent owner");
+        _;
+    }
+
+    modifier onlyAuthorized(address agent) {
+        require(agents[agent].isRegistered, "Agent not registered");
+        require(
+            msg.sender == agents[agent].owner || msg.sender == agents[agent].operator,
+            "Not authorized"
+        );
         _;
     }
 
@@ -186,6 +220,85 @@ contract PlayerRegistry {
         }
 
         emit AgentDeregistered(agent, msg.sender);
+    }
+
+    // ============ Strategy Registry ============
+
+    /**
+     * @notice Record a new strategy version on-chain.
+     * @dev Callable by owner or operator. Version auto-increments.
+     * @param agent          The agent token address.
+     * @param configHash     keccak256 of serialised strategy config.
+     * @param personaId      Human-readable persona identifier.
+     * @param aggressionBps  Aggression parameter in basis points (0–10000).
+     * @param tightnessBps   Tightness parameter in basis points (0–10000).
+     * @param bluffFreqBps   Bluff frequency in basis points (0–10000).
+     */
+    function updateStrategy(
+        address agent,
+        bytes32 configHash,
+        string calldata personaId,
+        uint16 aggressionBps,
+        uint16 tightnessBps,
+        uint16 bluffFreqBps
+    ) external onlyAuthorized(agent) {
+        require(aggressionBps <= 10000, "aggressionBps out of range");
+        require(tightnessBps  <= 10000, "tightnessBps out of range");
+        require(bluffFreqBps  <= 10000, "bluffFreqBps out of range");
+
+        uint256 version = _strategyHistory[agent].length + 1;
+        _strategyHistory[agent].push(StrategyRecord({
+            configHash:    configHash,
+            personaId:     personaId,
+            aggressionBps: aggressionBps,
+            tightnessBps:  tightnessBps,
+            bluffFreqBps:  bluffFreqBps,
+            version:       version,
+            timestamp:     block.timestamp
+        }));
+
+        emit StrategyUpdated(agent, version, configHash, personaId, aggressionBps, tightnessBps, bluffFreqBps);
+    }
+
+    /**
+     * @notice Return a paginated slice of strategy history.
+     * @param agent  The agent token address.
+     * @param offset Zero-based start index.
+     * @param limit  Max number of records to return (capped at 100).
+     * @return records Array of StrategyRecord.
+     */
+    function getStrategyHistory(
+        address agent,
+        uint256 offset,
+        uint256 limit
+    ) external view returns (StrategyRecord[] memory records) {
+        StrategyRecord[] storage history = _strategyHistory[agent];
+        uint256 total = history.length;
+        if (offset >= total || limit == 0) return new StrategyRecord[](0);
+        uint256 cap = limit > 100 ? 100 : limit;
+        uint256 end = offset + cap > total ? total : offset + cap;
+        uint256 count = end - offset;
+        records = new StrategyRecord[](count);
+        for (uint256 i = 0; i < count; i++) {
+            records[i] = history[offset + i];
+        }
+    }
+
+    /**
+     * @notice Return the latest strategy record for an agent.
+     * @param agent The agent token address.
+     * @return record The most recent StrategyRecord, or a zero-valued record if none.
+     * @return exists True if at least one strategy has been recorded.
+     */
+    function getLatestStrategy(address agent) external view returns (StrategyRecord memory record, bool exists) {
+        uint256 len = _strategyHistory[agent].length;
+        if (len == 0) return (record, false);
+        return (_strategyHistory[agent][len - 1], true);
+    }
+
+    /// @notice Return the number of strategy records for an agent.
+    function getStrategyCount(address agent) external view returns (uint256) {
+        return _strategyHistory[agent].length;
     }
 
     // ============ View Functions ============

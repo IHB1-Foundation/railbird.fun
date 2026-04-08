@@ -571,5 +571,87 @@ export const PLAYER_REGISTRY_ABI = [
       }
     ],
     "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "StrategyUpdated",
+    "inputs": [
+      { "name": "agent",        "type": "address", "indexed": true },
+      { "name": "version",      "type": "uint256", "indexed": false },
+      { "name": "configHash",   "type": "bytes32", "indexed": false },
+      { "name": "personaId",   "type": "string",  "indexed": false },
+      { "name": "aggressionBps","type": "uint16",  "indexed": false },
+      { "name": "tightnessBps", "type": "uint16",  "indexed": false },
+      { "name": "bluffFreqBps", "type": "uint16",  "indexed": false }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "function",
+    "name": "updateStrategy",
+    "inputs": [
+      { "name": "agent",        "type": "address" },
+      { "name": "configHash",   "type": "bytes32" },
+      { "name": "personaId",    "type": "string"  },
+      { "name": "aggressionBps","type": "uint16"  },
+      { "name": "tightnessBps", "type": "uint16"  },
+      { "name": "bluffFreqBps", "type": "uint16"  }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "getStrategyHistory",
+    "inputs": [
+      { "name": "agent",  "type": "address" },
+      { "name": "offset", "type": "uint256" },
+      { "name": "limit",  "type": "uint256" }
+    ],
+    "outputs": [
+      {
+        "name": "records",
+        "type": "tuple[]",
+        "components": [
+          { "name": "configHash",   "type": "bytes32" },
+          { "name": "personaId",    "type": "string"  },
+          { "name": "aggressionBps","type": "uint16"  },
+          { "name": "tightnessBps", "type": "uint16"  },
+          { "name": "bluffFreqBps", "type": "uint16"  },
+          { "name": "version",      "type": "uint256" },
+          { "name": "timestamp",    "type": "uint256" }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getLatestStrategy",
+    "inputs": [{ "name": "agent", "type": "address" }],
+    "outputs": [
+      {
+        "name": "record",
+        "type": "tuple",
+        "components": [
+          { "name": "configHash",   "type": "bytes32" },
+          { "name": "personaId",    "type": "string"  },
+          { "name": "aggressionBps","type": "uint16"  },
+          { "name": "tightnessBps", "type": "uint16"  },
+          { "name": "bluffFreqBps", "type": "uint16"  },
+          { "name": "version",      "type": "uint256" },
+          { "name": "timestamp",    "type": "uint256" }
+        ]
+      },
+      { "name": "exists", "type": "bool" }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getStrategyCount",
+    "inputs": [{ "name": "agent", "type": "address" }],
+    "outputs": [{ "name": "", "type": "uint256" }],
+    "stateMutability": "view"
   }
 ] as const;

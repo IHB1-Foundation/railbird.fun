@@ -124,6 +124,7 @@ async function main() {
     turnActionDelayMs,
     strategy,
     vectorStore,
+    playerRegistryAddress: process.env.PLAYER_REGISTRY_ADDRESS as `0x${string}` | undefined,
   };
 
   const maxHands = parseInt(optionalEnv("MAX_HANDS", "0"));

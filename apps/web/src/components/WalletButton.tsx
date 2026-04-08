@@ -1,10 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/lib/auth";
 import { shortenAddress } from "@/lib/utils";
 import { ConfirmDialog } from "./ConfirmDialog";
 import styles from "./WalletButton.module.css";
+
+function friendlyError(raw: string): string {
+  if (/user rejected|user denied/i.test(raw)) return "Connection cancelled by user.";
+  if (/chain|network|mismatch/i.test(raw)) return "Please switch to HashKey Chain Testnet.";
+  if (/timeout/i.test(raw)) return "Connection timed out — please try again.";
+  return "Wallet error — please try again.";
+}
 
 export function WalletButton() {
   const {
@@ -21,28 +28,37 @@ export function WalletButton() {
   const [showDisconnectConfirm, setShowDisconnectConfirm] = useState(false);
   const [errorVisible, setErrorVisible] = useState(false);
   const [displayedError, setDisplayedError] = useState<string | null>(null);
+  const prevErrorRef = useRef<string | null>(null);
 
-  // Show inline error when error changes
-  if (error && error !== displayedError) {
-    setDisplayedError(friendlyError(error));
-    setErrorVisible(true);
+  // Show inline error with auto-dismiss inside useEffect (prevents memory leak on unmount)
+  useEffect(() => {
+    if (error && error !== prevErrorRef.current) {
+      prevErrorRef.current = error;
+      setDisplayedError(friendlyError(error));
+      setErrorVisible(true);
+    }
+  }, [error]);
+
+  useEffect(() => {
+    if (!errorVisible) return;
     const timer = setTimeout(() => setErrorVisible(false), 8000);
-    // can't cleanup in render, but error will change again if it occurs
-  }
-
-  function friendlyError(raw: string): string {
-    if (/user rejected|user denied/i.test(raw)) return "Connection cancelled by user.";
-    if (/chain|network|mismatch/i.test(raw)) return "Please switch to HashKey Chain Testnet.";
-    if (/timeout/i.test(raw)) return "Connection timed out — please try again.";
-    return "Wallet error — please try again.";
-  }
+    return () => clearTimeout(timer);
+  }, [errorVisible, displayedError]);
 
   const handleDisconnect = () => setShowDisconnectConfirm(true);
   const confirmDisconnect = () => { disconnect(); setShowDisconnectConfirm(false); };
+  const dismissError = () => setErrorVisible(false);
 
   const errorEl = errorVisible && displayedError ? (
-    <span style={{ display: "block", color: "var(--danger)", fontSize: "0.72rem", marginTop: "0.25rem", maxWidth: "180px", textAlign: "right" }}>
+    <span className={styles.errorMessage}>
       {displayedError}
+      <button
+        className={styles.errorDismiss}
+        onClick={dismissError}
+        aria-label="Dismiss error"
+      >
+        ×
+      </button>
     </span>
   ) : null;
 

@@ -66,3 +66,31 @@
   background: rgba(57, 217, 138, 0.2);
   color: #a8ffcb;
 }
+
+.errorMessage {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--danger);
+  font-size: 0.72rem;
+  margin-top: 0.25rem;
+  max-width: clamp(150px, 85vw, 200px);
+  text-align: right;
+  justify-content: flex-end;
+}
+
+.errorDismiss {
+  background: none;
+  border: none;
+  color: var(--danger);
+  cursor: pointer;
+  font-size: 0.9rem;
+  line-height: 1;
+  padding: 0;
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.errorDismiss:hover {
+  opacity: 1;
+}

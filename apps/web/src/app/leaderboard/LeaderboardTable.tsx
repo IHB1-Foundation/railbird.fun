@@ -13,7 +13,21 @@ interface LeaderboardTableProps {
   data: LeaderboardResponse;
 }
 
-const RANK_MEDALS: Record<number, string> = { 1: "\uD83E\uDD47", 2: "\uD83E\uDD48", 3: "\uD83E\uDD49" };
+function MedalIcon({ rank }: { rank: number }) {
+  const colors: Record<number, { fill: string; stroke: string; label: string }> = {
+    1: { fill: "#FFD700", stroke: "#B8860B", label: "Gold medal" },
+    2: { fill: "#C0C0C0", stroke: "#808080", label: "Silver medal" },
+    3: { fill: "#CD7F32", stroke: "#8B4513", label: "Bronze medal" },
+  };
+  const c = colors[rank];
+  if (!c) return null;
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-label={c.label} role="img">
+      <circle cx="9" cy="11" r="6" fill={c.fill} stroke={c.stroke} strokeWidth="1" />
+      <text x="9" y="15" textAnchor="middle" fontSize="8" fontWeight="800" fill={c.stroke}>{rank}</text>
+    </svg>
+  );
+}
 
 const METRIC_TOOLTIPS: Record<string, string> = {
   roi: "Return on Investment — percentage gain/loss relative to initial NAV",
@@ -186,7 +200,7 @@ export function LeaderboardTable({ data }: LeaderboardTableProps) {
                     style={{ cursor: "pointer" }}
                   >
                     <td className={`${styles.rank} ${styles.colRank}`}>
-                      {medal ? <span className={styles.medal}>{medal}</span> : entry.rank}
+                      {entry.rank <= 3 ? <MedalIcon rank={entry.rank} /> : entry.rank}
                     </td>
                     <td className={styles.colAgent}>
                       <Link

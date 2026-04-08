@@ -7,6 +7,28 @@ const isDev = process.env.NODE_ENV !== "production";
 const nextConfig = {
   reactStrictMode: true,
   output: "standalone",
+
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      // prom-client (from @playerco/shared metrics) uses Node built-ins
+      // that don't exist in the browser. Stub them out.
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        cluster: false,
+        fs: false,
+        net: false,
+        tls: false,
+        v8: false,
+        os: false,
+        path: false,
+        stream: false,
+        http: false,
+        https: false,
+        zlib: false,
+      };
+    }
+    return config;
+  },
   // Environment variables for client-side use
   env: {
     // Indexer API — default to localhost in development to prevent

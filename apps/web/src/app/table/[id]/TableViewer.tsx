@@ -1,80 +1,44 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import Link from "next/link";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { isAddress, type Address } from "viem";
-import { useAuth, type HoleCardsResponse } from "@/lib/auth";
-import { getPokerTableMaxSeats, registerSeat } from "@/lib/pokerTableClient";
+import { useAuth } from "@/lib/auth";
+import { registerSeat } from "@/lib/pokerTableClient";
 import {
   CHIP_SYMBOL,
   formatChips,
   shortenAddress,
-  formatTime,
-  formatTimeRemaining,
   cn,
   ZERO_ADDRESS,
 } from "@/lib/utils";
 import type { TableResponse } from "@/lib/types";
-import { GAME_STATES, ACTION_TYPES } from "@/lib/types";
+import { GAME_STATES } from "@/lib/types";
 import { GameState } from "@playerco/shared";
-import { useWebSocket } from "@/lib/useWebSocket";
-import { getRevealedHolecards, type RevealedHolecardResponse, INDEXER_BASE } from "@/lib/api";
+import { getRevealedHolecards, type RevealedHolecardResponse } from "@/lib/api";
 import { PokerCard } from "@/components/poker/PokerCard";
 import { VrfStatusWidget } from "@/components/poker/VrfStatusWidget";
 import { SeatPanel } from "@/components/poker/SeatPanel";
 import { ShowdownResultsPanel } from "@/components/poker/ShowdownResultsPanel";
+import { useTableState } from "./useTableState";
+import { useHoleCards } from "./useHoleCards";
+import { ActionLog } from "./ActionLog";
+import { PlayersPanel } from "./PlayersPanel";
 import styles from "./TableViewer.module.css";
 
 const TABLE_MAX_SEATS = Number(process.env.NEXT_PUBLIC_TABLE_MAX_SEATS || "9");
 
-/** Set of valid action type strings from the indexer. */
-const VALID_ACTION_TYPES = new Set(Object.keys(ACTION_TYPES));
-
-/** Sanitize an actionType to only allowed values; returns 'UNKNOWN' otherwise. */
-function sanitizeActionType(raw: unknown): string {
-  if (typeof raw === "string" && VALID_ACTION_TYPES.has(raw)) return raw;
-  return "UNKNOWN";
-}
-
-/** Sanitize a seatIndex to a safe integer in [0, maxSeats). */
-function sanitizeSeatIndex(raw: unknown, maxSeats: number): number {
-  const n = Number(raw);
-  return Number.isInteger(n) && n >= 0 && n < maxSeats ? n : 0;
-}
-
-/** Lightweight structural guard against injected WebSocket payloads. */
-function isValidTableResponse(data: unknown): data is TableResponse {
-  if (!data || typeof data !== "object") return false;
-  const d = data as Record<string, unknown>;
-  if (typeof d.id !== "string") return false;
-  if (typeof d.contractAddress !== "string") return false;
-  if (!Array.isArray(d.seats)) return false;
-  // Validate action log entries if present
-  if (Array.isArray(d.actions)) {
-    for (const action of d.actions) {
-      if (!action || typeof action !== "object") return false;
-      const a = action as Record<string, unknown>;
-      if (typeof a.seatIndex !== "number") return false;
-      if (typeof a.actionType !== "string") return false;
-      if (typeof a.amount !== "string") return false;
-    }
-  }
-  return true;
-}
 const STREET_LABELS = ["Pre-flop", "Flop", "Turn", "River", "Showdown"] as const;
 
 function getSeatOrbitPosition(seatIndex: number, totalSeats: number): { left: string; top: string } {
-  if (totalSeats <= 1) {
-    return { left: "50%", top: "14%" };
-  }
-
+  if (totalSeats <= 1) return { left: "50%", top: "14%" };
   const angleDeg = -90 + (360 / totalSeats) * seatIndex;
   const angleRad = (angleDeg * Math.PI) / 180;
   const radiusX = 42;
   const radiusY = 35;
-  const left = 50 + Math.cos(angleRad) * radiusX;
-  const top = 50 + Math.sin(angleRad) * radiusY;
-  return { left: `${left}%`, top: `${top}%` };
+  return {
+    left: `${50 + Math.cos(angleRad) * radiusX}%`,
+    top: `${50 + Math.sin(angleRad) * radiusY}%`,
+  };
 }
 
 interface TableViewerProps {
@@ -84,42 +48,20 @@ interface TableViewerProps {
 type TableAction = NonNullable<TableResponse["currentHand"]>["actions"][number];
 
 export function TableViewer({ initialData, tableId }: TableViewerProps) {
-  const [table, setTable] = useState(initialData);
-  const [maxSeats, setMaxSeats] = useState<number>(TABLE_MAX_SEATS);
-  const [timeRemaining, setTimeRemaining] = useState<string>("--");
-  const [holeCards, setHoleCards] = useState<HoleCardsResponse | null>(null);
+  const { table, maxSeats, timeRemaining, wsStatus, refreshError, refreshRetryCount, refreshTable } =
+    useTableState(tableId, initialData);
+
   const [revealedHolecards, setRevealedHolecards] = useState<RevealedHolecardResponse[]>([]);
   const [joinSeatIndex, setJoinSeatIndex] = useState<number>(0);
   const [joinBuyIn, setJoinBuyIn] = useState<string>("1000");
   const [joinOperator, setJoinOperator] = useState<string>("");
   const [joinLoading, setJoinLoading] = useState<boolean>(false);
   const [joinStatus, setJoinStatus] = useState<string>("");
-  const [refreshError, setRefreshError] = useState<string | null>(null);
-  const [refreshRetryCount, setRefreshRetryCount] = useState(0);
 
   const { isConnected, isAuthenticated, address, connect, getHoleCards } = useAuth();
+  const { holeCards } = useHoleCards(isAuthenticated, tableId, table.currentHand?.handId, getHoleCards);
 
-  // Cache decrypted hole cards per hand to avoid re-fetching on every WS update.
-  // Keyed by "${handId}-${seatIndex}". Cleared when hand changes or wallet disconnects.
-  const holeCardCache = useRef<Map<string, HoleCardsResponse>>(new Map());
-  const lastCachedHandIdRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    void (async () => {
-      try {
-        const onchainMaxSeats = await getPokerTableMaxSeats(table.contractAddress as Address);
-        if (onchainMaxSeats > 0) {
-          setMaxSeats(onchainMaxSeats);
-        }
-      } catch (err) {
-        // Keep env fallback value on errors — log for debugging.
-        console.error("[TableViewer] Failed to fetch max seats from contract:", err);
-      }
-    })();
-  }, [table.contractAddress]);
-
-  // Stringify seats for stable memo key — avoids recomputing on every render
-  // when the server returns a new array reference with identical content.
+  // Stringify seats for stable memo key
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const seatsKey = useMemo(() => JSON.stringify(table.seats), [JSON.stringify(table.seats)]);
   const normalizedSeats = useMemo(() => {
@@ -147,126 +89,17 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
     [normalizedSeats]
   );
 
-  const refreshTable = useCallback(async () => {
-    try {
-      const res = await fetch(`${INDEXER_BASE}/api/tables/${tableId}`, {
-        cache: "no-store",
-      });
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
-      }
-      const data = (await res.json()) as TableResponse;
-      setTable(data);
-      setRefreshError(null);
-      setRefreshRetryCount(0);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Unknown error";
-      console.error("[TableViewer] Table fetch failed:", err);
-      setRefreshError(`Table data refresh failed (${msg}). Retrying…`);
-      setRefreshRetryCount((n) => n + 1);
-    }
-  }, [tableId]);
-
-  const handleWsMessage = useCallback(
-    (msg: { type: string; tableId: string; timestamp: string; data: unknown }) => {
-      if (msg.type === "poll_update" || msg.type === "table_update") {
-        // Validate the shape of the incoming data before applying it to state.
-        // A compromised WS server should not be able to inject arbitrary objects.
-        const data = msg.data;
-        if (!isValidTableResponse(data)) {
-          console.warn("[TableViewer] Received malformed table data over WebSocket, ignoring");
-          return;
-        }
-        setTable(data);
-      }
-    },
-    []
-  );
-
-  const wsStatus = useWebSocket({ tableId, onMessage: handleWsMessage });
-
-  // Update timer every second
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setTimeRemaining(formatTimeRemaining(table.actionDeadline));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [table.actionDeadline]);
-
-  // Clear hole card cache on wallet disconnect
-  useEffect(() => {
-    if (!isAuthenticated) {
-      holeCardCache.current.clear();
-      lastCachedHandIdRef.current = null;
-      setHoleCards(null);
-    }
-  }, [isAuthenticated]);
-
-  // Fetch hole cards when authenticated and hand is active.
-  // Uses a per-hand cache to avoid re-deriving the encryption key and re-decrypting
-  // on every WebSocket update when the hand hasn't changed.
+  // Fetch revealed holecards at showdown/settled
   useEffect(() => {
     let cancelled = false;
-
-    const fetchHoleCards = async () => {
-      if (!isAuthenticated || !table.currentHand) {
-        setHoleCards(null);
-        return;
-      }
-
-      const handId = table.currentHand.handId;
-
-      // Clear cache when a new hand begins
-      if (lastCachedHandIdRef.current !== null && lastCachedHandIdRef.current !== handId) {
-        holeCardCache.current.clear();
-      }
-      lastCachedHandIdRef.current = handId;
-
-      // Check cache before fetching
-      const cacheKey = handId;
-      const cached = holeCardCache.current.get(cacheKey);
-      if (cached) {
-        if (!cancelled) setHoleCards(cached);
-        return;
-      }
-
-      try {
-        const cards = await getHoleCards(tableId, handId);
-        if (!cancelled) {
-          if (cards) {
-            holeCardCache.current.set(cacheKey, cards);
-          }
-          setHoleCards(cards);
-        }
-      } catch (err) {
-        console.error("[TableViewer] Failed to fetch hole cards:", err);
-        if (!cancelled) setHoleCards(null);
-      }
-    };
-
-    fetchHoleCards();
-    return () => { cancelled = true; };
-  }, [isAuthenticated, tableId, table.currentHand?.handId, getHoleCards]);
-
-  // Fetch revealed holecards when hand is at showdown/settled
-  useEffect(() => {
-    let cancelled = false;
-
     const fetchRevealed = async () => {
-      if (!table.currentHand) {
-        setRevealedHolecards([]);
-        return;
-      }
-      // The indexer always returns GameState string names (e.g. "SHOWDOWN").
+      if (!table.currentHand) { setRevealedHolecards([]); return; }
       const state = table.gameState;
       const isRevealState =
         state === GameState[GameState.SHOWDOWN] ||
         state === GameState[GameState.SETTLED] ||
         state === GameState[GameState.TOURNAMENT_OVER];
-      if (!isRevealState) {
-        setRevealedHolecards([]);
-        return;
-      }
+      if (!isRevealState) { setRevealedHolecards([]); return; }
       try {
         const cards = await getRevealedHolecards(tableId, table.currentHand.handId);
         if (!cancelled) setRevealedHolecards(cards);
@@ -278,11 +111,12 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
     return () => { cancelled = true; };
   }, [tableId, table.currentHand?.handId, table.gameState]);
 
-  // Determine which seat the current user owns (if any)
   const ownedSeatIndex =
-    (address && normalizedSeats.find(
-      (s) => s.ownerAddress.toLowerCase() !== ZERO_ADDRESS && s.ownerAddress.toLowerCase() === address.toLowerCase()
-    )?.seatIndex) ?? null;
+    address
+      ? (normalizedSeats.find(
+          (s) => s.ownerAddress.toLowerCase() !== ZERO_ADDRESS && s.ownerAddress.toLowerCase() === address.toLowerCase()
+        )?.seatIndex ?? null)
+      : null;
 
   const availableSeats = useMemo(
     () => normalizedSeats.filter((seat) => seat.ownerAddress.toLowerCase() === ZERO_ADDRESS),
@@ -292,9 +126,7 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
   useEffect(() => {
     if (availableSeats.length > 0) {
       setJoinSeatIndex((prev) => (
-        availableSeats.some((seat) => seat.seatIndex === prev)
-          ? prev
-          : availableSeats[0].seatIndex
+        availableSeats.some((seat) => seat.seatIndex === prev) ? prev : availableSeats[0].seatIndex
       ));
     }
   }, [availableSeats]);
@@ -302,7 +134,6 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
   const gameState = GAME_STATES[table.gameState] || table.gameState;
   const currentHand = table.currentHand;
   const isActive = gameState !== "Waiting for Seats" && gameState !== "Settled";
-  // The indexer returns GameState string names — no numeric fallbacks needed.
   const vrfStreet: string | null =
     table.gameState === GameState[GameState.WAITING_VRF_FLOP] ? "Flop"
     : table.gameState === GameState[GameState.WAITING_VRF_TURN] ? "Turn"
@@ -310,22 +141,18 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
     : null;
   const actorSeat = currentHand?.actorSeat ?? null;
   const actorSeatData = actorSeat !== null ? seatByIndex.get(actorSeat) : null;
-  // Use stable keys instead of the whole currentHand object to avoid
-  // recomputing on unrelated hand property changes.
+
   const actionsKey = currentHand ? JSON.stringify(currentHand.actions) : null;
   const streetSections = useMemo(() => {
     if (!currentHand || !actionsKey || currentHand.actions.length === 0) {
       return [] as Array<{ street: string; actions: TableAction[] }>;
     }
-
     const sections: Array<{ street: string; actions: TableAction[] }> = [
       { street: STREET_LABELS[0], actions: [] },
     ];
     let streetIndex = 0;
-
     for (const action of currentHand.actions) {
       sections[streetIndex].actions.push(action);
-
       if (action.endsStreet && streetIndex < STREET_LABELS.length - 1) {
         streetIndex += 1;
         if (!sections[streetIndex]) {
@@ -333,17 +160,13 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
         }
       }
     }
-
     return sections.filter((section) => section.actions.length > 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [actionsKey]);
 
   const handleJoinSeat = useCallback(async () => {
     setJoinStatus("");
-    if (availableSeats.length === 0) {
-      setJoinStatus("No empty seats available.");
-      return;
-    }
+    if (availableSeats.length === 0) { setJoinStatus("No empty seats available."); return; }
 
     if (!isConnected) {
       await connect();
@@ -358,16 +181,12 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
     }
 
     const operatorInput = joinOperator.trim();
-
-    // Validate operator address if provided
     if (operatorInput.length > 0 && !isAddress(operatorInput)) {
       setJoinStatus("Invalid address: operator must be a valid 0x Ethereum address.");
       return;
     }
 
-    // Validate buy-in: must be a positive integer string, no decimals, within [1, 10^15] chips.
-    // Use BigInt to avoid Number precision issues near MAX_SAFE_INTEGER.
-    const BUY_IN_MAX = 1_000_000_000_000_000n; // 10^15 chips
+    const BUY_IN_MAX = 1_000_000_000_000_000n;
     if (!/^\d+$/.test(joinBuyIn.trim()) || joinBuyIn.trim() === "0") {
       setJoinStatus("Invalid buy-in: enter a positive whole number (e.g. 1000).");
       return;
@@ -385,7 +204,6 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
     }
 
     const operator = operatorInput.length > 0 ? (operatorInput as Address) : undefined;
-
     try {
       setJoinLoading(true);
       const { registerTxHash } = await registerSeat({
@@ -401,25 +219,7 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
     } finally {
       setJoinLoading(false);
     }
-  }, [
-    availableSeats,
-    connect,
-    isConnected,
-    joinBuyIn,
-    joinOperator,
-    joinSeatIndex,
-    normalizedSeats,
-    refreshTable,
-    table.contractAddress,
-  ]);
-
-  // Auto-retry table refresh with exponential backoff when it fails
-  useEffect(() => {
-    if (refreshRetryCount === 0) return;
-    const delay = Math.min(1000 * Math.pow(2, refreshRetryCount - 1), 30_000);
-    const timer = setTimeout(() => void refreshTable(), delay);
-    return () => clearTimeout(timer);
-  }, [refreshRetryCount, refreshTable]);
+  }, [availableSeats, connect, isConnected, joinBuyIn, joinOperator, joinSeatIndex, normalizedSeats, refreshTable, table.contractAddress]);
 
   return (
     <div>
@@ -446,13 +246,10 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
       {isAuthenticated && ownedSeatIndex !== null && (
         <div className={styles.ownerBanner}>
           <span>
-            <strong className={styles.ownerBannerTitle}>Owner Mode</strong> - You
-            own Seat {ownedSeatIndex}
+            <strong className={styles.ownerBannerTitle}>Owner Mode</strong> - You own Seat {ownedSeatIndex}
           </span>
           {holeCards && (
-            <span className={styles.ownerBannerCards}>
-              Cards visible on your seat below
-            </span>
+            <span className={styles.ownerBannerCards}>Cards visible on your seat below</span>
           )}
         </div>
       )}
@@ -464,10 +261,7 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
           <div className={styles.tableHeadingMeta}>
             Blinds: {formatChips(table.smallBlind)}/{formatChips(table.bigBlind)} {CHIP_SYMBOL}
           </div>
-          <div
-            className={`${styles.tableHeadingMeta} ${styles.tableHeadingMetaMono}`}
-            title={table.contractAddress}
-          >
+          <div className={`${styles.tableHeadingMeta} ${styles.tableHeadingMetaMono}`} title={table.contractAddress}>
             Contract: {table.contractAddress}
           </div>
         </div>
@@ -476,14 +270,8 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
             <span className={cn("dot", isActive && "pulse")} />
             {gameState}
           </span>
-          <div className={styles.tableButtonSeat}>
-            Button: Seat {table.buttonSeat}
-          </div>
-          {currentHand && (
-            <div className={styles.tableHandId}>
-              Hand #{currentHand.handId}
-            </div>
-          )}
+          <div className={styles.tableButtonSeat}>Button: Seat {table.buttonSeat}</div>
+          {currentHand && <div className={styles.tableHandId}>Hand #{currentHand.handId}</div>}
           {actorSeat !== null && actorSeatData ? (
             <div className={styles.tableTurnIndicator}>
               NOW ACTING: Seat {actorSeat} ({shortenAddress(actorSeatData.ownerAddress)})
@@ -492,6 +280,7 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
         </div>
       </div>
 
+      {/* Join Seat Form */}
       <div className={`card ${styles.sectionCard}`}>
         <div className={styles.joinSeatHeader}>
           <h3 className="section-title-sm">Add Player / Agent</h3>
@@ -515,9 +304,7 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
               disabled={joinLoading || availableSeats.length === 0}
             >
               {availableSeats.map((seat) => (
-                <option key={seat.seatIndex} value={seat.seatIndex}>
-                  Seat {seat.seatIndex}
-                </option>
+                <option key={seat.seatIndex} value={seat.seatIndex}>Seat {seat.seatIndex}</option>
               ))}
             </select>
           </label>
@@ -569,7 +356,6 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
                 <span className="muted">No community cards</span>
               )}
             </div>
-
             <div className={styles.tablePotBlock}>
               {currentHand && (
                 <div className={styles.potValue}>
@@ -608,50 +394,12 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
       </div>
 
       {/* Action Log */}
-      <div className={`card ${styles.sectionCard}`}>
-        <h3 className="section-title-sm">Action Log</h3>
-        <div className={styles.actionLog}>
-          {streetSections.length > 0 ? (
-            <div className={styles.streetLog}>
-              {streetSections.map((section) => (
-                <div key={section.street} className={styles.streetBlock}>
-                  <div className={styles.streetTitle}>{section.street}</div>
-                  {section.actions.map((action, i) => {
-                    const safeActionType = sanitizeActionType(action.actionType);
-                    const safeSeatIndex = sanitizeSeatIndex(action.seatIndex, TABLE_MAX_SEATS);
-                    const seat = seatByIndex.get(safeSeatIndex);
-                    const hasOwner =
-                      !!seat && seat.ownerAddress.toLowerCase() !== ZERO_ADDRESS;
-
-                    return (
-                      <div key={`${section.street}-${i}`} className={styles.actionItem}>
-                        <div className={styles.actionMain}>
-                          <span>
-                            <strong>Seat {safeSeatIndex}</strong>{" "}
-                            {ACTION_TYPES[safeActionType] ?? "UNKNOWN"}
-                            {action.amount !== "0" && ` ${formatChips(action.amount)} ${CHIP_SYMBOL}`}
-                          </span>
-                          {hasOwner ? (
-                            <span className={styles.actionActor}>
-                              {shortenAddress(seat.ownerAddress)}
-                            </span>
-                          ) : null}
-                        </div>
-                        <span className={styles.actionTime} title={`Block #${action.blockNumber}`}>
-                          {formatTime(action.timestamp)}{" "}
-                          <span className={styles.actionBlock}>#{action.blockNumber}</span>
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="muted">No actions yet</div>
-          )}
-        </div>
-      </div>
+      <ActionLog
+        streetSections={streetSections}
+        seatByIndex={seatByIndex}
+        maxSeats={TABLE_MAX_SEATS}
+        chipSymbol={CHIP_SYMBOL}
+      />
 
       {/* Showdown Results */}
       {revealedHolecards.length > 0 && currentHand && (
@@ -664,62 +412,13 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
         />
       )}
 
-      {/* Seats with Agent Links */}
-      <div className={`card ${styles.sectionCard}`}>
-        <h3 className="section-title-sm">Players</h3>
-        <div className={styles.playersGrid}>
-          {normalizedSeats.map((seat) => (
-            <div
-              key={seat.seatIndex}
-              className={cn(styles.playerCell, currentHand?.actorSeat === seat.seatIndex && styles.activeTurn)}
-            >
-              <div className={styles.playerSeatTitle}>
-                Seat {seat.seatIndex}
-                {ownedSeatIndex === seat.seatIndex && (
-                  <span className={styles.youTag}>(You)</span>
-                )}
-              </div>
-              {seat.ownerAddress.toLowerCase() !== ZERO_ADDRESS ? (
-                <>
-                  <div className={styles.playerLine}>
-                    Owner:{" "}
-                    <span className="text-mono">
-                      {shortenAddress(seat.ownerAddress)}
-                    </span>
-                  </div>
-                  <div className={styles.playerLine}>
-                    Operator:{" "}
-                    <span className="text-mono">
-                      {shortenAddress(seat.operatorAddress)}
-                    </span>
-                  </div>
-                  <div className={styles.playerLine}>
-                    This Round: {formatChips(seat.currentBet)} {CHIP_SYMBOL}
-                  </div>
-                  <div className={styles.playerActions}>
-                    {seat.tokenAddress ? (
-                      <Link
-                        href={`/agent/${seat.tokenAddress}`}
-                        className={styles.inlineLink}
-                      >
-                        View Agent
-                      </Link>
-                    ) : null}
-                  </div>
-                </>
-              ) : (
-                <div className="muted">Empty</div>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
+      <PlayersPanel
+        seats={normalizedSeats}
+        ownedSeatIndex={ownedSeatIndex}
+        actorSeat={currentHand?.actorSeat ?? null}
+        chipSymbol={CHIP_SYMBOL}
+      />
     </div>
   );
 }
 
-// Components extracted to separate files:
-// - PokerCard       → @/components/poker/PokerCard
-// - VrfStatusWidget → @/components/poker/VrfStatusWidget
-// - SeatPanel       → @/components/poker/SeatPanel
-// - ShowdownResultsPanel + evaluateHandRank → @/components/poker/ShowdownResultsPanel

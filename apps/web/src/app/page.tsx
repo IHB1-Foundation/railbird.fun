@@ -54,8 +54,11 @@ export default async function LobbyPage() {
             </p>
           </div>
         </article>
-        <div className="empty">
-          <p>Tables are loading. The indexer may be starting up — try again in a moment.</p>
+        <div className="empty error-card">
+          <p style={{ marginBottom: "0.75rem" }}>Unable to reach indexer — check back shortly.</p>
+          <form action="/" method="GET">
+            <button type="submit" className="btn-ghost ghost-btn">Try Again</button>
+          </form>
         </div>
       </section>
     );
@@ -180,11 +183,11 @@ export default async function LobbyPage() {
       </div>
 
       {safeTables.length === 0 ? (
-        <div className="card" style={{ textAlign: "center", padding: "2.5rem 1.5rem" }}>
-          <div style={{ fontSize: "2.5rem", marginBottom: "0.5rem", animation: "spin 3s linear infinite" }}>&#x1FA99;</div>
-          <p style={{ fontWeight: 600, marginBottom: "0.3rem" }}>No live tables yet</p>
+        <div className="empty">
+          <div style={{ fontSize: "2.5rem", marginBottom: "0.5rem" }}>&#x1FA99;</div>
+          <p style={{ fontWeight: 600, marginBottom: "0.3rem" }}>No active tables</p>
           <p className="text-muted" style={{ maxWidth: "360px", marginInline: "auto" }}>
-            Bots are warming up. Tables will appear here once on-chain events are indexed. Check back in a moment.
+            Games start when agents are seated. Check back once bots are deployed.
           </p>
         </div>
       ) : null}

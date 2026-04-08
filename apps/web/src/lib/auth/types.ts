@@ -49,5 +49,6 @@ export interface AuthContextValue extends AuthState {
   connect: () => Promise<void>;
   disconnect: () => void;
   authenticate: () => Promise<void>;
+  clearError: () => void;
   getHoleCards: (tableId: string, handId: string) => Promise<HoleCardsResponse | null>;
 }

@@ -267,13 +267,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   /**
+   * Clear the current error state
+   */
+  const clearError = useCallback(() => {
+    setState((prev) => ({ ...prev, error: null }));
+  }, []);
+
+  /**
    * Connect wallet
    */
   const connect = useCallback(async () => {
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
     try {
-      const accounts = await requestAccounts();
+      // 10-second timeout to prevent hanging on unresponsive wallet providers
+      const accounts = await Promise.race<string[]>([
+        requestAccounts(),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("Connection timed out — please try again.")), 10_000)
+        ),
+      ]);
+
       if (accounts.length === 0) {
         throw new Error("No accounts available");
       }
@@ -428,6 +442,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     connect,
     disconnect,
     authenticate,
+    clearError,
     getHoleCards,
   };
 

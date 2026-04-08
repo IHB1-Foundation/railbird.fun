@@ -23,6 +23,7 @@ export function WalletButton() {
     connect,
     disconnect,
     authenticate,
+    clearError,
   } = useAuth();
 
   const [showDisconnectConfirm, setShowDisconnectConfirm] = useState(false);
@@ -45,6 +46,8 @@ export function WalletButton() {
     return () => clearTimeout(timer);
   }, [errorVisible, displayedError]);
 
+  const handleConnect = () => { clearError(); setErrorVisible(false); connect(); };
+  const handleAuthenticate = () => { clearError(); setErrorVisible(false); authenticate(); };
   const handleDisconnect = () => setShowDisconnectConfirm(true);
   const confirmDisconnect = () => { disconnect(); setShowDisconnectConfirm(false); };
   const dismissError = () => setErrorVisible(false);
@@ -67,7 +70,7 @@ export function WalletButton() {
     return (
       <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
         <button
-          onClick={connect}
+          onClick={handleConnect}
           disabled={isLoading}
           className={styles.walletButton}
           aria-busy={isLoading}
@@ -89,7 +92,7 @@ export function WalletButton() {
             {shortenAddress(address || "")}
           </span>
           <button
-            onClick={authenticate}
+            onClick={handleAuthenticate}
             disabled={isLoading}
             className={`${styles.walletButton} ${styles.sign}`}
             title={error || "Sign to authenticate"}

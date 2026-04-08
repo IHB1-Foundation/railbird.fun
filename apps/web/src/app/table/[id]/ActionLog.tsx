@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useRef, useEffect } from "react";
 import { formatChips, formatTime, shortenAddress, cn, ZERO_ADDRESS } from "@/lib/utils";
 import { getAgentProfile } from "@/lib/agentProfiles";
 import { ACTION_LABELS } from "@/lib/types";
@@ -51,11 +52,23 @@ function actionPrefix(actionType: string): string {
 export function ActionLog({ streetSections, seatByIndex, maxSeats, chipSymbol }: ActionLogProps) {
   // Show newest streets first
   const reversed = [...streetSections].reverse();
+  const logRef = useRef<HTMLDivElement>(null);
+  const [showFade, setShowFade] = useState(false);
+
+  useEffect(() => {
+    const el = logRef.current;
+    if (!el) return;
+    const check = () => setShowFade(el.scrollHeight > el.clientHeight && el.scrollTop + el.clientHeight < el.scrollHeight - 4);
+    check();
+    el.addEventListener("scroll", check);
+    return () => el.removeEventListener("scroll", check);
+  }, [streetSections]);
 
   return (
     <div className={`card ${styles.sectionCard}`}>
       <h3 className="section-title-sm">Action Log</h3>
-      <div className={styles.actionLog}>
+      <div className={styles.actionLogWrapper}>
+      <div ref={logRef} className={styles.actionLog}>
         {reversed.length > 0 ? (
           <div className={styles.streetLog}>
             {reversed.map((section) => (
@@ -101,6 +114,8 @@ export function ActionLog({ streetSections, seatByIndex, maxSeats, chipSymbol }:
         ) : (
           <div className={cn("muted")}>No actions yet</div>
         )}
+      </div>
+      {showFade && <div className={styles.actionLogFade} aria-hidden="true" />}
       </div>
     </div>
   );

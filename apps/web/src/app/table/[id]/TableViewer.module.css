@@ -264,6 +264,40 @@
   max-height: 220px;
   overflow-y: auto;
   font-size: 0.875rem;
+  position: relative;
+  /* Custom scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: var(--muted) transparent;
+}
+
+.actionLog::-webkit-scrollbar {
+  width: 4px;
+}
+
+.actionLog::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.actionLog::-webkit-scrollbar-thumb {
+  background: var(--muted);
+  border-radius: 2px;
+}
+
+/* Fade gradient overlay at bottom indicating more content */
+.actionLogWrapper {
+  position: relative;
+}
+
+.actionLogFade {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 40px;
+  background: linear-gradient(to bottom, transparent, var(--card-bg));
+  pointer-events: none;
+  z-index: 1;
+  border-radius: 0 0 10px 10px;
 }
 
 .streetLog {
@@ -298,7 +332,7 @@
 .streetHr {
   flex: 1;
   border: none;
-  border-top: 1px solid rgba(255, 205, 118, 0.25);
+  border-top: 2px solid rgba(255, 205, 118, 0.4);
 }
 
 .streetDividerLabel {

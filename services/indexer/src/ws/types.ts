@@ -11,6 +11,7 @@ export type WsMessageType =
   | "seat_updated"
   | "pot_updated"
   | "force_timeout"
+  | "ai_commentary"
   | "error";
 
 export interface WsMessage {
@@ -90,6 +91,13 @@ export interface WsForceTimeoutData {
   handId: string;
   seatIndex: number;
   forcedAction: string;
+}
+
+export interface WsAiCommentaryData {
+  handId: string;
+  street: string;
+  commentary: string;
+  personaContext?: string;
 }
 
 export interface WsErrorData {

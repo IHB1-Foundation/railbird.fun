@@ -53,8 +53,9 @@ interface TableViewerProps {
 type TableAction = NonNullable<TableResponse["currentHand"]>["actions"][number];
 
 export function TableViewer({ initialData, tableId }: TableViewerProps) {
-  const { table, maxSeats, timeRemaining, wsStatus, reconnectAttempts, nextRetryIn, refreshError, refreshRetryCount, refreshTable } =
+  const { table, maxSeats, timeRemaining, wsStatus, reconnectAttempts, nextRetryIn, refreshError, refreshRetryCount, refreshTable, commentaries } =
     useTableState(tableId, initialData);
+  const [commentaryOpen, setCommentaryOpen] = useState(true);
 
   const [revealedHolecards, setRevealedHolecards] = useState<RevealedHolecardResponse[]>([]);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number>(() => Date.now());
@@ -425,6 +426,36 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
             ))}
           </div>
         </div>
+      </div>
+
+      {/* AI Commentary Panel */}
+      <div className="card" style={{ marginBottom: "1rem" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: commentaryOpen ? "0.75rem" : 0 }}>
+          <h3 className="section-title-sm" style={{ margin: 0 }}>🎙 AI Commentary</h3>
+          <button
+            onClick={() => setCommentaryOpen((v) => !v)}
+            style={{ background: "none", border: "none", color: "var(--muted)", cursor: "pointer", fontSize: "0.82rem", padding: "0.1rem 0.4rem" }}
+            aria-label={commentaryOpen ? "Collapse AI commentary" : "Expand AI commentary"}
+          >
+            {commentaryOpen ? "▲ Collapse" : "▼ Expand"}
+          </button>
+        </div>
+        {commentaryOpen && (
+          <div style={{ maxHeight: "180px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+            {commentaries.length === 0 ? (
+              <p className="text-muted" style={{ fontSize: "0.82rem", margin: 0 }}>Waiting for commentary...</p>
+            ) : (
+              [...commentaries].reverse().map((c, i) => (
+                <div key={i} style={{ display: "flex", gap: "0.6rem", alignItems: "flex-start" }}>
+                  <span style={{ fontSize: "0.72rem", color: "var(--muted)", whiteSpace: "nowrap", paddingTop: "0.1rem" }}>
+                    {c.street.charAt(0).toUpperCase() + c.street.slice(1)}
+                  </span>
+                  <span style={{ fontSize: "0.85rem", lineHeight: 1.45 }}>{c.commentary}</span>
+                </div>
+              ))
+            )}
+          </div>
+        )}
       </div>
 
       {/* Action Log */}

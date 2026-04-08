@@ -68,6 +68,7 @@ async function main() {
     actionJitterMs,
     vaultAddress: process.env.VAULT_ADDRESS as `0x${string}` | undefined,
     treasuryAdvisor,
+    indexerUrl: process.env.INDEXER_URL,
   };
 
   // Validate that RPC_URL returns the expected chain ID before proceeding.

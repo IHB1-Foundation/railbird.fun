@@ -34,6 +34,8 @@ export interface KeeperBotConfig {
   vaultAddress?: `0x${string}`;
   /** AI-driven treasury rebalancing advisor. Only active when provided. */
   treasuryAdvisor?: TreasuryAdvisor;
+  /** Indexer base URL for commentary WS broadcast endpoint. */
+  indexerUrl?: string;
 }
 
 export interface KeeperStats {
@@ -89,6 +91,8 @@ export class KeeperBot {
   private commitSyncedHands: Set<bigint> = new Set();
   // Tracks hands where /dealer/deal has already been POSTed (avoid redundant requests)
   private dealtHands: Set<bigint> = new Set();
+  // Commentary: track hand+street combos that already triggered to avoid duplicates
+  private commentaryTriggered: Set<string> = new Set();
   private readonly log = createLogger({ service: "keeper" });
 
   constructor(config: KeeperBotConfig) {
@@ -193,6 +197,96 @@ export class KeeperBot {
     await this.checkAndReRequestHoleCardVRF(state, currentTimestamp);
     await this.checkAndStartHand(state);
     await this.checkAndSettleShowdown(state);
+    // T-1101: Trigger AI commentary on street transitions / settlement
+    this.checkAndTriggerCommentary(state);
+  }
+
+  /**
+   * T-1101: Fire commentary requests to OwnerView and broadcast via Indexer.
+   * Fires on street transitions (flop/turn/river) and hand settlement.
+   * Failures are silently ignored — must never block game liveness.
+   */
+  private checkAndTriggerCommentary(state: TableState): void {
+    if (!this.config.ownerviewUrl) return;
+
+    const streetTriggers: Partial<Record<GameState, string>> = {
+      [GameState.BETTING_FLOP]: "flop",
+      [GameState.BETTING_TURN]: "turn",
+      [GameState.BETTING_RIVER]: "river",
+      [GameState.SETTLED]: "settlement",
+    };
+
+    const street = streetTriggers[state.gameState];
+    if (!street) return;
+
+    const key = `${state.currentHandId.toString()}:${street}`;
+    if (this.commentaryTriggered.has(key)) return;
+    this.commentaryTriggered.add(key);
+
+    // Prune to prevent unbounded growth (keep last 200 entries)
+    if (this.commentaryTriggered.size > 200) {
+      const first = this.commentaryTriggered.values().next().value;
+      if (first !== undefined) this.commentaryTriggered.delete(first);
+    }
+
+    const tableAddress = this.config.pokerTableAddress;
+    const handId = state.currentHandId.toString();
+    const triggerAction = street === "settlement" ? "hand_settled" : "street_started";
+
+    // Fire-and-forget — do not await
+    void this.fireCommentary(tableAddress, handId, street, triggerAction);
+  }
+
+  private async fireCommentary(
+    tableAddress: string,
+    handId: string,
+    street: string,
+    triggerAction: string,
+  ): Promise<void> {
+    const ownerviewBase = this.config.ownerviewUrl!.replace(/\/$/, "");
+
+    // Step 1: POST to OwnerView for Gemini generation + storage
+    let commentary: string | undefined;
+    let personaContext: string | undefined;
+    try {
+      const res = await fetchWithTimeout(
+        `${ownerviewBase}/commentary`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ tableAddress, handId, street, triggerAction, context: {} }),
+        },
+        10_000
+      );
+      if (res.ok) {
+        const payload = (await res.json()) as { entry?: { commentary?: string; personaContext?: string } };
+        commentary = payload.entry?.commentary;
+        personaContext = payload.entry?.personaContext;
+      }
+    } catch (err) {
+      this.log.debug({ err: err instanceof Error ? err.message : String(err) }, "Commentary OwnerView call failed (non-fatal)");
+      return;
+    }
+
+    if (!commentary) return;
+
+    // Step 2: POST to Indexer for WS broadcast
+    if (!this.config.indexerUrl) return;
+    const indexerBase = this.config.indexerUrl.replace(/\/$/, "");
+    const tableId = this.tableId?.toString() ?? tableAddress;
+    try {
+      await fetchWithTimeout(
+        `${indexerBase}/api/tables/${encodeURIComponent(tableId)}/commentary`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ handId, street, commentary, personaContext }),
+        },
+        5_000
+      );
+    } catch (err) {
+      this.log.debug({ err: err instanceof Error ? err.message : String(err) }, "Commentary Indexer broadcast call failed (non-fatal)");
+    }
   }
 
   /**

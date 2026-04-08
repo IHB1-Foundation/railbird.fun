@@ -11,6 +11,7 @@ import type {
   WsSeatUpdatedData,
   WsPotUpdatedData,
   WsForceTimeoutData,
+  WsAiCommentaryData,
 } from "./types.js";
 import { gameStateToString, actionTypeToString } from "../events/abis.js";
 
@@ -157,4 +158,21 @@ export function broadcastForceTimeout(
     forcedAction: actionTypeToString(forcedAction),
   };
   getWsManager().broadcast(tableId.toString(), "force_timeout", data);
+}
+
+// Broadcast AI commentary
+export function broadcastAiCommentary(
+  tableId: string,
+  handId: string,
+  street: string,
+  commentary: string,
+  personaContext?: string
+): void {
+  const data: WsAiCommentaryData = {
+    handId,
+    street,
+    commentary,
+    personaContext,
+  };
+  getWsManager().broadcast(tableId, "ai_commentary", data);
 }

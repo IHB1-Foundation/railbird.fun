@@ -28,6 +28,7 @@ import {
   getEloLeaderboard,
 } from "../db/index.js";
 import { getWsManager } from "../ws/index.js";
+import { broadcastAiCommentary } from "../ws/broadcaster.js";
 import { getListenerHealth } from "../events/listenerState.js";
 import { getPoolStats } from "../db/pool.js";
 import type {
@@ -532,6 +533,86 @@ function getPeriodStartDate(period: LeaderboardPeriod): Date | null {
 // Gracefully returns empty entries when OwnerView is unavailable.
 
 const OWNERVIEW_BASE_URL = (process.env.OWNERVIEW_URL || "http://localhost:3001").replace(/\/$/, "");
+
+// ── Commentary proxy + broadcast ─────────────────────────────────────────────
+// GET proxies to OwnerView; POST (internal) stores + broadcasts via WS.
+
+// In-memory cache for commentary entries (mirrors OwnerView store)
+interface CachedCommentary {
+  handId: string;
+  street: string;
+  commentary: string;
+  personaContext?: string;
+  timestamp: number;
+}
+const _commentaryCache = new Map<string, CachedCommentary[]>();
+
+function _commentaryCacheKey(tableId: string, handId: string): string {
+  return `${tableId.toLowerCase()}:${handId}`;
+}
+
+/**
+ * POST /tables/:tableId/commentary
+ * Internal endpoint: KeeperBot POSTs commentary data here to trigger WS broadcast.
+ * Body: { handId, street, commentary, personaContext? }
+ */
+router.post("/tables/:tableId/commentary", (req, res) => {
+  const { tableId } = req.params;
+  const { handId, street, commentary, personaContext } = req.body as Record<string, unknown>;
+
+  if (typeof handId !== "string" || typeof street !== "string" || typeof commentary !== "string") {
+    res.status(400).json({ error: "Missing required fields: handId, street, commentary" });
+    return;
+  }
+
+  const entry: CachedCommentary = {
+    handId,
+    street,
+    commentary,
+    personaContext: typeof personaContext === "string" ? personaContext : undefined,
+    timestamp: Date.now(),
+  };
+
+  const key = _commentaryCacheKey(tableId, handId);
+  const list = _commentaryCache.get(key) ?? [];
+  list.push(entry);
+  _commentaryCache.set(key, list);
+
+  broadcastAiCommentary(tableId, handId, street, commentary, entry.personaContext);
+  logger.info({ tableId, handId, street }, "AI commentary broadcast");
+  res.status(201).json({ ok: true });
+});
+
+/**
+ * GET /tables/:tableId/hands/:handId/commentary
+ * Returns commentary for a hand. Serves from local cache first, falls back to OwnerView proxy.
+ */
+router.get("/tables/:tableId/hands/:handId/commentary", async (req, res) => {
+  const { tableId, handId } = req.params;
+
+  // Serve from local cache if available
+  const key = _commentaryCacheKey(tableId, handId);
+  const cached = _commentaryCache.get(key);
+  if (cached && cached.length > 0) {
+    res.json({ tableAddress: tableId, handId, entries: cached });
+    return;
+  }
+
+  // Fall back to OwnerView proxy
+  try {
+    const url = `${OWNERVIEW_BASE_URL}/commentary?tableAddress=${encodeURIComponent(tableId)}&handId=${encodeURIComponent(handId)}`;
+    const upstream = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    if (!upstream.ok) {
+      res.json({ tableAddress: tableId, handId, entries: [] });
+      return;
+    }
+    const data = await upstream.json();
+    res.json(data);
+  } catch (err) {
+    logger.warn({ tableId, handId, err: err instanceof Error ? err.message : String(err) }, "OwnerView commentary proxy failed — returning empty");
+    res.json({ tableAddress: tableId, handId, entries: [] });
+  }
+});
 
 router.get("/tables/:tableId/hands/:handId/reasoning", async (req, res) => {
   const { tableId, handId } = req.params;

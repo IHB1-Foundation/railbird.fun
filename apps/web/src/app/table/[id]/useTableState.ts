@@ -29,6 +29,14 @@ function isValidTableResponse(data: unknown): data is TableResponse {
   return true;
 }
 
+export interface AiCommentaryMessage {
+  handId: string;
+  street: string;
+  commentary: string;
+  personaContext?: string;
+  timestamp: number;
+}
+
 interface UseTableStateResult {
   table: TableResponse;
   maxSeats: number;
@@ -39,6 +47,7 @@ interface UseTableStateResult {
   refreshError: string | null;
   refreshRetryCount: number;
   refreshTable: () => Promise<void>;
+  commentaries: AiCommentaryMessage[];
 }
 
 export function useTableState(
@@ -50,6 +59,7 @@ export function useTableState(
   const [timeRemaining, setTimeRemaining] = useState<string>("--");
   const [refreshError, setRefreshError] = useState<string | null>(null);
   const [refreshRetryCount, setRefreshRetryCount] = useState(0);
+  const [commentaries, setCommentaries] = useState<AiCommentaryMessage[]>([]);
 
   // Fetch on-chain max seats once per table address
   useEffect(() => {
@@ -94,6 +104,20 @@ export function useTableState(
           return;
         }
         setTable(data);
+      } else if (msg.type === "ai_commentary") {
+        const d = msg.data as Record<string, unknown>;
+        if (typeof d.handId === "string" && typeof d.street === "string" && typeof d.commentary === "string") {
+          setCommentaries((prev) => [
+            ...prev.slice(-49), // keep last 50
+            {
+              handId: d.handId as string,
+              street: d.street as string,
+              commentary: d.commentary as string,
+              personaContext: typeof d.personaContext === "string" ? d.personaContext : undefined,
+              timestamp: Date.now(),
+            },
+          ]);
+        }
       }
     },
     []
@@ -117,5 +141,5 @@ export function useTableState(
     return () => clearTimeout(timer);
   }, [refreshRetryCount, refreshTable]);
 
-  return { table, maxSeats, timeRemaining, wsStatus, reconnectAttempts, nextRetryIn, refreshError, refreshRetryCount, refreshTable };
+  return { table, maxSeats, timeRemaining, wsStatus, reconnectAttempts, nextRetryIn, refreshError, refreshRetryCount, refreshTable, commentaries };
 }

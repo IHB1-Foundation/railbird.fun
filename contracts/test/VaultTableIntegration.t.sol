@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 import "../src/PokerTable.sol";
+import "../src/table/PokerTableBase.sol";
 import "../src/PlayerVault.sol";
 import "../src/PlayerRegistry.sol";
 import "../src/ChipToken.sol";
@@ -78,7 +79,7 @@ contract VaultTableIntegrationTest is Test {
 
         uint256 hid = pokerTable.currentHandId();
         for (uint8 i = 0; i < 2; i++) {
-            PokerTable.Seat memory s = pokerTable.getSeat(i);
+            PokerTableBase.Seat memory s = pokerTable.getSeat(i);
             if (s.isActive && pokerTable.holeCommits(hid, i) == bytes32(0)) {
                 bytes32 commit = keccak256(abi.encodePacked(hid, i, uint8(i * 2), uint8(i * 2 + 1), bytes32("salt")));
                 pokerTable.submitHoleCommit(hid, i, commit);
@@ -202,7 +203,7 @@ contract VaultTableIntegrationTest is Test {
         // Hand settled via fold
         assertEq(
             uint256(pokerTable.gameState()),
-            uint256(PokerTable.GameState.SETTLED),
+            uint256(PokerTableBase.GameState.SETTLED),
             "Game should be SETTLED after fold"
         );
 
@@ -348,7 +349,7 @@ contract VaultTableIntegrationTest is Test {
 
         assertEq(
             uint256(pokerTable.gameState()),
-            uint256(PokerTable.GameState.SETTLED),
+            uint256(PokerTableBase.GameState.SETTLED),
             "Should be SETTLED"
         );
 
@@ -500,7 +501,7 @@ contract RebalancingIntegrationTest is Test {
         mockVRF.fulfillLastRequest(12345);
         handId = pokerTable.currentHandId();
         for (uint8 i = 0; i < 2; i++) {
-            PokerTable.Seat memory s = pokerTable.getSeat(i);
+            PokerTableBase.Seat memory s = pokerTable.getSeat(i);
             if (s.isActive && pokerTable.holeCommits(handId, i) == bytes32(0)) {
                 bytes32 commit = keccak256(abi.encodePacked(handId, i, uint8(i * 2), uint8(i * 2 + 1), bytes32("salt")));
                 pokerTable.submitHoleCommit(handId, i, commit);

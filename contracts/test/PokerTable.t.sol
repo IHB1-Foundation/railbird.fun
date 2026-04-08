@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 import "../src/PokerTable.sol";
+import "../src/table/PokerTableBase.sol";
 import "../src/ChipToken.sol";
 import "../src/HandEvaluator.sol";
 import "./mocks/MockVRFAdapter.sol";
@@ -33,16 +34,16 @@ contract PokerTableTest is Test {
 
     event SeatUpdated(uint8 indexed seatIndex, address owner, address operator, uint256 stack);
     event HandStarted(uint256 indexed handId, uint256 smallBlind, uint256 bigBlind, uint8 buttonSeat);
-    event ActionTaken(uint256 indexed handId, uint8 indexed seatIndex, PokerTable.ActionType action, uint256 amount, uint256 potAfter);
+    event ActionTaken(uint256 indexed handId, uint8 indexed seatIndex, PokerTableBase.ActionType action, uint256 amount, uint256 potAfter);
     event PotUpdated(uint256 indexed handId, uint256 pot);
-    event BettingRoundComplete(uint256 indexed handId, PokerTable.GameState fromState, PokerTable.GameState toState);
-    event VRFRequested(uint256 indexed handId, PokerTable.GameState street, uint256 requestId);
-    event CommunityCardsDealt(uint256 indexed handId, PokerTable.GameState street, uint8[] cards);
+    event BettingRoundComplete(uint256 indexed handId, PokerTableBase.GameState fromState, PokerTableBase.GameState toState);
+    event VRFRequested(uint256 indexed handId, PokerTableBase.GameState street, uint256 requestId);
+    event CommunityCardsDealt(uint256 indexed handId, PokerTableBase.GameState street, uint8[] cards);
     event HandSettled(uint256 indexed handId, uint8 winnerSeat, uint256 potAmount);
-    event ForceTimeout(uint256 indexed handId, uint8 indexed seatIndex, PokerTable.ActionType forcedAction);
+    event ForceTimeout(uint256 indexed handId, uint8 indexed seatIndex, PokerTableBase.ActionType forcedAction);
     event HoleCommitSubmitted(uint256 indexed handId, uint8 indexed seatIndex, bytes32 commitment);
     event HoleCardsRevealed(uint256 indexed handId, uint8 indexed seatIndex, uint8 card1, uint8 card2);
-    event VRFReRequested(uint256 indexed handId, PokerTable.GameState street, uint256 oldRequestId, uint256 newRequestId);
+    event VRFReRequested(uint256 indexed handId, PokerTableBase.GameState street, uint256 oldRequestId, uint256 newRequestId);
     event HandAborted(uint256 indexed handId, string reason);
 
     function setUp() public {
@@ -115,7 +116,7 @@ contract PokerTableTest is Test {
     function test_RegisterSeat_Success() public {
         _registerSeat(0, owner1, operator1, BUY_IN);
 
-        PokerTable.Seat memory seat = pokerTable.getSeat(0);
+        PokerTableBase.Seat memory seat = pokerTable.getSeat(0);
         assertEq(seat.owner, owner1);
         assertEq(seat.operator, operator1);
         assertEq(seat.stack, BUY_IN);
@@ -124,7 +125,7 @@ contract PokerTableTest is Test {
     function test_RegisterSeat_OperatorDefaultsToOwner() public {
         _registerSeat(0, owner1, address(0), BUY_IN);
 
-        PokerTable.Seat memory seat = pokerTable.getSeat(0);
+        PokerTableBase.Seat memory seat = pokerTable.getSeat(0);
         assertEq(seat.operator, owner1);
     }
 
@@ -159,10 +160,10 @@ contract PokerTableTest is Test {
         _registerSeat(1, owner2, operator2, BUY_IN);
 
         _startHandFull();
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.BETTING_PRE));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.BETTING_PRE));
 
         _registerSeat(2, owner3, operator3, BUY_IN);
-        PokerTable.Seat memory midHandSeat = pokerTable.getSeat(2);
+        PokerTableBase.Seat memory midHandSeat = pokerTable.getSeat(2);
         assertEq(midHandSeat.owner, owner3);
         assertEq(midHandSeat.operator, operator3);
         assertEq(midHandSeat.stack, BUY_IN);
@@ -173,12 +174,12 @@ contract PokerTableTest is Test {
         vm.roll(block.number + 1);
         pokerTable.fold(0);
 
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.SETTLED));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.SETTLED));
 
         _startHandFull();
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.BETTING_PRE));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.BETTING_PRE));
 
-        PokerTable.Seat memory nextHandSeat = pokerTable.getSeat(2);
+        PokerTableBase.Seat memory nextHandSeat = pokerTable.getSeat(2);
         assertTrue(nextHandSeat.isActive, "New seat should be active from next hand");
     }
 
@@ -247,7 +248,7 @@ contract PokerTableTest is Test {
 
         _startHandFull();
 
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.BETTING_PRE));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.BETTING_PRE));
         assertEq(pokerTable.currentHandId(), 1);
 
         // With button=0: SB=1, BB=2, UTG(first actor)=3
@@ -274,7 +275,7 @@ contract PokerTableTest is Test {
         _registerSeat(1, owner2, operator2, BUY_IN);
 
         _startHandFull();
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.BETTING_PRE));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.BETTING_PRE));
     }
 
     function test_StartHand_EvictsZeroStackSeat() public {
@@ -290,7 +291,7 @@ contract PokerTableTest is Test {
         _startHandFull();
 
         assertEq(pokerTable.getSeat(0).owner, address(0), "Zero-stack seat should be evicted");
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.BETTING_PRE));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.BETTING_PRE));
     }
 
     // ============ Action Tests ============
@@ -305,7 +306,7 @@ contract PokerTableTest is Test {
         pokerTable.fold(3);
 
         // Game should NOT be settled - 3 players still active
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.BETTING_PRE));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.BETTING_PRE));
 
         // Next actor should be Button (seat 0)
         (,,, uint8 actorSeat,) = pokerTable.getHandInfo();
@@ -332,8 +333,8 @@ contract PokerTableTest is Test {
         pokerTable.fold(1);
 
         // BB (seat 2) wins
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.SETTLED));
-        PokerTable.Seat memory bbSeat = pokerTable.getSeat(2);
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.SETTLED));
+        PokerTableBase.Seat memory bbSeat = pokerTable.getSeat(2);
         assertEq(bbSeat.stack, BUY_IN - BIG_BLIND + SMALL_BLIND + BIG_BLIND, "BB wins pot");
     }
 
@@ -346,7 +347,7 @@ contract PokerTableTest is Test {
         vm.roll(block.number + 1);
         pokerTable.call(3);
 
-        PokerTable.Seat memory utg = pokerTable.getSeat(3);
+        PokerTableBase.Seat memory utg = pokerTable.getSeat(3);
         assertEq(utg.currentBet, BIG_BLIND);
         assertEq(utg.stack, BUY_IN - BIG_BLIND);
 
@@ -362,7 +363,7 @@ contract PokerTableTest is Test {
         _completePreflop();
 
         // Should trigger betting round completion
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.WAITING_VRF_FLOP));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.WAITING_VRF_FLOP));
     }
 
     function test_Check_RevertIfMustCall() public {
@@ -386,7 +387,7 @@ contract PokerTableTest is Test {
         vm.roll(block.number + 1);
         pokerTable.raise(3, 60);
 
-        PokerTable.Seat memory utg = pokerTable.getSeat(3);
+        PokerTableBase.Seat memory utg = pokerTable.getSeat(3);
         assertEq(utg.currentBet, 60);
         assertEq(utg.stack, BUY_IN - 60);
 
@@ -468,7 +469,7 @@ contract PokerTableTest is Test {
         vm.prank(operator1);
         vm.roll(block.number + 1);
 
-        vm.expectRevert(abi.encodeWithSelector(PokerTable.NotYourTurn.selector));
+        vm.expectRevert(abi.encodeWithSelector(PokerTableBase.NotYourTurn.selector));
         pokerTable.check(0);
     }
 
@@ -482,7 +483,7 @@ contract PokerTableTest is Test {
         pokerTable.fold(3);
 
         // Game should still be active (3 players remain)
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.BETTING_PRE));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.BETTING_PRE));
     }
 
     // ============ Betting Round Completion Tests ============
@@ -512,15 +513,15 @@ contract PokerTableTest is Test {
         vm.roll(block.number + 1);
 
         vm.expectEmit(true, false, false, true);
-        emit BettingRoundComplete(1, PokerTable.GameState.BETTING_PRE, PokerTable.GameState.WAITING_VRF_FLOP);
+        emit BettingRoundComplete(1, PokerTableBase.GameState.BETTING_PRE, PokerTableBase.GameState.WAITING_VRF_FLOP);
 
         vm.expectEmit(true, false, false, true);
         // Hole-card VRF used requestId=1; flop VRF gets requestId=2
-        emit VRFRequested(1, PokerTable.GameState.WAITING_VRF_FLOP, 2);
+        emit VRFRequested(1, PokerTableBase.GameState.WAITING_VRF_FLOP, 2);
 
         pokerTable.check(2);
 
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.WAITING_VRF_FLOP));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.WAITING_VRF_FLOP));
         assertEq(mockVRF.lastRequestId(), 2);
     }
 
@@ -531,7 +532,7 @@ contract PokerTableTest is Test {
         _completePreflop();
         mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
 
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.BETTING_FLOP));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.BETTING_FLOP));
 
         // Post-flop: first active after button (seat 1, SB) acts first
         (,,, uint8 actorSeat,) = pokerTable.getHandInfo();
@@ -573,7 +574,7 @@ contract PokerTableTest is Test {
         uint256 stackBefore = pokerTable.getSeat(expectedWinner).stack;
         pokerTable.settleShowdown();
 
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.SETTLED));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.SETTLED));
         uint256 stackAfter = pokerTable.getSeat(expectedWinner).stack;
         assertEq(stackAfter, stackBefore + 80, "Winner receives full pot");
     }
@@ -606,9 +607,9 @@ contract PokerTableTest is Test {
         vm.roll(block.number + 1);
 
         vm.expectEmit(true, false, false, true);
-        emit BettingRoundComplete(1, PokerTable.GameState.BETTING_PRE, PokerTable.GameState.WAITING_VRF_FLOP);
+        emit BettingRoundComplete(1, PokerTableBase.GameState.BETTING_PRE, PokerTableBase.GameState.WAITING_VRF_FLOP);
         vm.expectEmit(true, false, false, true);
-        emit VRFRequested(1, PokerTable.GameState.WAITING_VRF_FLOP, 2);
+        emit VRFRequested(1, PokerTableBase.GameState.WAITING_VRF_FLOP, 2);
 
         pokerTable.check(2);
 
@@ -649,7 +650,7 @@ contract PokerTableTest is Test {
 
         _completePostflopBetting();
 
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.WAITING_VRF_TURN));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.WAITING_VRF_TURN));
 
         mockVRF.fulfillLastRequest(TEST_RANDOMNESS + 100);
 
@@ -670,7 +671,7 @@ contract PokerTableTest is Test {
 
         _completePostflopBetting();
 
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.WAITING_VRF_RIVER));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.WAITING_VRF_RIVER));
 
         mockVRF.fulfillLastRequest(TEST_RANDOMNESS + 200);
 
@@ -778,7 +779,7 @@ contract PokerTableTest is Test {
         _completePreflop();
 
         // Table is now in WAITING_VRF_FLOP
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.WAITING_VRF_FLOP));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.WAITING_VRF_FLOP));
 
         uint256 reqId = pokerTable.pendingVRFRequestId();
 
@@ -795,7 +796,7 @@ contract PokerTableTest is Test {
 
         // Fulfill through mock adapter (which is the registered vrfAdapter)
         mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.BETTING_FLOP));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.BETTING_FLOP));
     }
 
     function test_ReRequestVRF_SuccessAfterTimeout() public {
@@ -816,7 +817,7 @@ contract PokerTableTest is Test {
 
         // Fulfill the new request
         mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.BETTING_FLOP));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.BETTING_FLOP));
     }
 
     function test_ReRequestVRF_RevertBeforeTimeout() public {
@@ -825,7 +826,7 @@ contract PokerTableTest is Test {
         _completePreflop();
 
         // Try to re-request immediately (before timeout)
-        vm.expectRevert(abi.encodeWithSelector(PokerTable.VRFTimeoutNotReached.selector));
+        vm.expectRevert(abi.encodeWithSelector(PokerTableBase.VRFTimeoutNotReached.selector));
         pokerTable.reRequestVRF();
     }
 
@@ -888,7 +889,7 @@ contract PokerTableTest is Test {
 
         // Only latest request should work
         mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.BETTING_FLOP));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.BETTING_FLOP));
     }
 
     // ============ Hole Card VRF Max Retry → Abort Tests (T-R16-03) ============
@@ -898,7 +899,7 @@ contract PokerTableTest is Test {
         pokerTable.startHand();
         assertEq(
             uint256(pokerTable.gameState()),
-            uint256(PokerTable.GameState.WAITING_VRF_HOLECARDS),
+            uint256(PokerTableBase.GameState.WAITING_VRF_HOLECARDS),
             "should be in WAITING_VRF_HOLECARDS"
         );
     }
@@ -913,7 +914,7 @@ contract PokerTableTest is Test {
             pokerTable.reRequestHoleCardVRF();
             assertEq(
                 uint256(pokerTable.gameState()),
-                uint256(PokerTable.GameState.WAITING_VRF_HOLECARDS),
+                uint256(PokerTableBase.GameState.WAITING_VRF_HOLECARDS),
                 "should still be waiting for hole card VRF"
             );
             assertEq(pokerTable.holeCardVRFRetryCount(handId), i + 1, "retry count should increment");
@@ -939,14 +940,14 @@ contract PokerTableTest is Test {
         // Should now be SETTLED
         assertEq(
             uint256(pokerTable.gameState()),
-            uint256(PokerTable.GameState.SETTLED),
+            uint256(PokerTableBase.GameState.SETTLED),
             "should be SETTLED after abort"
         );
 
         // Blinds should be returned — check SB seat (seat1) and BB seat (seat2)
         // After blind return, their stacks should be restored to buy-in
-        PokerTable.Seat memory seat1 = pokerTable.getSeat(1);
-        PokerTable.Seat memory seat2 = pokerTable.getSeat(2);
+        PokerTableBase.Seat memory seat1 = pokerTable.getSeat(1);
+        PokerTableBase.Seat memory seat2 = pokerTable.getSeat(2);
         assertEq(seat1.stack, BUY_IN, "SB stack should be fully restored");
         assertEq(seat2.stack, BUY_IN, "BB stack should be fully restored");
     }
@@ -954,7 +955,7 @@ contract PokerTableTest is Test {
     function test_ReRequestHoleCardVRF_RevertBeforeTimeout() public {
         _setupAndStartHandToHoleCardVRF();
 
-        vm.expectRevert(abi.encodeWithSelector(PokerTable.VRFTimeoutNotReached.selector));
+        vm.expectRevert(abi.encodeWithSelector(PokerTableBase.VRFTimeoutNotReached.selector));
         pokerTable.reRequestHoleCardVRF();
     }
 
@@ -977,7 +978,7 @@ contract PokerTableTest is Test {
             pokerTable.reRequestHoleCardVRF();
         }
 
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.SETTLED));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.SETTLED));
 
         // Start next hand
         pokerTable.startHand();
@@ -985,7 +986,7 @@ contract PokerTableTest is Test {
         assertGt(secondHandId, firstHandId, "next hand should have new ID");
         assertEq(
             uint256(pokerTable.gameState()),
-            uint256(PokerTable.GameState.WAITING_VRF_HOLECARDS),
+            uint256(PokerTableBase.GameState.WAITING_VRF_HOLECARDS),
             "new hand should be in WAITING_VRF_HOLECARDS"
         );
         // Retry count for new hand starts fresh
@@ -1081,7 +1082,7 @@ contract PokerTableTest is Test {
 
         _completePostflopBetting();
 
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.SHOWDOWN));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.SHOWDOWN));
 
         // Reveal all seats
         for (uint8 i = 0; i < 4; i++) {
@@ -1160,7 +1161,7 @@ contract PokerTableTest is Test {
         // Pot should be SB(10) + BB(20) + UTG(120) + BTN(120) = 270
         (, uint256 pot,,,) = pokerTable.getHandInfo();
         assertEq(pot, 270, "Pot accumulates from raises");
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.WAITING_VRF_FLOP));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.WAITING_VRF_FLOP));
 
         mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
 
@@ -1172,7 +1173,7 @@ contract PokerTableTest is Test {
         pokerTable.fold(3);
 
         // Button wins
-        PokerTable.Seat memory btn = pokerTable.getSeat(0);
+        PokerTableBase.Seat memory btn = pokerTable.getSeat(0);
         assertEq(btn.stack, BUY_IN - 120 + 270, "Winner receives accumulated pot");
     }
 
@@ -1220,7 +1221,7 @@ contract PokerTableTest is Test {
         _setupAllSeats();
         _startHandFull();
 
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.BETTING_PRE));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.BETTING_PRE));
 
         // All fold to BB
         vm.prank(operator4);
@@ -1235,7 +1236,7 @@ contract PokerTableTest is Test {
         vm.roll(block.number + 1);
         pokerTable.fold(1);
 
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.SETTLED));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.SETTLED));
     }
 
     function test_Settlement_CanStartNewHandAfterSettlement() public {
@@ -1255,10 +1256,10 @@ contract PokerTableTest is Test {
         vm.roll(block.number + 1);
         pokerTable.fold(1);
 
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.SETTLED));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.SETTLED));
 
         _startHandFull();
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.BETTING_PRE));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.BETTING_PRE));
         assertEq(pokerTable.currentHandId(), 2, "Hand ID increments");
     }
 
@@ -1321,12 +1322,12 @@ contract PokerTableTest is Test {
         vm.roll(block.number + 1);
 
         vm.expectEmit(true, true, false, true);
-        emit ForceTimeout(1, 3, PokerTable.ActionType.FOLD);
+        emit ForceTimeout(1, 3, PokerTableBase.ActionType.FOLD);
 
         pokerTable.forceTimeout();
 
         // Game should still be active (3 players remain)
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.BETTING_PRE));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.BETTING_PRE));
     }
 
     function test_ForceTimeout_AutoFoldSettlesWhenOneRemains() public {
@@ -1348,14 +1349,14 @@ contract PokerTableTest is Test {
         vm.roll(block.number + 1);
 
         vm.expectEmit(true, true, false, true);
-        emit ForceTimeout(1, 1, PokerTable.ActionType.FOLD);
+        emit ForceTimeout(1, 1, PokerTableBase.ActionType.FOLD);
 
         vm.expectEmit(true, false, false, true);
         emit HandSettled(1, 2, SMALL_BLIND + BIG_BLIND);
 
         pokerTable.forceTimeout();
 
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.SETTLED));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.SETTLED));
     }
 
     function test_ForceTimeout_AutoCheckWhenLegal() public {
@@ -1380,14 +1381,14 @@ contract PokerTableTest is Test {
         vm.roll(block.number + 1);
 
         vm.expectEmit(true, true, false, true);
-        emit ForceTimeout(1, 2, PokerTable.ActionType.CHECK);
+        emit ForceTimeout(1, 2, PokerTableBase.ActionType.CHECK);
 
         vm.expectEmit(true, false, false, true);
-        emit BettingRoundComplete(1, PokerTable.GameState.BETTING_PRE, PokerTable.GameState.WAITING_VRF_FLOP);
+        emit BettingRoundComplete(1, PokerTableBase.GameState.BETTING_PRE, PokerTableBase.GameState.WAITING_VRF_FLOP);
 
         pokerTable.forceTimeout();
 
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.WAITING_VRF_FLOP));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.WAITING_VRF_FLOP));
     }
 
     function test_ForceTimeout_MultipleTimeoutsToShowdown() public {
@@ -1420,7 +1421,7 @@ contract PokerTableTest is Test {
             pokerTable.forceTimeout();
         }
 
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.WAITING_VRF_TURN));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.WAITING_VRF_TURN));
     }
 
     function test_ForceTimeout_RevertIfNotInBettingState() public {
@@ -1430,7 +1431,7 @@ contract PokerTableTest is Test {
         _completePreflop();
 
         // Now waiting for VRF
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.WAITING_VRF_FLOP));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.WAITING_VRF_FLOP));
 
         vm.warp(block.timestamp + 31 minutes);
         vm.roll(block.number + 1);
@@ -1453,7 +1454,7 @@ contract PokerTableTest is Test {
 
         // Button tries in same block
         vm.prank(operator1);
-        vm.expectRevert(abi.encodeWithSelector(PokerTable.OneActionPerBlock.selector));
+        vm.expectRevert(abi.encodeWithSelector(PokerTableBase.OneActionPerBlock.selector));
         pokerTable.call(0);
     }
 
@@ -1472,7 +1473,7 @@ contract PokerTableTest is Test {
         pokerTable.call(0);
 
         // Verify action succeeded
-        PokerTable.Seat memory btn = pokerTable.getSeat(0);
+        PokerTableBase.Seat memory btn = pokerTable.getSeat(0);
         assertEq(btn.currentBet, BIG_BLIND);
     }
 
@@ -1489,7 +1490,7 @@ contract PokerTableTest is Test {
         vm.warp(block.timestamp + 31 minutes);
 
         // Same block - forceTimeout should also respect one-action-per-block
-        vm.expectRevert(abi.encodeWithSelector(PokerTable.OneActionPerBlock.selector));
+        vm.expectRevert(abi.encodeWithSelector(PokerTableBase.OneActionPerBlock.selector));
         pokerTable.forceTimeout();
 
         vm.roll(block.number + 1);
@@ -1503,7 +1504,7 @@ contract PokerTableTest is Test {
 
         // Without advancing block, action should fail
         vm.prank(operator4);
-        vm.expectRevert(abi.encodeWithSelector(PokerTable.OneActionPerBlock.selector));
+        vm.expectRevert(abi.encodeWithSelector(PokerTableBase.OneActionPerBlock.selector));
         pokerTable.call(3);
     }
 
@@ -1545,7 +1546,7 @@ contract PokerTableTest is Test {
         bytes32 commitment = keccak256("test");
         pokerTable.submitHoleCommit(1, 0, commitment);
 
-        vm.expectRevert(abi.encodeWithSelector(PokerTable.CommitmentAlreadyExists.selector));
+        vm.expectRevert(abi.encodeWithSelector(PokerTableBase.CommitmentAlreadyExists.selector));
         pokerTable.submitHoleCommit(1, 0, keccak256("another"));
     }
 
@@ -1772,7 +1773,7 @@ contract PokerTableTest is Test {
         vm.roll(block.number + 1);
         pokerTable.fold(1);
 
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.SETTLED));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.SETTLED));
 
         // Can still reveal after settlement
         pokerTable.revealHoleCards(1, 0, card1, card2, salt);
@@ -1809,7 +1810,7 @@ contract PokerTableTest is Test {
         pokerTable.settleShowdown();
 
         // Verify game is settled
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.SETTLED));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.SETTLED));
 
         // Verify all cards still accessible after settlement
         for (uint8 i = 0; i < 4; i++) {
@@ -1911,7 +1912,7 @@ contract PokerTableTest is Test {
         vm.roll(block.number + 1);
         pokerTable.check(2);
 
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.WAITING_VRF_FLOP));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.WAITING_VRF_FLOP));
 
         mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
 
@@ -1958,7 +1959,7 @@ contract PokerTableTest is Test {
         vm.roll(block.number + 1);
         pokerTable.call(2);
 
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.WAITING_VRF_FLOP));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.WAITING_VRF_FLOP));
     }
 
     function test_FourSeat_ButtonRotatesFullCycle() public {
@@ -2012,7 +2013,7 @@ contract PokerTableTest is Test {
         vm.roll(block.number + 1);
         pokerTable.check(2);
 
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.WAITING_VRF_FLOP));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.WAITING_VRF_FLOP));
         mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
 
         // Post-flop: only SB(1) and BB(2) active
@@ -2055,7 +2056,7 @@ contract PokerTableTest is Test {
 
         // After fold, _advanceAction checks if round is complete among remaining active
         // SB(1), BB(2), UTG(3) all acted, all at bet=0 → round complete
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.WAITING_VRF_TURN));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.WAITING_VRF_TURN));
     }
 
     // ============ Card-Based Settlement Tests (T-0902) ============
@@ -2066,7 +2067,7 @@ contract PokerTableTest is Test {
         _playToShowdown();
 
         // No reveals submitted
-        vm.expectRevert(abi.encodeWithSelector(PokerTable.ShowdownRevealWindowOpen.selector));
+        vm.expectRevert(abi.encodeWithSelector(PokerTableBase.ShowdownRevealWindowOpen.selector));
         pokerTable.settleShowdown();
     }
 
@@ -2078,7 +2079,7 @@ contract PokerTableTest is Test {
         vm.warp(block.timestamp + pokerTable.SHOWDOWN_TIMEOUT() + 1);
         pokerTable.settleShowdown();
 
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.SETTLED));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.SETTLED));
         assertEq(pokerTable.getSeat(0).stack, BUY_IN, "Seat 0 split fallback");
         assertEq(pokerTable.getSeat(1).stack, BUY_IN, "Seat 1 split fallback");
         assertEq(pokerTable.getSeat(2).stack, BUY_IN, "Seat 2 split fallback");
@@ -2100,9 +2101,9 @@ contract PokerTableTest is Test {
         pokerTable.revealHoleCards(1, 2, 0, 14, bytes32("s2"));
         pokerTable.settleShowdown();
 
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.SETTLED));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.SETTLED));
         // Seat 2 wins the entire pot by default (only one revealed)
-        PokerTable.Seat memory seat2 = pokerTable.getSeat(2);
+        PokerTableBase.Seat memory seat2 = pokerTable.getSeat(2);
         assertEq(seat2.stack, BUY_IN - BIG_BLIND + 80, "Single revealer wins pot");
     }
 
@@ -2292,7 +2293,7 @@ contract PokerTableTest is Test {
     function _submitDummyCommits(uint256 handId) internal {
         uint8 n = pokerTable.numSeats();
         for (uint8 i = 0; i < n; i++) {
-            PokerTable.Seat memory s = pokerTable.getSeat(i);
+            PokerTableBase.Seat memory s = pokerTable.getSeat(i);
             if (s.isActive && pokerTable.holeCommits(handId, i) == bytes32(0)) {
                 pokerTable.submitHoleCommit(handId, i, bytes32(uint256(i + 100)));
             }
@@ -2380,11 +2381,11 @@ contract PokerTableTest is Test {
     function _completePostflopBetting() internal {
         // Check all active players in order
         for (uint8 round = 0; round < 4; round++) {
-            (,,, uint8 actor, PokerTable.GameState state) = pokerTable.getHandInfo();
+            (,,, uint8 actor, PokerTableBase.GameState state) = pokerTable.getHandInfo();
             // If we've moved past a betting state, stop
-            if (state != PokerTable.GameState.BETTING_FLOP &&
-                state != PokerTable.GameState.BETTING_TURN &&
-                state != PokerTable.GameState.BETTING_RIVER) {
+            if (state != PokerTableBase.GameState.BETTING_FLOP &&
+                state != PokerTableBase.GameState.BETTING_TURN &&
+                state != PokerTableBase.GameState.BETTING_RIVER) {
                 break;
             }
             vm.prank(_operatorFor(actor));
@@ -2409,7 +2410,7 @@ contract PokerTableTest is Test {
         // River
         _completePostflopBetting();
 
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.SHOWDOWN));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.SHOWDOWN));
     }
 
     // ============ T-1002: All-in Blind Posting Tests ============
@@ -2430,7 +2431,7 @@ contract PokerTableTest is Test {
 
         _startHandFull();
 
-        PokerTable.Seat memory sbSeat = pokerTable.getSeat(1);
+        PokerTableBase.Seat memory sbSeat = pokerTable.getSeat(1);
         assertEq(sbSeat.currentBet, 5, "SB should post all 5 as blind");
         assertEq(sbSeat.stack, 0, "SB stack should be 0");
         assertTrue(sbSeat.isAllIn, "SB should be all-in");
@@ -2445,7 +2446,7 @@ contract PokerTableTest is Test {
 
         _startHandFull();
 
-        PokerTable.Seat memory bbSeat = pokerTable.getSeat(2);
+        PokerTableBase.Seat memory bbSeat = pokerTable.getSeat(2);
         assertEq(bbSeat.currentBet, 15, "BB should post all 15 as blind");
         assertEq(bbSeat.stack, 0, "BB stack should be 0");
         assertTrue(bbSeat.isAllIn, "BB should be all-in");
@@ -2459,7 +2460,7 @@ contract PokerTableTest is Test {
 
         // Should not revert — seat with stack=1 is playable
         _startHandFull();
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.BETTING_PRE));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.BETTING_PRE));
     }
 
     // ============ T-1003: All-in Call Tests ============
@@ -2482,7 +2483,7 @@ contract PokerTableTest is Test {
         vm.roll(block.number + 1);
         pokerTable.call(1);
 
-        PokerTable.Seat memory seat1 = pokerTable.getSeat(1);
+        PokerTableBase.Seat memory seat1 = pokerTable.getSeat(1);
         assertEq(seat1.stack, 0, "Stack 0 after all-in call");
         assertEq(seat1.currentBet, 12, "currentBet = 10 (SB) + 2 (all-in)");
         assertTrue(seat1.isAllIn, "Must be all-in");
@@ -2531,7 +2532,7 @@ contract PokerTableTest is Test {
         vm.roll(block.number + 1);
         pokerTable.raise(1, 100); // will be capped to 25
 
-        PokerTable.Seat memory seat1 = pokerTable.getSeat(1);
+        PokerTableBase.Seat memory seat1 = pokerTable.getSeat(1);
         assertEq(seat1.stack, 0, "Stack 0 after all-in raise");
         assertEq(seat1.currentBet, 25, "currentBet = 10 (SB) + 15 (all-in) = 25");
         assertTrue(seat1.isAllIn, "Must be all-in");
@@ -2553,7 +2554,7 @@ contract PokerTableTest is Test {
         vm.roll(block.number + 1);
         pokerTable.raise(1, 80);
 
-        PokerTable.Seat memory seat1 = pokerTable.getSeat(1);
+        PokerTableBase.Seat memory seat1 = pokerTable.getSeat(1);
         assertEq(seat1.stack, 0);
         assertEq(seat1.currentBet, 80);
         assertTrue(seat1.isAllIn);
@@ -2609,7 +2610,7 @@ contract PokerTableTest is Test {
         // Betting round should be complete → VRF requested for flop
         assertEq(
             uint256(pokerTable.gameState()),
-            uint256(PokerTable.GameState.WAITING_VRF_FLOP),
+            uint256(PokerTableBase.GameState.WAITING_VRF_FLOP),
             "Should advance to VRF flop after seat2 checks"
         );
     }
@@ -2633,7 +2634,7 @@ contract PokerTableTest is Test {
         // Pre-flop: no actors → _isBettingRoundComplete()=true → VRF_FLOP
         assertEq(
             uint256(pokerTable.gameState()),
-            uint256(PokerTable.GameState.WAITING_VRF_FLOP),
+            uint256(PokerTableBase.GameState.WAITING_VRF_FLOP),
             "Should auto-advance to VRF flop"
         );
 
@@ -2641,7 +2642,7 @@ contract PokerTableTest is Test {
         mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
         assertEq(
             uint256(pokerTable.gameState()),
-            uint256(PokerTable.GameState.WAITING_VRF_TURN),
+            uint256(PokerTableBase.GameState.WAITING_VRF_TURN),
             "Should auto-advance to VRF turn"
         );
 
@@ -2649,7 +2650,7 @@ contract PokerTableTest is Test {
         mockVRF.fulfillLastRequest(TEST_RANDOMNESS + 1);
         assertEq(
             uint256(pokerTable.gameState()),
-            uint256(PokerTable.GameState.WAITING_VRF_RIVER),
+            uint256(PokerTableBase.GameState.WAITING_VRF_RIVER),
             "Should auto-advance to VRF river"
         );
 
@@ -2657,7 +2658,7 @@ contract PokerTableTest is Test {
         mockVRF.fulfillLastRequest(TEST_RANDOMNESS + 2);
         assertEq(
             uint256(pokerTable.gameState()),
-            uint256(PokerTable.GameState.SHOWDOWN),
+            uint256(PokerTableBase.GameState.SHOWDOWN),
             "Should reach showdown after 3 VRFs"
         );
 
@@ -2696,7 +2697,7 @@ contract PokerTableTest is Test {
         mockVRF.fulfillLastRequest(TEST_RANDOMNESS + 1);
         mockVRF.fulfillLastRequest(TEST_RANDOMNESS + 2);
 
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.SHOWDOWN));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.SHOWDOWN));
 
         assertEq(pokerTable.getSidePotCount(), 1, "1 side pot");
         (uint256 potAmt, bool[9] memory eligible) = pokerTable.getSidePot(0);
@@ -2757,7 +2758,7 @@ contract PokerTableTest is Test {
         mockVRF.fulfillLastRequest(TEST_RANDOMNESS + 1);
         mockVRF.fulfillLastRequest(TEST_RANDOMNESS + 2);
 
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.SHOWDOWN));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.SHOWDOWN));
 
         assertEq(pokerTable.getSidePotCount(), 2, "2 side pots");
 
@@ -2809,7 +2810,7 @@ contract PokerTableTest is Test {
         mockVRF.fulfillLastRequest(TEST_RANDOMNESS + 1);
         mockVRF.fulfillLastRequest(TEST_RANDOMNESS + 2);
 
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.SHOWDOWN));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.SHOWDOWN));
 
         uint256 handId = pokerTable.currentHandId();
         uint8[5] memory comm = pokerTable.getCommunityCards();
@@ -2829,7 +2830,7 @@ contract PokerTableTest is Test {
 
         pokerTable.settleShowdown();
 
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.SETTLED));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.SETTLED));
 
         uint256 seat1After = pokerTable.getSeat(1).stack;
         uint256 seat2After = pokerTable.getSeat(2).stack;
@@ -2914,7 +2915,7 @@ contract PokerTableTest is Test {
         mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
         mockVRF.fulfillLastRequest(TEST_RANDOMNESS + 1);
         mockVRF.fulfillLastRequest(TEST_RANDOMNESS + 2);
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.SHOWDOWN));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.SHOWDOWN));
 
         // Verify side pots
         assertEq(pokerTable.getSidePotCount(), 2, "Should have 2 side pots");
@@ -2978,13 +2979,13 @@ contract PokerTableTest is Test {
         vm.roll(block.number + 1);
         pokerTable.check(2);
 
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.WAITING_VRF_FLOP));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.WAITING_VRF_FLOP));
 
         // VRF flop → only 1 non-all-in player (seat2) → auto-skip flop betting → VRF_TURN
         mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
         assertEq(
             uint256(pokerTable.gameState()),
-            uint256(PokerTable.GameState.WAITING_VRF_TURN),
+            uint256(PokerTableBase.GameState.WAITING_VRF_TURN),
             "Flop betting auto-skipped"
         );
 
@@ -2992,7 +2993,7 @@ contract PokerTableTest is Test {
         mockVRF.fulfillLastRequest(TEST_RANDOMNESS + 1);
         assertEq(
             uint256(pokerTable.gameState()),
-            uint256(PokerTable.GameState.WAITING_VRF_RIVER),
+            uint256(PokerTableBase.GameState.WAITING_VRF_RIVER),
             "Turn betting auto-skipped"
         );
 
@@ -3000,7 +3001,7 @@ contract PokerTableTest is Test {
         mockVRF.fulfillLastRequest(TEST_RANDOMNESS + 2);
         assertEq(
             uint256(pokerTable.gameState()),
-            uint256(PokerTable.GameState.SHOWDOWN),
+            uint256(PokerTableBase.GameState.SHOWDOWN),
             "River betting auto-skipped to showdown"
         );
     }
@@ -3237,8 +3238,8 @@ contract PokerTableTest is Test {
         _startHandFull();
 
         // Button = 0: in heads-up, seat 0 should be SB and seat 1 should be BB
-        PokerTable.Seat memory seat0 = pokerTable.getSeat(0);
-        PokerTable.Seat memory seat1 = pokerTable.getSeat(1);
+        PokerTableBase.Seat memory seat0 = pokerTable.getSeat(0);
+        PokerTableBase.Seat memory seat1 = pokerTable.getSeat(1);
 
         assertEq(seat0.currentBet, SMALL_BLIND, "Seat 0 (button) is SB");
         assertEq(seat1.currentBet, BIG_BLIND,   "Seat 1 is BB");
@@ -3322,7 +3323,7 @@ contract PokerTableTest is Test {
         _startHandFull();
 
         // Seat 1 should be all-in after posting SB
-        PokerTable.Seat memory seat1 = pokerTable.getSeat(1);
+        PokerTableBase.Seat memory seat1 = pokerTable.getSeat(1);
         assertTrue(seat1.isAllIn, "Seat 1 should be all-in after posting SB");
         assertTrue(seat1.isActive, "All-in seat should still be active");
 
@@ -3371,9 +3372,9 @@ contract PokerTableTest is Test {
         _startHandFull();
 
         // Button=0: SB = seat 1, BB = seat 2
-        PokerTable.Seat memory seat0 = pokerTable.getSeat(0);
-        PokerTable.Seat memory seat1 = pokerTable.getSeat(1);
-        PokerTable.Seat memory seat2 = pokerTable.getSeat(2);
+        PokerTableBase.Seat memory seat0 = pokerTable.getSeat(0);
+        PokerTableBase.Seat memory seat1 = pokerTable.getSeat(1);
+        PokerTableBase.Seat memory seat2 = pokerTable.getSeat(2);
 
         assertEq(seat0.currentBet, 0,           "Button (seat 0) not SB");
         assertEq(seat1.currentBet, SMALL_BLIND, "Seat 1 is SB");
@@ -3407,7 +3408,7 @@ contract PokerTableTest is Test {
         pokerTable.fold(0);
 
         // Now gameState = SETTLED. Register seat 2.
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.SETTLED));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.SETTLED));
         _registerSeat(2, owner3, operator3, BUY_IN);
 
         assertTrue(pokerTable.needsPostBlind(2), "Mid-game joiner needs post blind");
@@ -3441,7 +3442,7 @@ contract PokerTableTest is Test {
         _startHandFull();
 
         // Seat 3 joined mid-game. If it's not SB or BB, it should have posted BB.
-        PokerTable.Seat memory seat3 = pokerTable.getSeat(3);
+        PokerTableBase.Seat memory seat3 = pokerTable.getSeat(3);
 
         // needsPostBlind should be cleared after startHand
         assertFalse(pokerTable.needsPostBlind(3), "Post blind flag cleared");
@@ -3482,7 +3483,7 @@ contract PokerTableTest is Test {
 
         // Hand 2: btn advances to 1. With 4 players: SB=2, BB=3. Seat 3 IS the BB.
         // So post blind is skipped (BB already pays BB).
-        PokerTable.Seat memory seat3 = pokerTable.getSeat(3);
+        PokerTableBase.Seat memory seat3 = pokerTable.getSeat(3);
         assertEq(seat3.currentBet, BIG_BLIND, "Seat 3 is BB, posted BB normally");
         assertEq(seat3.stack, stackBefore - BIG_BLIND, "BB cost only");
         assertFalse(pokerTable.needsPostBlind(3), "Flag cleared");
@@ -3575,7 +3576,7 @@ contract PokerTableTest is Test {
         vm.roll(block.number + 1);
         _startHandFull();
 
-        PokerTable.Seat memory seat4 = pokerTable.getSeat(4);
+        PokerTableBase.Seat memory seat4 = pokerTable.getSeat(4);
         // Seat 4 should have posted BB as live blind
         assertEq(seat4.currentBet, BIG_BLIND, "Post blind = BB as live blind");
         assertEq(seat4.stack, BUY_IN - BIG_BLIND, "Stack reduced by BB");
@@ -3596,7 +3597,7 @@ contract PokerTableTest is Test {
      */
     function _startHandToWFHC() internal {
         pokerTable.startHand();
-        if (pokerTable.gameState() != PokerTable.GameState.WAITING_VRF_HOLECARDS) return;
+        if (pokerTable.gameState() != PokerTableBase.GameState.WAITING_VRF_HOLECARDS) return;
         mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
     }
 
@@ -3609,13 +3610,13 @@ contract PokerTableTest is Test {
     function _startHandFull() internal {
         pokerTable.startHand();
         // If tournament ended during startHand() (eviction), stop here.
-        if (pokerTable.gameState() != PokerTable.GameState.WAITING_VRF_HOLECARDS) return;
+        if (pokerTable.gameState() != PokerTableBase.GameState.WAITING_VRF_HOLECARDS) return;
         mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
         // Submit a non-zero hole commit for every active seat (required before advanceToPreflop)
         uint256 handId = pokerTable.currentHandId();
         uint8 seats = pokerTable.numSeats();
         for (uint8 i = 0; i < seats; i++) {
-            PokerTable.Seat memory seat = pokerTable.getSeat(i);
+            PokerTableBase.Seat memory seat = pokerTable.getSeat(i);
             if (seat.isActive && pokerTable.holeCommits(handId, i) == bytes32(0)) {
                 pokerTable.submitHoleCommit(handId, i, bytes32(uint256(i + 1)));
             }
@@ -3687,7 +3688,7 @@ contract PauseEmergencyTest is Test {
 
         // Should be able to start a hand
         pokerTable.startHand();
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.WAITING_VRF_HOLECARDS));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.WAITING_VRF_HOLECARDS));
     }
 
     function test_Pause_AlreadyPausedReverts() public {
@@ -3710,7 +3711,7 @@ contract PauseEmergencyTest is Test {
         // Request emergency withdraw
         vm.prank(owner1);
         vm.expectEmit(true, false, false, false);
-        emit PokerTable.EmergencyWithdrawRequested(0, block.timestamp + 7 days);
+        emit PokerTableBase.EmergencyWithdrawRequested(0, block.timestamp + 7 days);
         pokerTable.requestEmergencyWithdraw(0);
 
         assertEq(pokerTable.emergencyWithdrawRequestedAt(0), block.timestamp);
@@ -3861,7 +3862,7 @@ contract PlayerRegistryIntegrationTest is Test {
         vm.prank(owner1);
         pokerTable.registerSeat(0, owner1, operator1, BUY_IN);
 
-        PokerTable.Seat memory s = pokerTable.getSeat(0);
+        PokerTableBase.Seat memory s = pokerTable.getSeat(0);
         assertEq(s.owner, owner1);
     }
 
@@ -3875,7 +3876,7 @@ contract PlayerRegistryIntegrationTest is Test {
         vm.prank(owner1);
         pokerTable.registerSeat(0, owner1, operator1, BUY_IN);
 
-        PokerTable.Seat memory s = pokerTable.getSeat(0);
+        PokerTableBase.Seat memory s = pokerTable.getSeat(0);
         assertEq(s.owner, owner1);
     }
 

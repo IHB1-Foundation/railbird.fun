@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 import "../src/ProductionVRFAdapter.sol";
 import "../src/PokerTable.sol";
+import "../src/table/PokerTableBase.sol";
 import "../src/ChipToken.sol";
 
 contract ProductionVRFAdapterTest is Test {
@@ -242,7 +243,7 @@ contract ProductionVRFAdapterTest is Test {
         _startHandAndGetToVRF();
 
         // Verify table is waiting for VRF
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.WAITING_VRF_FLOP));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.WAITING_VRF_FLOP));
 
         // Operator fulfills VRF
         uint256 reqId = pokerTable.pendingVRFRequestId();
@@ -250,7 +251,7 @@ contract ProductionVRFAdapterTest is Test {
         adapter.fulfillRandomness(reqId, 12345);
 
         // Table should now be in BETTING_FLOP
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.BETTING_FLOP));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.BETTING_FLOP));
 
         // Verify community cards were dealt
         uint8[5] memory cards = pokerTable.getCommunityCards();
@@ -293,14 +294,14 @@ contract ProductionVRFAdapterTest is Test {
         vm.prank(vrfOperator);
         adapter.fulfillRandomness(newReqId, 54321);
 
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.BETTING_FLOP));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.BETTING_FLOP));
     }
 
     function test_Integration_ReRequestVRF_RevertBeforeTimeout() public {
         _setupPokerTableForFulfillment();
         _startHandAndGetToVRF();
 
-        vm.expectRevert(abi.encodeWithSelector(PokerTable.VRFTimeoutNotReached.selector));
+        vm.expectRevert(abi.encodeWithSelector(PokerTableBase.VRFTimeoutNotReached.selector));
         pokerTable.reRequestVRF();
     }
 
@@ -357,7 +358,7 @@ contract ProductionVRFAdapterTest is Test {
         uint256 handId = pokerTable.currentHandId();
         uint8 n = pokerTable.numSeats();
         for (uint8 i = 0; i < n; i++) {
-            PokerTable.Seat memory s = pokerTable.getSeat(i);
+            PokerTableBase.Seat memory s = pokerTable.getSeat(i);
             if (s.isActive && pokerTable.holeCommits(handId, i) == bytes32(0)) {
                 pokerTable.submitHoleCommit(handId, i, bytes32(uint256(i + 100)));
             }

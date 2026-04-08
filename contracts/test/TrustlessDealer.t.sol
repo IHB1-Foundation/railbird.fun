@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 import "../src/PokerTable.sol";
+import "../src/table/PokerTableBase.sol";
 import "../src/ChipToken.sol";
 import "./mocks/MockVRFAdapter.sol";
 
@@ -39,7 +40,7 @@ contract TrustlessDealerTest is Test {
     event DealerSeedRevealed(uint256 indexed handId, bytes32 seed);
     event HoleCardVRFFulfilled(uint256 indexed handId, bytes32 randomnessHash);
     event HoleCardVRFReRequested(uint256 indexed handId, uint256 oldRequestId, uint256 newRequestId);
-    event VRFRequested(uint256 indexed handId, PokerTable.GameState street, uint256 requestId);
+    event VRFRequested(uint256 indexed handId, PokerTableBase.GameState street, uint256 requestId);
 
     function setUp() public {
         mockVRF = new MockVRFAdapter();
@@ -103,7 +104,7 @@ contract TrustlessDealerTest is Test {
         vm.roll(block.number + 1);
         pokerTable.fold(0);
 
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.SETTLED));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.SETTLED));
 
         // Now rotate key
         bytes memory newKey = UNCOMPRESSED_PUBKEY;
@@ -137,7 +138,7 @@ contract TrustlessDealerTest is Test {
         // Now in WAITING_VRF_HOLECARDS — hand in progress
         assertEq(
             uint256(pokerTable.gameState()),
-            uint256(PokerTable.GameState.WAITING_VRF_HOLECARDS)
+            uint256(PokerTableBase.GameState.WAITING_VRF_HOLECARDS)
         );
 
         vm.prank(owner1);
@@ -284,13 +285,13 @@ contract TrustlessDealerTest is Test {
         _registerSeat(1, owner2, operator2, BUY_IN);
 
         vm.expectEmit(true, false, false, false);
-        emit VRFRequested(1, PokerTable.GameState.WAITING_VRF_HOLECARDS, 1);
+        emit VRFRequested(1, PokerTableBase.GameState.WAITING_VRF_HOLECARDS, 1);
 
         pokerTable.startHand();
 
         assertEq(
             uint256(pokerTable.gameState()),
-            uint256(PokerTable.GameState.WAITING_VRF_HOLECARDS)
+            uint256(PokerTableBase.GameState.WAITING_VRF_HOLECARDS)
         );
         assertEq(pokerTable.pendingHoleCardVRFRequestId(), 1);
     }
@@ -309,7 +310,7 @@ contract TrustlessDealerTest is Test {
 
         assertEq(
             uint256(pokerTable.gameState()),
-            uint256(PokerTable.GameState.WAITING_FOR_HOLECARDS)
+            uint256(PokerTableBase.GameState.WAITING_FOR_HOLECARDS)
         );
         assertEq(pokerTable.holeCardVRFRandomnessHash(1), expectedHash);
         assertEq(pokerTable.pendingHoleCardVRFRequestId(), 0);
@@ -324,14 +325,14 @@ contract TrustlessDealerTest is Test {
 
         assertEq(
             uint256(pokerTable.gameState()),
-            uint256(PokerTable.GameState.WAITING_FOR_HOLECARDS)
+            uint256(PokerTableBase.GameState.WAITING_FOR_HOLECARDS)
         );
 
         _submitDummyCommitsAndAdvance();
 
         assertEq(
             uint256(pokerTable.gameState()),
-            uint256(PokerTable.GameState.BETTING_PRE)
+            uint256(PokerTableBase.GameState.BETTING_PRE)
         );
     }
 
@@ -377,7 +378,7 @@ contract TrustlessDealerTest is Test {
         pokerTable.fold(0);
 
         // Hand settled (fold wins), no community card VRF needed
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.SETTLED));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.SETTLED));
     }
 
     function test_HoleCardVRF_SecondHandUsesNewRandomness() public {
@@ -415,7 +416,7 @@ contract TrustlessDealerTest is Test {
         assertEq(oldRequestId, 1);
 
         // Before timeout
-        vm.expectRevert(abi.encodeWithSelector(PokerTable.VRFTimeoutNotReached.selector));
+        vm.expectRevert(abi.encodeWithSelector(PokerTableBase.VRFTimeoutNotReached.selector));
         pokerTable.reRequestHoleCardVRF();
 
         // After timeout
@@ -481,7 +482,7 @@ contract TrustlessDealerTest is Test {
         uint256 handId = pokerTable.currentHandId();
         uint8 n = pokerTable.numSeats();
         for (uint8 i = 0; i < n; i++) {
-            PokerTable.Seat memory s = pokerTable.getSeat(i);
+            PokerTableBase.Seat memory s = pokerTable.getSeat(i);
             if (s.isActive && pokerTable.holeCommits(handId, i) == bytes32(0)) {
                 pokerTable.submitHoleCommit(handId, i, bytes32(uint256(i + 100)));
             }
@@ -529,6 +530,6 @@ contract TrustlessDealerTest is Test {
         vm.roll(block.number + 1);
         pokerTable.check(0);
 
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.SHOWDOWN));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.SHOWDOWN));
     }
 }

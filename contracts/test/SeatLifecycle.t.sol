@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 import "../src/PokerTable.sol";
+import "../src/table/PokerTableBase.sol";
 import "../src/ChipToken.sol";
 import "./mocks/MockVRFAdapter.sol";
 
@@ -230,7 +231,7 @@ contract SeatLifecycleTest is Test {
     // ─── Helpers ─────────────────────────────────────────────────────────────
 
     function _getSeatOwnerOpStack(uint8 idx) internal view returns (address owner, address op, uint256 stack) {
-        PokerTable.Seat memory s = pokerTable.getSeat(idx);
+        PokerTableBase.Seat memory s = pokerTable.getSeat(idx);
         return (s.owner, s.operator, s.stack);
     }
 

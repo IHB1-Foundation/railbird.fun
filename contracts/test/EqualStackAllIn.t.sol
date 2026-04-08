@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 import "../src/PokerTable.sol";
+import "../src/table/PokerTableBase.sol";
 import "../src/ChipToken.sol";
 import "./mocks/MockVRFAdapter.sol";
 
@@ -56,7 +57,7 @@ contract EqualStackAllInTest is Test {
     function _commitAndAdvance() internal {
         uint256 hid = pokerTable.currentHandId();
         for (uint8 i = 0; i < 2; i++) {
-            PokerTable.Seat memory s = pokerTable.getSeat(i);
+            PokerTableBase.Seat memory s = pokerTable.getSeat(i);
             if (s.isActive && pokerTable.holeCommits(hid, i) == bytes32(0)) {
                 bytes32 commit = keccak256(abi.encodePacked(hid, i, uint8(i * 2), uint8(i * 2 + 1), bytes32("salt")));
                 pokerTable.submitHoleCommit(hid, i, commit);
@@ -86,19 +87,19 @@ contract EqualStackAllInTest is Test {
 
         // ── Start hand ──────────────────────────────────────────────────────
         pokerTable.startHand();
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.WAITING_VRF_HOLECARDS));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.WAITING_VRF_HOLECARDS));
 
         // Fulfill hole-card VRF
         mockVRF.fulfillLastRequest(12345);
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.WAITING_FOR_HOLECARDS));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.WAITING_FOR_HOLECARDS));
 
         _commitAndAdvance();
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.BETTING_PRE));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.BETTING_PRE));
 
         // ── Verify stacks after blinds ───────────────────────────────────────
         // Heads-up: button=seat0=SB=10, seat1=BB=20
-        PokerTable.Seat memory sb = pokerTable.getSeat(0);
-        PokerTable.Seat memory bb = pokerTable.getSeat(1);
+        PokerTableBase.Seat memory sb = pokerTable.getSeat(0);
+        PokerTableBase.Seat memory bb = pokerTable.getSeat(1);
         assertEq(sb.stack, EQUAL_STACK - SMALL_BLIND, "SB stack after posting");
         assertEq(bb.stack, EQUAL_STACK - BIG_BLIND,   "BB stack after posting");
 
@@ -129,19 +130,19 @@ contract EqualStackAllInTest is Test {
 
         // ── Community cards (auto-advanced since all-in) ─────────────────────
         // Flop VRF
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.WAITING_VRF_FLOP));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.WAITING_VRF_FLOP));
         mockVRF.fulfillLastRequest(99991); // auto-skips BETTING_FLOP
 
         // Turn VRF
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.WAITING_VRF_TURN));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.WAITING_VRF_TURN));
         mockVRF.fulfillLastRequest(99992);
 
         // River VRF
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.WAITING_VRF_RIVER));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.WAITING_VRF_RIVER));
         mockVRF.fulfillLastRequest(99993);
 
         // Should reach SHOWDOWN directly
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.SHOWDOWN), "Must reach SHOWDOWN");
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.SHOWDOWN), "Must reach SHOWDOWN");
 
         // ── Reveal hole cards ────────────────────────────────────────────────
         uint256 hid = pokerTable.currentHandId();
@@ -196,16 +197,16 @@ contract EqualStackAllInTest is Test {
         pokerTable.call(1);
 
         // Should transition to flop VRF without any betting actions
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.WAITING_VRF_FLOP));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.WAITING_VRF_FLOP));
 
         // Auto-advance through community cards (no check/call needed between VRFs)
         mockVRF.fulfillLastRequest(1);
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.WAITING_VRF_TURN));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.WAITING_VRF_TURN));
 
         mockVRF.fulfillLastRequest(2);
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.WAITING_VRF_RIVER));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.WAITING_VRF_RIVER));
 
         mockVRF.fulfillLastRequest(3);
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.SHOWDOWN));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.SHOWDOWN));
     }
 }

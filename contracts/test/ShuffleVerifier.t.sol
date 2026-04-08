@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 import "../src/ShuffleVerifier.sol";
 import "../src/PokerTable.sol";
+import "../src/table/PokerTableBase.sol";
 import "../src/ChipToken.sol";
 import "./mocks/MockVRFAdapter.sol";
 
@@ -295,7 +296,7 @@ contract ShuffleVerifierIntegrationTest is Test {
         vm.roll(block.number + 1);
         pokerTable.fold(0);
 
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.SETTLED));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.SETTLED));
     }
 
     function test_SettleHand_NoShuffleUnverified_WhenSeedRevealed() public {
@@ -319,7 +320,7 @@ contract ShuffleVerifierIntegrationTest is Test {
         vm.warp(block.timestamp + 11 minutes);
         pokerTable.settleShowdown();
 
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.SETTLED));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.SETTLED));
         // ShuffleUnverified was NOT emitted (seed was revealed)
     }
 
@@ -414,7 +415,7 @@ contract ShuffleVerifierIntegrationTest is Test {
         uint256 handId = pokerTable.currentHandId();
         uint8 n = pokerTable.numSeats();
         for (uint8 i = 0; i < n; i++) {
-            PokerTable.Seat memory s = pokerTable.getSeat(i);
+            PokerTableBase.Seat memory s = pokerTable.getSeat(i);
             if (s.isActive && pokerTable.holeCommits(handId, i) == bytes32(0)) {
                 pokerTable.submitHoleCommit(handId, i, bytes32(uint256(i + 100)));
             }
@@ -466,6 +467,6 @@ contract ShuffleVerifierIntegrationTest is Test {
         vm.roll(block.number + 1);
         pokerTable.check(0);
 
-        assertEq(uint256(pokerTable.gameState()), uint256(PokerTable.GameState.SHOWDOWN));
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.SHOWDOWN));
     }
 }

@@ -263,7 +263,7 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
             Blinds: {formatChips(table.smallBlind)}/{formatChips(table.bigBlind)} {CHIP_SYMBOL}
           </div>
           <div className={`${styles.tableHeadingMeta} ${styles.tableHeadingMetaMono}`} title={table.contractAddress}>
-            Contract: {table.contractAddress}
+            Contract: {shortenAddress(table.contractAddress)}
           </div>
         </div>
         <div className={styles.tableHeadingRight}>
@@ -272,80 +272,40 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
             {gameState}
           </span>
           <div className={styles.tableButtonSeat}>Button: Seat {table.buttonSeat}</div>
-          {currentHand && <div className={styles.tableHandId}>Hand #{currentHand.handId}</div>}
-          {actorSeat !== null && actorSeatData ? (
-            <div className={styles.tableTurnIndicator}>
-              NOW ACTING: {(() => {
-                const actorProfile = getAgentProfile(actorSeatData.operatorAddress) || getAgentProfile(actorSeatData.ownerAddress);
-                return actorProfile ? actorProfile.name : `Seat ${actorSeat} (${shortenAddress(actorSeatData.ownerAddress)})`;
-              })()}
-            </div>
-          ) : null}
+          {currentHand && Number(currentHand.handId) > 0 && (
+            <div className={styles.tableHandId}>Hand #{currentHand.handId}</div>
+          )}
         </div>
       </div>
 
-      {/* Join Seat Form */}
-      <div className={`card ${styles.sectionCard}`}>
-        <div className={styles.joinSeatHeader}>
-          <h3 className="section-title-sm">Add Player / Agent</h3>
-          <div className={styles.joinSeatBadges}>
-            <span className={styles.joinSeatBadge}>Wallet Join</span>
-            <span className={styles.joinSeatBadge}>Agent Operator Optional</span>
-          </div>
+      {/* Now Acting bar — outside orbital area for readability */}
+      {actorSeat !== null && actorSeatData && (
+        <div className={styles.nowActingBar}>
+          Now Acting: {(() => {
+            const actorProfile = getAgentProfile(actorSeatData.operatorAddress) || getAgentProfile(actorSeatData.ownerAddress);
+            return actorProfile ? actorProfile.name : `Seat ${actorSeat} (${shortenAddress(actorSeatData.ownerAddress)})`;
+          })()}
+          {timeRemaining !== "--" && <span className={styles.nowActingTimer}> — {timeRemaining}</span>}
         </div>
-        <div className={styles.joinSeatInstructions}>
-          <span>1. Pick an empty seat</span>
-          <span>2. Enter buy-in</span>
-          <span>3. Set operator only when attaching an agent</span>
-        </div>
-        <div className={styles.joinSeatControls}>
-          <label className={styles.joinField}>
-            <span className={styles.joinFieldLabel}>Seat</span>
-            <select
-              className={styles.joinFieldInput}
-              value={joinSeatIndex}
-              onChange={(e) => setJoinSeatIndex(Number(e.target.value))}
-              disabled={joinLoading || availableSeats.length === 0}
-            >
-              {availableSeats.map((seat) => (
-                <option key={seat.seatIndex} value={seat.seatIndex}>Seat {seat.seatIndex}</option>
-              ))}
-            </select>
-          </label>
-          <label className={styles.joinField}>
-            <span className={styles.joinFieldLabel}>Buy-in ({CHIP_SYMBOL}) — min 1, max 10^15</span>
-            <input
-              className={styles.joinFieldInput}
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              placeholder="e.g. 1000"
-              value={joinBuyIn}
-              onChange={(e) => setJoinBuyIn(e.target.value.replace(/[^0-9]/g, ""))}
-              disabled={joinLoading}
-            />
-          </label>
-          <label className={styles.joinField}>
-            <span className={styles.joinFieldLabel}>Operator (optional)</span>
-            <input
-              className={styles.joinFieldInput}
-              type="text"
-              placeholder="0x... (agent wallet)"
-              value={joinOperator}
-              onChange={(e) => setJoinOperator(e.target.value)}
-              disabled={joinLoading}
-            />
-          </label>
-          <button
-            className={`wallet-button sign ${styles.joinSubmitBtn}`}
-            onClick={handleJoinSeat}
-            disabled={joinLoading || availableSeats.length === 0}
-          >
-            {joinLoading ? "Submitting..." : "Join Seat"}
-          </button>
-        </div>
-        {joinStatus && <div className="join-status">{joinStatus}</div>}
-      </div>
+      )}
+
+      {/* Join Seat Form — collapsed when hand active, hidden when full */}
+      {availableSeats.length > 0 && (
+        <JoinSeatForm
+          isActive={isActive}
+          availableSeats={availableSeats}
+          joinSeatIndex={joinSeatIndex}
+          setJoinSeatIndex={setJoinSeatIndex}
+          joinBuyIn={joinBuyIn}
+          setJoinBuyIn={setJoinBuyIn}
+          joinOperator={joinOperator}
+          setJoinOperator={setJoinOperator}
+          joinLoading={joinLoading}
+          joinStatus={joinStatus}
+          chipSymbol={CHIP_SYMBOL}
+          onJoin={handleJoinSeat}
+        />
+      )}
 
       {/* Table Layout */}
       <div className={styles.tableLayout}>
@@ -422,6 +382,114 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
         actorSeat={currentHand?.actorSeat ?? null}
         chipSymbol={CHIP_SYMBOL}
       />
+    </div>
+  );
+}
+
+// ── Join Seat Form (collapsible) ──────────────────────────────────────────────
+
+interface JoinSeatFormProps {
+  isActive: boolean;
+  availableSeats: Array<{ seatIndex: number }>;
+  joinSeatIndex: number;
+  setJoinSeatIndex: (v: number) => void;
+  joinBuyIn: string;
+  setJoinBuyIn: (v: string) => void;
+  joinOperator: string;
+  setJoinOperator: (v: string) => void;
+  joinLoading: boolean;
+  joinStatus: string;
+  chipSymbol: string;
+  onJoin: () => void;
+}
+
+function JoinSeatForm({
+  isActive,
+  availableSeats,
+  joinSeatIndex,
+  setJoinSeatIndex,
+  joinBuyIn,
+  setJoinBuyIn,
+  joinOperator,
+  setJoinOperator,
+  joinLoading,
+  joinStatus,
+  chipSymbol,
+  onJoin,
+}: JoinSeatFormProps) {
+  const [expanded, setExpanded] = useState(!isActive);
+
+  useEffect(() => {
+    if (!isActive) setExpanded(true);
+  }, [isActive]);
+
+  if (isActive && !expanded) {
+    return (
+      <div className={`card ${styles.sectionCard}`}>
+        <button className={styles.joinToggleBtn} onClick={() => setExpanded(true)}>
+          + Join Table
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`card ${styles.sectionCard}`}>
+      <div className={styles.joinSeatHeader}>
+        <h3 className="section-title-sm">Add Player / Agent</h3>
+        {isActive && (
+          <button className={styles.joinToggleBtn} onClick={() => setExpanded(false)}>
+            Collapse
+          </button>
+        )}
+      </div>
+      <div className={styles.joinSeatControls}>
+        <label className={styles.joinField}>
+          <span className={styles.joinFieldLabel}>Seat</span>
+          <select
+            className={styles.joinFieldInput}
+            value={joinSeatIndex}
+            onChange={(e) => setJoinSeatIndex(Number(e.target.value))}
+            disabled={joinLoading || availableSeats.length === 0}
+          >
+            {availableSeats.map((seat) => (
+              <option key={seat.seatIndex} value={seat.seatIndex}>Seat {seat.seatIndex}</option>
+            ))}
+          </select>
+        </label>
+        <label className={styles.joinField}>
+          <span className={styles.joinFieldLabel}>Buy-in ({chipSymbol})</span>
+          <input
+            className={styles.joinFieldInput}
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            placeholder="e.g. 1000"
+            value={joinBuyIn}
+            onChange={(e) => setJoinBuyIn(e.target.value.replace(/[^0-9]/g, ""))}
+            disabled={joinLoading}
+          />
+        </label>
+        <label className={styles.joinField}>
+          <span className={styles.joinFieldLabel}>Operator (optional)</span>
+          <input
+            className={styles.joinFieldInput}
+            type="text"
+            placeholder="0x... (agent wallet)"
+            value={joinOperator}
+            onChange={(e) => setJoinOperator(e.target.value)}
+            disabled={joinLoading}
+          />
+        </label>
+        <button
+          className={`wallet-button sign ${styles.joinSubmitBtn}`}
+          onClick={onJoin}
+          disabled={joinLoading || availableSeats.length === 0}
+        >
+          {joinLoading ? "Submitting..." : "Join Seat"}
+        </button>
+      </div>
+      {joinStatus && <div className="join-status">{joinStatus}</div>}
     </div>
   );
 }

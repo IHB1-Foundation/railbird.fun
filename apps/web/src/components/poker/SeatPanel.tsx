@@ -75,10 +75,13 @@ export function SeatPanel({
       <div className={styles.seatStack}>
         {formatChips(seat.stack)} {CHIP_SYMBOL}
       </div>
-      <div className={cn(styles.seatBet, seat.currentBet === "0" && styles.zero)}>
-        <span className={styles.seatBetChip} />
-        This Round: {formatChips(seat.currentBet)} {CHIP_SYMBOL}
-      </div>
+      {seat.currentBet !== "0" && (
+        <div className={styles.seatBet}>
+          <span className={styles.seatBetChip} />
+          This Round: {formatChips(seat.currentBet)} {CHIP_SYMBOL}
+        </div>
+      )}
+      {isHandActive && !seat.isActive && <div className={styles.foldedBadge}>FOLDED</div>}
       {isActor && <div className={styles.seatActionBadge}>ACTING</div>}
       {isActor && turnTimeRemaining !== "--" && (
         <div

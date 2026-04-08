@@ -96,6 +96,19 @@
   border: 1px solid rgba(255, 224, 165, 0.5);
 }
 
+.foldedBadge {
+  margin: 0.25rem auto 0;
+  width: fit-content;
+  border-radius: 999px;
+  padding: 0.08rem 0.38rem;
+  font-size: 0.56rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #9ba1ba;
+  border: 1px solid rgba(155, 161, 186, 0.4);
+  background: rgba(155, 161, 186, 0.12);
+}
+
 .seatActionBadge {
   margin: 0.35rem auto 0;
   width: fit-content;

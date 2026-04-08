@@ -46,8 +46,10 @@ export default async function TablePage({
   }
 
   return (
-    <ErrorBoundary label="Table Viewer">
-      <TableViewer initialData={table} tableId={id} />
-    </ErrorBoundary>
+    <section className="page-section">
+      <ErrorBoundary label="Table Viewer">
+        <TableViewer initialData={table} tableId={id} />
+      </ErrorBoundary>
+    </section>
   );
 }

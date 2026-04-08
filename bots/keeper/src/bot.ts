@@ -10,6 +10,8 @@ import {
   isDuplicateKeeperAction,
 } from "./contractErrors.js";
 import { CircuitBreaker, CircuitOpenError, fetchWithTimeout, createLogger } from "@playerco/shared";
+import type { TreasuryAdvisor } from "./treasury/advisor.js";
+import type { RebalanceContext } from "./treasury/types.js";
 
 const ZERO_BYTES32 = "0x0000000000000000000000000000000000000000000000000000000000000000";
 const DEFAULT_REQUEST_TIMEOUT_MS = parseInt(process.env.REQUEST_TIMEOUT_MS || "10000", 10);
@@ -30,6 +32,8 @@ export interface KeeperBotConfig {
   actionJitterMs?: number;
   /** Optional vault address. When set, keeper triggers post-settlement rebalancing. */
   vaultAddress?: `0x${string}`;
+  /** AI-driven treasury rebalancing advisor. Only active when provided. */
+  treasuryAdvisor?: TreasuryAdvisor;
 }
 
 export interface KeeperStats {
@@ -70,6 +74,8 @@ export class KeeperBot {
   };
   /** Track which hands we've already attempted rebalancing to avoid duplicate triggers. */
   private rebalancedHands: Set<bigint> = new Set();
+  /** AI treasury advisor (optional, controlled by TREASURY_ADVISOR_ENABLED). */
+  private treasuryAdvisor: TreasuryAdvisor | undefined;
 
   // Circuit breakers
   private dealerCircuit = new CircuitBreaker({ name: "DealerAPI", failureThreshold: 5, recoveryTimeoutMs: 30_000 });
@@ -94,6 +100,11 @@ export class KeeperBot {
       vaultAddress: config.vaultAddress,
       chainId: config.chainId,
     });
+    this.treasuryAdvisor = config.treasuryAdvisor;
+  }
+
+  get treasuryAdvisorEnabled(): boolean {
+    return this.treasuryAdvisor !== undefined;
   }
 
   get address() {
@@ -685,20 +696,113 @@ export class KeeperBot {
       return;
     }
 
+    // AI advisory path (TREASURY_ADVISOR_ENABLED=true)
+    if (this.treasuryAdvisor) {
+      await this.runAdvisedRebalancing(status.currentHandId, externalAssets, treasuryShares, maxMonBps, maxTokenBps);
+      return;
+    }
+
+    // Default rule-based path (unchanged behavior)
+    await this.runDefaultRebalancing(status.currentHandId, externalAssets, treasuryShares, maxMonBps, maxTokenBps);
+  }
+
+  /**
+   * AI-advised rebalancing: call TreasuryAdvisor.recommend(), then execute.
+   * If advisor fails, skip rebalancing (fail-safe).
+   */
+  private async runAdvisedRebalancing(
+    handId: bigint,
+    externalAssets: bigint,
+    treasuryShares: bigint,
+    maxMonBps: bigint,
+    maxTokenBps: bigint,
+  ): Promise<void> {
+    const ctx: RebalanceContext = {
+      navPerShare: 0n,           // No oracle available in MVP; advisor uses rule-based fallback
+      externalAssets,
+      treasuryShares,
+      outstandingShares: 0n,     // Not queried for MVP
+      tokenMarketPrice: 0n,      // No market price oracle in MVP
+      recentPnl: 0n,             // Not tracked at keeper level
+      cumulativePnl: 0n,
+      tokenStage: "bonding",     // Default; could be enhanced later
+      rebalanceMaxMonBps: Number(maxMonBps),
+      rebalanceMaxTokenBps: Number(maxTokenBps),
+    };
+
+    let rec;
+    try {
+      rec = await this.treasuryAdvisor!.recommend(ctx);
+    } catch (err) {
+      this.log.warn({ err: err instanceof Error ? err.message : String(err) }, "TreasuryAdvisor error — skipping rebalancing (fail-safe)");
+      return;
+    }
+
+    this.log.info({ action: rec.action, amountBps: rec.amountBps, confidence: rec.confidence, reasoning: rec.reasoning }, "AI treasury recommendation");
+
+    if (rec.action === "skip" || rec.amountBps === 0) {
+      this.log.info({ handId: handId.toString(), reasoning: rec.reasoning }, "TreasuryAdvisor: skip rebalancing");
+      return;
+    }
+
+    if (rec.action === "buy" && externalAssets > 0n && maxMonBps > 0n) {
+      const cappedBps = BigInt(Math.min(rec.amountBps, Number(maxMonBps)));
+      const monAmount = externalAssets * cappedBps / 10000n;
+      if (monAmount > 0n) {
+        try {
+          await this.coordinationJitter();
+          const hash = await this.chainClient.rebalanceBuy(handId, monAmount, 0n);
+          this.stats.rebalancesTriggered++;
+          this.recordAction("rebalanceBuy");
+          this.log.info({ tx: hash, monAmount: monAmount.toString(), handId: handId.toString(), reasoning: rec.reasoning }, "AI-advised Vault rebalanceBuy triggered");
+        } catch (error) {
+          this.log.info({ err: String(error).split("\n")[0], handId: handId.toString() }, "AI-advised rebalanceBuy failed (accretive constraint or error)");
+        }
+      }
+      return;
+    }
+
+    if (rec.action === "sell" && treasuryShares > 0n && maxTokenBps > 0n) {
+      const cappedBps = BigInt(Math.min(rec.amountBps, Number(maxTokenBps)));
+      const tokenAmount = treasuryShares * cappedBps / 10000n;
+      if (tokenAmount > 0n) {
+        try {
+          await this.coordinationJitter();
+          const hash = await this.chainClient.rebalanceSell(handId, tokenAmount, 0n);
+          this.stats.rebalancesTriggered++;
+          this.recordAction("rebalanceSell");
+          this.log.info({ tx: hash, tokenAmount: tokenAmount.toString(), handId: handId.toString(), reasoning: rec.reasoning }, "AI-advised Vault rebalanceSell triggered");
+        } catch (error) {
+          this.log.info({ err: String(error).split("\n")[0], handId: handId.toString() }, "AI-advised rebalanceSell failed (accretive constraint or error)");
+        }
+      }
+    }
+  }
+
+  /**
+   * Default rule-based rebalancing (original logic, unchanged).
+   */
+  private async runDefaultRebalancing(
+    handId: bigint,
+    externalAssets: bigint,
+    treasuryShares: bigint,
+    maxMonBps: bigint,
+    maxTokenBps: bigint,
+  ): Promise<void> {
     // Try rebalanceBuy first (uses external assets to buy treasury shares)
     if (externalAssets > 0n && maxMonBps > 0n) {
       const monAmount = externalAssets * maxMonBps / 10000n;
       if (monAmount > 0n) {
         try {
           await this.coordinationJitter();
-          const hash = await this.chainClient.rebalanceBuy(status.currentHandId, monAmount, 0n);
+          const hash = await this.chainClient.rebalanceBuy(handId, monAmount, 0n);
           this.stats.rebalancesTriggered++;
           this.recordAction("rebalanceBuy");
-          this.log.info({ tx: hash, monAmount: monAmount.toString(), handId: state.currentHandId.toString() }, "Vault rebalanceBuy triggered");
+          this.log.info({ tx: hash, monAmount: monAmount.toString(), handId: handId.toString() }, "Vault rebalanceBuy triggered");
           return;
         } catch (error) {
           // Accretive constraint not satisfied (price too high) or other error — try sell
-          this.log.info({ err: String(error).split("\n")[0], handId: state.currentHandId.toString() }, "rebalanceBuy skipped (accretive constraint or error), trying sell");
+          this.log.info({ err: String(error).split("\n")[0], handId: handId.toString() }, "rebalanceBuy skipped (accretive constraint or error), trying sell");
         }
       }
     }
@@ -709,12 +813,12 @@ export class KeeperBot {
       if (tokenAmount > 0n) {
         try {
           await this.coordinationJitter();
-          const hash = await this.chainClient.rebalanceSell(status.currentHandId, tokenAmount, 0n);
+          const hash = await this.chainClient.rebalanceSell(handId, tokenAmount, 0n);
           this.stats.rebalancesTriggered++;
           this.recordAction("rebalanceSell");
-          this.log.info({ tx: hash, tokenAmount: tokenAmount.toString(), handId: state.currentHandId.toString() }, "Vault rebalanceSell triggered");
+          this.log.info({ tx: hash, tokenAmount: tokenAmount.toString(), handId: handId.toString() }, "Vault rebalanceSell triggered");
         } catch (error) {
-          this.log.info({ err: String(error).split("\n")[0], handId: state.currentHandId.toString() }, "rebalanceSell skipped (accretive constraint or error)");
+          this.log.info({ err: String(error).split("\n")[0], handId: handId.toString() }, "rebalanceSell skipped (accretive constraint or error)");
         }
       }
     }

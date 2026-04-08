@@ -2,6 +2,7 @@
 // Entry point that reads configuration from environment variables
 
 import { KeeperBot } from "./bot.js";
+import { TreasuryAdvisor } from "./treasury/advisor.js";
 import {
   startHealthServer,
   validateChainIdWithRpc,
@@ -41,6 +42,22 @@ async function main() {
 
   const keeperKey = validatePrivateKey("KEEPER_PRIVATE_KEY");
 
+  // Optional AI treasury advisor (enabled via TREASURY_ADVISOR_ENABLED=true)
+  const treasuryAdvisorEnabled = process.env.TREASURY_ADVISOR_ENABLED?.toLowerCase() === "true";
+  let treasuryAdvisor: TreasuryAdvisor | undefined;
+  if (treasuryAdvisorEnabled) {
+    const geminiApiKey = process.env.GEMINI_API_KEY;
+    if (!geminiApiKey) {
+      logger.warn({}, "TREASURY_ADVISOR_ENABLED=true but GEMINI_API_KEY missing — AI advisor disabled");
+    } else {
+      treasuryAdvisor = new TreasuryAdvisor({
+        apiKey: geminiApiKey,
+        model: process.env.GEMINI_MODEL || "gemini-2.0-flash",
+      });
+      logger.info({ model: process.env.GEMINI_MODEL || "gemini-2.0-flash" }, "AI treasury advisor enabled");
+    }
+  }
+
   const baseConfig = {
     rpcUrl,
     privateKey: keeperKey,
@@ -50,6 +67,7 @@ async function main() {
     pollIntervalMs: parsePositiveInt("POLL_INTERVAL_MS", defaultPollIntervalMs),
     actionJitterMs,
     vaultAddress: process.env.VAULT_ADDRESS as `0x${string}` | undefined,
+    treasuryAdvisor,
   };
 
   // Validate that RPC_URL returns the expected chain ID before proceeding.
@@ -105,6 +123,10 @@ async function main() {
         },
         lastActivity: lastActivityMs > 0 ? new Date(lastActivityMs).toISOString() : null,
         tables: tableAddresses,
+        treasuryAdvisor: {
+          enabled: treasuryAdvisorEnabled,
+          active: !!treasuryAdvisor,
+        },
       };
     },
   });

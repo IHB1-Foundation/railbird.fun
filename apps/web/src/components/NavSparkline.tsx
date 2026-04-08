@@ -42,9 +42,12 @@ export function NavSparkline({ data }: NavSparklineProps) {
 
   const firstVal = values[0].toFixed(4);
   const lastVal = values[values.length - 1].toFixed(4);
+  const maxVal = max.toFixed(4);
+  const minVal = min.toFixed(4);
   const pctChange = (((values[values.length - 1] - values[0]) / values[0]) * 100).toFixed(2);
   const trend = isPositive ? "up" : "down";
   const ariaLabel = `NAV performance chart: ${trend} ${Math.abs(Number(pctChange))}% over ${values.length} hands`;
+  const summaryText = `NAV: ${firstVal} → ${lastVal}, ${isPositive ? "+" : ""}${pctChange}% over ${values.length} hands. High: ${maxVal}, Low: ${minVal}`;
 
   return (
     <>
@@ -56,8 +59,10 @@ export function NavSparkline({ data }: NavSparklineProps) {
         style={{ display: "block" }}
         role="img"
         aria-label={ariaLabel}
+        aria-describedby="nav-sparkline-desc"
       >
         <title>{ariaLabel}</title>
+        <desc id="nav-sparkline-desc">{summaryText}</desc>
         <path d={areaPath} fill={fillColor} />
         <polyline points={polyline} fill="none" stroke={strokeColor} strokeWidth="2" strokeLinejoin="round" />
         {values.map((v, i) => {
@@ -66,8 +71,9 @@ export function NavSparkline({ data }: NavSparklineProps) {
           return <circle key={i} cx={x} cy={y} r="0" fill="transparent"><title>Hand #{data[i].handId}: {v.toFixed(4)}</title></circle>;
         })}
       </svg>
-      <p style={{ position: "absolute", width: "1px", height: "1px", padding: 0, margin: "-1px", overflow: "hidden", clip: "rect(0,0,0,0)", whiteSpace: "nowrap", border: 0 }}>
-        NAV changed from {firstVal} to {lastVal} over {values.length} hands ({isPositive ? "+" : ""}{pctChange}%)
+      {/* Screen reader summary */}
+      <p className="sr-only">
+        {summaryText}. Start: {firstVal}, End: {lastVal}.
       </p>
     </>
   );

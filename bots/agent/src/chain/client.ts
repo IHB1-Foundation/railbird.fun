@@ -496,4 +496,51 @@ export class ChainClient {
       state === GameState.BETTING_RIVER
     );
   }
+
+  /**
+   * Commit an AI decision hash on-chain before submitting the action.
+   * commitHash = keccak256(abi.encode(handId, seatIndex, action, reasoning, salt))
+   * Returns the tx hash, or null if the call reverts (non-fatal).
+   */
+  async commitDecision(seatIndex: number, commitHash: `0x${string}`): Promise<string | null> {
+    return this.nonceManager.withNonce(async (nonce) => {
+      const hash = await this.walletClient.writeContract({
+        chain: this.chain,
+        account: this.account,
+        address: this.pokerTableAddress,
+        abi: POKER_TABLE_ABI,
+        functionName: "commitDecision",
+        args: [seatIndex, commitHash],
+        nonce,
+      });
+      await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });
+      return hash as string;
+    });
+  }
+
+  /**
+   * Reveal a previously committed AI decision after the hand is settled.
+   * Returns the tx hash.
+   */
+  async revealDecision(
+    handId: bigint,
+    seatIndex: number,
+    action: string,
+    reasoning: string,
+    salt: `0x${string}`
+  ): Promise<string> {
+    return this.nonceManager.withNonce(async (nonce) => {
+      const hash = await this.walletClient.writeContract({
+        chain: this.chain,
+        account: this.account,
+        address: this.pokerTableAddress,
+        abi: POKER_TABLE_ABI,
+        functionName: "revealDecision",
+        args: [handId, seatIndex, action, reasoning, salt],
+        nonce,
+      });
+      await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });
+      return hash as string;
+    });
+  }
 }

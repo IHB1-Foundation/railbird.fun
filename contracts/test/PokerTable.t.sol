@@ -3912,3 +3912,154 @@ contract PlayerRegistryIntegrationTest is Test {
         pokerTable.fold(0); // Should not revert
     }
 }
+
+// ============ AI Decision Commitment Tests ============
+
+contract DecisionCommitmentTest is Test {
+    PokerTable public pokerTable;
+    MockVRFAdapter public mockVRF;
+    ChipToken public chipToken;
+
+    address public owner1 = address(0x1);
+    address public owner2 = address(0x2);
+    address public operator1 = address(0x11);
+    address public operator2 = address(0x22);
+
+    uint256 constant SMALL_BLIND = 10;
+    uint256 constant BIG_BLIND = 20;
+    uint256 constant BUY_IN = 1000;
+
+    event DecisionCommitted(uint256 indexed handId, uint8 indexed seatIndex, bytes32 commitHash);
+    event DecisionRevealed(uint256 indexed handId, uint8 indexed seatIndex, string action, string reasoning);
+
+    function setUp() public {
+        mockVRF = new MockVRFAdapter();
+        chipToken = new ChipToken("TestChip", "TCHIP");
+        pokerTable = new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(mockVRF), address(chipToken), address(0), 30 minutes, 5 minutes, 10 minutes, 2, address(this));
+
+        chipToken.mint(owner1, BUY_IN * 10);
+        chipToken.mint(owner2, BUY_IN * 10);
+
+        vm.prank(owner1); chipToken.approve(address(pokerTable), BUY_IN);
+        vm.prank(owner1); pokerTable.registerSeat(0, owner1, operator1, BUY_IN);
+        vm.prank(owner2); chipToken.approve(address(pokerTable), BUY_IN);
+        vm.prank(owner2); pokerTable.registerSeat(1, owner2, operator2, BUY_IN);
+
+        // Start hand and advance to BETTING_PRE
+        pokerTable.startHand();
+        mockVRF.fulfillLastRequest(12345);
+        pokerTable.submitHoleCommit(1, 0, bytes32(uint256(1)));
+        pokerTable.submitHoleCommit(1, 1, bytes32(uint256(2)));
+        pokerTable.advanceToPreflop();
+    }
+
+    function test_CommitDecision_StoresHash() public {
+        uint256 handId = pokerTable.currentHandId();
+        bytes32 commitHash = keccak256(abi.encode(handId, uint8(0), "fold", "weak hand", bytes32(uint256(999))));
+
+        vm.prank(operator1);
+        pokerTable.commitDecision(0, commitHash);
+
+        assertEq(pokerTable.decisionCommits(handId, 0), commitHash);
+    }
+
+    function test_CommitDecision_EmitsEvent() public {
+        uint256 handId = pokerTable.currentHandId();
+        bytes32 commitHash = keccak256(abi.encode(handId, uint8(0), "raise", "strong hand", bytes32(uint256(42))));
+
+        vm.expectEmit(true, true, false, true);
+        emit DecisionCommitted(handId, 0, commitHash);
+
+        vm.prank(operator1);
+        pokerTable.commitDecision(0, commitHash);
+    }
+
+    function test_CommitDecision_OverwritesExisting() public {
+        uint256 handId = pokerTable.currentHandId();
+        bytes32 hash1 = bytes32(uint256(1));
+        bytes32 hash2 = bytes32(uint256(2));
+
+        vm.prank(operator1);
+        pokerTable.commitDecision(0, hash1);
+
+        vm.prank(operator1);
+        pokerTable.commitDecision(0, hash2);
+
+        assertEq(pokerTable.decisionCommits(handId, 0), hash2, "Latest hash should overwrite");
+    }
+
+    function test_CommitDecision_RevertIfEmptyHash() public {
+        vm.prank(operator1);
+        vm.expectRevert("Empty commitment");
+        pokerTable.commitDecision(0, bytes32(0));
+    }
+
+    function test_CommitDecision_RevertIfNotOperator() public {
+        address stranger = address(0xBEEF);
+        vm.prank(stranger);
+        vm.expectRevert("Not operator");
+        pokerTable.commitDecision(0, bytes32(uint256(1)));
+    }
+
+    function test_RevealDecision_Success() public {
+        uint256 handId = pokerTable.currentHandId();
+        string memory action = "fold";
+        string memory reasoning = "The board is scary.";
+        bytes32 salt = bytes32(uint256(777));
+        bytes32 commitHash = keccak256(abi.encode(handId, uint8(0), action, reasoning, salt));
+
+        vm.prank(operator1);
+        pokerTable.commitDecision(0, commitHash);
+
+        // Settle the hand: SB (seat 0) folds
+        vm.roll(block.number + 1);
+        vm.prank(operator1);
+        pokerTable.fold(0);
+
+        assertEq(uint256(pokerTable.gameState()), uint256(PokerTableBase.GameState.SETTLED));
+
+        vm.expectEmit(true, true, false, true);
+        emit DecisionRevealed(handId, 0, action, reasoning);
+
+        pokerTable.revealDecision(handId, 0, action, reasoning, salt);
+    }
+
+    function test_RevealDecision_RevertIfMismatch() public {
+        uint256 handId = pokerTable.currentHandId();
+        bytes32 commitHash = keccak256(abi.encode(handId, uint8(0), "fold", "correct reasoning", bytes32(uint256(1))));
+
+        vm.prank(operator1);
+        pokerTable.commitDecision(0, commitHash);
+
+        vm.roll(block.number + 1);
+        vm.prank(operator1);
+        pokerTable.fold(0);
+
+        vm.expectRevert("Commitment mismatch");
+        pokerTable.revealDecision(handId, 0, "fold", "wrong reasoning", bytes32(uint256(1)));
+    }
+
+    function test_RevealDecision_RevertIfHandNotSettled() public {
+        uint256 handId = pokerTable.currentHandId();
+        bytes32 salt = bytes32(uint256(1));
+        bytes32 commitHash = keccak256(abi.encode(handId, uint8(0), "fold", "", salt));
+
+        vm.prank(operator1);
+        pokerTable.commitDecision(0, commitHash);
+
+        // Hand is not settled yet
+        vm.expectRevert("Hand not settled");
+        pokerTable.revealDecision(handId, 0, "fold", "", salt);
+    }
+
+    function test_RevealDecision_RevertIfNoCommitment() public {
+        uint256 handId = pokerTable.currentHandId();
+
+        vm.roll(block.number + 1);
+        vm.prank(operator1);
+        pokerTable.fold(0);
+
+        vm.expectRevert("No commitment found");
+        pokerTable.revealDecision(handId, 0, "fold", "", bytes32(uint256(1)));
+    }
+}

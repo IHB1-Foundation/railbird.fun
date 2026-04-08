@@ -4,11 +4,13 @@ import { ChainClient, GameState, type TableState } from "./chain/client.js";
 import { OwnerViewClient, type HoleCardsResponse } from "./auth/ownerviewClient.js";
 import { SimpleStrategy, type Strategy, Decision, type DecisionContext, type HoleCards } from "./strategy/index.js";
 import { signMessage } from "viem/accounts";
+import { keccak256, encodeAbiParameters } from "viem";
 import { deriveEncryptionKeyPair } from "./auth/encryptionKey.js";
 import { CircuitBreaker, CircuitOpenError, createLogger } from "@playerco/shared";
 import type { VectorStore } from "./rag/vectorStore.js";
 import { embedHand } from "./rag/embedder.js";
 import type { HandSummary } from "./rag/types.js";
+import { randomBytes } from "node:crypto";
 
 const logger = createLogger({ service: "agent-bot" });
 
@@ -78,6 +80,16 @@ export class AgentBot {
   private static readonly FOLD_ONLY_THRESHOLD = 10;
   /** Log CRITICAL every this many cumulative apiErrors. */
   private static readonly CRITICAL_API_ERROR_INTERVAL = 10;
+
+  // AI Decision Commitment: tracks the last committed decision awaiting on-chain reveal
+  private pendingReveal: {
+    handId: bigint;
+    seatIndex: number;
+    action: string;
+    reasoning: string;
+    salt: `0x${string}`;
+  } | null = null;
+  private lastRevealedHandId: bigint = 0n;
 
   // Track last known hand for detecting new hands
   private lastHandId: bigint = 0n;
@@ -349,6 +361,24 @@ export class AgentBot {
 
     // Handle different game states
     if (state.gameState === GameState.SETTLED || state.gameState === GameState.WAITING_FOR_SEATS) {
+      // Reveal pending AI decision commitment while hand is still SETTLED
+      if (
+        state.gameState === GameState.SETTLED &&
+        this.pendingReveal &&
+        this.pendingReveal.handId === state.currentHandId &&
+        this.pendingReveal.handId > this.lastRevealedHandId
+      ) {
+        const rev = this.pendingReveal;
+        this.lastRevealedHandId = rev.handId;
+        this.chainClient
+          .revealDecision(rev.handId, rev.seatIndex, rev.action, rev.reasoning, rev.salt)
+          .then((txHash) => {
+            logger.info({ handId: String(rev.handId), seatIndex: rev.seatIndex, txHash }, "AI decision revealed on-chain");
+          })
+          .catch((err: unknown) => {
+            logger.warn({ err: err instanceof Error ? err.message : String(err), handId: String(rev.handId) }, "Failed to reveal AI decision (non-fatal)");
+          });
+      }
       // Try to start a new hand if settled
       if (state.gameState === GameState.SETTLED) {
         try {
@@ -503,6 +533,30 @@ export class AgentBot {
       this.currentHandReasoning = decision.reasoning;
     }
 
+    // Generate AI decision commitment (fire-and-forget, pre-action)
+    const actionStr = decision.raiseAmount ? `raise ${String(decision.raiseAmount)}` : decision.action;
+    const reasoning = decision.reasoning ?? "";
+    const salt = `0x${randomBytes(32).toString("hex")}` as `0x${string}`;
+    const commitHash = keccak256(
+      encodeAbiParameters(
+        [
+          { name: "handId", type: "uint256" },
+          { name: "seatIndex", type: "uint8" },
+          { name: "action", type: "string" },
+          { name: "reasoning", type: "string" },
+          { name: "salt", type: "bytes32" },
+        ],
+        [state.currentHandId, seatIndex, actionStr, reasoning, salt]
+      )
+    );
+    this.chainClient.commitDecision(seatIndex, commitHash).then((txHash) => {
+      logger.debug({ handId: String(state.currentHandId), seatIndex, txHash }, "AI decision committed on-chain");
+      // Store for later reveal (overwrites any prior commitment for this hand)
+      this.pendingReveal = { handId: state.currentHandId, seatIndex, action: actionStr, reasoning, salt };
+    }).catch((err: unknown) => {
+      logger.debug({ err: err instanceof Error ? err.message : String(err) }, "commitDecision failed (non-fatal)");
+    });
+
     // Submit action
     let txHash: string | undefined;
     try {
@@ -523,8 +577,7 @@ export class AgentBot {
       this.stats.actionsSubmitted++;
       this.stats.lastActionTime = Date.now();
       logger.info({ action: decision.action, txHash }, "Action submitted successfully");
-      // Track action for RAG recording
-      const actionStr = decision.raiseAmount ? `raise ${decision.raiseAmount}` : decision.action;
+      // Track action for RAG recording (actionStr already computed above for commitment)
       this.currentHandActions.push(actionStr);
 
       // Fire-and-forget: send reasoning to OwnerView (non-blocking)

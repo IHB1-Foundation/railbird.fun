@@ -155,6 +155,8 @@ abstract contract PokerTableBase {
     event VRFAdapterUpdated(address indexed oldAdapter, address indexed newAdapter);
     event PlayerRegistryUpdated(address indexed oldRegistry, address indexed newRegistry);
     event BlindsUpdated(uint256 oldSmallBlind, uint256 oldBigBlind, uint256 newSmallBlind, uint256 newBigBlind);
+    event DecisionCommitted(uint256 indexed handId, uint8 indexed seatIndex, bytes32 commitHash);
+    event DecisionRevealed(uint256 indexed handId, uint8 indexed seatIndex, string action, string reasoning);
 
     // ============ Custom Errors ============
     error OneActionPerBlock();
@@ -203,6 +205,10 @@ abstract contract PokerTableBase {
 
     uint8 public constant MAX_HOLE_CARD_VRF_RETRIES = 3;
     mapping(uint256 => uint8) public holeCardVRFRetryCount;
+
+    // ============ AI Decision Commitment State ============
+    /// @notice Off-chain AI decision commitments: handId => seatIndex => keccak256(abi.encode(handId, seatIndex, action, reasoning, salt))
+    mapping(uint256 => mapping(uint8 => bytes32)) public decisionCommits;
 
     address public kycSBT;
     address public playerRegistry;

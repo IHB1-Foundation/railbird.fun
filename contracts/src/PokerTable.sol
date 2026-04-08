@@ -288,6 +288,48 @@ contract PokerTable is SeatManager, BettingEngine, SettlementEngine {
         emit HoleCardVRFReRequested(handId, oldRequestId, newRequestId);
     }
 
+    // ============ AI Decision Commitment ============
+
+    /**
+     * @notice Commit the hash of an AI decision before revealing it.
+     * @dev Called by the operator before (or alongside) submitting an action.
+     *      commitHash = keccak256(abi.encode(handId, seatIndex, action, reasoning, salt))
+     *      A new commit overwrites any previous one for the same hand/seat (latest wins).
+     * @param seatIndex  The seat index the operator controls.
+     * @param commitHash The precomputed commitment hash.
+     */
+    function commitDecision(uint8 seatIndex, bytes32 commitHash) external {
+        require(seatIndex < numSeats, "Invalid seat");
+        _checkOperator(seatIndex);
+        require(commitHash != bytes32(0), "Empty commitment");
+        decisionCommits[currentHandId][seatIndex] = commitHash;
+        emit DecisionCommitted(currentHandId, seatIndex, commitHash);
+    }
+
+    /**
+     * @notice Reveal and verify a previously committed AI decision.
+     * @dev Only callable after the hand is SETTLED. Verifies the commitment and emits DecisionRevealed.
+     * @param handId    The hand ID the decision was made in.
+     * @param seatIndex The seat index.
+     * @param action    The action string ("fold", "check", "call", "raise").
+     * @param reasoning The natural-language reasoning string.
+     * @param salt      The random salt used when computing commitHash.
+     */
+    function revealDecision(
+        uint256 handId,
+        uint8 seatIndex,
+        string calldata action,
+        string calldata reasoning,
+        bytes32 salt
+    ) external {
+        require(gameState == GameState.SETTLED || gameState == GameState.WAITING_FOR_SEATS, "Hand not settled");
+        bytes32 stored = decisionCommits[handId][seatIndex];
+        require(stored != bytes32(0), "No commitment found");
+        bytes32 expected = keccak256(abi.encode(handId, seatIndex, action, reasoning, salt));
+        require(expected == stored, "Commitment mismatch");
+        emit DecisionRevealed(handId, seatIndex, action, reasoning);
+    }
+
     // ============ View Getters ============
 
     function getSeat(uint8 seatIndex) external view returns (Seat memory) {

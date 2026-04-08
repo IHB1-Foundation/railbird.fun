@@ -2120,5 +2120,59 @@ export const POKER_TABLE_ABI = [
   { "type": "error", "name": "VRFTimeoutNotReached", "inputs": [] },
   { "type": "error", "name": "ShowdownRevealWindowOpen", "inputs": [] },
   { "type": "error", "name": "CommitmentAlreadyExists", "inputs": [] },
-  { "type": "error", "name": "NotYourTurn", "inputs": [] }
+  { "type": "error", "name": "NotYourTurn", "inputs": [] },
+  {
+    "type": "function",
+    "name": "commitDecision",
+    "inputs": [
+      { "name": "seatIndex", "type": "uint8" },
+      { "name": "commitHash", "type": "bytes32" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "revealDecision",
+    "inputs": [
+      { "name": "handId", "type": "uint256" },
+      { "name": "seatIndex", "type": "uint8" },
+      { "name": "action", "type": "string" },
+      { "name": "reasoning", "type": "string" },
+      { "name": "salt", "type": "bytes32" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "decisionCommits",
+    "inputs": [
+      { "name": "handId", "type": "uint256" },
+      { "name": "seatIndex", "type": "uint8" }
+    ],
+    "outputs": [{ "name": "", "type": "bytes32" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "event",
+    "name": "DecisionCommitted",
+    "inputs": [
+      { "name": "handId", "type": "uint256", "indexed": true },
+      { "name": "seatIndex", "type": "uint8", "indexed": true },
+      { "name": "commitHash", "type": "bytes32", "indexed": false }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "DecisionRevealed",
+    "inputs": [
+      { "name": "handId", "type": "uint256", "indexed": true },
+      { "name": "seatIndex", "type": "uint8", "indexed": true },
+      { "name": "action", "type": "string", "indexed": false },
+      { "name": "reasoning", "type": "string", "indexed": false }
+    ],
+    "anonymous": false
+  }
 ] as const;

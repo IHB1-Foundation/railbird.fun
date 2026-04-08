@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { cn, formatChips, shortenAddress, CHIP_SYMBOL, ZERO_ADDRESS } from "@/lib/utils";
 import { getAgentProfile } from "@/lib/agentProfiles";
 import type { TableResponse } from "@/lib/types";
@@ -97,7 +98,14 @@ export function ShowdownResultsPanel({
   pot,
   seats,
 }: ShowdownResultsPanelProps) {
+  const [collapsed, setCollapsed] = useState(false);
   const seatMap = new Map(seats.map((s) => [s.seatIndex, s]));
+
+  // Auto-collapse after 30 seconds
+  useEffect(() => {
+    const timer = setTimeout(() => setCollapsed(true), 30_000);
+    return () => clearTimeout(timer);
+  }, []);
 
   const winnerAnnouncement = (() => {
     if (winnerSeat === null) return "";
@@ -121,59 +129,79 @@ export function ShowdownResultsPanel({
       >
         {winnerAnnouncement}
       </div>
-      <h3 className="section-title-sm">Showdown</h3>
-      {winnerSeat !== null && (() => {
-        const winnerSeatData = seatMap.get(winnerSeat);
-        const winnerProfile = winnerSeatData
-          ? getAgentProfile(winnerSeatData.operatorAddress) || getAgentProfile(winnerSeatData.ownerAddress)
-          : null;
-        return (
-          <div className="showdown-winner-banner">
-            Winner: {winnerProfile ? winnerProfile.name : `Seat ${winnerSeat}`} — {formatChips(pot)} {CHIP_SYMBOL}
-          </div>
-        );
-      })()}
-      <div className="showdown-grid">
-        {revealedHolecards.map((h) => {
-          const isWinner = winnerSeat === h.seatIndex;
-          const handRank = evaluateHandRank([h.card1, h.card2], communityCards);
-          const seat = seatMap.get(h.seatIndex);
-          const seatProfile = seat
-            ? getAgentProfile(seat.operatorAddress) || getAgentProfile(seat.ownerAddress)
-            : null;
-
-          return (
-            <div
-              key={h.seatIndex}
-              className={cn(
-                "showdown-seat-card",
-                isWinner && "showdown-winner"
-              )}
-            >
-              <div className="showdown-seat-header">
-                <span className="showdown-seat-label">
-                  {seatProfile ? seatProfile.name : `Seat ${h.seatIndex}`}
-                </span>
-                {isWinner && (
-                  <span className="showdown-winner-badge">Winner</span>
-                )}
-              </div>
-              {seat &&
-                seat.ownerAddress.toLowerCase() !== ZERO_ADDRESS &&
-                !seatProfile && (
-                  <div className="showdown-owner">
-                    {shortenAddress(seat.ownerAddress)}
-                  </div>
-                )}
-              <div className="hole-cards">
-                <PokerCard cardIndex={h.card1} />
-                <PokerCard cardIndex={h.card2} />
-              </div>
-              <div className="showdown-hand-rank">{handRank}</div>
-            </div>
-          );
-        })}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5rem" }}>
+        <h3 className="section-title-sm">Showdown</h3>
+        <button
+          onClick={() => setCollapsed((v) => !v)}
+          style={{ background: "none", border: "none", color: "var(--muted)", cursor: "pointer", fontSize: "0.8rem", padding: "0.2rem 0.4rem" }}
+          aria-expanded={!collapsed}
+          aria-label={collapsed ? "Expand showdown results" : "Collapse showdown results"}
+        >
+          {collapsed ? "▼ Expand" : "▲ Collapse"}
+        </button>
       </div>
+
+      {collapsed ? (
+        /* Collapsed summary */
+        <div style={{ fontSize: "0.85rem", color: "var(--muted)", paddingTop: "0.25rem" }}>
+          {winnerAnnouncement || "Showdown complete"}
+        </div>
+      ) : (
+        <>
+          {winnerSeat !== null && (() => {
+            const winnerSeatData = seatMap.get(winnerSeat);
+            const winnerProfile = winnerSeatData
+              ? getAgentProfile(winnerSeatData.operatorAddress) || getAgentProfile(winnerSeatData.ownerAddress)
+              : null;
+            return (
+              <div className="showdown-winner-banner">
+                Winner: {winnerProfile ? winnerProfile.name : `Seat ${winnerSeat}`} — {formatChips(pot)} {CHIP_SYMBOL}
+              </div>
+            );
+          })()}
+          <div className="showdown-grid">
+            {revealedHolecards.map((h) => {
+              const isWinner = winnerSeat === h.seatIndex;
+              const handRank = evaluateHandRank([h.card1, h.card2], communityCards);
+              const seat = seatMap.get(h.seatIndex);
+              const seatProfile = seat
+                ? getAgentProfile(seat.operatorAddress) || getAgentProfile(seat.ownerAddress)
+                : null;
+
+              return (
+                <div
+                  key={h.seatIndex}
+                  className={cn(
+                    "showdown-seat-card",
+                    isWinner && "showdown-winner"
+                  )}
+                >
+                  <div className="showdown-seat-header">
+                    <span className="showdown-seat-label">
+                      {seatProfile ? seatProfile.name : `Seat ${h.seatIndex}`}
+                    </span>
+                    {isWinner && (
+                      <span className="showdown-winner-badge">Winner</span>
+                    )}
+                  </div>
+                  {seat &&
+                    seat.ownerAddress.toLowerCase() !== ZERO_ADDRESS &&
+                    !seatProfile && (
+                      <div className="showdown-owner">
+                        {shortenAddress(seat.ownerAddress)}
+                      </div>
+                    )}
+                  <div className="hole-cards">
+                    <PokerCard cardIndex={h.card1} />
+                    <PokerCard cardIndex={h.card2} />
+                  </div>
+                  <div className="showdown-hand-rank">{handRank}</div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
     </div>
   );
 }

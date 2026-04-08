@@ -7,6 +7,8 @@ export type {
   Address,
   ContractAddresses,
   ChainConfig,
+  PersonaId,
+  PersonaSummary,
 } from "./types.js";
 
 export { ENV_VARS, GameState } from "./types.js";

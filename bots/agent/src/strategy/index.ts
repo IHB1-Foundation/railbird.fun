@@ -2,3 +2,4 @@
 export * from "./types.js";
 export * from "./simpleStrategy.js";
 export * from "./geminiStrategy.js";
+export * from "./persona.js";

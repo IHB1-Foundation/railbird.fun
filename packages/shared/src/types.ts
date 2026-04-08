@@ -54,6 +54,24 @@ export interface ChainConfig {
 }
 
 /**
+ * Supported agent persona identifiers
+ */
+export type PersonaId = "shark" | "maniac" | "rock" | "adaptive";
+
+/**
+ * Lightweight persona summary for web app display
+ */
+export interface PersonaSummary {
+  id: PersonaId;
+  name: string;
+  emoji: string;
+  colorAccent: string;
+  aggression: number;
+  tightness: number;
+  bluffFrequency: number;
+}
+
+/**
  * Environment variable names for chain config
  */
 export const ENV_VARS = {

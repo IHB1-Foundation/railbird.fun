@@ -299,6 +299,24 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
           <div className={styles.betBankrollValue}>
             {formatChips(bankrollWei)} {CHIP_SYMBOL}
           </div>
+          {(() => {
+            const pnl = bankrollWei - DEFAULT_BANKROLL;
+            const positive = pnl >= 0n;
+            const settledCount = wagers.filter((w) => w.status !== "open").length;
+            const wins = wagers.filter((w) => w.status === "won").length;
+            return (
+              <div style={{ fontSize: "0.75rem", display: "grid", gap: "0.1rem" }}>
+                <span style={{ color: positive ? "var(--success)" : "var(--danger)" }}>
+                  Session P&L: {positive ? "+" : ""}{formatChips(pnl)} {CHIP_SYMBOL}
+                </span>
+                {settledCount > 0 && (
+                  <span className="muted">
+                    Win rate: {wins}/{settledCount} ({Math.round((wins / settledCount) * 100)}%)
+                  </span>
+                )}
+              </div>
+            );
+          })()}
           <button className="ghost-btn" onClick={() => setShowResetConfirm(true)} type="button" aria-label="Reset virtual bankroll to default">
             Reset
           </button>
@@ -435,6 +453,26 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
               </button>
             ))}
           </div>
+
+          {/* Potential payout */}
+          {selectedMarket && (() => {
+            const stakeWei = parseChipInputToWei(stakeInput);
+            if (!stakeWei || stakeWei <= 0n) return null;
+            const payout = (stakeWei * BigInt(selectedMarket.oddsBps)) / 10_000n;
+            const profit = payout - stakeWei;
+            return (
+              <div style={{ display: "grid", gap: "0.25rem", fontSize: "0.8rem", background: "rgba(255,255,255,0.02)", borderRadius: "8px", padding: "0.45rem 0.6rem", border: "1px solid rgba(149,158,204,0.2)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span className="label">Potential Win</span>
+                  <span className="value-positive">{formatChips(payout)} {CHIP_SYMBOL}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span className="label">Profit</span>
+                  <span className="value-positive">+{formatChips(profit)} {CHIP_SYMBOL}</span>
+                </div>
+              </div>
+            );
+          })()}
 
           <button
             type="button"

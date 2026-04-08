@@ -4,7 +4,7 @@ import { getLeaderboard } from "@/lib/api";
 import { LeaderboardTable } from "./LeaderboardTable";
 import { LastUpdated } from "@/components/LastUpdated";
 import type { LeaderboardMetric, LeaderboardPeriod } from "@/lib/types";
-import styles from "./LeaderboardTable.module.css";
+import styles from "./leaderboard.module.css";
 
 export const dynamic = "force-dynamic";
 
@@ -52,37 +52,40 @@ export default async function LeaderboardPage({ searchParams }: PageProps) {
         Rankings are computed per-hand after settlement.
       </p>
 
-      {/* Metric Tabs */}
-      <div className="filter-row">
-        <span className="filter-label">Metric:</span>
-        <div className="tabs">
-          {VALID_METRICS.map((m) => (
-            <Link
-              key={m}
-              href={`/leaderboard?metric=${m}&period=${period}`}
-              className={`tab ${m === metric ? "active" : ""}`}
-              prefetch={false}
-            >
-              {m.toUpperCase()}
-            </Link>
-          ))}
+      {/* Filter tabs — stack vertically on mobile */}
+      <div className={styles.filterStack}>
+        {/* Metric Tabs */}
+        <div className="filter-row">
+          <span className="filter-label">Metric:</span>
+          <div className={`tabs ${styles.tabsScrollable}`}>
+            {VALID_METRICS.map((m) => (
+              <Link
+                key={m}
+                href={`/leaderboard?metric=${m}&period=${period}`}
+                className={`tab ${m === metric ? "active" : ""}`}
+                prefetch={false}
+              >
+                {m.toUpperCase()}
+              </Link>
+            ))}
+          </div>
         </div>
-      </div>
 
-      {/* Period Tabs */}
-      <div className="filter-row filter-row-last">
-        <span className="filter-label">Period:</span>
-        <div className="tabs">
-          {VALID_PERIODS.map((p) => (
-            <Link
-              key={p}
-              href={`/leaderboard?metric=${metric}&period=${p}`}
-              className={`tab ${p === period ? "active" : ""}`}
-              prefetch={false}
-            >
-              {p}
-            </Link>
-          ))}
+        {/* Period Tabs */}
+        <div className="filter-row filter-row-last">
+          <span className="filter-label">Period:</span>
+          <div className={`tabs ${styles.tabsScrollable}`}>
+            {VALID_PERIODS.map((p) => (
+              <Link
+                key={p}
+                href={`/leaderboard?metric=${metric}&period=${p}`}
+                className={`tab ${p === period ? "active" : ""}`}
+                prefetch={false}
+              >
+                {p}
+              </Link>
+            ))}
+          </div>
         </div>
       </div>
 

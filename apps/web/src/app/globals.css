@@ -365,6 +365,11 @@ h5 {
   font-weight: 600;
   letter-spacing: 0.03em;
   transition: all 0.2s ease;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  scroll-snap-align: start;
+  white-space: nowrap;
 }
 
 .tab:hover {

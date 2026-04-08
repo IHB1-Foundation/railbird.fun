@@ -18,6 +18,22 @@ import { createPublicClient, createWalletClient, custom, http, isAddress, parseU
 import { useAuth } from "@/lib/auth";
 import styles from "./NadFunTradingWidget.module.css";
 
+// ─── Error mapping ──────────────────────────────────────────────────────────
+const ERROR_MAP: Array<[RegExp, string]> = [
+  [/slippage|INSUFFICIENT_OUTPUT/i, "Slippage exceeded — try increasing slippage tolerance or reducing amount."],
+  [/locked|LOCKED/i, "This token is currently locked and cannot be traded."],
+  [/deadline|EXPIRED/i, "Transaction deadline passed — try again."],
+  [/insufficient.*balance|INSUFFICIENT_BALANCE/i, "Insufficient token balance for this trade."],
+  [/user rejected|denied/i, "Transaction was rejected in your wallet."],
+];
+
+function mapContractError(raw: string): string {
+  for (const [pattern, friendly] of ERROR_MAP) {
+    if (pattern.test(raw)) return friendly;
+  }
+  return raw;
+}
+
 // ─── Contract ABIs ────────────────────────────────────────────────────────────
 // These follow common nad.fun interface patterns. Adjust selectors to match deployed contracts.
 
@@ -376,7 +392,8 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
 
       setTxHash(hash);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Transaction failed");
+      const raw = err instanceof Error ? err.message : "Transaction failed";
+      setError(mapContractError(raw));
     } finally {
       setTxLoading(false);
     }

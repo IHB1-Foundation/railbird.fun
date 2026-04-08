@@ -172,7 +172,7 @@ else
 fi
 sleep 2
 
-# ── Agent keys ───────────────────────────────────────────────────────────────
+# ── Agent keys and personas ───────────────────────────────────────────────────
 AGENT_KEYS=(
   "${AGENT_1_OPERATOR_PRIVATE_KEY:-}"
   "${AGENT_2_OPERATOR_PRIVATE_KEY:-}"
@@ -180,24 +180,39 @@ AGENT_KEYS=(
   "${AGENT_4_OPERATOR_PRIVATE_KEY:-}"
 )
 AGENT_AGGRESSIONS=(
-  "${AGENT_1_AGGRESSION:-0.30}"
-  "${AGENT_2_AGGRESSION:-0.50}"
-  "${AGENT_3_AGGRESSION:-0.70}"
-  "${AGENT_4_AGGRESSION:-0.90}"
+  "${AGENT_1_AGGRESSION:-0.70}"
+  "${AGENT_2_AGGRESSION:-0.90}"
+  "${AGENT_3_AGGRESSION:-0.30}"
+  "${AGENT_4_AGGRESSION:-0.50}"
+)
+# Each agent gets a distinct persona: shark / maniac / rock / adaptive
+AGENT_PERSONAS=(
+  "shark"
+  "maniac"
+  "rock"
+  "adaptive"
+)
+AGENT_PERSONA_EMOJIS=(
+  "🦈"
+  "🔥"
+  "🪨"
+  "🧠"
 )
 
 # ── Start Agent bots ──────────────────────────────────────────────────────────
-echo -e "${CYAN}[4/4] Starting ${AGENT_COUNT} agent bot(s)...${NC}"
+echo -e "${CYAN}[4/4] Starting ${AGENT_COUNT} agent bot(s) with distinct personas...${NC}"
 for i in $(seq 1 "$AGENT_COUNT"); do
   key="${AGENT_KEYS[$((i-1))]}"
   aggression="${AGENT_AGGRESSIONS[$((i-1))]}"
+  persona="${AGENT_PERSONAS[$((i-1))]}"
+  emoji="${AGENT_PERSONA_EMOJIS[$((i-1))]}"
 
   if [ -z "$key" ] || [ "$key" = "0x" ]; then
     echo -e "${YELLOW}  ⚠ Agent ${i}: AGENT_${i}_OPERATOR_PRIVATE_KEY not set — skipping${NC}"
     continue
   fi
 
-  echo -e "  Starting Agent ${i} (aggression=${aggression})..."
+  echo -e "  Starting Agent ${i} ${emoji} (persona=${persona}, aggression=${aggression})..."
   RPC_URL=$RPC_URL \
   CHAIN_ID=$CHAIN_ID \
   OPERATOR_PRIVATE_KEY=$key \
@@ -206,6 +221,7 @@ for i in $(seq 1 "$AGENT_COUNT"); do
   POLL_INTERVAL_MS=$POLL_INTERVAL_MS \
   MAX_HANDS=$MAX_HANDS \
   AGGRESSION_FACTOR=$aggression \
+  AGENT_PERSONA=$persona \
   TURN_ACTION_DELAY_MS=$TURN_ACTION_DELAY_MS \
   AGENT_DECISION_ENGINE=$AGENT_DECISION_ENGINE \
   GEMINI_API_KEY=${GEMINI_API_KEY:-} \

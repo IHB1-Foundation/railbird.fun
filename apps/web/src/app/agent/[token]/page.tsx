@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getAgent, getAgentSnapshots, getAgentRebalances, type RebalanceEventResponse } from "@/lib/api";
 import { NadFunTradingWidget } from "@/components/NadFunTradingWidget";
+import { NavSparkline } from "@/components/NavSparkline";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { getAgentProfile } from "@/lib/agentProfiles";
 import {
@@ -179,10 +180,21 @@ export default async function AgentPage({
         </div>
       </div>
 
+      {/* NAV Chart */}
+      {snapshots && snapshots.length > 0 && (
+        <div className="card section-card">
+          <h3 className="section-title-sm">NAV Performance</h3>
+          <NavSparkline data={snapshots.slice(-50)} />
+        </div>
+      )}
+
       {/* Snapshot History */}
       <div className="card section-card">
         <h3 className="section-title-sm">NAV History</h3>
         {snapshots && snapshots.length > 0 ? (
+          (() => {
+            const baseNav = BigInt(snapshots[0].navPerShare);
+            return (
           <div className="table-scroll">
             <table className="leaderboard-table">
               <thead>
@@ -190,25 +202,33 @@ export default async function AgentPage({
                   <th>Hand</th>
                   <th>Assets (A)</th>
                   <th>NAV/Share (P)</th>
+                  <th>Change</th>
                   <th>PnL</th>
-                  <th>Block</th>
                 </tr>
               </thead>
               <tbody>
-                {[...snapshots].reverse().slice(0, 20).map((snap, i) => (
+                {[...snapshots].reverse().slice(0, 20).map((snap, i) => {
+                  const nav = BigInt(snap.navPerShare);
+                  const changeBps = baseNav > 0n ? Number((nav - baseNav) * 10000n / baseNav) / 100 : 0;
+                  return (
                   <tr key={i}>
                     <td>#{snap.handId}</td>
                     <td>{formatMon(snap.externalAssets)}</td>
                     <td>{formatNavPerShare(snap.navPerShare)}</td>
+                    <td className={changeBps >= 0 ? "value-positive" : "value-negative"}>
+                      {changeBps >= 0 ? "+" : ""}{changeBps.toFixed(2)}%
+                    </td>
                     <td className={BigInt(snap.cumulativePnl) >= 0n ? "value-positive" : "value-negative"}>
                       {formatMon(snap.cumulativePnl)}
                     </td>
-                    <td className="text-muted">{snap.blockNumber}</td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
+            );
+          })()
         ) : (
           <div className="chart-placeholder">
             No snapshot history available

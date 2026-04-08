@@ -357,12 +357,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
+    // Capture address and chainId at start of authentication
+    const capturedAddress = state.address;
+    const provider = getProvider();
+    let capturedChainId: number | null = null;
+    if (provider) {
+      try {
+        const hexId = await provider.request({ method: "eth_chainId" }) as string;
+        capturedChainId = parseInt(hexId, 16);
+      } catch { /* ignore */ }
+    }
+
+    // Listen for account/chain changes during sign flow
+    let mismatchDetected = false;
+    const handleMidFlowAccountChange = (accounts: string[]) => {
+      if (!accounts.length || accounts[0].toLowerCase() !== capturedAddress.toLowerCase()) {
+        mismatchDetected = true;
+      }
+    };
+    const handleMidFlowChainChange = (hexId: string) => {
+      if (capturedChainId !== null && parseInt(hexId, 16) !== capturedChainId) {
+        mismatchDetected = true;
+      }
+    };
+    if (provider) {
+      provider.on("accountsChanged", handleMidFlowAccountChange);
+      provider.on("chainChanged", handleMidFlowChainChange);
+    }
+
     try {
       // 1. Get nonce from OwnerView
       const { nonce, message } = await ownerviewApi.getNonce(state.address);
 
+      // 2. Guard: verify address/chain haven't changed before signing
+      if (mismatchDetected) {
+        throw new Error("Chain or account changed during sign-in. Please try again.");
+      }
+
       // 2. Sign the message
       const signature = await signMessage(state.address, message);
+
+      // 3. Guard: verify again after signing (user may have changed mid-sign)
+      if (mismatchDetected) {
+        throw new Error("Chain or account changed during sign-in. Please try again.");
+      }
 
       // 3. Verify signature and get token
       const verifyResult = await ownerviewApi.verifySignature(
@@ -402,6 +440,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading: false,
         error: err instanceof Error ? err.message : "Authentication failed",
       }));
+    } finally {
+      if (provider) {
+        provider.removeListener("accountsChanged", handleMidFlowAccountChange);
+        provider.removeListener("chainChanged", handleMidFlowChainChange);
+      }
     }
   }, [state.address]);
 

@@ -289,9 +289,63 @@
   background: rgba(255, 98, 110, 0.1);
 }
 
-@media (max-width: 1024px) {
+/* Mobile sticky bankroll summary */
+.mobileBankrollSummary {
+  display: none;
+}
+
+.mobileBankrollExpanded {
+  display: none;
+}
+
+@media (max-width: 1200px) {
   .betLayout {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .mobileBankrollSummary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.55rem 0.85rem;
+    background: rgba(10, 12, 25, 0.9);
+    border: 1px solid rgba(145, 153, 196, 0.25);
+    border-radius: 10px;
+    font-size: 0.82rem;
+    margin-bottom: 0.75rem;
+    position: sticky;
+    top: 64px;
+    z-index: 20;
+    backdrop-filter: blur(8px);
+    cursor: pointer;
+  }
+
+  .mobileBankrollSummary .mobileBankrollChips {
+    font-weight: 700;
+    color: #ffe3ad;
+  }
+
+  .mobileBankrollSummary .mobileBankrollPnl {
+    font-size: 0.75rem;
+  }
+
+  .mobileBankrollToggle {
+    color: var(--muted);
+    font-size: 0.65rem;
+    flex-shrink: 0;
+  }
+
+  .mobileBankrollExpanded {
+    display: block;
+    margin-bottom: 0.75rem;
+  }
+
+  /* Hide bankroll card from the header on mobile (shown in sticky instead) */
+  .betBankroll {
+    display: none;
   }
 }
 

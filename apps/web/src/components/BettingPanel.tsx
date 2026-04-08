@@ -93,6 +93,7 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
   const [stakeInput, setStakeInput] = useState("50");
   const [notice, setNotice] = useState<{ text: string; type: "success" | "error" } | null>(null);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [mobileBankrollOpen, setMobileBankrollOpen] = useState(false);
 
   const showSuccess = useCallback((text: string) => setNotice({ text, type: "success" }), []);
   const showError   = useCallback((text: string) => setNotice({ text, type: "error" }),   []);
@@ -285,8 +286,60 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
     localStorage.setItem(SETTLED_HANDS_KEY, JSON.stringify([]));
   }
 
+  const pnlForSummary = bankrollWei - DEFAULT_BANKROLL;
+  const pnlPositive = pnlForSummary >= 0n;
+
   return (
     <section className="page-section">
+      {/* Mobile sticky bankroll summary */}
+      <div
+        className={styles.mobileBankrollSummary}
+        onClick={() => setMobileBankrollOpen((v) => !v)}
+        role="button"
+        aria-expanded={mobileBankrollOpen}
+        aria-label="Toggle bankroll details"
+      >
+        <span>
+          🎫 <span className={styles.mobileBankrollChips}>{formatChips(bankrollWei)} {CHIP_SYMBOL}</span>
+          {" | "}
+          <span className={cn(styles.mobileBankrollPnl, pnlPositive ? "positive" : "negative")}>
+            {pnlPositive ? "+" : ""}{formatChips(pnlForSummary)} P&L
+          </span>
+        </span>
+        <span className={styles.mobileBankrollToggle}>{mobileBankrollOpen ? "▲" : "▼"}</span>
+      </div>
+      {mobileBankrollOpen && (
+        <div className={styles.mobileBankrollExpanded}>
+          <div className={`card ${styles.betBankroll}`} style={{ display: "block" }}>
+            <div className="label">Virtual Bankroll</div>
+            <div className={styles.betBankrollValue}>
+              {formatChips(bankrollWei)} {CHIP_SYMBOL}
+            </div>
+            {(() => {
+              const pnl = bankrollWei - DEFAULT_BANKROLL;
+              const positive = pnl >= 0n;
+              const settledCount = wagers.filter((w) => w.status !== "open").length;
+              const wins = wagers.filter((w) => w.status === "won").length;
+              return (
+                <div style={{ fontSize: "0.75rem", display: "grid", gap: "0.1rem" }}>
+                  <span style={{ color: positive ? "var(--success)" : "var(--danger)" }}>
+                    Session P&L: {positive ? "+" : ""}{formatChips(pnl)} {CHIP_SYMBOL}
+                  </span>
+                  {settledCount > 0 && (
+                    <span className="muted">
+                      Win rate: {wins}/{settledCount} ({Math.round((wins / settledCount) * 100)}%)
+                    </span>
+                  )}
+                </div>
+              );
+            })()}
+            <button className="ghost-btn" onClick={(e) => { e.stopPropagation(); setShowResetConfirm(true); }} type="button" aria-label="Reset virtual bankroll to default">
+              Reset
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className={styles.betHeader}>
         <div>
           <h2 className="section-title">Rail Bets</h2>

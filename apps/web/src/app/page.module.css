@@ -8,20 +8,8 @@
   margin-bottom: 1.15rem;
   border: 1px solid rgba(252, 211, 77, 0.25);
   background:
-    radial-gradient(700px 320px at -5% -15%, rgba(251, 146, 60, 0.36), transparent 60%),
-    radial-gradient(620px 300px at 105% 120%, rgba(16, 185, 129, 0.3), transparent 62%),
+    radial-gradient(700px 320px at -5% -15%, rgba(129, 108, 249, 0.28), transparent 60%),
     linear-gradient(155deg, rgba(15, 23, 42, 0.94), rgba(11, 20, 34, 0.98));
-}
-
-.landingHero::before {
-  content: "";
-  position: absolute;
-  inset: -40% auto auto -8%;
-  width: 360px;
-  height: 360px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(249, 115, 22, 0.3), transparent 70%);
-  pointer-events: none;
 }
 
 .landingHero::after {
@@ -35,7 +23,7 @@
     transparent 52%
   );
   transform: translateX(-120%);
-  animation: hero-shimmer 7s ease-in-out infinite;
+  animation: hero-shimmer 4s ease-in-out infinite;
   pointer-events: none;
 }
 
@@ -50,7 +38,7 @@
 .landingHeroCopy {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 1rem;
 }
 
 .landingEyebrow {
@@ -74,7 +62,7 @@
 }
 
 .landingSubtitle {
-  color: rgba(239, 245, 255, 0.8);
+  color: rgba(239, 245, 255, 0.9);
   max-width: 56ch;
 }
 

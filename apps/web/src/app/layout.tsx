@@ -6,6 +6,7 @@ import "./globals.css";
 import styles from "./layout.module.css";
 import { Providers } from "./providers";
 import { WalletButton } from "@/components/WalletButton";
+import { MobileNav } from "@/components/MobileNav";
 
 const roboto = Roboto({
   subsets: ["latin"],
@@ -50,12 +51,7 @@ export default function RootLayout({
                   />
                   <span className={styles.brandText}>Railbird</span>
                 </Link>
-                <nav className={styles.topNav}>
-                  <Link href="/">Tables</Link>
-                  <Link href="/betting">Rail Bets</Link>
-                  <Link href="/leaderboard">Leaderboard</Link>
-                  <Link href="/me">My Agents</Link>
-                </nav>
+                <MobileNav />
                 <div className={styles.topbarActions}>
                   <WalletButton />
                 </div>

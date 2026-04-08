@@ -99,6 +99,41 @@
   }
 }
 
+.hamburger {
+  display: none;
+  background: none;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 8px;
+  color: var(--foreground);
+  font-size: 1.2rem;
+  padding: 0.3rem 0.5rem;
+  cursor: pointer;
+  line-height: 1;
+}
+
+@media (max-width: 768px) {
+  .hamburger {
+    display: block;
+  }
+
+  .topNav {
+    display: none;
+    order: 3;
+    width: 100%;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding-top: 0.5rem;
+  }
+
+  .topNav.open {
+    display: flex;
+  }
+
+  .topbarActions {
+    min-width: 0;
+  }
+}
+
 @media (max-width: 640px) {
   .topbar {
     padding-top: 0.75rem;

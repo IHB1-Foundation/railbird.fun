@@ -122,3 +122,13 @@
   color: var(--muted);
   font-size: 0.82rem;
 }
+
+@media (max-width: 768px) {
+  .leaderboardTable {
+    min-width: 500px;
+  }
+
+  .colOwner {
+    display: none;
+  }
+}

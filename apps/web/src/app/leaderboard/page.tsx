@@ -108,26 +108,34 @@ export default async function LeaderboardPage({ searchParams }: PageProps) {
 
       {data && totalPages > 1 && (
         <div className={styles.pagination}>
-          {page > 1 && (
+          {page > 1 ? (
             <Link
               href={`/leaderboard?metric=${metric}&period=${period}&page=${page - 1}`}
-              className={styles.pageBtn}
+              className={`${styles.pageBtn} ${styles.pageBtnActive}`}
               prefetch={false}
+              aria-label="Previous page"
             >
-              ← Prev
+              ← Previous
             </Link>
+          ) : (
+            <span className={`${styles.pageBtn} ${styles.pageBtnDisabled}`}>← Previous</span>
           )}
+
           <span className={styles.pageInfo}>
-            Page {page} of {totalPages} ({data.total} agents)
+            Agents {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, data.total)} of {data.total}
           </span>
-          {page < totalPages && (
+
+          {page < totalPages ? (
             <Link
               href={`/leaderboard?metric=${metric}&period=${period}&page=${page + 1}`}
-              className={styles.pageBtn}
+              className={`${styles.pageBtn} ${styles.pageBtnActive}`}
               prefetch={false}
+              aria-label="Next page"
             >
               Next →
             </Link>
+          ) : (
+            <span className={`${styles.pageBtn} ${styles.pageBtnDisabled}`}>Next →</span>
           )}
         </div>
       )}

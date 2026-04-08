@@ -17,17 +17,31 @@
 }
 
 .pageBtn {
-  padding: 0.4rem 0.9rem;
+  padding: 0.45rem 1rem;
   border: 1px solid rgba(145, 153, 196, 0.3);
-  border-radius: 6px;
-  color: var(--accent-soft);
+  border-radius: 8px;
   font-size: 0.85rem;
   text-decoration: none;
-  transition: background 0.15s;
+  transition: background 0.15s, border-color 0.15s;
+  display: inline-flex;
+  align-items: center;
 }
 
-.pageBtn:hover {
+.pageBtnActive {
+  color: var(--accent-soft);
+  cursor: pointer;
+}
+
+.pageBtnActive:hover {
   background: rgba(129, 108, 249, 0.15);
+  border-color: rgba(129, 108, 249, 0.45);
+}
+
+.pageBtnDisabled {
+  color: var(--muted);
+  opacity: 0.45;
+  cursor: default;
+  pointer-events: none;
 }
 
 .pageInfo {

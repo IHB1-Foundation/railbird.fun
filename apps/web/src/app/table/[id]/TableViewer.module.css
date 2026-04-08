@@ -432,6 +432,16 @@
   backdrop-filter: blur(10px);
 }
 
+.connectionStatusUpdatedAt {
+  /* Visible by default on desktop */
+}
+
+@media (max-width: 640px) {
+  .connectionStatusUpdatedAt {
+    display: none;
+  }
+}
+
 .connectionStatus.connected {
   color: #a7ffd0;
   background: rgba(57, 217, 138, 0.18);
@@ -513,5 +523,16 @@
   .connectionStatus {
     right: 0.75rem;
     bottom: 0.75rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .connectionStatus {
+    /* Switch from fixed to inline within table header */
+    position: static;
+    right: unset;
+    bottom: unset;
+    font-size: 0.68rem;
+    padding: 0.25rem 0.55rem;
   }
 }

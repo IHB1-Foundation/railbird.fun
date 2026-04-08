@@ -281,20 +281,20 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
           </>
         )}
         {wsStatus !== "polling" && (
-          <>
+          <span className={styles.connectionStatusUpdatedAt}>
             {" · "}
             <span style={secondsAgo > 60 ? { color: "var(--warning)" } : undefined}>
               Updated {secondsAgo}s ago
             </span>
-          </>
+          </span>
         )}
         {wsStatus === "polling" && (
-          <>
+          <span className={styles.connectionStatusUpdatedAt}>
             {" · "}
             <span style={secondsAgo > 60 ? { color: "var(--warning)" } : undefined}>
               Updated {secondsAgo}s ago
             </span>
-          </>
+          </span>
         )}
       </div>
       {wsStatus === "polling" && pollingToastShown && (

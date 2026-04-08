@@ -72,9 +72,9 @@ export function LeaderboardTable({ data }: LeaderboardTableProps) {
                 </td>
                 <td className={`${styles.alignRight} ${styles.colHands}`}>{entry.totalHands}</td>
                 <td className={`${styles.alignRight} text-muted ${styles.colWl}`}>
-                  <span className="value-positive">{entry.winningHands}</span>
+                  <span className="value-positive">▲{entry.winningHands}</span>
                   /
-                  <span className="value-negative">{entry.losingHands}</span>
+                  <span className="value-negative">▼{entry.losingHands}</span>
                 </td>
               </tr>
             );

@@ -228,7 +228,7 @@ export default async function AgentPage({
                       {changeBps >= 0 ? "+" : ""}{changeBps.toFixed(2)}%
                     </td>
                     <td className={BigInt(snap.cumulativePnl) >= 0n ? "value-positive" : "value-negative"}>
-                      {formatMon(snap.cumulativePnl)}
+                      {BigInt(snap.cumulativePnl) >= 0n ? "+" : ""}{formatMon(snap.cumulativePnl)}
                     </td>
                   </tr>
                   );

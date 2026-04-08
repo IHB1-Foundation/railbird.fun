@@ -458,8 +458,8 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
                   <div>{wager.profileName}</div>
                   <div>
                     {wager.status === "won"
-                      ? `WIN +${formatChips(BigInt(wager.payoutWei || "0"))} ${CHIP_SYMBOL}`
-                      : "LOSE"}
+                      ? `✓ WIN +${formatChips(BigInt(wager.payoutWei || "0"))} ${CHIP_SYMBOL}`
+                      : "✗ LOSE"}
                   </div>
                 </div>
               ))}
@@ -493,7 +493,7 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
                     <td>{formatChips(BigInt(w.stakeWei))} {CHIP_SYMBOL}</td>
                     <td>{formatOdds(w.oddsBps)}x</td>
                     <td className={w.status === "won" ? "value-positive" : w.status === "lost" ? "value-negative" : ""}>
-                      {w.status === "open" ? "Pending" : w.status === "won" ? `Won +${formatChips(BigInt(w.payoutWei || "0"))}` : "Lost"}
+                      {w.status === "open" ? "⏳ Pending" : w.status === "won" ? `✓ Won +${formatChips(BigInt(w.payoutWei || "0"))}` : "✗ Lost"}
                     </td>
                   </tr>
                 ))}

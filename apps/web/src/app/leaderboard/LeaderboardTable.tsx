@@ -3,6 +3,7 @@ import { shortenAddress, formatPercent, formatMon } from "@/lib/utils";
 import { getAgentProfile } from "@/lib/agentProfiles";
 import type { LeaderboardResponse } from "@/lib/types";
 import { Tooltip } from "@/components/Tooltip";
+import { AgentAvatar } from "@/components/AgentAvatar";
 import styles from "./LeaderboardTable.module.css";
 
 interface LeaderboardTableProps {
@@ -57,7 +58,14 @@ export function LeaderboardTable({ data }: LeaderboardTableProps) {
                     href={`/agent/${entry.tokenAddress}`}
                     className={`${profile ? "" : "text-mono"} ${styles.addressLink}`}
                     title={entry.tokenAddress}
+                    style={{ display: "inline-flex", alignItems: "center", gap: "0.45rem" }}
                   >
+                    <AgentAvatar
+                      name={profile?.name}
+                      accentColor={profile?.accentColor}
+                      colorHex={profile?.colorHex}
+                      size={24}
+                    />
                     {profile ? profile.name : shortenAddress(entry.tokenAddress)}
                   </Link>
                 </td>

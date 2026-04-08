@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Breadcrumb } from "@/components/Breadcrumb";
 import { Tooltip } from "@/components/Tooltip";
+import { AgentAvatar } from "@/components/AgentAvatar";
 import { getAgent, getAgentSnapshots, getAgentRebalances, getAgentHands, type RebalanceEventResponse } from "@/lib/api";
 import type { HandResponse } from "@/lib/types";
 import { NadFunTradingWidget } from "@/components/NadFunTradingWidget";
@@ -94,6 +95,12 @@ export default async function AgentPage({
 
       {/* Header */}
       <div className={styles.agentHeader}>
+        <AgentAvatar
+          name={profile?.name}
+          accentColor={profile?.accentColor}
+          colorHex={profile?.colorHex}
+          size={48}
+        />
         {profile && (
           <div className={styles.agentColorBar} style={{ background: profile.accentColor }} />
         )}

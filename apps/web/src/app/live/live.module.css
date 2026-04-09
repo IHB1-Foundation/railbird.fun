@@ -295,6 +295,30 @@
   gap: 1rem;
 }
 
+/* Card chip (D-22) */
+.cardChip {
+  background: #1f2937;
+  border: 1px solid #374151;
+  border-radius: 0.375rem;
+  padding: 0.375rem 0.625rem;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 2.25rem;
+}
+
+.cardChipRank {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #f9fafb;
+  line-height: 1;
+}
+
+.cardChipSuit {
+  font-size: 0.875rem;
+  line-height: 1;
+}
+
 /* Mobile responsive */
 @media (max-width: 768px) {
   .liveBody {

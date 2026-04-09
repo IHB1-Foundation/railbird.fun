@@ -132,11 +132,7 @@ function ActionItem({
             {/* T-1205: Why? button */}
             {hasBreakdown && (
               <button
-                style={{
-                  fontSize: "0.7rem", fontWeight: 700, background: whyExpanded ? "rgba(139,92,246,0.3)" : "rgba(139,92,246,0.1)",
-                  border: "1px solid rgba(139,92,246,0.4)", borderRadius: "0.25rem",
-                  color: "#c4b5fd", padding: "0.1rem 0.4rem", cursor: "pointer",
-                }}
+                className={styles.whyBtn}
                 onClick={() => setWhyExpanded((v) => !v)}
                 aria-expanded={whyExpanded}
                 aria-label="Show decision breakdown"

@@ -447,6 +447,26 @@
   color: rgba(195, 175, 255, 0.8);
 }
 
+/* ── Why? button (D-22) ── */
+.whyBtn {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: rgba(139, 92, 246, 0.1);
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  border-radius: 4px;
+  color: #c4b5fd;
+  padding: 0.1rem 0.4rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.whyBtn:hover,
+.whyBtn[aria-expanded="true"] {
+  background: rgba(139, 92, 246, 0.3);
+}
+
 /* ── Action Badges (AI reasoning + on-chain verification) ── */
 
 .actionBadges {

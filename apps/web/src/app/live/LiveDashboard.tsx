@@ -22,13 +22,9 @@ function formatCard(card: number): { rank: string; suit: string; color: string }
 function CardChip({ card }: { card: number }) {
   const { rank, suit, color } = formatCard(card);
   return (
-    <div style={{
-      background: "#1f2937", border: "1px solid #374151", borderRadius: "0.375rem",
-      padding: "0.375rem 0.625rem", display: "inline-flex", flexDirection: "column",
-      alignItems: "center", minWidth: "2.25rem",
-    }}>
-      <span style={{ fontSize: "1rem", fontWeight: 700, color: "#f9fafb", lineHeight: 1 }}>{rank}</span>
-      <span style={{ fontSize: "0.875rem", color, lineHeight: 1 }}>{suit}</span>
+    <div className={styles.cardChip}>
+      <span className={styles.cardChipRank}>{rank}</span>
+      <span className={styles.cardChipSuit} style={{ color }}>{suit}</span>
     </div>
   );
 }

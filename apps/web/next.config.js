@@ -11,7 +11,7 @@ const nextConfig = {
   reactStrictMode: true,
   output: "standalone",
 
-  webpack: (config, { isServer }) => {
+  webpack: (config, { isServer, webpack }) => {
     if (!isServer) {
       // prom-client (from @playerco/shared metrics) uses Node built-ins
       // that don't exist in the browser. Stub them out.
@@ -33,9 +33,8 @@ const nextConfig = {
       };
       // Handle node: protocol URIs — strip prefix so fallback map applies
       // e.g. "node:crypto" → "crypto" which is then caught by fallback: { crypto: false }
-      const { NormalModuleReplacementPlugin } = await import("webpack");
       config.plugins.push(
-        new NormalModuleReplacementPlugin(/^node:(.+)$/, (resource) => {
+        new webpack.NormalModuleReplacementPlugin(/^node:(.+)$/, (resource) => {
           resource.request = resource.request.replace(/^node:/, "");
         })
       );

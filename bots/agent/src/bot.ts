@@ -18,6 +18,9 @@ import type { HandResult, PerformanceScore, StrategyParams } from "./evolution/t
 import { DEFAULT_EVOLUTION_CONFIG } from "./evolution/types.js";
 import { DeviationAnalyzer } from "./gto/deviation.js";
 import type { FacingAction } from "./gto/ranges.js";
+import { OpponentTracker } from "./opponent/tracker.js";
+import { CounterStrategyAdvisor } from "./opponent/counter.js";
+import type { ObservedAction } from "./opponent/types.js";
 
 const logger = createLogger({ service: "agent-bot" });
 
@@ -82,6 +85,12 @@ export class AgentBot {
 
   // T-1104: GTO deviation analyzer
   private gtoAnalyzer = new DeviationAnalyzer();
+
+  // T-1203: Opponent modeling
+  private opponentTracker = new OpponentTracker();
+  private counterAdvisor = new CounterStrategyAdvisor();
+  private previousState: import("./chain/client.js").TableState | null = null;
+  private lastObservedActionBlock: bigint = 0n;
 
   // T-1103: Self-play evolution state
   private evolutionEvaluator = new PerformanceEvaluator();
@@ -442,6 +451,12 @@ export class AgentBot {
           }
         }
 
+        // T-1203: Finalize opponent stats for the completed hand
+        const participatingSeatIndexes = state.seats
+          .map((_, i) => i)
+          .filter((i) => state.seats[i].owner !== "0x0000000000000000000000000000000000000000" as string);
+        this.opponentTracker.finalizeHand(participatingSeatIndexes);
+
         // Reset per-hand tracking
         this.currentHandActions = [];
         this.currentHandOpponentActions = [];
@@ -452,6 +467,49 @@ export class AgentBot {
       }
       this.lastHandId = state.currentHandId;
     }
+
+    // T-1203: Observe opponent actions when lastActionBlock advances
+    if (
+      state.lastActionBlock > this.lastObservedActionBlock &&
+      this.previousState !== null &&
+      this.mySeatIndex !== null
+    ) {
+      const prevState = this.previousState;
+      // Determine which seat acted (the one whose state changed)
+      for (let seatIdx = 0; seatIdx < state.seats.length; seatIdx++) {
+        if (seatIdx === this.mySeatIndex) continue;
+        const prev = prevState.seats[seatIdx];
+        const curr = state.seats[seatIdx];
+        if (!prev || !curr) continue;
+        if (prev.owner === "0x0000000000000000000000000000000000000000" as string) continue;
+
+        const street = gameStateToStreet(state.gameState);
+        if (!street) continue;
+
+        let observed: ObservedAction | null = null;
+        if (prev.isActive && !curr.isActive) {
+          // Player folded
+          observed = { seatIndex: seatIdx, action: "fold", street, facingBet: state.hand.currentBet > 0n, isVoluntary: true };
+        } else if (curr.currentBet > prev.currentBet) {
+          // Bet increased — raise or bet
+          const facingBet = prevState.hand.currentBet > 0n;
+          observed = { seatIndex: seatIdx, action: facingBet ? "raise" : "bet", street, facingBet, isVoluntary: true };
+          this.currentHandOpponentActions.push(`${street}:raise`);
+        } else if (curr.currentBet === state.hand.currentBet && curr.currentBet === prev.currentBet && prev.isActive && curr.isActive) {
+          // No change in bet — either check or call
+          const facingBet = prevState.hand.currentBet > 0n;
+          const action = facingBet ? "call" : "check";
+          observed = { seatIndex: seatIdx, action, street, facingBet, isVoluntary: true };
+          this.currentHandOpponentActions.push(`${street}:${action}`);
+        }
+
+        if (observed) {
+          this.opponentTracker.observe(observed);
+        }
+      }
+      this.lastObservedActionBlock = state.lastActionBlock;
+    }
+    this.previousState = state;
 
     // Handle different game states
     if (state.gameState === GameState.SETTLED || state.gameState === GameState.WAITING_FOR_SEATS) {
@@ -587,6 +645,22 @@ export class AgentBot {
     const canCheck = await this.chainClient.canCheck(seatIndex);
     const amountToCall = await this.chainClient.getAmountToCall(seatIndex);
 
+    // T-1203: Build opponent read from tracker
+    let opponentRead: string | undefined;
+    try {
+      const opponentSections: string[] = [];
+      for (let i = 0; i < state.seats.length; i++) {
+        if (i === seatIndex) continue;
+        if (state.seats[i].owner === "0x0000000000000000000000000000000000000000" as string) continue;
+        const profile = this.opponentTracker.getProfile(i);
+        const advice = this.counterAdvisor.advise(profile);
+        opponentSections.push(this.counterAdvisor.formatPromptSection(i, `Seat ${i}`, profile, advice));
+      }
+      if (opponentSections.length > 0) opponentRead = opponentSections.join("\n");
+    } catch (err) {
+      logger.debug({ err: err instanceof Error ? err.message : String(err) }, "[OpponentModel] Failed to build opponent read (non-fatal)");
+    }
+
     // Build decision context
     const context: DecisionContext = {
       tableState: state,
@@ -594,6 +668,7 @@ export class AgentBot {
       holeCards,
       canCheck,
       amountToCall,
+      opponentRead,
     };
 
     // Track position for RAG
@@ -704,6 +779,19 @@ export class AgentBot {
           }
         }
 
+        // T-1203: Build opponentRead data for OwnerView
+        let opponentReadData: { seatIndex: number; profile: unknown; counterAdvice: unknown } | undefined;
+        if (opponentRead) {
+          for (let i = 0; i < state.seats.length; i++) {
+            if (i === seatIndex) continue;
+            if (state.seats[i].owner === "0x0000000000000000000000000000000000000000" as string) continue;
+            const profile = this.opponentTracker.getProfile(i);
+            const counterAdvice = this.counterAdvisor.advise(profile);
+            opponentReadData = { seatIndex: i, profile, counterAdvice };
+            break;
+          }
+        }
+
         const reasoningParams = {
           tableAddress: this.config.pokerTableAddress,
           handId: String(state.currentHandId),
@@ -714,6 +802,7 @@ export class AgentBot {
           reasoning: decision.reasoning,
           factors: decision.factors,
           gtoDeviation,
+          opponentRead: opponentReadData,
         };
         this.ownerviewClient.submitReasoning(reasoningParams).catch((err: unknown) => {
           logger.warn({ err: err instanceof Error ? err.message : String(err) }, "Failed to submit reasoning (non-fatal)");
@@ -830,6 +919,15 @@ function describePositionSimple(seatIndex: number, buttonSeat: number, totalSeat
   if (offset === 2) return "BB";
   if (offset === totalSeats - 1) return "CO";
   return "MP";
+}
+
+function gameStateToStreet(gs: number): ObservedAction["street"] | null {
+  // GameState values: BETTING_PRE=2, BETTING_FLOP=4, BETTING_TURN=6, BETTING_RIVER=8
+  if (gs === 2) return "preflop";
+  if (gs === 4) return "flop";
+  if (gs === 6) return "turn";
+  if (gs === 8) return "river";
+  return null;
 }
 
 function inferBoardTexture(communityCards: string): string {

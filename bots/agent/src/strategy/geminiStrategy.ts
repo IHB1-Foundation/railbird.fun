@@ -437,6 +437,7 @@ export class GeminiStrategy implements Strategy {
     return [
       systemLine,
       ...(ragSection ? [ragSection] : []),
+      ...(context.opponentRead ? [context.opponentRead] : []),
       "Return exactly one compact JSON object and no extra text.",
       'Format: {"action":"fold|check|call|raise","raiseTarget":"<integer in chip units>","reasoning":"<1-2 sentence explanation in English>","factors":{"handStrength":"...","potOdds":"...","position":"...","opponentRead":"...","sizing":"...","riskAssessment":"..."}}',
       "Always include reasoning explaining WHY you chose this action, referencing specific game factors.",

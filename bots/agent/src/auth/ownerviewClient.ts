@@ -35,6 +35,8 @@ export interface SubmitReasoningParams {
   factors?: SubmitReasoningFactors;
   /** T-1104: GTO deviation for preflop decisions */
   gtoDeviation?: GTODeviationData;
+  /** T-1203: Opponent model read at time of decision */
+  opponentRead?: { seatIndex: number; profile: unknown; counterAdvice: unknown };
 }
 
 export interface NonceResponse {

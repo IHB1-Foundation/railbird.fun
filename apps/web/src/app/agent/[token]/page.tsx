@@ -303,6 +303,64 @@ export default async function AgentPage({
         </div>
       )}
 
+      {/* T-1203: Opponent Reads */}
+      {allActions.length > 0 && (() => {
+        // Collect unique opponent reads from recent actions
+        const opponentReads: Array<{ seatIndex: number; style: string; vpip: number; pfr: number; af: number; counterAdvice: string; handId: string }> = [];
+        const seenSeats = new Set<number>();
+        for (const action of [...allActions].reverse()) {
+          const read = (action as Record<string, unknown>).opponentRead as { seatIndex: number; profile?: { vpip?: number; pfr?: number; af?: number; style?: string }; counterAdvice?: { style?: string; promptInjection?: string } } | undefined;
+          if (read && !seenSeats.has(read.seatIndex)) {
+            seenSeats.add(read.seatIndex);
+            const profile = read.profile ?? {};
+            const advice = read.counterAdvice ?? {};
+            opponentReads.push({
+              seatIndex: read.seatIndex,
+              style: profile.style ?? "unknown",
+              vpip: profile.vpip ?? 0,
+              pfr: profile.pfr ?? 0,
+              af: profile.af ?? 0,
+              counterAdvice: advice.promptInjection ?? advice.style ?? "Gathering data…",
+              handId: String((action as Record<string, unknown>).handId ?? ""),
+            });
+          }
+        }
+        if (opponentReads.length === 0) return null;
+        return (
+          <div className="card" style={{ marginBottom: "1rem", padding: "1rem 1.2rem" }}>
+            <h3 className="section-title-sm" style={{ marginBottom: "0.75rem" }}>Opponent Reads</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+              {opponentReads.map((read) => {
+                const styleBadgeColor = read.style === "tight-aggressive" ? "#3B82F6" :
+                  read.style === "loose-aggressive" ? "#EF4444" :
+                  read.style === "tight-passive" ? "#6B7280" :
+                  read.style === "loose-passive" ? "#F59E0B" : "#4B5563";
+                return (
+                  <div key={read.seatIndex} style={{ background: "rgba(255,255,255,0.04)", borderRadius: "0.5rem", padding: "0.75rem" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.5rem" }}>
+                      <span style={{ fontSize: "0.8rem", color: "#9CA3AF" }}>Seat {read.seatIndex}</span>
+                      <span style={{ fontSize: "0.7rem", background: styleBadgeColor + "30", color: styleBadgeColor, border: `1px solid ${styleBadgeColor}60`, borderRadius: "9999px", padding: "0.1rem 0.5rem" }}>
+                        {read.style === "unknown" ? "?" : read.style.replace("-", " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+                      </span>
+                    </div>
+                    {read.style !== "unknown" && (
+                      <div style={{ display: "flex", gap: "1rem", marginBottom: "0.5rem" }}>
+                        <span style={{ fontSize: "0.72rem", color: "#9CA3AF" }}>VPIP <strong style={{ color: "#F9FAFB" }}>{read.vpip.toFixed(0)}%</strong></span>
+                        <span style={{ fontSize: "0.72rem", color: "#9CA3AF" }}>PFR <strong style={{ color: "#F9FAFB" }}>{read.pfr.toFixed(0)}%</strong></span>
+                        <span style={{ fontSize: "0.72rem", color: "#9CA3AF" }}>AF <strong style={{ color: "#F9FAFB" }}>{read.af.toFixed(1)}</strong></span>
+                      </div>
+                    )}
+                    <p style={{ fontSize: "0.72rem", color: "#9CA3AF", fontStyle: "italic", borderLeft: "2px solid " + styleBadgeColor, paddingLeft: "0.5rem", margin: 0 }}>
+                      {read.counterAdvice.split(".")[0]}.
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* AI Learning */}
       {(ragStats !== null || allActions.some((a) => a.reasoning?.toLowerCase().includes("past hand"))) && (
         <div className="card" style={{ marginBottom: "1rem", padding: "1rem 1.2rem" }}>

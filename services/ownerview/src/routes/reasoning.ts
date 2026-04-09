@@ -25,6 +25,12 @@ export interface GTODeviationData {
   severity: number;
 }
 
+export interface OpponentReadData {
+  seatIndex: number;
+  profile: unknown;
+  counterAdvice: unknown;
+}
+
 export interface ReasoningEntry {
   tableAddress: string;
   handId: string;
@@ -36,6 +42,8 @@ export interface ReasoningEntry {
   factors?: ReasoningFactors;
   /** T-1104: GTO baseline deviation data (preflop decisions only) */
   gtoDeviation?: GTODeviationData;
+  /** T-1203: Opponent model data at time of decision */
+  opponentRead?: OpponentReadData;
   timestamp: number;
 }
 
@@ -87,7 +95,7 @@ export function createReasoningRoutes(): Router {
       return;
     }
 
-    const { gtoDeviation } = req.body as Record<string, unknown>;
+    const { gtoDeviation, opponentRead } = req.body as Record<string, unknown>;
 
     const entry: ReasoningEntry = {
       tableAddress: tableAddress.toLowerCase(),
@@ -99,6 +107,7 @@ export function createReasoningRoutes(): Router {
       reasoning,
       factors: factors && typeof factors === "object" ? (factors as ReasoningFactors) : undefined,
       gtoDeviation: gtoDeviation && typeof gtoDeviation === "object" ? (gtoDeviation as GTODeviationData) : undefined,
+      opponentRead: opponentRead && typeof opponentRead === "object" ? (opponentRead as OpponentReadData) : undefined,
       timestamp: Date.now(),
     };
 

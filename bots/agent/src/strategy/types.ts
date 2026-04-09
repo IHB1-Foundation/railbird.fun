@@ -13,6 +13,8 @@ export interface DecisionContext {
   holeCards: HoleCards | null;
   canCheck: boolean;
   amountToCall: bigint;
+  /** T-1203: Opponent read — counter-strategy text injected into Gemini prompt */
+  opponentRead?: string;
 }
 
 export enum Decision {

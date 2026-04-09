@@ -60,6 +60,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error("Fleet fatal error:", err);
+  logger.error({ err: err instanceof Error ? err.message : String(err) }, "Fleet fatal error");
   process.exit(1);
 });

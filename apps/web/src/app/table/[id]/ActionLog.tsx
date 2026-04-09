@@ -198,11 +198,38 @@ function ActionItem({
 
 // ── Main ActionLog ────────────────────────────────────────────────────────────
 
+// D-58: Only render at most this many actions to avoid large DOM.
+const ACTION_DISPLAY_LIMIT = 100;
+
 export function ActionLog({ streetSections, seatByIndex, maxSeats, chipSymbol, fetchError, onRetry }: ActionLogProps) {
   // Show newest streets first
   const reversed = [...streetSections].reverse();
+  const [showAll, setShowAll] = useState(false);
   const logRef = useRef<HTMLDivElement>(null);
   const [showFade, setShowFade] = useState(false);
+
+  // Count total actions for the display limit
+  const totalActions = reversed.reduce((sum, s) => sum + s.actions.length, 0);
+  const isOverLimit = totalActions > ACTION_DISPLAY_LIMIT;
+
+  // Compute which sections to show (trim older streets from the back of reversed)
+  const displayedSections = (() => {
+    if (!isOverLimit || showAll) return reversed;
+    let count = 0;
+    const result = [];
+    for (const section of reversed) {
+      if (count >= ACTION_DISPLAY_LIMIT) break;
+      const remaining = ACTION_DISPLAY_LIMIT - count;
+      if (section.actions.length <= remaining) {
+        result.push(section);
+        count += section.actions.length;
+      } else {
+        result.push({ ...section, actions: section.actions.slice(0, remaining) });
+        count += remaining;
+      }
+    }
+    return result;
+  })();
 
   useEffect(() => {
     const el = logRef.current;
@@ -227,9 +254,18 @@ export function ActionLog({ streetSections, seatByIndex, maxSeats, chipSymbol, f
               </button>
             )}
           </div>
-        ) : reversed.length > 0 ? (
+        ) : displayedSections.length > 0 ? (
           <div className={styles.streetLog}>
-            {reversed.map((section, si) => (
+            {isOverLimit && !showAll && (
+              <button
+                className="btn btn-ghost"
+                style={{ fontSize: "0.72rem", padding: "0.25rem 0.75rem", minHeight: 0, margin: "0 auto 0.5rem", display: "block" }}
+                onClick={() => setShowAll(true)}
+              >
+                Show all {totalActions} actions
+              </button>
+            )}
+            {displayedSections.map((section, si) => (
               <div key={section.street} className={styles.streetBlock}>
                 <div className={styles.streetDivider}>
                   <hr className={styles.streetHr} />

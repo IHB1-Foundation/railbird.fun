@@ -12,6 +12,10 @@ import type { VectorStore } from "./rag/vectorStore.js";
 import { embedHand } from "./rag/embedder.js";
 import type { HandSummary } from "./rag/types.js";
 import { randomBytes } from "node:crypto";
+import { PerformanceEvaluator } from "./evolution/evaluator.js";
+import { StrategyOptimizer } from "./evolution/optimizer.js";
+import type { HandResult, PerformanceScore, StrategyParams } from "./evolution/types.js";
+import { DEFAULT_EVOLUTION_CONFIG } from "./evolution/types.js";
 
 const logger = createLogger({ service: "agent-bot" });
 
@@ -73,6 +77,13 @@ export class AgentBot {
   private currentHandReasoning: string | undefined = undefined;
   private currentHandCommunityCards: string = "";
   private currentHandPosition: string = "unknown";
+
+  // T-1103: Self-play evolution state
+  private evolutionEvaluator = new PerformanceEvaluator();
+  private evolutionOptimizer = new StrategyOptimizer(DEFAULT_EVOLUTION_CONFIG);
+  private handResultWindow: HandResult[] = [];
+  private prevPerformanceScore: PerformanceScore | null = null;
+  private evolutionTotalHandsEvaluated: number = 0;
 
   // T-R3-02: Escalating logging for persistent hole card failures
   /** Whether we've already emitted the first circuit-open WARN (suppresses duplicates). */
@@ -402,6 +413,30 @@ export class AgentBot {
             logger.warn({ err: err instanceof Error ? err.message : String(err) }, "Failed to record hand to VectorStore (non-fatal)");
           }
         }
+        // T-1103: Record hand result for evolution
+        {
+          const finalAction = this.currentHandActions[this.currentHandActions.length - 1] ?? "fold";
+          const handResult: HandResult = {
+            won: profit > 0n,
+            pnl: Number(profit),
+            position: this.currentHandPosition,
+            finalAction: finalAction.startsWith("raise") ? "raise" : finalAction,
+            bluffAttempted: false,
+            bluffSucceeded: false,
+            foldWasCorrect: finalAction === "fold" && profit >= 0n,
+          };
+          this.handResultWindow.push(handResult);
+          // Run evolution every evalWindowSize hands, after minHandsBeforeEval
+          if (
+            this.handResultWindow.length >= DEFAULT_EVOLUTION_CONFIG.evalWindowSize &&
+            this.stats.handsPlayed >= DEFAULT_EVOLUTION_CONFIG.minHandsBeforeEval
+          ) {
+            this.runEvolutionAsync(this.handResultWindow.splice(0)).catch((err: unknown) => {
+              logger.warn({ err: err instanceof Error ? err.message : String(err) }, "Evolution run failed (non-fatal)");
+            });
+          }
+        }
+
         // Reset per-hand tracking
         this.currentHandActions = [];
         this.currentHandOpponentActions = [];
@@ -664,6 +699,63 @@ export class AgentBot {
           logger.error({ error: foldError }, "Fail-safe fold also failed");
         }
       }
+    }
+  }
+
+  /**
+   * T-1103: Run one evolution step asynchronously (non-blocking).
+   * Evaluates the current hand window, optionally updates persona params,
+   * and registers the new strategy on-chain if improved.
+   */
+  private async runEvolutionAsync(window: HandResult[]): Promise<void> {
+    this.evolutionTotalHandsEvaluated += window.length;
+    const currentScore = this.evolutionEvaluator.evaluate(window);
+
+    const strat = this.strategy as unknown as {
+      persona?: { id: string; aggression: number; tightness: number; bluffFrequency: number };
+    };
+    const persona = strat.persona;
+    if (!persona) return;
+
+    const currentParams: StrategyParams = {
+      aggression: persona.aggression,
+      tightness: persona.tightness,
+      bluffFrequency: persona.bluffFrequency,
+    };
+
+    const result = this.evolutionOptimizer.evolve(currentParams, currentScore, this.prevPerformanceScore);
+    this.prevPerformanceScore = currentScore;
+
+    if (result.evolved) {
+      const { newParams, prevParams, delta } = result;
+      logger.info(
+        {
+          version: `v${this.evolutionTotalHandsEvaluated / DEFAULT_EVOLUTION_CONFIG.evalWindowSize}`,
+          aggression: `${prevParams.aggression.toFixed(3)}→${newParams.aggression.toFixed(3)}`,
+          tightness: `${prevParams.tightness.toFixed(3)}→${newParams.tightness.toFixed(3)}`,
+          bluffFrequency: `${prevParams.bluffFrequency.toFixed(3)}→${newParams.bluffFrequency.toFixed(3)}`,
+          delta,
+          composite: currentScore.composite.toFixed(3),
+        },
+        "[EVOLUTION] Strategy parameters updated"
+      );
+
+      // Update in-memory persona params
+      persona.aggression = newParams.aggression;
+      persona.tightness = newParams.tightness;
+      persona.bluffFrequency = newParams.bluffFrequency;
+
+      // Register new strategy on-chain (T-1102)
+      await this.registerStrategyOnChain({
+        personaId: persona.id,
+        aggressionBps: Math.round(newParams.aggression * 10000),
+        tightnessBps: Math.round(newParams.tightness * 10000),
+        bluffFreqBps: Math.round(newParams.bluffFrequency * 10000),
+      }).catch((err: unknown) => {
+        logger.warn({ err: err instanceof Error ? err.message : String(err) }, "Evolution on-chain registration failed (non-fatal)");
+      });
+    } else {
+      logger.debug({ composite: currentScore.composite.toFixed(3) }, "[EVOLUTION] No improvement — parameters unchanged");
     }
   }
 

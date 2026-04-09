@@ -88,9 +88,52 @@ async function redisIncrement(ip: string): Promise<{ count: number; resetAt: num
   return { count, resetAt };
 }
 
+// ─── Internal bypass ──────────────────────────────────────────────────────────
+
+const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY;
+
+/**
+ * Returns true when the request should bypass rate limiting.
+ * Bypassed if:
+ *   - INTERNAL_API_KEY is set and the request presents it via
+ *     `Authorization: Bearer <key>` or `X-Internal-Key: <key>`
+ *   - The source IP is a private/loopback address (127.x or 10.x or 172.16-31.x or 192.168.x)
+ */
+function isInternalRequest(req: Request): boolean {
+  if (INTERNAL_API_KEY) {
+    const authHeader = req.headers.authorization;
+    if (authHeader?.startsWith("Bearer ") && authHeader.slice(7) === INTERNAL_API_KEY) {
+      return true;
+    }
+    const internalKey = req.headers["x-internal-key"];
+    if (typeof internalKey === "string" && internalKey === INTERNAL_API_KEY) {
+      return true;
+    }
+  }
+
+  const ip = req.ip ?? req.socket?.remoteAddress ?? "";
+  const clean = ip.replace(/^::ffff:/, "");
+  if (
+    clean === "127.0.0.1" ||
+    clean === "::1" ||
+    /^10\./.test(clean) ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(clean) ||
+    /^192\.168\./.test(clean)
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
 // ─── Middleware ────────────────────────────────────────────────────────────────
 
 export function rateLimiterMiddleware(req: Request, res: Response, next: NextFunction): void {
+  if (isInternalRequest(req)) {
+    next();
+    return;
+  }
+
   const ip = req.ip ?? req.socket?.remoteAddress ?? "unknown";
 
   (async () => {

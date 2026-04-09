@@ -92,6 +92,10 @@
   --shadow-md: 0 10px 24px rgba(0, 0, 0, 0.35);
   --shadow-lg: 0 24px 40px rgba(2, 4, 12, 0.45);
   --shadow-glow: 0 0 0 2px rgba(129, 108, 249, 0.35), 0 0 20px rgba(129, 108, 249, 0.25);
+  /* D-6: component-specific glow tokens */
+  --shadow-seat-active: 0 0 0 2px rgba(255, 213, 124, 0.5), 0 0 24px rgba(255, 179, 74, 0.45);
+  --shadow-btn-accent: 0 8px 18px rgba(104, 79, 246, 0.35);
+  --shadow-btn-warning: 0 8px 18px rgba(249, 157, 44, 0.35);
 
   /* Typography scale */
   --text-xs: 0.7rem;
@@ -318,7 +322,7 @@ h5 {
   letter-spacing: 0.03em;
   color: #fff;
   background: linear-gradient(135deg, var(--accent-gradient-start) 0%, var(--accent-gradient-end) 100%);
-  box-shadow: 0 12px 24px rgba(104, 79, 246, 0.28);
+  box-shadow: var(--shadow-btn-accent);
   transition: transform 0.2s ease, filter 0.2s ease;
 }
 

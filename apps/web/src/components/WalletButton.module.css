@@ -6,7 +6,7 @@
   font-weight: 600;
   color: #fff;
   background: linear-gradient(150deg, var(--accent-gradient-start) 0%, var(--accent-gradient-end) 100%);
-  box-shadow: 0 8px 18px rgba(104, 79, 246, 0.35);
+  box-shadow: var(--shadow-btn-accent);
   cursor: pointer;
   transition: filter 0.2s ease, transform 0.2s ease;
 }
@@ -24,7 +24,7 @@
 .walletButton.sign {
   background: linear-gradient(150deg, var(--warning) 0%, #f99d2c 100%);
   color: #22190a;
-  box-shadow: 0 8px 18px rgba(249, 157, 44, 0.35);
+  box-shadow: var(--shadow-btn-warning);
 }
 
 .walletButton.disconnect {

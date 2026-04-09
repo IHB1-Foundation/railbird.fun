@@ -14,8 +14,7 @@
 .seatPanel.active {
   border-color: rgba(255, 213, 124, 0.98);
   box-shadow:
-    0 0 0 2px rgba(255, 213, 124, 0.5),
-    0 0 24px rgba(255, 179, 74, 0.45),
+    var(--shadow-seat-active),
     var(--shadow-lg);
 }
 

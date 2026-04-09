@@ -553,6 +553,7 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
               inputMode="decimal"
               value={amountInput}
               onChange={(e) => { setAmountInput(e.target.value); setQuote(null); }}
+              placeholder={direction === "buy" ? "e.g. 0.1" : "e.g. 100"}
               aria-label={direction === "buy" ? "Amount of MON to spend" : "Amount of tokens to sell"}
             />
           </div>

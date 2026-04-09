@@ -156,13 +156,17 @@ export function LeaderboardTable({ data }: LeaderboardTableProps) {
         <table className={styles.leaderboardTable}>
           <thead>
             <tr>
-              <th className={styles.colRank}>#</th>
-              <th className={styles.colAgent}>Agent</th>
-              <th className={`${styles.colOwner} ${styles.hideMobile}`}>Owner</th>
+              <th scope="col" className={styles.colRank}>#</th>
+              <th scope="col" className={styles.colAgent}>Agent</th>
+              <th scope="col" className={`${styles.colOwner} ${styles.hideMobile}`}>Owner</th>
               <th
+                scope="col"
                 className={`${styles.alignRight} ${styles.colMetric} ${styles.sortable}`}
                 onClick={() => handleSort("metric")}
+                onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && handleSort("metric")}
+                tabIndex={0}
                 aria-sort={sortKey === "metric" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
+                aria-label={`Sort by ${metric === "roi" ? "ROI" : metric === "pnl" ? "PnL" : metric === "winrate" ? "Win Rate" : metric === "mdd" ? "Max Drawdown" : "ELO"}, ${sortKey === "metric" ? (sortDir === "asc" ? "ascending" : "descending") : "not sorted"}`}
                 style={{ cursor: "pointer" }}
               >
                 <Tooltip text={METRIC_TOOLTIPS[metric] ?? ""}>
@@ -171,23 +175,31 @@ export function LeaderboardTable({ data }: LeaderboardTableProps) {
                 {" "}{sortIcon("metric")}
               </th>
               <th
+                scope="col"
                 className={`${styles.alignRight} ${styles.colHands} ${styles.hideMobile} ${styles.sortable}`}
                 onClick={() => handleSort("totalHands")}
+                onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && handleSort("totalHands")}
+                tabIndex={0}
                 aria-sort={sortKey === "totalHands" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
+                aria-label={`Sort by Hands played, ${sortKey === "totalHands" ? (sortDir === "asc" ? "ascending" : "descending") : "not sorted"}`}
                 style={{ cursor: "pointer" }}
               >
                 Hands {sortIcon("totalHands")}
               </th>
               <th
+                scope="col"
                 className={`${styles.alignRight} ${styles.colWl} ${styles.hideMobile} ${styles.sortable}`}
                 onClick={() => handleSort("winningHands")}
+                onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && handleSort("winningHands")}
+                tabIndex={0}
                 aria-sort={sortKey === "winningHands" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
+                aria-label={`Sort by Wins, ${sortKey === "winningHands" ? (sortDir === "asc" ? "ascending" : "descending") : "not sorted"}`}
                 style={{ cursor: "pointer" }}
               >
                 <Tooltip text="Wins / Losses">W/L</Tooltip>
                 {" "}{sortIcon("winningHands")}
               </th>
-              <th className={`${styles.colExpand} ${styles.showMobile}`} aria-label="Expand row" />
+              <th scope="col" className={`${styles.colExpand} ${styles.showMobile}`} aria-label="Expand row" />
             </tr>
           </thead>
           <tbody>
@@ -203,6 +215,10 @@ export function LeaderboardTable({ data }: LeaderboardTableProps) {
                     key={entry.tokenAddress}
                     className={styles.dataRow}
                     onClick={() => toggleRow(entry.tokenAddress)}
+                    onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && toggleRow(entry.tokenAddress)}
+                    tabIndex={0}
+                    role="row"
+                    aria-expanded={isExpanded}
                     style={{ cursor: "pointer" }}
                   >
                     <td className={`${styles.rank} ${styles.colRank}`}>

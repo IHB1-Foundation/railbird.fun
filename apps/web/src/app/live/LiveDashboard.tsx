@@ -193,10 +193,12 @@ export function LiveDashboard() {
       .catch(() => {});
   }, []);
 
-  // Poll
+  // Poll — pauses when tab is hidden to avoid unnecessary requests (D-59)
   useEffect(() => {
     fetchTables();
-    const t1 = setInterval(fetchTables, 15_000);
+    const t1 = setInterval(() => {
+      if (document.visibilityState === "visible") fetchTables();
+    }, 15_000);
     return () => clearInterval(t1);
   }, [fetchTables]);
 
@@ -204,8 +206,10 @@ export function LiveDashboard() {
     fetchTableState();
     fetchSideBet();
     const t = setInterval(() => {
-      fetchTableState();
-      fetchSideBet();
+      if (document.visibilityState === "visible") {
+        fetchTableState();
+        fetchSideBet();
+      }
     }, POLL_INTERVAL);
     return () => clearInterval(t);
   }, [fetchTableState, fetchSideBet]);

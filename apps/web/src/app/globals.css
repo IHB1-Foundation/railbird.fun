@@ -29,11 +29,17 @@
   --text-muted: #6b7280;
   --border-color: rgba(31, 41, 55, 0.9);
 
-  /* Border-radius scale */
+  /* Border-radius scale (D-5) */
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
   --radius-xl: 20px;
+  --radius-full: 9999px;
+
+  /* Border color tokens (D-4) */
+  --border-subtle: rgba(140, 146, 186, 0.1);
+  --border-default: rgba(140, 146, 186, 0.2);
+  --border-strong: rgba(140, 146, 186, 0.4);
 
   /* Spacing scale */
   --space-1: 0.25rem;
@@ -43,6 +49,28 @@
   --space-5: 1.25rem;
   --space-6: 1.5rem;
   --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+
+  /* Typography weight tokens (D-3) */
+  --font-normal: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+
+  /* Letter-spacing tokens (D-3) */
+  --tracking-tight: -0.01em;
+  --tracking-normal: 0.01em;
+  --tracking-wide: 0.05em;
+
+  /* Line-height tokens (D-3) */
+  --leading-tight: 1.15;
+  --leading-normal: 1.45;
+  --leading-relaxed: 1.6;
+
+  /* Extra color tokens (D-1) */
+  --card-highlight: rgba(129, 108, 249, 0.15);
+  --text-gold: #ffbf4d;
 
   /* Shadow tokens */
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.25);
@@ -147,6 +175,16 @@ a {
 
 a:hover {
   color: #e1d5ff;
+}
+
+/* Touch target minimum size — WCAG 2.5.5 (D-34) */
+button,
+[role="button"],
+.btn,
+.btn-ghost,
+.tab {
+  min-height: 44px;
+  min-width: 44px;
 }
 
 /* Visible focus indicators for keyboard navigation */

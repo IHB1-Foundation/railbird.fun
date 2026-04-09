@@ -4,6 +4,10 @@
 
 .searchRow {
   margin-bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .searchInput {

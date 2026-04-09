@@ -46,6 +46,24 @@ function eloColor(elo: number): string {
 type SortKey = "metric" | "totalHands" | "winningHands";
 type SortDir = "asc" | "desc";
 
+function exportToCSV(entries: LeaderboardResponse["entries"], metric: LeaderboardResponse["metric"]) {
+  const headers = ["Rank", "Name", "Address", "Metric", "Hands", "Wins", "Losses"];
+  const rows = entries.map((e, i) => {
+    const profile = getAgentProfile(e.ownerAddress);
+    const name = profile?.name ?? e.tokenAddress.slice(0, 8);
+    const metricVal = getPrimaryNumeric(e, metric).toFixed(4);
+    return [i + 1, name, e.tokenAddress, metricVal, e.totalHands, e.winningHands, e.losingHands].join(",");
+  });
+  const csv = [headers.join(","), ...rows].join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `leaderboard-${metric}-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export function LeaderboardTable({ data }: LeaderboardTableProps) {
   const { metric, entries } = data;
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -144,6 +162,14 @@ export function LeaderboardTable({ data }: LeaderboardTableProps) {
           onChange={(e) => handleSearchChange(e.target.value)}
           aria-label="Search agents"
         />
+        <button
+          onClick={() => exportToCSV(filteredEntries, metric)}
+          className="btn btn-ghost"
+          style={{ fontSize: "0.78rem", padding: "0.3rem 0.75rem", minHeight: 0, whiteSpace: "nowrap" }}
+          title="Export to CSV"
+        >
+          ↓ Export CSV
+        </button>
         {debouncedSearch && filteredEntries.length === 0 && (
           <p className={styles.searchEmpty}>No agents matching &ldquo;{debouncedSearch}&rdquo;</p>
         )}

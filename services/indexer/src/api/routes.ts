@@ -908,6 +908,122 @@ router.get("/leaderboard", leaderboardRateLimit, async (req, res) => {
   }
 });
 
+// ============ T-1105: Evolution Endpoints ============
+
+/**
+ * GET /evolution/timeline?agents=addr1,addr2,...&limit=100
+ * Returns strategy evolution history per agent with ELO snapshots.
+ */
+router.get("/evolution/timeline", async (req, res) => {
+  try {
+    const agentsParam = (req.query.agents as string | undefined) ?? "";
+    const limit = Math.min(parseInt(req.query.limit as string) || 100, 500);
+
+    let agentAddresses: string[];
+    if (agentsParam) {
+      agentAddresses = agentsParam.split(",").map((a) => a.trim().toLowerCase()).filter(Boolean);
+    } else {
+      // Default: all agents
+      const all = await getAllAgents();
+      agentAddresses = all.map((a) => a.token_address);
+    }
+
+    if (agentAddresses.length === 0) {
+      return res.json({ agents: [] });
+    }
+
+    const eloMap = await getEloRatings(agentAddresses).catch(() => new Map<string, { rating: number; handsPlayed: number }>());
+
+    const results = await Promise.all(
+      agentAddresses.map(async (addr) => {
+        const strategies = await getAgentStrategies(addr, limit).catch(() => []);
+        const elo = eloMap.get(addr);
+        return {
+          agent: addr,
+          eloRating: elo ? elo.rating : 1500,
+          strategies: strategies.map((s) => ({
+            version: s.version,
+            aggressionBps: s.aggression_bps,
+            tightnessBps: s.tightness_bps,
+            bluffFreqBps: s.bluff_freq_bps,
+            personaId: s.persona_id,
+            configHash: s.config_hash,
+            blockNumber: s.block_number,
+            txHash: s.tx_hash,
+            timestamp: s.created_at.toISOString(),
+          })),
+        };
+      })
+    );
+
+    res.json({ agents: results });
+  } catch (error) {
+    logger.error({ err: error }, "Error fetching evolution timeline:");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+/**
+ * GET /evolution/meta-shifts?period=24h|7d|all
+ * Returns aggregate meta-game trend: average aggression/tightness across all agents over time.
+ */
+router.get("/evolution/meta-shifts", async (req, res) => {
+  try {
+    const period = (req.query.period as string || "all").toLowerCase();
+    const validPeriods = ["24h", "7d", "all"];
+    if (!validPeriods.includes(period)) {
+      return res.status(400).json({ error: "Invalid period. Valid: 24h, 7d, all" });
+    }
+
+    const agents = await getAllAgents();
+    const allTokenAddresses = agents.map((a) => a.token_address);
+    const eloMap = await getEloRatings(allTokenAddresses).catch(() => new Map<string, { rating: number; handsPlayed: number }>());
+
+    const periodStartMs = period === "24h" ? Date.now() - 86_400_000
+      : period === "7d" ? Date.now() - 7 * 86_400_000
+      : 0;
+
+    // Gather latest strategy per agent
+    const agentCurrentStats: Array<{ agent: string; aggressionBps: number; tightnessBps: number; bluffFreqBps: number; elo: number }> = [];
+    let totalAggression = 0, totalTightness = 0, totalBluff = 0, count = 0;
+
+    for (const agent of agents) {
+      const strategies = await getAgentStrategies(agent.token_address, 1).catch(() => []);
+      if (strategies.length === 0) continue;
+      const s = strategies[0]; // latest
+      const ts = s.created_at instanceof Date ? s.created_at.getTime() : new Date(s.created_at).getTime();
+      if (periodStartMs > 0 && ts < periodStartMs) continue;
+
+      const elo = eloMap.get(agent.token_address)?.rating ?? 1500;
+      agentCurrentStats.push({
+        agent: agent.token_address,
+        aggressionBps: s.aggression_bps,
+        tightnessBps: s.tightness_bps,
+        bluffFreqBps: s.bluff_freq_bps,
+        elo,
+      });
+      totalAggression += s.aggression_bps;
+      totalTightness += s.tightness_bps;
+      totalBluff += s.bluff_freq_bps;
+      count++;
+    }
+
+    const avgAggression = count > 0 ? Math.round(totalAggression / count) : 5000;
+    const avgTightness = count > 0 ? Math.round(totalTightness / count) : 5000;
+    const avgBluff = count > 0 ? Math.round(totalBluff / count) : 3000;
+
+    res.json({
+      period,
+      agentCount: count,
+      averages: { aggressionBps: avgAggression, tightnessBps: avgTightness, bluffFreqBps: avgBluff },
+      agents: agentCurrentStats,
+    });
+  } catch (error) {
+    logger.error({ err: error }, "Error fetching meta-shifts:");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // ============ Response Formatters ============
 
 function formatTableResponse(

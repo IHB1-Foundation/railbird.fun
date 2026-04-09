@@ -62,6 +62,7 @@ export default function RootLayout({
             <footer className="app-footer">
               <nav className="footer-nav" aria-label="Footer navigation">
                 <a href="/">Home</a>
+                <a href="/evolution">Evolution</a>
                 <a href="/leaderboard">Leaderboard</a>
                 <a href="/betting">Rail Bets</a>
                 <a href="https://github.com/0xYatha/railbird" target="_blank" rel="noopener noreferrer">GitHub</a>

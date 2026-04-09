@@ -7,6 +7,7 @@ import styles from "@/app/layout.module.css";
 
 const NAV_LINKS = [
   { href: "/", label: "Tables" },
+  { href: "/evolution", label: "Evolution" },
   { href: "/betting", label: "Rail Bets" },
   { href: "/leaderboard", label: "Leaderboard" },
   { href: "/me", label: "My Agents" },

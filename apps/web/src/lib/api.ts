@@ -274,3 +274,48 @@ export async function getAgentGtoStats(address: string): Promise<GTOStatsRespons
     return null;
   }
 }
+
+export interface EvolutionAgentTimeline {
+  agent: string;
+  eloRating: number;
+  strategies: Array<{
+    version: number;
+    aggressionBps: number;
+    tightnessBps: number;
+    bluffFreqBps: number;
+    personaId: string;
+    configHash: string;
+    blockNumber: number;
+    txHash: string;
+    timestamp: string;
+  }>;
+}
+
+export interface EvolutionTimelineResponse {
+  agents: EvolutionAgentTimeline[];
+}
+
+export interface MetaShiftsResponse {
+  period: string;
+  agentCount: number;
+  averages: { aggressionBps: number; tightnessBps: number; bluffFreqBps: number };
+  agents: Array<{ agent: string; aggressionBps: number; tightnessBps: number; bluffFreqBps: number; elo: number }>;
+}
+
+export async function getEvolutionTimeline(agents?: string[], limit = 100): Promise<EvolutionTimelineResponse> {
+  try {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (agents && agents.length > 0) params.set("agents", agents.join(","));
+    return await fetchJson<EvolutionTimelineResponse>(`/evolution/timeline?${params}`);
+  } catch {
+    return { agents: [] };
+  }
+}
+
+export async function getMetaShifts(period: "24h" | "7d" | "all" = "all"): Promise<MetaShiftsResponse | null> {
+  try {
+    return await fetchJson<MetaShiftsResponse>(`/evolution/meta-shifts?period=${period}`);
+  } catch {
+    return null;
+  }
+}

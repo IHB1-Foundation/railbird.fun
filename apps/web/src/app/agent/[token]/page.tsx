@@ -3,7 +3,8 @@ import { Breadcrumb } from "@/components/Breadcrumb";
 import { Tooltip } from "@/components/Tooltip";
 import { AgentAvatar } from "@/components/AgentAvatar";
 import { ShareButton } from "@/components/ShareButton";
-import { getAgent, getAgentSnapshots, getAgentRebalances, getAgentHands, getTreasuryReasoningAll, getAgentStrategies, getAgentGtoStats, type RebalanceEventResponse, type TreasuryReasoningEntry, type StrategyHistoryEntry, type GTOStatsResponse } from "@/lib/api";
+import { getAgent, getAgentSnapshots, getAgentRebalances, getAgentHands, getTreasuryReasoningAll, getAgentStrategies, getAgentGtoStats, type RebalanceEventResponse, type TreasuryReasoningEntry, type StrategyHistoryEntry, type GTOStatsResponse, type EvolutionAgentTimeline } from "@/lib/api";
+import { StrategyTimeline } from "@/components/charts/StrategyTimeline";
 import type { HandResponse } from "@/lib/types";
 
 interface AgentHealthRag {
@@ -359,7 +360,7 @@ export default async function AgentPage({
         </div>
       )}
 
-      {/* Strategy History (T-1102) */}
+      {/* Strategy History (T-1102) + Evolution mini chart (T-1105) */}
       {strategyHistory.length > 0 && (
         <div className="card" style={{ marginBottom: "1rem", padding: "1rem 1.2rem" }}>
           <h3 className="section-title-sm" style={{ marginBottom: "0.75rem" }}>Strategy Version History</h3>
@@ -391,6 +392,30 @@ export default async function AgentPage({
               );
             })}
           </div>
+          {/* T-1105: Mini strategy evolution chart */}
+          {strategyHistory.length >= 2 && (() => {
+            const agentTimeline: EvolutionAgentTimeline = {
+              agent: token,
+              eloRating: 1500,
+              strategies: strategyHistory.map((s) => ({
+                version: parseInt(s.version, 10),
+                aggressionBps: s.aggressionBps,
+                tightnessBps: s.tightnessBps,
+                bluffFreqBps: s.bluffFreqBps,
+                personaId: s.personaId,
+                configHash: s.configHash,
+                blockNumber: parseInt(s.blockNumber, 10) || 0,
+                txHash: s.txHash,
+                timestamp: s.timestamp,
+              })),
+            };
+            return (
+              <div style={{ marginTop: "0.75rem", borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "0.75rem" }}>
+                <p style={{ fontSize: "0.72rem", color: "var(--muted)", marginBottom: "0.4rem" }}>Aggression evolution</p>
+                <StrategyTimeline agents={[agentTimeline]} metric="aggressionBps" height={80} />
+              </div>
+            );
+          })()}
         </div>
       )}
 

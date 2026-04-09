@@ -524,7 +524,9 @@ export default async function AgentPage({
       {/* GTO Analysis (T-1104) */}
       {gtoStats && gtoStats.totalDecisions > 0 && (
         <div className="card" style={{ marginBottom: "1rem", padding: "1rem 1.2rem" }}>
-          <h3 className="section-title-sm" style={{ marginBottom: "0.75rem" }}>GTO Analysis</h3>
+          <h3 className="section-title-sm" style={{ marginBottom: "0.75rem" }}>
+            <Tooltip text="Game Theory Optimal — mathematically balanced strategy that cannot be exploited. 100% conformance means perfect GTO play.">GTO Analysis</Tooltip>
+          </h3>
           {gtoStats.conformance !== null ? (
             <>
               <div style={{ display: "flex", gap: "1.5rem", alignItems: "center", flexWrap: "wrap", marginBottom: "0.75rem" }}>

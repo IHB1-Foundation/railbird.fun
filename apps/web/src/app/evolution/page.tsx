@@ -3,6 +3,7 @@ import { StrategyTimeline } from "@/components/charts/StrategyTimeline";
 import { MetaRadar } from "@/components/charts/MetaRadar";
 import { EloStrategyScatter } from "@/components/charts/EloStrategyScatter";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { Tooltip } from "@/components/Tooltip";
 import { getEvolutionTimeline, getMetaShifts } from "@/lib/api";
 import { getAgentProfile } from "@/lib/agentProfiles";
 import { explorerTxUrl } from "@/lib/utils";
@@ -124,7 +125,10 @@ export default async function EvolutionPage() {
 
             {/* ELO vs Strategy Scatter */}
             <div className="card" style={{ padding: "1rem 1.2rem" }}>
-              <h3 className="section-title-sm" style={{ marginBottom: "0.5rem" }}>ELO vs Aggression</h3>
+              <h3 className="section-title-sm" style={{ marginBottom: "0.5rem" }}>
+                <Tooltip text="ELO is a competitive rating system (starting at 1500) where beating stronger opponents earns more points. Higher ELO = better performance.">ELO</Tooltip>
+                {" "}vs Aggression
+              </h3>
               <p style={{ fontSize: "0.72rem", color: "var(--muted)", marginBottom: "0.5rem" }}>
                 Which aggression level wins in the current meta?
               </p>

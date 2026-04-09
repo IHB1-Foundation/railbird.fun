@@ -170,6 +170,19 @@ export interface TreasuryReasoningFactors {
   sizeJustification: string;
 }
 
+export interface MultiSignalContext {
+  performanceTrend: "rising" | "falling" | "flat";
+  winRate: number;
+  avgPnl: number;
+  navMomentum: number;
+  navMomentumLabel: "up" | "down" | "flat";
+  rebalanceEffectiveness: number;
+  rebalanceEffectivenessLabel: "effective" | "neutral" | "ineffective";
+  volatility: number;
+  volatilityLabel: "low" | "medium" | "high";
+  overallSentiment: "bullish" | "bearish" | "neutral";
+}
+
 export interface TreasuryReasoningEntry {
   vaultAddress: string;
   handId: string;
@@ -178,6 +191,8 @@ export interface TreasuryReasoningEntry {
   reasoning: string;
   confidence: number;
   factors: TreasuryReasoningFactors;
+  /** T-1106: Multi-signal context used for this rebalancing decision */
+  signals?: MultiSignalContext;
   txHash?: string;
   timestamp: number;
 }
@@ -197,7 +212,7 @@ export function createTreasuryReasoningRouter(): Router {
    * Body: { vaultAddress, handId, action, amountBps, reasoning, confidence, factors, txHash? }
    */
   router.post("/", (req: Request, res: Response) => {
-    const { vaultAddress, handId, action, amountBps, reasoning, confidence, factors, txHash } = req.body;
+    const { vaultAddress, handId, action, amountBps, reasoning, confidence, factors, txHash, signals } = req.body;
 
     if (!vaultAddress || !handId || !action || !reasoning) {
       res.status(400).json({ error: "Missing required fields: vaultAddress, handId, action, reasoning" });
@@ -217,6 +232,7 @@ export function createTreasuryReasoningRouter(): Router {
       confidence: typeof confidence === "number" ? confidence : 0.5,
       factors: factors && typeof factors === "object" ? factors as TreasuryReasoningFactors : { navVsMarket: "", pnlTrend: "", sizeJustification: "" },
       txHash: txHash ? String(txHash) : undefined,
+      signals: signals && typeof signals === "object" ? signals as MultiSignalContext : undefined,
       timestamp: Date.now(),
     };
 

@@ -3,6 +3,7 @@
 
 import { createLogger } from "@playerco/shared";
 import type { RebalanceContext, RebalanceRecommendation } from "./types.js";
+import type { MultiSignalContext } from "./signals.js";
 
 const logger = createLogger({ service: "keeper-bot:treasury" });
 
@@ -49,10 +50,12 @@ export class TreasuryAdvisor {
    * Always satisfies accretive-only constraints:
    *   - buy only when tokenMarketPrice < navPerShare
    *   - sell only when tokenMarketPrice > navPerShare
+   *
+   * @param signals - Optional T-1106 multi-signal context to enrich the Gemini prompt.
    */
-  async recommend(ctx: RebalanceContext): Promise<RebalanceRecommendation> {
+  async recommend(ctx: RebalanceContext, signals?: MultiSignalContext): Promise<RebalanceRecommendation> {
     try {
-      const raw = await this.callGemini(ctx);
+      const raw = await this.callGemini(ctx, signals);
       const rec = this.sanitize(raw, ctx);
       // Enforce accretive-only constraint before returning
       return this.enforceAccretiveConstraint(rec, ctx);
@@ -64,8 +67,8 @@ export class TreasuryAdvisor {
 
   // ─── Private ────────────────────────────────────────────────────────────────
 
-  private async callGemini(ctx: RebalanceContext): Promise<RawRecommendation> {
-    const prompt = this.buildPrompt(ctx);
+  private async callGemini(ctx: RebalanceContext, signals?: MultiSignalContext): Promise<RawRecommendation> {
+    const prompt = this.buildPrompt(ctx, signals);
     const url = `${this.endpointBaseUrl}/models/${encodeURIComponent(this.model)}:generateContent`;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
@@ -106,7 +109,7 @@ export class TreasuryAdvisor {
     }
   }
 
-  private buildPrompt(ctx: RebalanceContext): string {
+  private buildPrompt(ctx: RebalanceContext, signals?: MultiSignalContext): string {
     const navStr = formatBigInt(ctx.navPerShare);
     const priceStr = formatBigInt(ctx.tokenMarketPrice);
     const assetsStr = formatBigInt(ctx.externalAssets);
@@ -137,8 +140,18 @@ export class TreasuryAdvisor {
       "",
       "Consider: NAV vs market price gap, recent PnL trend, token liquidity stage.",
       "For bonding-curve stage, be conservative (lower amountBps). For graduated DEX, be more aggressive.",
+      ...(signals ? [
+        "",
+        "Additional market signals:",
+        `  - Performance: ${signals.performanceTrend} (win rate ${(signals.winRate * 100).toFixed(0)}%, avg PnL ${signals.avgPnl.toFixed(1)})`,
+        `  - NAV momentum: ${signals.navMomentumLabel} (${(signals.navMomentum * 100).toFixed(2)}% over last 5 snapshots)`,
+        `  - Rebalance effectiveness: ${signals.rebalanceEffectivenessLabel} (score ${(signals.rebalanceEffectiveness * 100).toFixed(0)}%)`,
+        `  - Volatility: ${signals.volatilityLabel} (normalized score ${signals.volatility.toFixed(2)})`,
+        `  - Overall sentiment: ${signals.overallSentiment}`,
+        "Factor these signals into your buy/sell/skip decision and sizing. High volatility → smaller sizes. Bullish sentiment → more aggressive buys. Bearish → smaller sizes or skip.",
+      ] : []),
       "",
-      'Return exactly: {"action":"buy|sell|skip","amountBps":<0-500>,"reasoning":"<1-2 sentences>","confidence":<0.0-1.0>,"factors":{"navVsMarket":"...","pnlTrend":"...","sizeJustification":"..."}}',
+      'Return exactly: {"action":"buy|sell|skip","amountBps":<0-500>,"reasoning":"<1-2 sentences>","confidence":<0.0-1.0>,"factors":{"navVsMarket":"...","pnlTrend":"...","sizeJustification":"...","volatilityAssessment":"...","momentumRead":"..."}}',
     ].join("\n");
   }
 

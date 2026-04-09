@@ -765,6 +765,35 @@ export default async function AgentPage({
                                     {tReasoning.factors.sizeJustification && (
                                       <span className={styles.treasuryFactor}><b>Size:</b> {tReasoning.factors.sizeJustification}</span>
                                     )}
+                                    {tReasoning.factors.volatilityAssessment && (
+                                      <span className={styles.treasuryFactor}><b>Volatility:</b> {tReasoning.factors.volatilityAssessment}</span>
+                                    )}
+                                    {tReasoning.factors.momentumRead && (
+                                      <span className={styles.treasuryFactor}><b>Momentum:</b> {tReasoning.factors.momentumRead}</span>
+                                    )}
+                                  </div>
+                                )}
+                                {/* T-1106: Market Signals subsection */}
+                                {tReasoning.signals && (
+                                  <div style={{ marginTop: "0.6rem", paddingTop: "0.5rem", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                                    <p style={{ fontSize: "0.7rem", fontWeight: 600, color: "var(--muted)", marginBottom: "0.4rem" }}>Market Signals</p>
+                                    <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
+                                      <span style={{ fontSize: "0.68rem", padding: "0.1rem 0.4rem", borderRadius: "4px", background: tReasoning.signals.overallSentiment === "bullish" ? "rgba(34,197,94,0.15)" : tReasoning.signals.overallSentiment === "bearish" ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.08)", color: tReasoning.signals.overallSentiment === "bullish" ? "#22C55E" : tReasoning.signals.overallSentiment === "bearish" ? "#EF4444" : "var(--muted)", textTransform: "capitalize", fontWeight: 600 }}>
+                                        {tReasoning.signals.overallSentiment}
+                                      </span>
+                                      <span style={{ fontSize: "0.68rem", padding: "0.1rem 0.4rem", borderRadius: "4px", background: "rgba(255,255,255,0.06)", color: "var(--muted)" }}>
+                                        NAV: {tReasoning.signals.navMomentumLabel === "up" ? "↑" : tReasoning.signals.navMomentumLabel === "down" ? "↓" : "→"} {(tReasoning.signals.navMomentum * 100).toFixed(1)}%
+                                      </span>
+                                      <span style={{ fontSize: "0.68rem", padding: "0.1rem 0.4rem", borderRadius: "4px", background: "rgba(255,255,255,0.06)", color: "var(--muted)" }}>
+                                        Vol: {tReasoning.signals.volatilityLabel}
+                                      </span>
+                                      <span style={{ fontSize: "0.68rem", padding: "0.1rem 0.4rem", borderRadius: "4px", background: "rgba(255,255,255,0.06)", color: "var(--muted)" }}>
+                                        Win: {(tReasoning.signals.winRate * 100).toFixed(0)}%
+                                      </span>
+                                      <span style={{ fontSize: "0.68rem", padding: "0.1rem 0.4rem", borderRadius: "4px", background: "rgba(255,255,255,0.06)", color: "var(--muted)" }}>
+                                        Rebal: {tReasoning.signals.rebalanceEffectivenessLabel}
+                                      </span>
+                                    </div>
                                   </div>
                                 )}
                               </div>

@@ -148,6 +148,19 @@ export async function getAgentRebalances(token: string, limit = 50): Promise<Reb
   return fetchJson<RebalanceEventResponse[]>(`/agents/${token}/rebalances?limit=${limit}`);
 }
 
+export interface MultiSignalContext {
+  performanceTrend: "rising" | "falling" | "flat";
+  winRate: number;
+  avgPnl: number;
+  navMomentum: number;
+  navMomentumLabel: "up" | "down" | "flat";
+  rebalanceEffectiveness: number;
+  rebalanceEffectivenessLabel: "effective" | "neutral" | "ineffective";
+  volatility: number;
+  volatilityLabel: "low" | "medium" | "high";
+  overallSentiment: "bullish" | "bearish" | "neutral";
+}
+
 export interface TreasuryReasoningEntry {
   vaultAddress: string;
   handId: string;
@@ -159,7 +172,11 @@ export interface TreasuryReasoningEntry {
     navVsMarket: string;
     pnlTrend: string;
     sizeJustification: string;
+    volatilityAssessment?: string;
+    momentumRead?: string;
   };
+  /** T-1106: Multi-signal context that informed this decision */
+  signals?: MultiSignalContext;
   txHash?: string;
   timestamp: number;
 }

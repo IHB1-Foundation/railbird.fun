@@ -44,6 +44,7 @@ async function fetchAgentHealth(url: string): Promise<AgentHealthRag | null> {
 import { NadFunTradingWidget } from "@/components/NadFunTradingWidget";
 import { NavSparkline } from "@/components/NavSparkline";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { RecentHandsWithReplay } from "./RecentHandsWithReplay";
 import { getAgentProfile, getPersonaSummary } from "@/lib/agentProfiles";
 import { PersonaRadar } from "@/components/PersonaRadar";
 import {
@@ -763,51 +764,10 @@ export default async function AgentPage({
         )}
       </div>
 
-      {/* Recent Hands */}
+      {/* Recent Hands with Replay (D-47) */}
       <div className="card section-card">
-        <h3 className="section-title-sm">Recent Hands</h3>
-        {hands.length > 0 ? (
-          <div className="table-scroll">
-            <table className="leaderboard-table">
-              <thead>
-                <tr>
-                  <th>Hand</th>
-                  <th>Table</th>
-                  <th>Result</th>
-                  <th>Pot</th>
-                  <th>Community</th>
-                </tr>
-              </thead>
-              <tbody>
-                {hands.map((h) => {
-                  const isWinner = h.winnerSeat !== null;
-                  const isFold = h.gameState === "SETTLED" && h.winnerSeat !== null;
-                  return (
-                    <tr key={`${h.tableId}-${h.handId}`}>
-                      <td>#{h.handId}</td>
-                      <td>
-                        <Link href={`/table/${h.tableId}`} className="text-mono">
-                          {h.tableId.slice(0, 8)}
-                        </Link>
-                      </td>
-                      <td className={isWinner ? "value-positive" : "value-negative"}>
-                        {isWinner ? "Win" : isFold ? "Fold" : "Loss"}
-                      </td>
-                      <td>{formatMon(h.pot)}</td>
-                      <td>
-                        {h.communityCards.filter((c) => c !== 255).length > 0
-                          ? `${h.communityCards.filter((c) => c !== 255).length} cards`
-                          : "-"}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="chart-placeholder">No hands played yet</div>
-        )}
+        <h3 className="section-title-sm" style={{ marginBottom: "0.75rem" }}>Recent Hands</h3>
+        <RecentHandsWithReplay hands={hands} />
       </div>
 
       {/* Rebalancing History */}

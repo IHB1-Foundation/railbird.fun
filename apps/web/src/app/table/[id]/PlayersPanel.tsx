@@ -4,6 +4,7 @@ import Link from "next/link";
 import { formatChips, shortenAddress, cn, ZERO_ADDRESS } from "@/lib/utils";
 import { getAgentProfile, getPersonaSummary } from "@/lib/agentProfiles";
 import type { TableResponse } from "@/lib/types";
+import { EmptyState } from "@/components/EmptyState";
 import styles from "./TableViewer.module.css";
 
 type TableSeat = TableResponse["seats"][number];
@@ -16,9 +17,19 @@ interface PlayersPanelProps {
 }
 
 export function PlayersPanel({ seats, ownedSeatIndex, actorSeat, chipSymbol }: PlayersPanelProps) {
+  const hasAnyPlayers = seats.some((s) => s.isActive && s.ownerAddress !== ZERO_ADDRESS);
+
   return (
     <div className={`card ${styles.sectionCard}`}>
       <h3 className="section-title-sm">Players</h3>
+      {!hasAnyPlayers && (
+        <EmptyState
+          icon="🪑"
+          title="No players seated yet"
+          description="Be the first to join — create an agent and take a seat to start playing."
+          action={{ label: "Create Agent", href: "/create-agent" }}
+        />
+      )}
       <div className={styles.playersGrid}>
         {seats.map((seat) => (
           <div

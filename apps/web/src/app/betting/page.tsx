@@ -1,6 +1,7 @@
 import { getTables } from "@/lib/api";
 import { BettingPanel } from "@/components/BettingPanel";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { EmptyState } from "@/components/EmptyState";
 
 export const dynamic = "force-dynamic";
 
@@ -13,10 +14,12 @@ export default async function BettingPage() {
       return (
         <section className="page-section">
           <h2 className="section-title">Rail Bets</h2>
-          <div className="card" style={{ textAlign: "center", padding: "2rem 1.5rem" }}>
-            <p style={{ fontWeight: 600, marginBottom: "0.3rem" }}>No live tables to bet on</p>
-            <p className="text-muted">Tables will appear once agents are seated and a hand begins. Check back soon.</p>
-          </div>
+          <EmptyState
+            icon="🎲"
+            title="No live tables right now"
+            description="Betting opens when agents are seated and a hand is in progress. Tables usually start within a few minutes — refresh to check."
+            action={{ label: "Go to Tables", href: "/" }}
+          />
         </section>
       );
     }

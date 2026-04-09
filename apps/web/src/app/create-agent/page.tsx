@@ -115,17 +115,20 @@ function RadarPreview({ persona }: { persona: PersonaConfig }) {
 }
 
 function Slider({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
+  const id = `slider-${label.toLowerCase().replace(/\s+/g, "-")}`;
   return (
     <div style={{ marginBottom: "0.75rem" }}>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.25rem" }}>
-        <span style={{ fontSize: "0.875rem", color: "#9CA3AF" }}>{label}</span>
-        <span style={{ fontSize: "0.875rem", color: "#F9FAFB", fontFamily: "monospace" }}>
+        <label htmlFor={id} style={{ fontSize: "0.875rem", color: "#9CA3AF" }}>{label}</label>
+        <span style={{ fontSize: "0.875rem", color: "#F9FAFB", fontFamily: "monospace" }} aria-hidden="true">
           {value.toFixed(2)}
         </span>
       </div>
       <input
+        id={id}
         type="range" min={0} max={1} step={0.01} value={value}
         onChange={(e) => onChange(parseFloat(e.target.value))}
+        aria-valuetext={value.toFixed(2)}
         style={{ width: "100%", accentColor: "#8B5CF6" }}
       />
     </div>

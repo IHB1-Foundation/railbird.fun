@@ -295,15 +295,24 @@ contract PokerTable is SeatManager, BettingEngine, SettlementEngine {
      * @dev Called by the operator before (or alongside) submitting an action.
      *      commitHash = keccak256(abi.encode(handId, seatIndex, action, reasoning, salt))
      *      A new commit overwrites any previous one for the same hand/seat (latest wins).
-     * @param seatIndex  The seat index the operator controls.
-     * @param commitHash The precomputed commitment hash.
+     * @param seatIndex     The seat index the operator controls.
+     * @param commitHash    The precomputed commitment hash.
+     * @param reasoningHash keccak256 of the full reasoning payload JSON (0 if not available).
      */
-    function commitDecision(uint8 seatIndex, bytes32 commitHash) external {
+    function commitDecision(uint8 seatIndex, bytes32 commitHash, bytes32 reasoningHash) external {
         require(seatIndex < numSeats, "Invalid seat");
         _checkOperator(seatIndex);
         require(commitHash != bytes32(0), "Empty commitment");
         decisionCommits[currentHandId][seatIndex] = commitHash;
-        emit DecisionCommitted(currentHandId, seatIndex, commitHash);
+        reasoningHashes[currentHandId][seatIndex] = reasoningHash;
+        emit DecisionCommitted(currentHandId, seatIndex, commitHash, reasoningHash);
+    }
+
+    /**
+     * @notice Get the reasoning hash for a specific hand/seat decision.
+     */
+    function getReasoningHash(uint256 handId, uint8 seatIndex) external view returns (bytes32) {
+        return reasoningHashes[handId][seatIndex];
     }
 
     /**

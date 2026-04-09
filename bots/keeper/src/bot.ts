@@ -36,6 +36,8 @@ export interface KeeperBotConfig {
   treasuryAdvisor?: TreasuryAdvisor;
   /** Indexer base URL for commentary WS broadcast endpoint. */
   indexerUrl?: string;
+  /** Optional SideBetPool contract address. When set, keeper settles side bets after hand settlement. */
+  sideBetPoolAddress?: `0x${string}`;
 }
 
 export interface KeeperStats {
@@ -76,6 +78,8 @@ export class KeeperBot {
   };
   /** Track which hands we've already attempted rebalancing to avoid duplicate triggers. */
   private rebalancedHands: Set<bigint> = new Set();
+  /** Track which hands we've already settled side bets to avoid duplicate triggers. */
+  private sideBetSettledHands: Set<bigint> = new Set();
   /** AI treasury advisor (optional, controlled by TREASURY_ADVISOR_ENABLED). */
   private treasuryAdvisor: TreasuryAdvisor | undefined;
 
@@ -193,6 +197,8 @@ export class KeeperBot {
     await this.checkAndHandleTimeout(state, currentTimestamp, currentBlock);
     // T-R3-03: Trigger vault rebalancing after settlement
     await this.checkAndTriggerRebalancing(state, currentBlock);
+    // T-1201: Trigger side bet settlement after hand settlement
+    await this.checkAndTriggerSideBetSettlement(state);
     await this.checkAndReRequestVRF(state, currentTimestamp);
     await this.checkAndReRequestHoleCardVRF(state, currentTimestamp);
     await this.checkAndStartHand(state);
@@ -728,6 +734,38 @@ export class KeeperBot {
       message.includes("too many requests") ||
       message.includes("requests limited")
     );
+  }
+
+  /**
+   * T-1201: Settle side bets on SideBetPool after hand settlement.
+   * Called once per settled hand; uses sideBetSettledHands Set to prevent duplicates.
+   */
+  private async checkAndTriggerSideBetSettlement(state: TableState): Promise<void> {
+    if (!this.config.sideBetPoolAddress) return;
+    if (state.gameState !== GameState.SETTLED && state.gameState !== GameState.WAITING_FOR_SEATS) return;
+    if (state.currentHandId === 0n) return;
+    if (this.sideBetSettledHands.has(state.currentHandId)) return;
+
+    this.sideBetSettledHands.add(state.currentHandId);
+    if (this.sideBetSettledHands.size > 200) {
+      const oldest = this.sideBetSettledHands.values().next().value;
+      if (oldest !== undefined) this.sideBetSettledHands.delete(oldest);
+    }
+
+    try {
+      const hash = await this.chainClient.settleSideBets(
+        this.config.sideBetPoolAddress as `0x${string}`,
+        state.currentHandId,
+      );
+      this.log.info({ handId: state.currentHandId.toString(), tx: hash }, "Side bets settled");
+    } catch (error) {
+      const msg = String(error).toLowerCase();
+      if (msg.includes("pool does not exist") || msg.includes("pool already settled")) {
+        this.log.debug({ handId: state.currentHandId.toString() }, "No side bet pool to settle");
+      } else {
+        this.log.warn({ err: error, handId: state.currentHandId.toString() }, "Failed to settle side bets (non-fatal)");
+      }
+    }
   }
 
   /**

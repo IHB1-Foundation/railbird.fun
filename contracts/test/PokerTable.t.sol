@@ -3958,7 +3958,7 @@ contract DecisionCommitmentTest is Test {
         bytes32 commitHash = keccak256(abi.encode(handId, uint8(0), "fold", "weak hand", bytes32(uint256(999))));
 
         vm.prank(operator1);
-        pokerTable.commitDecision(0, commitHash);
+        pokerTable.commitDecision(0, commitHash, bytes32(0));
 
         assertEq(pokerTable.decisionCommits(handId, 0), commitHash);
     }
@@ -3971,7 +3971,7 @@ contract DecisionCommitmentTest is Test {
         emit DecisionCommitted(handId, 0, commitHash);
 
         vm.prank(operator1);
-        pokerTable.commitDecision(0, commitHash);
+        pokerTable.commitDecision(0, commitHash, bytes32(0));
     }
 
     function test_CommitDecision_OverwritesExisting() public {
@@ -3980,10 +3980,10 @@ contract DecisionCommitmentTest is Test {
         bytes32 hash2 = bytes32(uint256(2));
 
         vm.prank(operator1);
-        pokerTable.commitDecision(0, hash1);
+        pokerTable.commitDecision(0, hash1, bytes32(0));
 
         vm.prank(operator1);
-        pokerTable.commitDecision(0, hash2);
+        pokerTable.commitDecision(0, hash2, bytes32(0));
 
         assertEq(pokerTable.decisionCommits(handId, 0), hash2, "Latest hash should overwrite");
     }
@@ -3991,14 +3991,14 @@ contract DecisionCommitmentTest is Test {
     function test_CommitDecision_RevertIfEmptyHash() public {
         vm.prank(operator1);
         vm.expectRevert("Empty commitment");
-        pokerTable.commitDecision(0, bytes32(0));
+        pokerTable.commitDecision(0, bytes32(0), bytes32(0));
     }
 
     function test_CommitDecision_RevertIfNotOperator() public {
         address stranger = address(0xBEEF);
         vm.prank(stranger);
         vm.expectRevert("Not operator");
-        pokerTable.commitDecision(0, bytes32(uint256(1)));
+        pokerTable.commitDecision(0, bytes32(uint256(1)), bytes32(0));
     }
 
     function test_RevealDecision_Success() public {
@@ -4009,7 +4009,7 @@ contract DecisionCommitmentTest is Test {
         bytes32 commitHash = keccak256(abi.encode(handId, uint8(0), action, reasoning, salt));
 
         vm.prank(operator1);
-        pokerTable.commitDecision(0, commitHash);
+        pokerTable.commitDecision(0, commitHash, bytes32(0));
 
         // Settle the hand: SB (seat 0) folds
         vm.roll(block.number + 1);
@@ -4029,7 +4029,7 @@ contract DecisionCommitmentTest is Test {
         bytes32 commitHash = keccak256(abi.encode(handId, uint8(0), "fold", "correct reasoning", bytes32(uint256(1))));
 
         vm.prank(operator1);
-        pokerTable.commitDecision(0, commitHash);
+        pokerTable.commitDecision(0, commitHash, bytes32(0));
 
         vm.roll(block.number + 1);
         vm.prank(operator1);
@@ -4045,7 +4045,7 @@ contract DecisionCommitmentTest is Test {
         bytes32 commitHash = keccak256(abi.encode(handId, uint8(0), "fold", "", salt));
 
         vm.prank(operator1);
-        pokerTable.commitDecision(0, commitHash);
+        pokerTable.commitDecision(0, commitHash, bytes32(0));
 
         // Hand is not settled yet
         vm.expectRevert("Hand not settled");

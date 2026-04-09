@@ -155,7 +155,7 @@ abstract contract PokerTableBase {
     event VRFAdapterUpdated(address indexed oldAdapter, address indexed newAdapter);
     event PlayerRegistryUpdated(address indexed oldRegistry, address indexed newRegistry);
     event BlindsUpdated(uint256 oldSmallBlind, uint256 oldBigBlind, uint256 newSmallBlind, uint256 newBigBlind);
-    event DecisionCommitted(uint256 indexed handId, uint8 indexed seatIndex, bytes32 commitHash);
+    event DecisionCommitted(uint256 indexed handId, uint8 indexed seatIndex, bytes32 commitHash, bytes32 reasoningHash);
     event DecisionRevealed(uint256 indexed handId, uint8 indexed seatIndex, string action, string reasoning);
 
     // ============ Custom Errors ============
@@ -209,6 +209,14 @@ abstract contract PokerTableBase {
     // ============ AI Decision Commitment State ============
     /// @notice Off-chain AI decision commitments: handId => seatIndex => keccak256(abi.encode(handId, seatIndex, action, reasoning, salt))
     mapping(uint256 => mapping(uint8 => bytes32)) public decisionCommits;
+    /// @notice Off-chain AI reasoning hash per decision: handId => seatIndex => keccak256(reasoningPayload)
+    mapping(uint256 => mapping(uint8 => bytes32)) public reasoningHashes;
+
+    // ============ Hand Settlement Results ============
+    /// @notice Winner seat index per settled hand (set at settlement time).
+    mapping(uint256 => uint8) public handWinner;
+    /// @notice True once a hand has been settled.
+    mapping(uint256 => bool) public handSettledFlag;
 
     address public kycSBT;
     address public playerRegistry;

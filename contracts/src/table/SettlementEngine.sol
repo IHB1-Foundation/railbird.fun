@@ -158,6 +158,9 @@ abstract contract SettlementEngine is PokerTableBase {
             _notifyVaultsOfSettlement(handId, won);
         }
 
+        handWinner[handId] = winnerSeat;
+        handSettledFlag[handId] = true;
+
         gameState = GameState.SETTLED;
         showdownStartTimestamp = 0;
         _advanceButton();
@@ -299,6 +302,9 @@ abstract contract SettlementEngine is PokerTableBase {
         emit HandSettled(currentHandId, firstWinner, currentHand.pot);
         _notifyVaultsOfSettlement(currentHandId, won);
 
+        handWinner[currentHandId] = firstWinner;
+        handSettledFlag[currentHandId] = true;
+
         gameState = GameState.SETTLED;
         showdownStartTimestamp = 0;
         _advanceButton();
@@ -355,6 +361,9 @@ abstract contract SettlementEngine is PokerTableBase {
 
         emit HandSettled(currentHandId, primaryWinner, potAmount);
         _notifyVaultsOfSettlement(currentHandId, won);
+
+        handWinner[currentHandId] = primaryWinner;
+        handSettledFlag[currentHandId] = true;
 
         gameState = GameState.SETTLED;
         showdownStartTimestamp = 0;
@@ -417,6 +426,9 @@ abstract contract SettlementEngine is PokerTableBase {
         emit ShowdownTimedOut(currentHandId, activeCount, potAmount);
         emit HandSettled(currentHandId, primaryWinner, potAmount);
         _notifyVaultsOfSettlement(currentHandId, won);
+
+        handWinner[currentHandId] = primaryWinner;
+        handSettledFlag[currentHandId] = true;
 
         gameState = GameState.SETTLED;
         showdownStartTimestamp = 0;

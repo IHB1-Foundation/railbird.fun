@@ -1116,3 +1116,147 @@ function formatSnapshotResponse(snapshot: any): VaultSnapshotResponse {
     blockNumber: snapshot.block_number,
   };
 }
+
+// ============ T-1201: Side Bet Routes ============
+
+/**
+ * GET /api/sidebets/:tableAddress/:handId
+ * Returns pool info + seat totals for a specific hand.
+ */
+router.get("/sidebets/:tableAddress/:handId", globalRateLimit, async (req: Request, res: Response) => {
+  const { tableAddress, handId } = req.params;
+  if (!tableAddress || !handId) {
+    res.status(400).json({ error: "Missing tableAddress or handId" });
+    return;
+  }
+  try {
+    const { query: dbQuery } = await import("../db/pool.js");
+    const [betsResult, settlementResult] = await Promise.all([
+      dbQuery<{ seat_index: number; total: string }>(
+        `SELECT seat_index, SUM(amount)::TEXT as total FROM side_bets WHERE table_address = $1 AND hand_id = $2 GROUP BY seat_index`,
+        [tableAddress.toLowerCase(), handId]
+      ),
+      dbQuery(
+        `SELECT * FROM side_bet_settlements WHERE table_address = $1 AND hand_id = $2 LIMIT 1`,
+        [tableAddress.toLowerCase(), handId]
+      ),
+    ]);
+    const seatTotals: Record<number, string> = {};
+    let totalPool = 0n;
+    for (const row of betsResult.rows) {
+      seatTotals[row.seat_index] = row.total;
+      totalPool += BigInt(row.total);
+    }
+    const settlement = settlementResult.rows[0] ?? null;
+    res.json({
+      tableAddress: tableAddress.toLowerCase(),
+      handId,
+      totalPool: totalPool.toString(),
+      seatTotals,
+      settled: !!settlement,
+      winnerSeat: settlement?.winner_seat ?? null,
+    });
+  } catch (err) {
+    logger.error({ err }, "Failed to get side bet pool info");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+/**
+ * GET /api/sidebets/:tableAddress/:handId/user/:address
+ * Returns bets placed by a specific user for a hand.
+ */
+router.get("/sidebets/:tableAddress/:handId/user/:address", globalRateLimit, async (req: Request, res: Response) => {
+  const { tableAddress, handId, address } = req.params;
+  try {
+    const { query: dbQuery } = await import("../db/pool.js");
+    const result = await dbQuery(
+      `SELECT seat_index, amount, tx_hash, block_number, timestamp FROM side_bets WHERE table_address = $1 AND hand_id = $2 AND bettor = $3 ORDER BY id`,
+      [tableAddress.toLowerCase(), handId, address.toLowerCase()]
+    );
+    res.json({ tableAddress: tableAddress.toLowerCase(), handId, user: address.toLowerCase(), bets: result.rows });
+  } catch (err) {
+    logger.error({ err }, "Failed to get user side bets");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+/**
+ * GET /api/sidebets/leaderboard
+ * Returns top side betters by total winnings.
+ */
+router.get("/sidebets/leaderboard", globalRateLimit, async (_req: Request, res: Response) => {
+  try {
+    const { query: dbQuery } = await import("../db/pool.js");
+    const result = await dbQuery(
+      `SELECT sb.bettor,
+              SUM(sb.amount)::TEXT as total_bet,
+              COUNT(DISTINCT sb.pool_key)::INTEGER as total_bets
+       FROM side_bets sb
+       INNER JOIN side_bet_settlements sbs ON sb.pool_key = sbs.pool_key AND sb.seat_index = sbs.winner_seat
+       GROUP BY sb.bettor
+       ORDER BY total_bet DESC
+       LIMIT 50`,
+      []
+    );
+    res.json({ leaderboard: result.rows });
+  } catch (err) {
+    logger.error({ err }, "Failed to get side bet leaderboard");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ============ T-1206: AI Decision Audit Routes ============
+
+/**
+ * GET /api/audit/:tableAddress/:handId
+ * Returns the on-chain reasoning hash audit trail for a hand.
+ */
+router.get("/audit/:tableAddress/:handId", globalRateLimit, async (req: Request, res: Response) => {
+  const { tableAddress, handId } = req.params;
+  try {
+    const { query: dbQuery } = await import("../db/pool.js");
+    const result = await dbQuery(
+      `SELECT seat_index, reasoning_hash, commit_tx_hash, block_number, verified FROM decision_audit WHERE table_address = $1 AND hand_id = $2 ORDER BY seat_index`,
+      [tableAddress.toLowerCase(), handId]
+    );
+    res.json({ tableAddress: tableAddress.toLowerCase(), handId, decisions: result.rows });
+  } catch (err) {
+    logger.error({ err }, "Failed to get audit trail");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+/**
+ * POST /api/audit/verify
+ * Verify reasoning data matches on-chain keccak256 hash.
+ * Body: { handId, seatIndex, tableAddress, reasoning, factors, breakdown }
+ */
+router.post("/audit/verify", globalRateLimit, async (req: Request, res: Response) => {
+  const { handId, seatIndex, tableAddress, reasoning, factors, breakdown, opponentRead } = req.body as Record<string, unknown>;
+  if (!handId || seatIndex === undefined || !tableAddress || !reasoning) {
+    res.status(400).json({ error: "Missing required fields: handId, seatIndex, tableAddress, reasoning" });
+    return;
+  }
+  try {
+    const { query: dbQuery } = await import("../db/pool.js");
+    const payload = JSON.stringify({ reasoning, factors, breakdown, opponentRead });
+    const { keccak256, toBytes } = await import("viem");
+    const computedHash = keccak256(toBytes(payload));
+
+    const result = await dbQuery(
+      `SELECT reasoning_hash FROM decision_audit WHERE table_address = $1 AND hand_id = $2 AND seat_index = $3 LIMIT 1`,
+      [String(tableAddress).toLowerCase(), String(handId), Number(seatIndex)]
+    );
+    if (result.rows.length === 0) {
+      res.json({ verified: false, reason: "No on-chain hash found for this decision" });
+      return;
+    }
+    const onChainHash = result.rows[0].reasoning_hash as string;
+    const verified = onChainHash.toLowerCase() === computedHash.toLowerCase();
+    res.json({ verified, computedHash, onChainHash });
+  } catch (err) {
+    logger.error({ err }, "Failed to verify audit hash");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});

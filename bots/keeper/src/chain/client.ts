@@ -12,7 +12,7 @@ import {
   type Hash,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { GameState, NonceManager, POKER_TABLE_ABI, PLAYER_VAULT_ABI } from "@playerco/shared";
+import { GameState, NonceManager, POKER_TABLE_ABI, PLAYER_VAULT_ABI, SIDE_BET_POOL_ABI } from "@playerco/shared";
 
 // Minimal ERC20 ABI for reading token balances (treasury shares)
 const ERC20_BALANCE_ABI = [
@@ -439,6 +439,23 @@ export class ChainClient {
         abi: PLAYER_VAULT_ABI,
         functionName: "rebalanceSell",
         args: [handId, tokenAmount, minMonOut],
+        nonce,
+      });
+      await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });
+      return hash;
+    });
+  }
+
+  /** Settle a SideBetPool for a specific hand. */
+  async settleSideBets(sideBetPoolAddress: Address, handId: bigint): Promise<Hash> {
+    return this.nonceManager.withNonce(async (nonce) => {
+      const hash = await this.walletClient.writeContract({
+        chain: this.chain,
+        account: this.account,
+        address: sideBetPoolAddress,
+        abi: SIDE_BET_POOL_ABI,
+        functionName: "settleBets",
+        args: [this.pokerTableAddress, handId],
         nonce,
       });
       await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });

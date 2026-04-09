@@ -1,9 +1,21 @@
+import dynamic from "next/dynamic";
 import { Breadcrumb } from "@/components/Breadcrumb";
-import { StrategyTimeline } from "@/components/charts/StrategyTimeline";
-import { MetaRadar } from "@/components/charts/MetaRadar";
-import { EloStrategyScatter } from "@/components/charts/EloStrategyScatter";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Tooltip } from "@/components/Tooltip";
+
+// D-57: lazy-load heavy chart components to reduce initial bundle
+const StrategyTimeline = dynamic(
+  () => import("@/components/charts/StrategyTimeline").then((m) => ({ default: m.StrategyTimeline })),
+  { ssr: false, loading: () => <div className="chart-placeholder" aria-label="Loading chart…" /> }
+);
+const MetaRadar = dynamic(
+  () => import("@/components/charts/MetaRadar").then((m) => ({ default: m.MetaRadar })),
+  { ssr: false, loading: () => <div style={{ height: 140 }} aria-label="Loading radar…" /> }
+);
+const EloStrategyScatter = dynamic(
+  () => import("@/components/charts/EloStrategyScatter").then((m) => ({ default: m.EloStrategyScatter })),
+  { ssr: false, loading: () => <div className="chart-placeholder" aria-label="Loading scatter…" /> }
+);
 import { getEvolutionTimeline, getMetaShifts } from "@/lib/api";
 import { getAgentProfile } from "@/lib/agentProfiles";
 import { explorerTxUrl } from "@/lib/utils";

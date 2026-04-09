@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth";
 import { PERSONA_PRESETS } from "@/lib/agentProfiles";
 import { getTables } from "@/lib/api";
 import { ZERO_ADDRESS } from "@/lib/utils";
+import { Breadcrumb } from "@/components/Breadcrumb";
 import styles from "./page.module.css";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -249,6 +250,7 @@ export default function CreateAgentPage() {
 
   return (
     <div style={{ maxWidth: "640px", margin: "0 auto", padding: "2rem 1rem" }}>
+      <Breadcrumb crumbs={[{ label: "Home", href: "/" }, { label: "Create Agent" }]} />
       <h1 style={{ fontSize: "1.75rem", fontWeight: 700, marginBottom: "0.5rem" }}>
         Create Your AI Agent
       </h1>

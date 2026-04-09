@@ -7,6 +7,7 @@ import { shortenAddress, formatMon, formatNavPerShare } from "@/lib/utils";
 import type { AgentResponse } from "@/lib/types";
 
 import { getAgentsByOwner } from "@/lib/api";
+import { Breadcrumb } from "@/components/Breadcrumb";
 import styles from "./page.module.css";
 
 export default function MyAgentsPage() {
@@ -54,6 +55,7 @@ export default function MyAgentsPage() {
   if (!isConnected) {
     return (
       <section className="page-section">
+        <Breadcrumb crumbs={[{ label: "Home", href: "/" }, { label: "My Agents" }]} />
         <div className={styles.authPrompt}>
           <h2>My Agents</h2>
           <p className="text-muted" style={{ fontSize: "0.85rem", marginBottom: "1rem" }}>
@@ -128,6 +130,7 @@ export default function MyAgentsPage() {
 
   return (
     <section className="page-section">
+      <Breadcrumb crumbs={[{ label: "Home", href: "/" }, { label: "My Agents" }]} />
       <div className={styles.pageHeadingRow}>
         <h2>My Agents</h2>
         <span className={styles.ownerPill}>

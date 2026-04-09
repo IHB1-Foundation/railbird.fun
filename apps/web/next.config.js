@@ -2,7 +2,10 @@
 // NOTE: Content-Security-Policy is handled per-request in src/middleware.ts
 // so that production builds can use a nonce-based policy without `'unsafe-inline'`.
 // The static headers below apply only the non-CSP security headers.
+import bundleAnalyzer from "@next/bundle-analyzer";
+
 const isDev = process.env.NODE_ENV !== "production";
+const withBundleAnalyzer = bundleAnalyzer({ enabled: process.env.ANALYZE === "true" });
 
 const nextConfig = {
   reactStrictMode: true,
@@ -69,4 +72,4 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+export default withBundleAnalyzer(nextConfig);

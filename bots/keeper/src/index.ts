@@ -58,6 +58,14 @@ async function main() {
     }
   }
 
+  const autoRefillEnabled = process.env.AUTO_REFILL_ENABLED?.toLowerCase() === "true";
+  const autoRefillBuyInRaw = process.env.AUTO_REFILL_BUY_IN_AMOUNT;
+  const autoRefillMinStackRaw = process.env.AUTO_REFILL_MIN_STACK;
+
+  if (autoRefillEnabled && !autoRefillBuyInRaw) {
+    logger.warn({}, "AUTO_REFILL_ENABLED=true but AUTO_REFILL_BUY_IN_AMOUNT is not set — auto-refill disabled");
+  }
+
   const baseConfig = {
     rpcUrl,
     privateKey: keeperKey,
@@ -69,6 +77,10 @@ async function main() {
     vaultAddress: process.env.VAULT_ADDRESS as `0x${string}` | undefined,
     treasuryAdvisor,
     indexerUrl: process.env.INDEXER_URL,
+    autoRefillEnabled: autoRefillEnabled && !!autoRefillBuyInRaw,
+    autoRefillTokenAddress: process.env.RCHIP_TOKEN_ADDRESS as `0x${string}` | undefined,
+    autoRefillBuyInAmount: autoRefillBuyInRaw ? BigInt(autoRefillBuyInRaw) : undefined,
+    autoRefillMinStack: autoRefillMinStackRaw ? BigInt(autoRefillMinStackRaw) : undefined,
   };
 
   // Validate that RPC_URL returns the expected chain ID before proceeding.
@@ -107,12 +119,13 @@ async function main() {
           vrfReRequests: acc.vrfReRequests + s.vrfReRequests,
           errors: acc.errors + s.errors,
           rebalancesTriggered: acc.rebalancesTriggered + s.rebalancesTriggered,
+          autoRefillsTriggered: acc.autoRefillsTriggered + s.autoRefillsTriggered,
           coordinationSkips: acc.coordinationSkips + s.coordinationSkips,
           rpcErrors: acc.rpcErrors + s.rpcErrors,
           apiErrors: acc.apiErrors + s.apiErrors,
           txErrors: acc.txErrors + s.txErrors,
         }),
-        { timeoutsForced: 0, handsStarted: 0, showdownsSettled: 0, vrfReRequests: 0, errors: 0, rebalancesTriggered: 0, coordinationSkips: 0, rpcErrors: 0, apiErrors: 0, txErrors: 0 }
+        { timeoutsForced: 0, handsStarted: 0, showdownsSettled: 0, vrfReRequests: 0, errors: 0, rebalancesTriggered: 0, autoRefillsTriggered: 0, coordinationSkips: 0, rpcErrors: 0, apiErrors: 0, txErrors: 0 }
       );
       // Last activity: latest across all bots
       const lastActivityMs = Math.max(...allStats.map((s) => s.lastActionTime ?? 0));

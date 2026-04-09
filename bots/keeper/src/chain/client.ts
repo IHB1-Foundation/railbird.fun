@@ -25,6 +25,19 @@ const ERC20_BALANCE_ABI = [
   },
 ] as const;
 
+const ERC20_APPROVE_ABI = [
+  {
+    type: "function",
+    name: "approve",
+    inputs: [
+      { type: "address", name: "spender" },
+      { type: "uint256", name: "amount" },
+    ],
+    outputs: [{ type: "bool" }],
+    stateMutability: "nonpayable",
+  },
+] as const;
+
 export { GameState };
 
 export interface Seat {
@@ -456,6 +469,77 @@ export class ChainClient {
         abi: SIDE_BET_POOL_ABI,
         functionName: "settleBets",
         args: [this.pokerTableAddress, handId],
+        nonce,
+      });
+      await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });
+      return hash;
+    });
+  }
+
+  // ── Auto buy-in methods ──────────────────────────────────────────────────────
+
+  async getMaxSeats(): Promise<number> {
+    const result = await this.publicClient.readContract({
+      address: this.pokerTableAddress,
+      abi: POKER_TABLE_ABI,
+      functionName: "MAX_SEATS",
+    });
+    return Number(result);
+  }
+
+  async getSeat(seatIndex: number): Promise<Seat> {
+    const result = await this.publicClient.readContract({
+      address: this.pokerTableAddress,
+      abi: POKER_TABLE_ABI,
+      functionName: "getSeat",
+      args: [seatIndex],
+    }) as { owner: Address; operator: Address; stack: bigint; isActive: boolean; currentBet: bigint; isAllIn: boolean; totalHandBet: bigint };
+    return result as Seat;
+  }
+
+  async getChipToken(): Promise<Address> {
+    const result = await this.publicClient.readContract({
+      address: this.pokerTableAddress,
+      abi: POKER_TABLE_ABI,
+      functionName: "chipToken",
+    });
+    return result as Address;
+  }
+
+  async getBigBlind(): Promise<bigint> {
+    const result = await this.publicClient.readContract({
+      address: this.pokerTableAddress,
+      abi: POKER_TABLE_ABI,
+      functionName: "bigBlind",
+    });
+    return result as bigint;
+  }
+
+  async approveChipToken(tokenAddress: Address, amount: bigint): Promise<Hash> {
+    return this.nonceManager.withNonce(async (nonce) => {
+      const hash = await this.walletClient.writeContract({
+        chain: this.chain,
+        account: this.account,
+        address: tokenAddress,
+        abi: ERC20_APPROVE_ABI,
+        functionName: "approve",
+        args: [this.pokerTableAddress, amount],
+        nonce,
+      });
+      await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });
+      return hash;
+    });
+  }
+
+  async registerSeat(seatIndex: number, owner: Address, operator: Address, buyIn: bigint): Promise<Hash> {
+    return this.nonceManager.withNonce(async (nonce) => {
+      const hash = await this.walletClient.writeContract({
+        chain: this.chain,
+        account: this.account,
+        address: this.pokerTableAddress,
+        abi: POKER_TABLE_ABI,
+        functionName: "registerSeat",
+        args: [seatIndex, owner, operator, buyIn],
         nonce,
       });
       await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });

@@ -38,6 +38,18 @@ export interface KeeperBotConfig {
   indexerUrl?: string;
   /** Optional SideBetPool contract address. When set, keeper settles side bets after hand settlement. */
   sideBetPoolAddress?: `0x${string}`;
+  /**
+   * When true and autoRefillBuyInAmount is set, the keeper will automatically
+   * re-register seats whose stack falls below autoRefillMinStack. Only works
+   * when the keeper wallet is the operator address for that seat.
+   */
+  autoRefillEnabled?: boolean;
+  /** RCHIP token address for approve+registerSeat. If not set, read from chipToken(). */
+  autoRefillTokenAddress?: `0x${string}`;
+  /** Buy-in amount (in token units) to use when refilling. */
+  autoRefillBuyInAmount?: bigint;
+  /** Refill when stack drops below this value. Defaults to 0 (refill only when evicted). */
+  autoRefillMinStack?: bigint;
 }
 
 export interface KeeperStats {
@@ -56,6 +68,8 @@ export interface KeeperStats {
   coordinationSkips: number;
   /** Vault rebalancing attempts triggered after settlement. */
   rebalancesTriggered: number;
+  /** Auto buy-in refills triggered after eviction. */
+  autoRefillsTriggered: number;
 }
 
 export class KeeperBot {
@@ -75,9 +89,14 @@ export class KeeperBot {
     txErrors: 0,
     coordinationSkips: 0,
     rebalancesTriggered: 0,
+    autoRefillsTriggered: 0,
   };
   /** Track which hands we've already attempted rebalancing to avoid duplicate triggers. */
   private rebalancedHands: Set<bigint> = new Set();
+  /** Cache chipToken address to avoid repeated RPC calls. */
+  private chipTokenCache: `0x${string}` | null = null;
+  /** Seats already refilled this process run to avoid repeated attempts per poll. */
+  private refilledSeats: Set<number> = new Set();
   /** Track which hands we've already settled side bets to avoid duplicate triggers. */
   private sideBetSettledHands: Set<bigint> = new Set();
   /** AI treasury advisor (optional, controlled by TREASURY_ADVISOR_ENABLED). */
@@ -199,6 +218,8 @@ export class KeeperBot {
     await this.checkAndTriggerRebalancing(state, currentBlock);
     // T-1201: Trigger side bet settlement after hand settlement
     await this.checkAndTriggerSideBetSettlement(state);
+    // C-1: Auto buy-in for evicted seats
+    await this.checkAndAutoRefill();
     await this.checkAndReRequestVRF(state, currentTimestamp);
     await this.checkAndReRequestHoleCardVRF(state, currentTimestamp);
     await this.checkAndStartHand(state);
@@ -734,6 +755,82 @@ export class KeeperBot {
       message.includes("too many requests") ||
       message.includes("requests limited")
     );
+  }
+
+  /**
+   * C-1: Auto buy-in for evicted agents.
+   * Detects seats where the keeper wallet is the operator and the stack is below
+   * the configured threshold. Calls approve + registerSeat to re-register.
+   * Only active when autoRefillEnabled=true and autoRefillBuyInAmount is set.
+   */
+  private async checkAndAutoRefill(): Promise<void> {
+    if (!this.config.autoRefillEnabled) return;
+    const buyInAmount = this.config.autoRefillBuyInAmount;
+    if (!buyInAmount) return;
+
+    const minStack = this.config.autoRefillMinStack ?? 0n;
+
+    let maxSeats: number;
+    try {
+      maxSeats = await this.chainClient.getMaxSeats();
+    } catch {
+      return; // non-fatal
+    }
+
+    // Ensure chipToken address is cached
+    if (!this.chipTokenCache) {
+      try {
+        const tokenAddr = this.config.autoRefillTokenAddress ?? await this.chainClient.getChipToken();
+        this.chipTokenCache = tokenAddr;
+      } catch {
+        return;
+      }
+    }
+    const tokenAddress = this.chipTokenCache;
+
+    for (let seatIndex = 0; seatIndex < maxSeats; seatIndex++) {
+      let seat;
+      try {
+        seat = await this.chainClient.getSeat(seatIndex);
+      } catch {
+        continue;
+      }
+
+      const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+      const ownerIsZero = seat.owner.toLowerCase() === ZERO_ADDRESS;
+      if (ownerIsZero) continue; // never-registered seat, skip
+
+      const needsRefill = !seat.isActive && seat.stack <= minStack;
+      if (!needsRefill) continue;
+
+      const keeperIsOperator =
+        seat.operator.toLowerCase() === this.chainClient.address.toLowerCase();
+      if (!keeperIsOperator) {
+        this.log.debug({ seatIndex, operator: seat.operator }, "Auto-refill: seat needs refill but keeper is not operator, skipping");
+        continue;
+      }
+
+      if (this.refilledSeats.has(seatIndex)) continue;
+      this.refilledSeats.add(seatIndex);
+
+      this.log.info({ seatIndex, owner: seat.owner, stack: seat.stack.toString() }, "Auto-refill: seat evicted, attempting re-registration");
+
+      try {
+        const approveHash = await this.chainClient.approveChipToken(tokenAddress, buyInAmount);
+        this.log.info({ seatIndex, tx: approveHash }, "Auto-refill: approved token spend");
+
+        const registerHash = await this.chainClient.registerSeat(seatIndex, seat.owner, this.chainClient.address, buyInAmount);
+        this.stats.autoRefillsTriggered++;
+        this.recordAction("autoRefill");
+        this.log.info({ seatIndex, owner: seat.owner, buyIn: buyInAmount.toString(), tx: registerHash }, "Auto-refill: seat re-registered");
+
+        // Allow re-refill in a future session if evicted again
+        this.refilledSeats.delete(seatIndex);
+      } catch (error) {
+        this.log.warn({ err: error, seatIndex }, "Auto-refill: failed to re-register seat (non-fatal)");
+        // Don't delete from refilledSeats — retry next process restart
+      }
+    }
   }
 
   /**

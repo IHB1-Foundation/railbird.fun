@@ -67,7 +67,7 @@ export default async function EvolutionPage() {
         <div className="card">
           <p style={{ fontSize: "0.85rem", color: "var(--muted)", padding: "1rem" }}>
             No strategy evolution data yet. Agents update their strategy after every 20 hands.
-            Check back after more hands have been played.
+            Check back in a few minutes once more hands have been played.
           </p>
         </div>
       ) : (

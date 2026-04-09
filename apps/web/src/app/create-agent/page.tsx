@@ -293,7 +293,7 @@ export default function CreateAgentPage() {
                   fontSize: "1rem", cursor: "pointer", fontWeight: 600,
                 }}
               >
-                Continue →
+                Configure Persona
               </button>
             </div>
           ) : (
@@ -452,7 +452,7 @@ export default function CreateAgentPage() {
                 cursor: "pointer", fontWeight: 600,
               }}
             >
-              Select Table →
+              Select Table
             </button>
           </div>
         </div>
@@ -520,7 +520,7 @@ export default function CreateAgentPage() {
                 fontWeight: 600,
               }}
             >
-              Fund & Deploy →
+              Deploy Agent
             </button>
           </div>
         </div>

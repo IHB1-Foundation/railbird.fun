@@ -68,6 +68,11 @@
   --leading-normal: 1.45;
   --leading-relaxed: 1.6;
 
+  /* Breakpoint reference tokens (D-31) — use with custom media queries */
+  --bp-mobile: 640px;
+  --bp-tablet: 768px;
+  --bp-desktop: 1024px;
+
   /* Extra color tokens (D-1) */
   --card-highlight: rgba(129, 108, 249, 0.15);
   --text-gold: #ffbf4d;
@@ -730,35 +735,26 @@ h5 {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  /* Disable all infinite decorative animations */
-  .dot.pulse,
-  [class*="pulse"],
-  [class*="action-glow"],
-  [class*="dealer-pulse"],
-  [class*="winner-pulse"],
-  [class*="timer-pulse"] {
-    animation: none !important;
-  }
-
-  /* Slow hero shimmer to a single pass */
-  [class*="hero-shimmer"] {
+  /* Disable all decorative infinite animations (D-70) */
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 
-  /* Reduce functional transitions duration */
-  .content-shell,
-  .page-section {
-    animation-duration: 0.1s !important;
-  }
-
-  /* Keep spinner but slow it down */
+  /* Keep functional spinner visible but minimal */
   .spinner {
-    animation-duration: 2s !important;
+    animation: spin 2s linear infinite !important;
   }
 
-  /* Reduce all generic transitions */
-  * {
-    transition-duration: 0.1s !important;
+  /* Skeleton loader still visible */
+  [class*="skeleton"],
+  [class*="shimmer"] {
+    background: rgba(255, 255, 255, 0.06) !important;
+    animation: none !important;
   }
 }
 

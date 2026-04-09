@@ -337,7 +337,7 @@ export function LiveDashboard() {
 
           {/* Commentary */}
           {commentary.length > 0 && (
-            <div className={styles.commentaryBox}>
+            <div className={styles.commentaryBox} aria-live="polite" aria-label="Game commentary">
               <p style={{ fontSize: "0.72rem", color: "#6b7280", letterSpacing: "0.05em", marginBottom: "0.5rem" }}>COMMENTARY</p>
               {commentary.map((c, i) => (
                 <div key={i} className={styles.commentaryEntry}>

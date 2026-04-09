@@ -85,8 +85,8 @@ function createStrategy(aggressionFactor: number, vectorStore?: VectorStore): {
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    logger.warn({}, 'AGENT_DECISION_ENGINE=gemini but GEMINI_API_KEY is missing — using simple strategy');
-    return { strategy: fallback, engine: "simple", geminiModel: null, persona };
+    logger.error({}, 'AGENT_DECISION_ENGINE=gemini requires GEMINI_API_KEY — set the variable or switch to AGENT_DECISION_ENGINE=simple');
+    process.exit(1);
   }
 
   const model = process.env.GEMINI_MODEL || "gemini-2.0-flash";

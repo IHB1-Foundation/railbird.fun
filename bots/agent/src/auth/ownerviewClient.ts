@@ -15,6 +15,15 @@ export interface SubmitReasoningFactors {
   riskAssessment?: string;
 }
 
+export interface GTODeviationData {
+  gtoAction: "raise" | "call" | "fold";
+  gtoFrequency: number;
+  aiAction: "raise" | "call" | "fold";
+  isDeviation: boolean;
+  deviationType: "aligned" | "tighter" | "looser" | "passive" | "aggressive";
+  severity: number;
+}
+
 export interface SubmitReasoningParams {
   tableAddress: string;
   handId: string;
@@ -24,6 +33,8 @@ export interface SubmitReasoningParams {
   raiseAmount?: string;
   reasoning: string;
   factors?: SubmitReasoningFactors;
+  /** T-1104: GTO deviation for preflop decisions */
+  gtoDeviation?: GTODeviationData;
 }
 
 export interface NonceResponse {

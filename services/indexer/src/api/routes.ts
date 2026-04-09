@@ -508,6 +508,97 @@ router.get("/agents/:address/rebalances", async (req, res) => {
   }
 });
 
+/**
+ * GET /agents/:address/gto-stats
+ * T-1104: Aggregate GTO conformance statistics for an agent.
+ * Fetches recent reasoning entries from OwnerView and aggregates deviation data.
+ */
+router.get("/agents/:address/gto-stats", async (req, res) => {
+  const address = req.params.address.toLowerCase();
+  const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
+
+  try {
+    // Fetch agent's recent hands to get tableAddress + handIds
+    const agent = await getAgent(address);
+    if (!agent) {
+      return res.status(404).json({ error: "Agent not found" });
+    }
+
+    // Fetch recent hands to get tableAddress
+    const hands = await getAgentHands(address, limit);
+    if (hands.length === 0) {
+      return res.json({ agent: address, conformance: null, avgSeverity: null, totalDecisions: 0, deviationsByType: null, recentDeviations: [] });
+    }
+
+    const tableAddress = hands[0].table_id;
+
+    // Fetch reasoning entries from OwnerView for recent hands
+    type GTOData = { gtoAction: string; aiAction: string; isDeviation: boolean; deviationType: string; severity: number; gtoFrequency: number };
+    type ReasoningEntry = { handId: string; action: string; gtoDeviation?: GTOData; timestamp: number };
+
+    const allEntries: ReasoningEntry[] = [];
+    const uniqueHandIds = [...new Set(hands.map((h) => String(h.hand_id)))].slice(0, 20);
+
+    for (const handId of uniqueHandIds) {
+      try {
+        const url = `${OWNERVIEW_BASE_URL}/reasoning?tableAddress=${encodeURIComponent(tableAddress)}&handId=${encodeURIComponent(handId)}`;
+        const upstream = await fetch(url, { signal: AbortSignal.timeout(3000) });
+        if (upstream.ok) {
+          const data = await upstream.json() as { entries: ReasoningEntry[] };
+          allEntries.push(...(data.entries ?? []));
+        }
+      } catch {
+        // skip on error
+      }
+    }
+
+    // Aggregate GTO deviation data
+    const withDeviation = allEntries.filter((e) => e.gtoDeviation);
+    const total = withDeviation.length;
+
+    if (total === 0) {
+      return res.json({ agent: address, conformance: null, avgSeverity: null, totalDecisions: 0, deviationsByType: null, recentDeviations: [] });
+    }
+
+    const aligned = withDeviation.filter((e) => !e.gtoDeviation?.isDeviation).length;
+    const conformance = Math.round((aligned / total) * 100);
+    const deviatingEntries = withDeviation.filter((e) => e.gtoDeviation?.isDeviation);
+    const avgSeverity = deviatingEntries.length > 0
+      ? deviatingEntries.reduce((sum, e) => sum + (e.gtoDeviation?.severity ?? 0), 0) / deviatingEntries.length
+      : 0;
+
+    const typeCount: Record<string, number> = { aligned: 0, tighter: 0, looser: 0, passive: 0, aggressive: 0 };
+    for (const e of withDeviation) {
+      const t = e.gtoDeviation?.deviationType ?? "aligned";
+      typeCount[t] = (typeCount[t] ?? 0) + 1;
+    }
+
+    const recentDeviations = withDeviation
+      .filter((e) => e.gtoDeviation?.isDeviation)
+      .slice(-5)
+      .map((e) => ({
+        handId: e.handId,
+        aiAction: e.gtoDeviation?.aiAction,
+        gtoAction: e.gtoDeviation?.gtoAction,
+        deviationType: e.gtoDeviation?.deviationType,
+        severity: e.gtoDeviation?.severity,
+        timestamp: e.timestamp,
+      }));
+
+    res.json({
+      agent: address,
+      conformance,
+      avgSeverity: Math.round(avgSeverity * 100) / 100,
+      totalDecisions: total,
+      deviationsByType: typeCount,
+      recentDeviations,
+    });
+  } catch (error) {
+    logger.error({ err: error }, "Error fetching GTO stats:");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.get("/agents/:address/strategies", async (req, res) => {
   try {
     const address = req.params.address.toLowerCase();

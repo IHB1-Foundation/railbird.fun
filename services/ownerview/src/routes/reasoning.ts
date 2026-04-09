@@ -16,6 +16,15 @@ export interface ReasoningFactors {
   riskAssessment?: string;
 }
 
+export interface GTODeviationData {
+  gtoAction: "raise" | "call" | "fold";
+  gtoFrequency: number;
+  aiAction: "raise" | "call" | "fold";
+  isDeviation: boolean;
+  deviationType: "aligned" | "tighter" | "looser" | "passive" | "aggressive";
+  severity: number;
+}
+
 export interface ReasoningEntry {
   tableAddress: string;
   handId: string;
@@ -25,6 +34,8 @@ export interface ReasoningEntry {
   raiseAmount?: string;
   reasoning: string;
   factors?: ReasoningFactors;
+  /** T-1104: GTO baseline deviation data (preflop decisions only) */
+  gtoDeviation?: GTODeviationData;
   timestamp: number;
 }
 
@@ -76,6 +87,8 @@ export function createReasoningRoutes(): Router {
       return;
     }
 
+    const { gtoDeviation } = req.body as Record<string, unknown>;
+
     const entry: ReasoningEntry = {
       tableAddress: tableAddress.toLowerCase(),
       handId,
@@ -85,6 +98,7 @@ export function createReasoningRoutes(): Router {
       raiseAmount: typeof raiseAmount === "string" ? raiseAmount : undefined,
       reasoning,
       factors: factors && typeof factors === "object" ? (factors as ReasoningFactors) : undefined,
+      gtoDeviation: gtoDeviation && typeof gtoDeviation === "object" ? (gtoDeviation as GTODeviationData) : undefined,
       timestamp: Date.now(),
     };
 

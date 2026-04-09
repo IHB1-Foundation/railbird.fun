@@ -250,3 +250,27 @@ export async function getAgentStrategies(address: string, limit = 20): Promise<S
     return [];
   }
 }
+
+export interface GTOStatsResponse {
+  agent: string;
+  conformance: number | null;
+  avgSeverity: number | null;
+  totalDecisions: number;
+  deviationsByType: Record<string, number> | null;
+  recentDeviations: Array<{
+    handId: string;
+    aiAction: string;
+    gtoAction: string;
+    deviationType: string;
+    severity: number;
+    timestamp: number;
+  }>;
+}
+
+export async function getAgentGtoStats(address: string): Promise<GTOStatsResponse | null> {
+  try {
+    return await fetchJson<GTOStatsResponse>(`/agents/${address}/gto-stats`);
+  } catch {
+    return null;
+  }
+}

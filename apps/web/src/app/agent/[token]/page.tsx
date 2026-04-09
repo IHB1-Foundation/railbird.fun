@@ -3,7 +3,7 @@ import { Breadcrumb } from "@/components/Breadcrumb";
 import { Tooltip } from "@/components/Tooltip";
 import { AgentAvatar } from "@/components/AgentAvatar";
 import { ShareButton } from "@/components/ShareButton";
-import { getAgent, getAgentSnapshots, getAgentRebalances, getAgentHands, getTreasuryReasoningAll, getAgentStrategies, type RebalanceEventResponse, type TreasuryReasoningEntry, type StrategyHistoryEntry } from "@/lib/api";
+import { getAgent, getAgentSnapshots, getAgentRebalances, getAgentHands, getTreasuryReasoningAll, getAgentStrategies, getAgentGtoStats, type RebalanceEventResponse, type TreasuryReasoningEntry, type StrategyHistoryEntry, type GTOStatsResponse } from "@/lib/api";
 import type { HandResponse } from "@/lib/types";
 
 interface AgentHealthRag {
@@ -50,6 +50,7 @@ export default async function AgentPage({
   let hands: HandResponse[] = [];
   let treasuryReasonings: Map<string, TreasuryReasoningEntry> = new Map();
   let strategyHistory: StrategyHistoryEntry[] = [];
+  let gtoStats: GTOStatsResponse | null = null;
   let ragStats: AgentHealthRag | null = null;
   let error = null;
 
@@ -57,18 +58,20 @@ export default async function AgentPage({
     agent = await getAgent(token);
     const fetchHands = getAgentHands(token, 20).catch(() => [] as HandResponse[]);
     if (agent.vaultAddress) {
-      const [s, r, h, tr, strats] = await Promise.all([
+      const [s, r, h, tr, strats, gto] = await Promise.all([
         getAgentSnapshots(token, 50),
         getAgentRebalances(token, 50).catch(() => []),
         fetchHands,
         getTreasuryReasoningAll(agent.vaultAddress).catch(() => []),
         getAgentStrategies(token, 20).catch(() => []),
+        getAgentGtoStats(token).catch(() => null),
       ]);
       snapshots = s;
       rebalances = r;
       hands = h;
       treasuryReasonings = new Map(tr.map((e) => [e.handId, e]));
       strategyHistory = strats;
+      gtoStats = gto;
     } else {
       hands = await fetchHands;
     }
@@ -388,6 +391,80 @@ export default async function AgentPage({
               );
             })}
           </div>
+        </div>
+      )}
+
+      {/* GTO Analysis (T-1104) */}
+      {gtoStats && gtoStats.totalDecisions > 0 && (
+        <div className="card" style={{ marginBottom: "1rem", padding: "1rem 1.2rem" }}>
+          <h3 className="section-title-sm" style={{ marginBottom: "0.75rem" }}>GTO Analysis</h3>
+          {gtoStats.conformance !== null ? (
+            <>
+              <div style={{ display: "flex", gap: "1.5rem", alignItems: "center", flexWrap: "wrap", marginBottom: "0.75rem" }}>
+                {/* Conformance Gauge */}
+                <div style={{ textAlign: "center" }}>
+                  <div style={{
+                    width: "72px", height: "72px", borderRadius: "50%",
+                    background: `conic-gradient(${gtoStats.conformance >= 70 ? "#22C55E" : gtoStats.conformance >= 40 ? "#F59E0B" : "#EF4444"} ${gtoStats.conformance * 3.6}deg, rgba(255,255,255,0.08) 0deg)`,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    position: "relative",
+                  }}>
+                    <div style={{ width: "52px", height: "52px", borderRadius: "50%", background: "var(--card-bg, #1a1b23)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <span style={{ fontSize: "1rem", fontWeight: 700, color: gtoStats.conformance >= 70 ? "#22C55E" : gtoStats.conformance >= 40 ? "#F59E0B" : "#EF4444" }}>
+                        {gtoStats.conformance}%
+                      </span>
+                    </div>
+                  </div>
+                  <p style={{ fontSize: "0.7rem", color: "var(--muted)", marginTop: "0.3rem" }}>GTO Conformance</p>
+                </div>
+                {/* Deviation Breakdown */}
+                {gtoStats.deviationsByType && (
+                  <div style={{ flex: 1, minWidth: "160px" }}>
+                    <p style={{ fontSize: "0.72rem", color: "var(--muted)", marginBottom: "0.4rem" }}>Deviation breakdown</p>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                      {(["tighter", "looser", "passive", "aggressive"] as const).map((type) => {
+                        const count = gtoStats?.deviationsByType?.[type] ?? 0;
+                        const total = gtoStats?.totalDecisions ?? 1;
+                        const pct = Math.round((count / total) * 100);
+                        const colors: Record<string, string> = { tighter: "#6B7280", looser: "#EF4444", passive: "#3B82F6", aggressive: "#F59E0B" };
+                        return count > 0 ? (
+                          <div key={type} style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                            <span style={{ fontSize: "0.68rem", color: "var(--muted)", width: "4.5rem", textTransform: "capitalize" }}>{type}</span>
+                            <div style={{ flex: 1, height: "6px", background: "rgba(255,255,255,0.08)", borderRadius: "3px", overflow: "hidden" }}>
+                              <div style={{ width: `${pct}%`, height: "100%", background: colors[type], borderRadius: "3px" }} />
+                            </div>
+                            <span style={{ fontSize: "0.68rem", color: "var(--muted)", width: "1.5rem" }}>{pct}%</span>
+                          </div>
+                        ) : null;
+                      })}
+                    </div>
+                    <p style={{ fontSize: "0.68rem", color: "var(--muted)", marginTop: "0.3rem" }}>
+                      {gtoStats.totalDecisions} preflop decisions analyzed
+                    </p>
+                  </div>
+                )}
+              </div>
+              {/* Recent Deviations */}
+              {gtoStats.recentDeviations.length > 0 && (
+                <div>
+                  <p style={{ fontSize: "0.72rem", color: "var(--muted)", marginBottom: "0.4rem" }}>Recent deviations:</p>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
+                    {gtoStats.recentDeviations.slice(0, 5).map((d, i) => (
+                      <div key={i} style={{ display: "flex", gap: "0.5rem", alignItems: "center", fontSize: "0.72rem", padding: "0.3rem 0.5rem", background: "rgba(255,255,255,0.04)", borderRadius: "4px" }}>
+                        <span style={{ color: "var(--muted)" }}>Hand #{d.handId}:</span>
+                        <span>AI chose <strong>{d.aiAction}</strong></span>
+                        <span style={{ color: "var(--muted)" }}>·</span>
+                        <span>GTO suggests <strong style={{ color: "#3B82F6" }}>{d.gtoAction}</strong></span>
+                        <span style={{ marginLeft: "auto", fontSize: "0.68rem", color: "var(--muted)", textTransform: "capitalize" }}>({d.deviationType})</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <p style={{ fontSize: "0.78rem", color: "var(--muted)" }}>No GTO data yet — preflop decisions will appear here after hands are played.</p>
+          )}
         </div>
       )}
 

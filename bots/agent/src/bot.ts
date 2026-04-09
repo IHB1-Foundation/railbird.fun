@@ -16,6 +16,8 @@ import { PerformanceEvaluator } from "./evolution/evaluator.js";
 import { StrategyOptimizer } from "./evolution/optimizer.js";
 import type { HandResult, PerformanceScore, StrategyParams } from "./evolution/types.js";
 import { DEFAULT_EVOLUTION_CONFIG } from "./evolution/types.js";
+import { DeviationAnalyzer } from "./gto/deviation.js";
+import type { FacingAction } from "./gto/ranges.js";
 
 const logger = createLogger({ service: "agent-bot" });
 
@@ -77,6 +79,9 @@ export class AgentBot {
   private currentHandReasoning: string | undefined = undefined;
   private currentHandCommunityCards: string = "";
   private currentHandPosition: string = "unknown";
+
+  // T-1104: GTO deviation analyzer
+  private gtoAnalyzer = new DeviationAnalyzer();
 
   // T-1103: Self-play evolution state
   private evolutionEvaluator = new PerformanceEvaluator();
@@ -669,8 +674,36 @@ export class AgentBot {
       // Track action for RAG recording (actionStr already computed above for commitment)
       this.currentHandActions.push(actionStr);
 
-      // Fire-and-forget: send reasoning to OwnerView (non-blocking)
+      // Fire-and-forget: send reasoning + GTO deviation to OwnerView (non-blocking)
       if (decision.reasoning && this.ownerviewClient) {
+        // T-1104: compute GTO deviation for preflop decisions
+        let gtoDeviation: import("./auth/ownerviewClient.js").GTODeviationData | undefined;
+        const isPreflop = state.gameState === (await import("./chain/client.js")).GameState.BETTING_PRE;
+        if (isPreflop && holeCards) {
+          try {
+            const facingAction: FacingAction = amountToCall > 0n ? "raise" : "none";
+            const positionStr = describePositionSimple(seatIndex, state.buttonSeat, state.seats.length);
+            const posMap: Record<string, import("./gto/ranges.js").Position> = {
+              BTN: "BTN", SB: "SB", BB: "BB", CO: "CO", UTG: "UTG", MP: "UTG",
+            };
+            const gtoPos = posMap[positionStr] ?? "BTN";
+            const aiAction = decision.action === Decision.RAISE ? "raise"
+              : decision.action === Decision.FOLD ? "fold" : "call";
+            const deviation = this.gtoAnalyzer.analyze(gtoPos, holeCards.card1, holeCards.card2, aiAction, facingAction);
+            gtoDeviation = {
+              gtoAction: deviation.gtoAction,
+              gtoFrequency: deviation.gtoFrequency,
+              aiAction: deviation.aiAction,
+              isDeviation: deviation.isDeviation,
+              deviationType: deviation.deviationType,
+              severity: deviation.severity,
+            };
+            logger.debug({ gtoPos, aiAction, gtoAction: deviation.gtoAction, isDeviation: deviation.isDeviation, severity: deviation.severity.toFixed(2) }, "[GTO] Deviation analysis");
+          } catch (err) {
+            logger.debug({ err: err instanceof Error ? err.message : String(err) }, "[GTO] Deviation analysis failed (non-fatal)");
+          }
+        }
+
         const reasoningParams = {
           tableAddress: this.config.pokerTableAddress,
           handId: String(state.currentHandId),
@@ -680,6 +713,7 @@ export class AgentBot {
           raiseAmount: decision.raiseAmount ? String(decision.raiseAmount) : undefined,
           reasoning: decision.reasoning,
           factors: decision.factors,
+          gtoDeviation,
         };
         this.ownerviewClient.submitReasoning(reasoningParams).catch((err: unknown) => {
           logger.warn({ err: err instanceof Error ? err.message : String(err) }, "Failed to submit reasoning (non-fatal)");

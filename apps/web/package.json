@@ -10,7 +10,8 @@
     "clean": "rm -rf .next dist",
     "lint": "next lint",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@noble/curves": "^2.0.1",

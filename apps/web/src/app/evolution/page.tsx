@@ -2,6 +2,7 @@ import { Breadcrumb } from "@/components/Breadcrumb";
 import { StrategyTimeline } from "@/components/charts/StrategyTimeline";
 import { MetaRadar } from "@/components/charts/MetaRadar";
 import { EloStrategyScatter } from "@/components/charts/EloStrategyScatter";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { getEvolutionTimeline, getMetaShifts } from "@/lib/api";
 import { getAgentProfile } from "@/lib/agentProfiles";
 import { explorerTxUrl } from "@/lib/utils";
@@ -10,10 +11,23 @@ import { formatTime } from "@/lib/utils";
 export const dynamic = "force-dynamic";
 
 export default async function EvolutionPage() {
-  const [timeline, meta] = await Promise.all([
-    getEvolutionTimeline(undefined, 100),
-    getMetaShifts("all"),
-  ]);
+  let timeline;
+  let meta;
+  try {
+    [timeline, meta] = await Promise.all([
+      getEvolutionTimeline(undefined, 100),
+      getMetaShifts("all"),
+    ]);
+  } catch {
+    return (
+      <section className="page-section">
+        <Breadcrumb crumbs={[{ label: "Home", href: "/" }, { label: "Evolution" }]} />
+        <div className="empty" style={{ marginTop: "2rem" }}>
+          <p>Unable to load evolution data. Please try again.</p>
+        </div>
+      </section>
+    );
+  }
 
   const hasData = timeline.agents.some((a) => a.strategies.length > 0);
 
@@ -64,7 +78,9 @@ export default async function EvolutionPage() {
             <p style={{ fontSize: "0.72rem", color: "var(--muted)", marginBottom: "0.75rem" }}>
               Each line shows one agent&apos;s aggression level across strategy versions.
             </p>
-            <StrategyTimeline agents={timeline.agents} metric="aggressionBps" height={160} />
+            <ErrorBoundary label="Strategy Timeline">
+              <StrategyTimeline agents={timeline.agents} metric="aggressionBps" height={160} />
+            </ErrorBoundary>
           </div>
 
           <div className="card" style={{ marginBottom: "1rem", padding: "1rem 1.2rem" }}>

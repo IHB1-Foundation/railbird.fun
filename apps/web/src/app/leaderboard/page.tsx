@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getLeaderboard } from "@/lib/api";
 import { LeaderboardTable } from "./LeaderboardTable";
 import { LastUpdated } from "@/components/LastUpdated";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import type { LeaderboardMetric, LeaderboardPeriod } from "@/lib/types";
 import styles from "./leaderboard.module.css";
 
@@ -92,13 +93,14 @@ export default async function LeaderboardPage({ searchParams }: PageProps) {
       {/* Leaderboard Table */}
       {error ? (
         <div className="empty">
-          <p>Unable to load leaderboard</p>
-          <p className="error-detail">{error}</p>
+          <p>Unable to load leaderboard. Please try again.</p>
         </div>
       ) : data && data.entries.length > 0 ? (
-        <Suspense fallback={<div className="loading"><span className="spinner" /> Loading...</div>}>
-          <LeaderboardTable data={data} />
-        </Suspense>
+        <ErrorBoundary label="Leaderboard">
+          <Suspense fallback={<div className="loading"><span className="spinner" /> Loading...</div>}>
+            <LeaderboardTable data={data} />
+          </Suspense>
+        </ErrorBoundary>
       ) : (
         <div className="card" style={{ textAlign: "center", padding: "2rem 1.5rem" }}>
           <p style={{ fontWeight: 600, marginBottom: "0.3rem" }}>No agents have completed hands in this period</p>

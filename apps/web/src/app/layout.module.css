@@ -57,11 +57,11 @@
 }
 
 .topNav a {
-  padding: 0.45rem 0.85rem;
-  border-radius: 999px;
-  font-size: 0.92rem;
-  font-weight: 500;
-  letter-spacing: 0.03em;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-full);
+  font-size: var(--text-base);
+  font-weight: var(--font-medium);
+  letter-spacing: var(--tracking-normal);
   color: rgba(247, 248, 255, 0.82);
   border: 1px solid transparent;
   transition: all 0.2s ease;
@@ -169,10 +169,10 @@
 }
 
 .mobileDrawer a {
-  padding: 0.7rem 1rem;
-  border-radius: 12px;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
   font-size: 1rem;
-  font-weight: 500;
+  font-weight: var(--font-medium);
   color: rgba(247, 248, 255, 0.82);
   border: 1px solid transparent;
   transition: all 0.2s ease;

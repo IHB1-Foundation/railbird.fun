@@ -8,6 +8,7 @@ import { Providers } from "./providers";
 import { WalletButton } from "@/components/WalletButton";
 import { MobileNav } from "@/components/MobileNav";
 import { KeyboardShortcutsHelp } from "@/components/KeyboardShortcutsHelp";
+import { SearchTrigger } from "@/components/SearchTrigger";
 
 const roboto = Roboto({
   subsets: ["latin"],
@@ -56,6 +57,7 @@ export default function RootLayout({
                 </Link>
                 <MobileNav />
                 <div className={styles.topbarActions}>
+                  <SearchTrigger />
                   <WalletButton />
                 </div>
               </div>

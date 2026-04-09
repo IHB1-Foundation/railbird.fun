@@ -158,9 +158,9 @@ export function SearchPalette({ open, onClose }: SearchPaletteProps) {
 
         {/* Footer hints */}
         <div className={styles.footer}>
-          <span className={styles.footerHint}><kbd>↑↓</kbd> navigate</span>
-          <span className={styles.footerHint}><kbd>↵</kbd> open</span>
-          <span className={styles.footerHint}><kbd>ESC</kbd> close</span>
+          <span className={styles.footerHint}><span className={styles.kbdKey}>↑↓</span> navigate</span>
+          <span className={styles.footerHint}><span className={styles.kbdKey}>↵</span> open</span>
+          <span className={styles.footerHint}><span className={styles.kbdKey}>ESC</span> close</span>
         </div>
       </div>
     </div>

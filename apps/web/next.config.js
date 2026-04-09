@@ -28,7 +28,17 @@ const nextConfig = {
         http: false,
         https: false,
         zlib: false,
+        // abiVersion.js uses node:crypto (server-only); stub in browser
+        crypto: false,
       };
+      // Handle node: protocol URIs — strip prefix so fallback map applies
+      // e.g. "node:crypto" → "crypto" which is then caught by fallback: { crypto: false }
+      const { NormalModuleReplacementPlugin } = await import("webpack");
+      config.plugins.push(
+        new NormalModuleReplacementPlugin(/^node:(.+)$/, (resource) => {
+          resource.request = resource.request.replace(/^node:/, "");
+        })
+      );
     }
     return config;
   },

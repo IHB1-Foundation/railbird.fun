@@ -1,15 +1,18 @@
-import type { ReactNode, HTMLAttributes } from "react";
+import type { ReactNode, HTMLAttributes, ElementType } from "react";
 import styles from "./Card.module.css";
+
+type HtmlTag = "div" | "article" | "section" | "aside" | "main" | "header" | "footer" | "nav";
 
 interface CardProps extends HTMLAttributes<HTMLElement> {
   children: ReactNode;
   highlighted?: boolean;
-  as?: keyof JSX.IntrinsicElements;
+  as?: HtmlTag;
 }
 
 export function Card({ children, highlighted, as: Tag = "div", className, ...props }: CardProps) {
   const cls = [styles.card, highlighted ? styles.highlighted : "", className].filter(Boolean).join(" ");
-  return <Tag className={cls} {...(props as HTMLAttributes<HTMLElement>)}>{children}</Tag>;
+  const Element = Tag as ElementType;
+  return <Element className={cls} {...props}>{children}</Element>;
 }
 
 export function CardHeader({ children, className, ...props }: HTMLAttributes<HTMLDivElement>) {

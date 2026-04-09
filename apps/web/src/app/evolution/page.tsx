@@ -1,18 +1,18 @@
-import dynamic from "next/dynamic";
+import lazyLoad from "next/dynamic";
 import { Breadcrumb } from "@/components/Breadcrumb";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Tooltip } from "@/components/Tooltip";
 
 // D-57: lazy-load heavy chart components to reduce initial bundle
-const StrategyTimeline = dynamic(
+const StrategyTimeline = lazyLoad(
   () => import("@/components/charts/StrategyTimeline").then((m) => ({ default: m.StrategyTimeline })),
   { ssr: false, loading: () => <div className="chart-placeholder" aria-label="Loading chart…" /> }
 );
-const MetaRadar = dynamic(
+const MetaRadar = lazyLoad(
   () => import("@/components/charts/MetaRadar").then((m) => ({ default: m.MetaRadar })),
   { ssr: false, loading: () => <div style={{ height: 140 }} aria-label="Loading radar…" /> }
 );
-const EloStrategyScatter = dynamic(
+const EloStrategyScatter = lazyLoad(
   () => import("@/components/charts/EloStrategyScatter").then((m) => ({ default: m.EloStrategyScatter })),
   { ssr: false, loading: () => <div className="chart-placeholder" aria-label="Loading scatter…" /> }
 );

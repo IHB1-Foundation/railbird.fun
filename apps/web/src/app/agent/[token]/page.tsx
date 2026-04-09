@@ -275,7 +275,16 @@ export default async function AgentPage({
         <div className="card" style={{ marginBottom: "1rem", padding: "1rem 1.2rem" }}>
           <h3 className="section-title-sm" style={{ marginBottom: "0.75rem" }}>AI Strategy Profile</h3>
           <div style={{ display: "flex", gap: "1.5rem", alignItems: "flex-start", flexWrap: "wrap" }}>
-            <PersonaRadar persona={persona} size="large" />
+            <PersonaRadar
+              axes={[
+                { label: "Aggr", value: persona.aggression },
+                { label: "Tight", value: persona.tightness },
+                { label: "Bluff", value: persona.bluffFrequency },
+              ]}
+              colorAccent={persona.colorAccent}
+              name={persona.name}
+              size="large"
+            />
             <div style={{ flex: 1, minWidth: "180px" }}>
               <div style={{ fontSize: "1.5rem", marginBottom: "0.25rem" }}>{persona.emoji} <strong>{persona.name}</strong></div>
               <p style={{ fontSize: "0.82rem", color: "var(--muted)", marginBottom: "0.75rem" }}>{persona.description}</p>

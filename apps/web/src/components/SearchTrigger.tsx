@@ -49,7 +49,7 @@ export function SearchTrigger() {
       >
         <span aria-hidden="true">🔍</span>
         <span>Search</span>
-        <kbd style={{ background: "rgba(255,255,255,0.08)", border: "1px solid var(--border-subtle)", borderRadius: "4px", padding: "0.1rem 0.35rem", fontFamily: "var(--text-mono)", fontSize: "0.65rem" }}>⌘K</kbd>
+        <span style={{ background: "rgba(255,255,255,0.08)", border: "1px solid var(--border-subtle)", borderRadius: "4px", padding: "0.1rem 0.35rem", fontFamily: "var(--text-mono)", fontSize: "0.65rem" }}>⌘K</span>
       </button>
       <SearchPalette open={open} onClose={() => setOpen(false)} />
     </>

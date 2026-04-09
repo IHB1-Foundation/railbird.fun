@@ -42,6 +42,7 @@
   --border-strong: rgba(140, 146, 186, 0.4);
 
   /* Spacing scale */
+  --space-0-5: 0.125rem;
   --space-1: 0.25rem;
   --space-2: 0.5rem;
   --space-3: 0.75rem;
@@ -51,6 +52,13 @@
   --space-8: 2rem;
   --space-10: 2.5rem;
   --space-12: 3rem;
+
+  /* Input / form tokens (D-9) */
+  --input-bg: rgba(8, 10, 20, 0.65);
+  --input-border: rgba(140, 146, 186, 0.25);
+  --input-border-focus: rgba(129, 108, 249, 0.6);
+  --input-radius: var(--radius-md);
+  --input-padding: 0.6rem 0.85rem;
 
   /* Typography weight tokens (D-3) */
   --font-normal: 400;
@@ -333,6 +341,52 @@ h5 {
 .btn-join {
   border-color: rgba(74, 222, 128, 0.52);
   color: #bbf7d0;
+}
+
+.btn-secondary {
+  background: rgba(129, 108, 249, 0.12);
+  border-color: rgba(129, 108, 249, 0.35);
+  color: var(--accent-soft);
+  box-shadow: none;
+}
+
+/* Disabled state — opacity-based for all btn variants (D-7) */
+.btn:disabled,
+.btn-ghost:disabled,
+.btn-danger:disabled,
+.btn-secondary:disabled,
+.btn-join:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Global input / textarea / select (D-9) */
+.input,
+.input-field {
+  display: block;
+  width: 100%;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: var(--input-radius);
+  padding: var(--input-padding);
+  color: var(--foreground);
+  font-size: var(--text-sm);
+  font-family: inherit;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.input:focus-visible,
+.input-field:focus-visible {
+  outline: none;
+  border-color: var(--input-border-focus);
+  box-shadow: 0 0 0 3px rgba(129, 108, 249, 0.15);
+}
+
+.input.error,
+.input-field.error {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px rgba(255, 98, 110, 0.12);
 }
 
 .muted,

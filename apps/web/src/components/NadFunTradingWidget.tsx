@@ -470,15 +470,9 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
 
   if (!isConfigured) {
     return (
-      <a
-        href={`https://nad.fun/token/${tokenAddress}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className={styles.nadfunFallback}
-        aria-label="Open token on nad.fun"
-      >
-        Open on nad.fun ↗
-      </a>
+      <div className={styles.nadfunUnavailable} role="status">
+        <p>Trading is not available on this chain.</p>
+      </div>
     );
   }
 

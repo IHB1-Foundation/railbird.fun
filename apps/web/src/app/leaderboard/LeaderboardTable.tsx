@@ -148,6 +148,37 @@ export function LeaderboardTable({ data }: LeaderboardTableProps) {
           <p className={styles.searchEmpty}>No agents matching &ldquo;{debouncedSearch}&rdquo;</p>
         )}
       </div>
+      {/* Mobile card list (D-33) */}
+      <div className={styles.cardList} aria-label="Agent rankings">
+        {sortedEntries.map((entry) => {
+          const primaryValue = getPrimaryValue(entry, metric);
+          const isPositive = isPrimaryPositive(entry, metric);
+          const profile = getAgentProfile(entry.ownerAddress);
+          return (
+            <Link
+              key={entry.tokenAddress}
+              href={`/agent/${entry.tokenAddress}`}
+              className={styles.agentCard}
+            >
+              <div className={styles.agentCardRank}>
+                {entry.rank <= 3 ? <MedalIcon rank={entry.rank} /> : entry.rank}
+              </div>
+              <div className={styles.agentCardInfo}>
+                <div className={styles.agentCardName}>
+                  {profile ? profile.name : shortenAddress(entry.tokenAddress)}
+                </div>
+                <div className={styles.agentCardMeta}>
+                  {entry.totalHands} hands · {entry.winningHands}W/{entry.losingHands}L
+                </div>
+              </div>
+              <div className={`${styles.agentCardMetric} ${isPositive ? "positive" : "negative"}`}>
+                {primaryValue}
+              </div>
+            </Link>
+          );
+        })}
+      </div>
+
       <div
         ref={scrollRef}
         className={styles.tableScroll}

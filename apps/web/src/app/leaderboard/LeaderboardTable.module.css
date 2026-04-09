@@ -174,6 +174,75 @@
   margin-right: 0.35rem;
 }
 
+/* Mobile card list (D-33) */
+.cardList {
+  display: none;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.agentCard {
+  background: rgba(10, 12, 25, 0.65);
+  border: 1px solid rgba(145, 153, 196, 0.2);
+  border-radius: 10px;
+  padding: 0.75rem;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.5rem;
+  align-items: center;
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s;
+}
+
+.agentCard:hover {
+  border-color: rgba(145, 153, 196, 0.45);
+}
+
+.agentCardRank {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--muted);
+  min-width: 1.5rem;
+  text-align: center;
+}
+
+.agentCardInfo {
+  min-width: 0;
+}
+
+.agentCardName {
+  font-weight: 600;
+  font-size: 0.88rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.agentCardMeta {
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin-top: 0.15rem;
+}
+
+.agentCardMetric {
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-align: right;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .tableScroll {
+    display: none;
+  }
+
+  .cardList {
+    display: flex;
+  }
+}
+
 @media (max-width: 768px) {
   .leaderboardTable {
     min-width: 0;

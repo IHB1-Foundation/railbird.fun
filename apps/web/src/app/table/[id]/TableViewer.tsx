@@ -29,6 +29,7 @@ import { PlayersPanel } from "./PlayersPanel";
 import Link from "next/link";
 import { Breadcrumb } from "@/components/Breadcrumb";
 import { ShareButton } from "@/components/ShareButton";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import styles from "./TableViewer.module.css";
 
 const TABLE_MAX_SEATS = Number(process.env.NEXT_PUBLIC_TABLE_MAX_SEATS || "9");
@@ -88,6 +89,7 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
   const [joinOperator, setJoinOperator] = useState<string>("");
   const [joinLoading, setJoinLoading] = useState<boolean>(false);
   const [joinStatus, setJoinStatus] = useState<string>("");
+  const [showJoinConfirm, setShowJoinConfirm] = useState<boolean>(false);
 
   const { isConnected, isAuthenticated, address, connect, getHoleCards } = useAuth();
   const { holeCards } = useHoleCards(isAuthenticated, tableId, table.currentHand?.handId, getHoleCards);
@@ -195,7 +197,7 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [actionsKey]);
 
-  const handleJoinSeat = useCallback(async () => {
+  const handleJoinValidate = useCallback(async () => {
     setJoinStatus("");
     if (availableSeats.length === 0) { setJoinStatus("No empty seats available."); return; }
 
@@ -234,7 +236,13 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
       return;
     }
 
-    const operator = operatorInput.length > 0 ? (operatorInput as Address) : undefined;
+    // Validation passed — show confirm dialog (D-42)
+    setShowJoinConfirm(true);
+  }, [availableSeats, connect, isConnected, joinBuyIn, joinOperator, joinSeatIndex, normalizedSeats]);
+
+  const handleJoinSeat = useCallback(async () => {
+    setShowJoinConfirm(false);
+    const operator = joinOperator.trim().length > 0 ? (joinOperator.trim() as Address) : undefined;
     try {
       setJoinLoading(true);
       const { registerTxHash } = await registerSeat({
@@ -250,7 +258,7 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
     } finally {
       setJoinLoading(false);
     }
-  }, [availableSeats, connect, isConnected, joinBuyIn, joinOperator, joinSeatIndex, normalizedSeats, refreshTable, table.contractAddress]);
+  }, [joinBuyIn, joinOperator, joinSeatIndex, refreshTable, table.contractAddress]);
 
   return (
     <div>
@@ -379,7 +387,7 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
           joinLoading={joinLoading}
           joinStatus={joinStatus}
           chipSymbol={CHIP_SYMBOL}
-          onJoin={handleJoinSeat}
+          onJoin={handleJoinValidate}
           isConnected={isConnected}
           onConnect={connect}
         />
@@ -488,6 +496,17 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
         ownedSeatIndex={ownedSeatIndex}
         actorSeat={currentHand?.actorSeat ?? null}
         chipSymbol={CHIP_SYMBOL}
+      />
+
+      {/* Seat join confirmation dialog (D-42) */}
+      <ConfirmDialog
+        open={showJoinConfirm}
+        title={`Join Seat ${joinSeatIndex}?`}
+        message={`You will buy in for ${joinBuyIn} ${CHIP_SYMBOL}. This transaction requires on-chain approval.`}
+        confirmLabel="Join Seat"
+        cancelLabel="Cancel"
+        onConfirm={handleJoinSeat}
+        onCancel={() => setShowJoinConfirm(false)}
       />
     </div>
   );

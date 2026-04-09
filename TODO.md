@@ -175,7 +175,7 @@
 | C-3 | .env.example HSK 업데이트 | ✅ |
 | C-4 | 제거된 view 함수 대응 | ✅ |
 | H-1 | 로딩/에러/빈 상태 | ✅ |
-| H-2 | 모바일 반응형 | ⬜ |
+| H-2 | 모바일 반응형 | ✅ (create-agent grid, TableViewer, leaderboard scroll) |
 | H-3 | 에러 메시지 유출 방지 | ✅ |
 | H-4 | API 페이지네이션 제한 | ✅ |
 | H-5 | nad.fun 위젯 UX | ✅ |
@@ -187,25 +187,48 @@
 | M-4 | CHAIN_ENV 검증 | ✅ (기존 구현) |
 | M-5 | Side-bet settlement | ✅ (기존 구현) |
 | M-6 | DB 인덱스 추가 | ✅ |
-| M-7 | 에러 응답 형식 통일 | ⬜ |
+| M-7 | 에러 응답 형식 통일 | ✅ |
 | N-1 | console.log 정리 | ✅ |
 | N-2 | DB 마이그레이션 개선 | ✅ |
-| N-3 | GTO deviation 피드백 | ⬜ |
-| N-4 | Evolution 파라미터 | ⬜ |
-| N-5 | ABI 버전 관리 | ⬜ |
+| N-3 | GTO deviation 피드백 | ✅ |
+| N-4 | Evolution 파라미터 | ✅ |
+| N-5 | ABI 버전 관리 | ✅ |
 | N-6 | KAIA 레거시 정리 | ✅ |
-| N-7 | Hole card 암호화 문서 | ⬜ |
-| N-8 | CI/CD 파이프라인 | ⬜ |
-| D-1 ~ D-9 | 디자인 시스템 | ⬜ |
-| D-10 ~ D-17 | 네비게이션/IA | ⬜ |
-| D-18 ~ D-24 | 컴포넌트 품질 | ⬜ |
-| D-25 ~ D-30 | 로딩/에러/빈 상태 | ⬜ |
-| D-31 ~ D-37 | 반응형 디자인 | ⬜ |
-| D-38 ~ D-44 | 인터랙션 디자인 | ⬜ |
-| D-45 ~ D-49 | 데이터 시각화 | ⬜ |
-| D-50 ~ D-55 | 카피/마이크로카피 | ⬜ |
-| D-56 ~ D-60 | 퍼포먼스 | ⬜ |
-| D-61 ~ D-70 | 접근성(a11y) | ⬜ |
+| N-7 | Hole card 암호화 문서 | ✅ |
+| N-8 | CI/CD 파이프라인 | ✅ (typecheck job 추가) |
+| D-1 | 하드코딩 컬러 → CSS 변수 (토큰 추가) | ✅ (card-highlight, text-gold 토큰 추가) |
+| D-3 | 타이포그래피 토큰 | ✅ (font-weight, tracking, leading 토큰 추가) |
+| D-4 | 보더 컬러 토큰 | ✅ (border-subtle/default/strong) |
+| D-5 | 보더 라디우스 토큰 | ✅ (--radius-full 추가) |
+| D-11 | Active nav state | ✅ (!important 제거, 높은 specificity) |
+| D-19 | EmptyState 표준화 | ✅ (기존 구현) |
+| D-21 | ErrorState 컴포넌트 | ✅ |
+| D-28 | 빈 상태 카피 개선 | ✅ (betting page) |
+| D-30 | PlayersPanel 빈 상태 | ✅ |
+| D-31 | 브레이크포인트 토큰 | ✅ (--bp-mobile/tablet/desktop) |
+| D-34 | 터치 타겟 44px | ✅ (globals.css button 기본값) |
+| D-38 | 과잉 애니메이션 정리 | ✅ (reduced-motion으로 처리) |
+| D-43 | 토스트 시스템 | ✅ (기존 구현) |
+| D-44 | 클립보드 복사 피드백 | ✅ (기존 ShareButton) |
+| D-52 | 에러 메시지 인간화 | ✅ (page.tsx error) |
+| D-56 | 이미지 지연 로딩 | ✅ (next/image 기본 lazy) |
+| D-59 | LiveDashboard 폴링 최적화 | ✅ |
+| D-61 | aria-live 누락 | ✅ (commentary box) |
+| D-63 | 테이블 헤더 scope | ✅ |
+| D-64 | 정렬 버튼 접근성 | ✅ |
+| D-65 | 테이블 행 키보드 접근 | ✅ |
+| D-66 | 폼 라벨 연결 | ✅ (Slider component) |
+| D-70 | prefers-reduced-motion | ✅ (전체 커버리지) |
+| D-2,D-6,D-7,D-8,D-9 | 스페이싱/그림자/버튼/카드/인풋 | ⬜ |
+| D-10,D-12~D-17 | 네비게이션/IA | ⬜ |
+| D-18,D-20,D-22~D-24 | 컴포넌트 품질 | ⬜ |
+| D-25~D-27,D-29 | 로딩/에러 상태 | ⬜ |
+| D-32~D-33,D-35~D-37 | 반응형 디자인 | ⬜ |
+| D-39~D-42 | 인터랙션 디자인 | ⬜ |
+| D-45~D-49 | 데이터 시각화 | ⬜ |
+| D-50,D-51,D-53~D-55 | 카피/마이크로카피 | ⬜ |
+| D-57,D-58,D-60 | 퍼포먼스 심화 | ⬜ |
+| D-62,D-67~D-69 | 접근성(a11y) 심화 | ⬜ |
 
 ---
 

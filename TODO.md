@@ -251,6 +251,21 @@
 | D-14 | 글로벌 검색 (⌘K SearchPalette) | ✅ |
 | D-16 | 페이지네이션 (LiveDashboard, PlayersPanel show-more) | ✅ |
 | D-18 | 대형 파일 분할 (create-agent, home page) | ✅ |
+| D-23 | 시맨틱 HTML 개선 | ✅ (div-as-button 없음 확인, showdown modal autoFocus) |
+| D-25 | 스켈레톤 로더 통일 | ✅ (leaderboard/agent/table/live/me/evolution loading.tsx 완비) |
+| D-26 | ActionLog 에러 핸들링 | ✅ (fetchError + onRetry props 구현됨) |
+| D-27 | 폼 유효성 검증 시각적 피드백 | ✅ (StepPersona: aria-invalid, hasError CSS, formError 메시지) |
+| D-33 | 리더보드 모바일 카드뷰 | ✅ (LeaderboardTable 카드 리스트 구현 확인) |
+| D-37 | 모바일 폰트 스케일링 | ✅ (clamp() 히어로/통계/create-agent/TableViewer에 적용) |
+| D-39 | 리스트 업데이트 애니메이션 | ✅ (.list-item-new 클래스 globals.css 정의) |
+| D-41 | 호버/액티브 상태 일관성 | ✅ (.card-hover 패턴 globals.css 정의) |
+| D-42 | 확인 다이얼로그 | ✅ (ConfirmDialog.tsx 완전한 focus trap 구현) |
+| D-46 | 차트 축 라벨/범례 | ✅ (EloStrategyScatter/StrategyTimeline/MetaRadar 라벨 완비) |
+| D-48 | 색맹 대응 | ✅ (StrategyTimeline STROKE_PATTERNS 색맹 접근성) |
+| D-50 | 버튼 레이블 스타일 통일 | ✅ (← → aria-hidden 패턴 일관 적용) |
+| D-51 | 전문 용어 툴팁 | ✅ (GTO/NAV/Share Tooltip 컴포넌트로 agent 페이지에 적용) |
+| D-54 | 모호한 시간 표현 | ✅ (evolution: "in a few minutes once more hands played") |
+| D-62 | 모달 포커스 트래핑 | ✅ (ConfirmDialog Tab wrap + ESC, showdown autoFocus) |
 
 ---
 

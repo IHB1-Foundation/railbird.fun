@@ -7,6 +7,7 @@ import styles from "./layout.module.css";
 import { Providers } from "./providers";
 import { WalletButton } from "@/components/WalletButton";
 import { MobileNav } from "@/components/MobileNav";
+import { KeyboardShortcutsHelp } from "@/components/KeyboardShortcutsHelp";
 
 const roboto = Roboto({
   subsets: ["latin"],
@@ -37,6 +38,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={roboto.variable}>
         <Providers>
+          <KeyboardShortcutsHelp />
           <a href="#main-content" className="skip-to-content">Skip to main content</a>
           <div className="app-shell">
             <header className={styles.topbar}>

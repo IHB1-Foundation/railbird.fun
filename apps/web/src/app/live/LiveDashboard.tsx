@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useId } from "react";
 import Link from "next/link";
 import { INDEXER_BASE, getTable, getTables } from "@/lib/api";
 import type { TableResponse, HandResponse } from "@/lib/types";
@@ -66,6 +66,8 @@ export function LiveDashboard() {
   const [currentLeader, setCurrentLeader] = useState("");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showShowdown, setShowShowdown] = useState(false);
+  const showdownTitleId = useId();
+  const showdownCloseRef = useRef<HTMLButtonElement>(null);
   const [showdownInfo, setShowdownInfo] = useState<{ winner: number; pot: string } | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const prevHandIdRef = useRef<string | null>(null);
@@ -358,18 +360,38 @@ export function LiveDashboard() {
         </div>
       </div>
 
-      {/* Showdown overlay */}
+      {/* Showdown overlay — accessible dialog (D-23, D-62) */}
       {showShowdown && showdownInfo && (
-        <div className={styles.showdownOverlay} onClick={() => setShowShowdown(false)}>
+        <div
+          className={styles.showdownOverlay}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={showdownTitleId}
+          onKeyDown={(e) => { if (e.key === "Escape") setShowShowdown(false); }}
+        >
+          {/* Backdrop */}
+          <div
+            style={{ position: "absolute", inset: 0 }}
+            onClick={() => setShowShowdown(false)}
+            aria-hidden="true"
+          />
           <div className={styles.showdownCard}>
-            <div style={{ fontSize: "3rem", marginBottom: "0.5rem" }}>🏆</div>
-            <h2 style={{ fontSize: "1.5rem", fontWeight: 800, color: "#8b5cf6", marginBottom: "0.25rem" }}>
+            <div style={{ fontSize: "3rem", marginBottom: "0.5rem" }} aria-hidden="true">🏆</div>
+            <h2 id={showdownTitleId} style={{ fontSize: "1.5rem", fontWeight: 800, color: "#8b5cf6", marginBottom: "0.25rem" }}>
               Seat {showdownInfo.winner} Wins!
             </h2>
             <p style={{ color: "#9ca3af", fontSize: "0.875rem" }}>
               Pot: {showdownInfo.pot} RCHIP
             </p>
-            <p style={{ fontSize: "0.7rem", color: "#4b5563", marginTop: "1rem" }}>Click to dismiss</p>
+            <button
+              ref={showdownCloseRef}
+              onClick={() => setShowShowdown(false)}
+              style={{ marginTop: "1rem", background: "none", border: "none", color: "#4b5563", fontSize: "0.7rem", cursor: "pointer", textDecoration: "underline" }}
+              autoFocus
+              aria-label="Dismiss showdown result"
+            >
+              Dismiss
+            </button>
           </div>
         </div>
       )}

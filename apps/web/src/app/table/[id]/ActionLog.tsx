@@ -29,6 +29,8 @@ interface ActionLogProps {
   seatByIndex: Map<number, TableSeat>;
   maxSeats: number;
   chipSymbol: string;
+  fetchError?: string;
+  onRetry?: () => void;
 }
 
 const AGGRESSIVE_ACTIONS = new Set(["BET", "RAISE", "3"]);
@@ -196,7 +198,7 @@ function ActionItem({
 
 // ── Main ActionLog ────────────────────────────────────────────────────────────
 
-export function ActionLog({ streetSections, seatByIndex, maxSeats, chipSymbol }: ActionLogProps) {
+export function ActionLog({ streetSections, seatByIndex, maxSeats, chipSymbol, fetchError, onRetry }: ActionLogProps) {
   // Show newest streets first
   const reversed = [...streetSections].reverse();
   const logRef = useRef<HTMLDivElement>(null);
@@ -216,7 +218,16 @@ export function ActionLog({ streetSections, seatByIndex, maxSeats, chipSymbol }:
       <h3 className="section-title-sm">Action Log</h3>
       <div className={styles.actionLogWrapper}>
       <div ref={logRef} className={styles.actionLog}>
-        {reversed.length > 0 ? (
+        {fetchError ? (
+          <div role="alert" style={{ textAlign: "center", padding: "1rem", display: "flex", flexDirection: "column", alignItems: "center", gap: "0.5rem" }}>
+            <span className="text-muted" style={{ fontSize: "0.8rem" }}>Unable to load actions — network issue</span>
+            {onRetry && (
+              <button className="btn btn-ghost" onClick={onRetry} style={{ fontSize: "0.75rem", padding: "0.3rem 0.75rem", minHeight: 0 }}>
+                Retry
+              </button>
+            )}
+          </div>
+        ) : reversed.length > 0 ? (
           <div className={styles.streetLog}>
             {reversed.map((section, si) => (
               <div key={section.street} className={styles.streetBlock}>

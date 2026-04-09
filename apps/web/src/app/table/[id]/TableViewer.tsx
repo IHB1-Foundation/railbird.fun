@@ -468,6 +468,8 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
         seatByIndex={seatByIndex}
         maxSeats={TABLE_MAX_SEATS}
         chipSymbol={CHIP_SYMBOL}
+        fetchError={refreshError ?? undefined}
+        onRetry={refreshTable}
       />
 
       {/* Showdown Results */}

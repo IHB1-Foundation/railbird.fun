@@ -200,7 +200,7 @@ router.get("/health", async (_req, res) => {
 router.get("/token-metadata/:player", (req, res) => {
   const profile = getProfileByParam(req.params.player);
   if (!profile) {
-    return res.status(404).json({ error: "Unknown player metadata" });
+    return res.status(404).json({ error: "Unknown player metadata", code: "NOT_FOUND" });
   }
 
   res.setHeader("Content-Type", "application/json; charset=utf-8");
@@ -211,7 +211,7 @@ router.get("/token-metadata/:player", (req, res) => {
 router.get("/token-assets/:player", (req, res) => {
   const profile = getProfileByParam(req.params.player);
   if (!profile) {
-    return res.status(404).json({ error: "Unknown player asset" });
+    return res.status(404).json({ error: "Unknown player asset", code: "NOT_FOUND" });
   }
 
   res.setHeader("Content-Type", "image/svg+xml; charset=utf-8");
@@ -254,13 +254,13 @@ router.get("/tables/:id", async (req, res) => {
     const table = await getTable(tableId);
 
     if (!table) {
-      return res.status(404).json({ error: "Table not found" });
+      return res.status(404).json({ error: "Table not found", code: "NOT_FOUND" });
     }
     if (
       CONFIGURED_TABLE_ADDRESSES.size > 0 &&
       !CONFIGURED_TABLE_ADDRESSES.has(String(table.contract_address).toLowerCase())
     ) {
-      return res.status(404).json({ error: "Table not found" });
+      return res.status(404).json({ error: "Table not found", code: "NOT_FOUND" });
     }
 
     const seats = await getSeats(tableId);
@@ -291,7 +291,7 @@ router.get("/tables/:id/hands", async (req, res) => {
       (CONFIGURED_TABLE_ADDRESSES.size > 0 &&
         !CONFIGURED_TABLE_ADDRESSES.has(String(table.contract_address).toLowerCase()))
     ) {
-      return res.status(404).json({ error: "Table not found" });
+      return res.status(404).json({ error: "Table not found", code: "NOT_FOUND" });
     }
 
     const limit = Math.min(parseInt(req.query.limit as string) || 10, 100);
@@ -321,14 +321,14 @@ router.get("/tables/:tableId/hands/:handId", async (req, res) => {
       (CONFIGURED_TABLE_ADDRESSES.size > 0 &&
         !CONFIGURED_TABLE_ADDRESSES.has(String(table.contract_address).toLowerCase()))
     ) {
-      return res.status(404).json({ error: "Table not found" });
+      return res.status(404).json({ error: "Table not found", code: "NOT_FOUND" });
     }
 
     const handId = BigInt(req.params.handId);
 
     const hand = await getHand(tableId, handId);
     if (!hand) {
-      return res.status(404).json({ error: "Hand not found" });
+      return res.status(404).json({ error: "Hand not found", code: "NOT_FOUND" });
     }
 
     const dbActions = await getHandActions(tableId, handId);
@@ -350,7 +350,7 @@ router.get("/tables/:tableId/hands/:handId/revealed-holecards", async (req, res)
       (CONFIGURED_TABLE_ADDRESSES.size > 0 &&
         !CONFIGURED_TABLE_ADDRESSES.has(String(table.contract_address).toLowerCase()))
     ) {
-      return res.status(404).json({ error: "Table not found" });
+      return res.status(404).json({ error: "Table not found", code: "NOT_FOUND" });
     }
 
     const handId = BigInt(req.params.handId);
@@ -420,7 +420,7 @@ router.get("/agents/:address", async (req, res) => {
     const agent = await getAgent(tokenAddress);
 
     if (!agent) {
-      return res.status(404).json({ error: "Agent not found" });
+      return res.status(404).json({ error: "Agent not found", code: "NOT_FOUND" });
     }
 
     const snapshot = agent.vault_address
@@ -441,7 +441,7 @@ router.get("/agents/:address/snapshots", async (req, res) => {
 
     const agent = await getAgent(tokenAddress);
     if (!agent || !agent.vault_address) {
-      return res.status(404).json({ error: "Agent or vault not found" });
+      return res.status(404).json({ error: "Agent or vault not found", code: "NOT_FOUND" });
     }
 
     const snapshots = await getVaultSnapshots(agent.vault_address, limit);
@@ -459,7 +459,7 @@ router.get("/agents/:address/hands", async (req, res) => {
 
     const agent = await getAgent(tokenAddress);
     if (!agent) {
-      return res.status(404).json({ error: "Agent not found" });
+      return res.status(404).json({ error: "Agent not found", code: "NOT_FOUND" });
     }
 
     const hands = await getAgentHands(tokenAddress, limit);
@@ -494,7 +494,7 @@ router.get("/agents/:address/rebalances", async (req, res) => {
 
     const agent = await getAgent(tokenAddress);
     if (!agent || !agent.vault_address) {
-      return res.status(404).json({ error: "Agent or vault not found" });
+      return res.status(404).json({ error: "Agent or vault not found", code: "NOT_FOUND" });
     }
 
     const events = await getRebalanceEvents(agent.vault_address, limit);
@@ -532,7 +532,7 @@ router.get("/agents/:address/gto-stats", async (req, res) => {
     // Fetch agent's recent hands to get tableAddress + handIds
     const agent = await getAgent(address);
     if (!agent) {
-      return res.status(404).json({ error: "Agent not found" });
+      return res.status(404).json({ error: "Agent not found", code: "NOT_FOUND" });
     }
 
     // Fetch recent hands to get tableAddress
@@ -689,7 +689,7 @@ router.post("/tables/:tableId/commentary", (req, res) => {
   const { handId, street, commentary, personaContext } = req.body as Record<string, unknown>;
 
   if (typeof handId !== "string" || typeof street !== "string" || typeof commentary !== "string") {
-    res.status(400).json({ error: "Missing required fields: handId, street, commentary" });
+    res.status(400).json({ error: "Missing required fields: handId, street, commentary", code: "BAD_REQUEST" });
     return;
   }
 
@@ -775,11 +775,13 @@ router.get("/leaderboard", leaderboardRateLimit, async (req, res) => {
     if (!VALID_METRICS.includes(metric)) {
       return res.status(400).json({
         error: `Invalid metric. Valid values: ${VALID_METRICS.join(", ")}`,
+        code: "BAD_REQUEST",
       });
     }
     if (!VALID_PERIODS.includes(period)) {
       return res.status(400).json({
         error: `Invalid period. Valid values: ${VALID_PERIODS.join(", ")}`,
+        code: "BAD_REQUEST",
       });
     }
 
@@ -983,7 +985,7 @@ router.get("/evolution/meta-shifts", async (req, res) => {
     const period = (req.query.period as string || "all").toLowerCase();
     const validPeriods = ["24h", "7d", "all"];
     if (!validPeriods.includes(period)) {
-      return res.status(400).json({ error: "Invalid period. Valid: 24h, 7d, all" });
+      return res.status(400).json({ error: "Invalid period. Valid: 24h, 7d, all", code: "BAD_REQUEST" });
     }
 
     const agents = await getAllAgents();
@@ -1137,7 +1139,7 @@ function formatSnapshotResponse(snapshot: any): VaultSnapshotResponse {
 router.get("/sidebets/:tableAddress/:handId", globalRateLimit, async (req: Request, res: Response) => {
   const { tableAddress, handId } = req.params;
   if (!tableAddress || !handId) {
-    res.status(400).json({ error: "Missing tableAddress or handId" });
+    res.status(400).json({ error: "Missing tableAddress or handId", code: "BAD_REQUEST" });
     return;
   }
   try {
@@ -1246,7 +1248,7 @@ router.get("/audit/:tableAddress/:handId", globalRateLimit, async (req: Request,
 router.post("/audit/verify", globalRateLimit, async (req: Request, res: Response) => {
   const { handId, seatIndex, tableAddress, reasoning, factors, breakdown, opponentRead } = req.body as Record<string, unknown>;
   if (!handId || seatIndex === undefined || !tableAddress || !reasoning) {
-    res.status(400).json({ error: "Missing required fields: handId, seatIndex, tableAddress, reasoning" });
+    res.status(400).json({ error: "Missing required fields: handId, seatIndex, tableAddress, reasoning", code: "BAD_REQUEST" });
     return;
   }
   try {

@@ -57,6 +57,10 @@ export {
 // Contract ABIs (generated from Foundry artifacts)
 export { POKER_TABLE_ABI, PLAYER_REGISTRY_ABI, PLAYER_VAULT_ABI, SIDE_BET_POOL_ABI } from "./abis/index.js";
 
+// ABI version tracking (N-5)
+export { computeAbiHash, logAbiVersions, ABI_HASHES } from "./abiVersion.js";
+export type { AbiName } from "./abiVersion.js";
+
 // Agent profiles
 export { getAgentProfile } from "./agentProfiles.js";
 export type { AgentProfile } from "./agentProfiles.js";

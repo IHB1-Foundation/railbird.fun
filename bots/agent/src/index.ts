@@ -14,6 +14,7 @@ import {
   optionalEnv,
   requireEnv,
   createLogger,
+  logAbiVersions,
 } from "@playerco/shared";
 
 const logger = createLogger({ service: "agent-bot" });
@@ -108,6 +109,7 @@ function createStrategy(aggressionFactor: number, vectorStore?: VectorStore): {
 
 async function main() {
   logger.info({ version: VERSION }, 'Agent bot starting');
+  logAbiVersions(logger, ["POKER_TABLE", "PLAYER_REGISTRY"]);
   const rpcUrl = requireEnv("RPC_URL");
   const defaultTurnActionDelayMs = 0;
   const defaultPollIntervalMs = 1000;

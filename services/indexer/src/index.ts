@@ -1,6 +1,6 @@
 // @playerco/indexer - Event ingestion and REST API
 
-import { VERSION, createLogger, validateChainIdWithRpc } from "@playerco/shared";
+import { VERSION, createLogger, validateChainIdWithRpc, logAbiVersions } from "@playerco/shared";
 import { createApp } from "./api/index.js";
 import { EventListener } from "./events/index.js";
 import { setListenerStatus } from "./events/listenerState.js";
@@ -13,6 +13,7 @@ import { createServer } from "http";
 const logger = createLogger({ service: "indexer" });
 
 logger.info({ version: VERSION }, "Indexer service starting");
+logAbiVersions(logger);
 
 const PORT = parseInt(process.env.PORT || "3002", 10);
 const CHAIN_ENV = process.env.CHAIN_ENV || "local";

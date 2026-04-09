@@ -12,6 +12,7 @@ import {
   optionalEnv,
   requireEnv,
   createLogger,
+  logAbiVersions,
 } from "@playerco/shared";
 
 const logger = createLogger({ service: "keeper-bot" });
@@ -20,6 +21,7 @@ const VERSION = "0.0.1";
 
 async function main() {
   logger.info({ version: VERSION }, 'Keeper bot starting');
+  logAbiVersions(logger, ["POKER_TABLE", "PLAYER_REGISTRY", "PLAYER_VAULT"]);
   const rpcUrl = requireEnv("RPC_URL");
   const defaultPollIntervalMs = 2000;
 

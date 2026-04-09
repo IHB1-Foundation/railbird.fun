@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useAccount } from "wagmi";
 import { WalletButton } from "@/components/WalletButton";
+import { useAuth } from "@/lib/auth";
 import { PERSONA_PRESETS } from "@/lib/agentProfiles";
+import { getTables } from "@/lib/api";
+import { ZERO_ADDRESS } from "@/lib/utils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -19,6 +21,7 @@ interface PersonaConfig {
 }
 
 interface TableInfo {
+  tableId: string;
   address: string;
   smallBlind: string;
   bigBlind: string;
@@ -49,6 +52,8 @@ const DEFAULT_PERSONA: PersonaConfig = {
   positionAwareness: 0.7,
   systemPrompt: "",
 };
+
+const TABLE_MAX_SEATS = Number(process.env.NEXT_PUBLIC_TABLE_MAX_SEATS || "9");
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -129,7 +134,7 @@ function Slider({ label, value, onChange }: { label: string; value: number; onCh
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function CreateAgentPage() {
-  const { address, isConnected } = useAccount();
+  const { address, isConnected } = useAuth();
   const [step, setStep] = useState(1);
   const [persona, setPersona] = useState<PersonaConfig>(DEFAULT_PERSONA);
   const [tables, setTables] = useState<TableInfo[]>([]);
@@ -141,23 +146,31 @@ export default function CreateAgentPage() {
   // Fetch tables for step 3
   useEffect(() => {
     if (step === 3) {
-      const indexerUrl = process.env.NEXT_PUBLIC_INDEXER_URL ?? "http://localhost:3002";
-      fetch(`${indexerUrl}/tables`)
-        .then((r) => r.json())
+      getTables()
         .then((data) => {
-          const tableList = (data.tables ?? []) as TableInfo[];
+          const tableList = data.map((table) => {
+            const activePlayers = table.seats.filter(
+              (seat) => seat.ownerAddress.toLowerCase() !== ZERO_ADDRESS
+            ).length;
+            const emptySeats = Math.max(TABLE_MAX_SEATS - activePlayers, 0);
+            return {
+              tableId: table.tableId,
+              address: table.contractAddress,
+              smallBlind: table.smallBlind,
+              bigBlind: table.bigBlind,
+              activePlayers,
+              emptySeats,
+              state: table.gameState,
+            } satisfies TableInfo;
+          });
           setTables(tableList);
           if (tableList.length > 0 && !selectedTable) {
-            setSelectedTable(tableList[0].address);
+            const firstOpenTable = tableList.find((table) => table.emptySeats > 0) ?? tableList[0];
+            setSelectedTable(firstOpenTable.address);
           }
         })
         .catch(() => {
-          // Use demo data if indexer is unavailable
-          const demo: TableInfo[] = [
-            { address: "0x0000000000000000000000000000000000000001", smallBlind: "10", bigBlind: "20", activePlayers: 1, emptySeats: 1, state: "WAITING_FOR_SEATS" },
-          ];
-          setTables(demo);
-          if (!selectedTable) setSelectedTable(demo[0].address);
+          setError("Failed to load tables. Check that the indexer is available.");
         });
     }
   }, [step, selectedTable]);
@@ -182,7 +195,12 @@ export default function CreateAgentPage() {
     setDeployStatus("registering");
     setError(null);
 
-    const fleetUrl = process.env.NEXT_PUBLIC_FLEET_URL ?? "http://localhost:3003";
+    const fleetUrl = process.env.NEXT_PUBLIC_FLEET_URL;
+    if (!fleetUrl) {
+      setError("Fleet service URL is not configured (NEXT_PUBLIC_FLEET_URL). Contact the operator.");
+      setDeployStatus("error");
+      return;
+    }
     try {
       setDeployStatus("seating");
       await new Promise((r) => setTimeout(r, 800));
@@ -433,10 +451,14 @@ export default function CreateAgentPage() {
                 <button
                   key={table.address}
                   onClick={() => setSelectedTable(table.address)}
+                  disabled={table.emptySeats === 0}
                   style={{
                     background: selectedTable === table.address ? "#1E1B4B" : "#1F2937",
                     border: `2px solid ${selectedTable === table.address ? "#8B5CF6" : "#374151"}`,
-                    borderRadius: "0.5rem", padding: "1rem", cursor: "pointer", textAlign: "left",
+                    borderRadius: "0.5rem", padding: "1rem",
+                    cursor: table.emptySeats > 0 ? "pointer" : "not-allowed",
+                    textAlign: "left",
+                    opacity: table.emptySeats > 0 ? 1 : 0.6,
                   }}
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -469,11 +491,13 @@ export default function CreateAgentPage() {
             </button>
             <button
               onClick={() => setStep(4)}
-              disabled={!selectedTable}
+              disabled={!selectedTable || !tables.some((table) => table.address === selectedTable && table.emptySeats > 0)}
               style={{
-                flex: 1, padding: "0.75rem", background: selectedTable ? "#8B5CF6" : "#374151",
+                flex: 1, padding: "0.75rem",
+                background: selectedTable && tables.some((table) => table.address === selectedTable && table.emptySeats > 0) ? "#8B5CF6" : "#374151",
                 border: "none", borderRadius: "0.5rem", color: "#fff",
-                cursor: selectedTable ? "pointer" : "not-allowed", fontWeight: 600,
+                cursor: selectedTable && tables.some((table) => table.address === selectedTable && table.emptySeats > 0) ? "pointer" : "not-allowed",
+                fontWeight: 600,
               }}
             >
               Fund & Deploy →

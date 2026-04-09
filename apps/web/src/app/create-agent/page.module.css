@@ -61,11 +61,29 @@
 }
 
 @media (max-width: 640px) {
+  /* D-32: Mobile responsive create-agent */
+  .stepCard {
+    padding: 1.25rem 1rem;
+  }
+
   .personaGrid {
     grid-template-columns: 1fr;
   }
 
   .statsGrid {
     grid-template-columns: 1fr;
+  }
+
+  /* On mobile, hide the radar preview in the persona step to save vertical space.
+     Users can still see the radar after scrolling to the preview section. */
+  .personaGrid > :last-child {
+    display: flex;
+    justify-content: center;
+    order: -1; /* Move radar to top on mobile */
+  }
+
+  .primaryBtn,
+  .secondaryBtn {
+    width: 100%;
   }
 }

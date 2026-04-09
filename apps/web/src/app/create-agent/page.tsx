@@ -211,7 +211,7 @@ export default function CreateAgentPage() {
   // ─── Step rendering ──────────────────────────────────────────────────────
 
   return (
-    <div style={{ maxWidth: "640px", margin: "0 auto", padding: "2rem 1rem" }}>
+    <div style={{ maxWidth: "640px", margin: "0 auto", padding: "clamp(1rem, 4vw, 2rem) clamp(0.75rem, 4vw, 1rem)" }}>
       <Breadcrumb crumbs={[{ label: "Home", href: "/" }, { label: "Create Agent" }]} />
       <h1 style={{ fontSize: "1.75rem", fontWeight: 700, marginBottom: "0.5rem" }}>
         Create Your AI Agent

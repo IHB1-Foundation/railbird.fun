@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { formatChips, shortenAddress, cn, ZERO_ADDRESS } from "@/lib/utils";
 import { getAgentProfile, getPersonaSummary } from "@/lib/agentProfiles";
@@ -16,12 +17,33 @@ interface PlayersPanelProps {
   chipSymbol: string;
 }
 
+const PLAYERS_PAGE_SIZE = 5;
+
 export function PlayersPanel({ seats, ownedSeatIndex, actorSeat, chipSymbol }: PlayersPanelProps) {
+  const [showAll, setShowAll] = useState(false);
   const hasAnyPlayers = seats.some((s) => s.isActive && s.ownerAddress !== ZERO_ADDRESS);
+  const activePlayers = seats.filter((s) => s.ownerAddress !== ZERO_ADDRESS);
+  const visibleSeats = !showAll && activePlayers.length > PLAYERS_PAGE_SIZE
+    ? seats.filter((_, i) => i < PLAYERS_PAGE_SIZE)
+    : seats;
 
   return (
     <div className={`card ${styles.sectionCard}`}>
-      <h3 className="section-title-sm">Players</h3>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "0.5rem" }}>
+        <h3 className="section-title-sm" style={{ marginBottom: 0 }}>
+          Players {activePlayers.length > 0 && <span className="muted" style={{ fontSize: "0.8rem", fontWeight: 400 }}>({activePlayers.length}/{seats.length})</span>}
+        </h3>
+        {activePlayers.length > PLAYERS_PAGE_SIZE && (
+          <button
+            onClick={() => setShowAll((v) => !v)}
+            className="btn-link"
+            style={{ fontSize: "0.8rem", background: "none", border: "none", cursor: "pointer", color: "var(--accent-soft)" }}
+            aria-expanded={showAll}
+          >
+            {showAll ? "Show less" : `Show all ${seats.length}`}
+          </button>
+        )}
+      </div>
       {!hasAnyPlayers && (
         <EmptyState
           icon="🪑"
@@ -31,7 +53,7 @@ export function PlayersPanel({ seats, ownedSeatIndex, actorSeat, chipSymbol }: P
         />
       )}
       <div className={styles.playersGrid}>
-        {seats.map((seat) => (
+        {visibleSeats.map((seat) => (
           <div
             key={seat.seatIndex}
             className={cn(styles.playerCell, actorSeat === seat.seatIndex && styles.activeTurn)}

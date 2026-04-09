@@ -66,6 +66,8 @@ export function LiveDashboard() {
   const [currentLeader, setCurrentLeader] = useState("");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showShowdown, setShowShowdown] = useState(false);
+  const [showAllTables, setShowAllTables] = useState(false);
+  const TABLE_PAGE_SIZE = 5;
   const showdownTitleId = useId();
   const showdownCloseRef = useRef<HTMLButtonElement>(null);
   const [showdownInfo, setShowdownInfo] = useState<{ winner: number; pot: string } | null>(null);
@@ -252,10 +254,10 @@ export function LiveDashboard() {
       <div className={styles.liveBody}>
         {/* Main pane */}
         <div className={styles.mainPane}>
-          {/* Table selector */}
+          {/* Table selector with "Show more" pagination */}
           {tables.length > 1 && (
             <div className={styles.tableSelector}>
-              {tables.map((t) => (
+              {(showAllTables ? tables : tables.slice(0, TABLE_PAGE_SIZE)).map((t) => (
                 <button
                   key={t.tableId}
                   onClick={() => setActiveTableId(t.tableId)}
@@ -264,6 +266,17 @@ export function LiveDashboard() {
                   Table #{t.tableId} (Hand #{t.currentHandId})
                 </button>
               ))}
+              {tables.length > TABLE_PAGE_SIZE && (
+                <button
+                  className={styles.tableSelectorBtn}
+                  onClick={() => setShowAllTables((v) => !v)}
+                  aria-expanded={showAllTables}
+                >
+                  {showAllTables
+                    ? "Show less"
+                    : `+${tables.length - TABLE_PAGE_SIZE} more`}
+                </button>
+              )}
             </div>
           )}
 

@@ -244,7 +244,7 @@ router.get("/tables", async (_req, res) => {
     res.json(response);
   } catch (error) {
     logger.error({ err: error }, "Error fetching tables:");
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: "Internal server error", code: "INTERNAL" });
   }
 });
 
@@ -278,7 +278,7 @@ router.get("/tables/:id", async (req, res) => {
     res.json(response);
   } catch (error) {
     logger.error({ err: error }, "Error fetching table:");
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: "Internal server error", code: "INTERNAL" });
   }
 });
 
@@ -308,7 +308,7 @@ router.get("/tables/:id/hands", async (req, res) => {
     res.json(response);
   } catch (error) {
     logger.error({ err: error }, "Error fetching hands:");
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: "Internal server error", code: "INTERNAL" });
   }
 });
 
@@ -337,7 +337,7 @@ router.get("/tables/:tableId/hands/:handId", async (req, res) => {
     res.json(formatHandResponse(hand, actions));
   } catch (error) {
     logger.error({ err: error }, "Error fetching hand:");
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: "Internal server error", code: "INTERNAL" });
   }
 });
 
@@ -367,7 +367,7 @@ router.get("/tables/:tableId/hands/:handId/revealed-holecards", async (req, res)
     );
   } catch (error) {
     logger.error({ err: error }, "Error fetching revealed holecards:");
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: "Internal server error", code: "INTERNAL" });
   }
 });
 
@@ -410,7 +410,7 @@ router.get("/agents", async (req, res) => {
     res.json(response);
   } catch (error) {
     logger.error({ err: error }, "Error fetching agents:");
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: "Internal server error", code: "INTERNAL" });
   }
 });
 
@@ -430,7 +430,7 @@ router.get("/agents/:address", async (req, res) => {
     res.json(formatAgentResponse(agent, snapshot));
   } catch (error) {
     logger.error({ err: error }, "Error fetching agent:");
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: "Internal server error", code: "INTERNAL" });
   }
 });
 
@@ -448,7 +448,7 @@ router.get("/agents/:address/snapshots", async (req, res) => {
     res.json(snapshots.map(formatSnapshotResponse));
   } catch (error) {
     logger.error({ err: error }, "Error fetching snapshots:");
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: "Internal server error", code: "INTERNAL" });
   }
 });
 
@@ -483,7 +483,7 @@ router.get("/agents/:address/hands", async (req, res) => {
     res.json(formatted);
   } catch (error) {
     logger.error({ err: error }, "Error fetching agent hands:");
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: "Internal server error", code: "INTERNAL" });
   }
 });
 
@@ -515,7 +515,7 @@ router.get("/agents/:address/rebalances", async (req, res) => {
     );
   } catch (error) {
     logger.error({ err: error }, "Error fetching rebalance events:");
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: "Internal server error", code: "INTERNAL" });
   }
 });
 
@@ -606,7 +606,7 @@ router.get("/agents/:address/gto-stats", async (req, res) => {
     });
   } catch (error) {
     logger.error({ err: error }, "Error fetching GTO stats:");
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: "Internal server error", code: "INTERNAL" });
   }
 });
 
@@ -631,7 +631,7 @@ router.get("/agents/:address/strategies", async (req, res) => {
     });
   } catch (error) {
     logger.error({ err: error }, "Error fetching agent strategies:");
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: "Internal server error", code: "INTERNAL" });
   }
 });
 
@@ -915,7 +915,7 @@ router.get("/leaderboard", leaderboardRateLimit, async (req, res) => {
     res.json(response);
   } catch (error) {
     logger.error({ err: error }, "Error fetching leaderboard:");
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: "Internal server error", code: "INTERNAL" });
   }
 });
 
@@ -970,7 +970,7 @@ router.get("/evolution/timeline", async (req, res) => {
     res.json({ agents: results });
   } catch (error) {
     logger.error({ err: error }, "Error fetching evolution timeline:");
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: "Internal server error", code: "INTERNAL" });
   }
 });
 
@@ -1031,7 +1031,7 @@ router.get("/evolution/meta-shifts", async (req, res) => {
     });
   } catch (error) {
     logger.error({ err: error }, "Error fetching meta-shifts:");
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: "Internal server error", code: "INTERNAL" });
   }
 });
 
@@ -1169,7 +1169,7 @@ router.get("/sidebets/:tableAddress/:handId", globalRateLimit, async (req: Reque
     });
   } catch (err) {
     logger.error({ err }, "Failed to get side bet pool info");
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: "Internal server error", code: "INTERNAL" });
   }
 });
 
@@ -1188,7 +1188,7 @@ router.get("/sidebets/:tableAddress/:handId/user/:address", globalRateLimit, asy
     res.json({ tableAddress: tableAddress.toLowerCase(), handId, user: address.toLowerCase(), bets: result.rows });
   } catch (err) {
     logger.error({ err }, "Failed to get user side bets");
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: "Internal server error", code: "INTERNAL" });
   }
 });
 
@@ -1213,7 +1213,7 @@ router.get("/sidebets/leaderboard", globalRateLimit, async (_req: Request, res: 
     res.json({ leaderboard: result.rows });
   } catch (err) {
     logger.error({ err }, "Failed to get side bet leaderboard");
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: "Internal server error", code: "INTERNAL" });
   }
 });
 
@@ -1234,7 +1234,7 @@ router.get("/audit/:tableAddress/:handId", globalRateLimit, async (req: Request,
     res.json({ tableAddress: tableAddress.toLowerCase(), handId, decisions: result.rows });
   } catch (err) {
     logger.error({ err }, "Failed to get audit trail");
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: "Internal server error", code: "INTERNAL" });
   }
 });
 
@@ -1268,6 +1268,6 @@ router.post("/audit/verify", globalRateLimit, async (req: Request, res: Response
     res.json({ verified, computedHash, onChainHash });
   } catch (err) {
     logger.error({ err }, "Failed to verify audit hash");
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: "Internal server error", code: "INTERNAL" });
   }
 });

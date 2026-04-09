@@ -342,7 +342,7 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
           <div className={`${styles.tableHeadingMeta} ${styles.tableHeadingMetaMono}`}>
             Contract:{" "}
             <a href={explorerAddressUrl(table.contractAddress)} target="_blank" rel="noopener noreferrer" title={table.contractAddress}>
-              {shortenAddress(table.contractAddress)} ↗
+              {shortenAddress(table.contractAddress)} <span aria-hidden="true">↗</span>
             </a>
           </div>
         </div>

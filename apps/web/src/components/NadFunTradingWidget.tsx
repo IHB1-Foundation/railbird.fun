@@ -459,7 +459,7 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
           className={styles.nadfunFallback}
           aria-label="Open token on nad.fun"
         >
-          Open on nad.fun ↗
+          Open on nad.fun <span aria-hidden="true">↗</span>
         </a>
       </div>
     );
@@ -487,7 +487,7 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
           className={styles.nadfunExternalLink}
           aria-label="Open on nad.fun"
         >
-          Open on nad.fun ↗
+          Open on nad.fun <span aria-hidden="true">↗</span>
         </a>
       </div>
 
@@ -692,7 +692,7 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
             rel="noopener noreferrer"
             className={styles.nadfunErrorFallback}
           >
-            Open on nad.fun ↗
+            Open on nad.fun <span aria-hidden="true">↗</span>
           </a>
         </div>
       )}
@@ -706,7 +706,7 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
             className={styles.nadfunTxLink}
             aria-label="View transaction on block explorer"
           >
-            View on Explorer ↗
+            View on Explorer <span aria-hidden="true">↗</span>
           </a>
         </div>
       )}

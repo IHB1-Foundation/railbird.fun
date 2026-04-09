@@ -668,20 +668,20 @@ export default async function AgentPage({
           <div className={styles.infoRow}>
             <span className="label">Owner:</span>{" "}
             <a href={explorerAddressUrl(agent.ownerAddress)} target="_blank" rel="noopener noreferrer" className="text-mono" title={agent.ownerAddress}>
-              {shortenAddress(agent.ownerAddress)} ↗
+              {shortenAddress(agent.ownerAddress)} <span aria-hidden="true">↗</span>
             </a>
           </div>
           <div className={styles.infoRow}>
             <span className="label">Operator:</span>{" "}
             <a href={explorerAddressUrl(agent.operatorAddress)} target="_blank" rel="noopener noreferrer" className="text-mono" title={agent.operatorAddress}>
-              {shortenAddress(agent.operatorAddress)} ↗
+              {shortenAddress(agent.operatorAddress)} <span aria-hidden="true">↗</span>
             </a>
           </div>
           {agent.vaultAddress && (
             <div className={styles.infoRow}>
               <span className="label">Vault:</span>{" "}
               <a href={explorerAddressUrl(agent.vaultAddress)} target="_blank" rel="noopener noreferrer" className="text-mono" title={agent.vaultAddress}>
-                {shortenAddress(agent.vaultAddress)} ↗
+                {shortenAddress(agent.vaultAddress)} <span aria-hidden="true">↗</span>
               </a>
             </div>
           )}

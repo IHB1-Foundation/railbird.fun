@@ -119,7 +119,7 @@ export default async function LeaderboardPage({ searchParams }: PageProps) {
               prefetch={false}
               aria-label="Previous page"
             >
-              ← Previous
+              <span aria-hidden="true">←</span> Previous
             </Link>
           ) : (
             <span className={`${styles.pageBtn} ${styles.pageBtnDisabled}`}>← Previous</span>
@@ -136,7 +136,7 @@ export default async function LeaderboardPage({ searchParams }: PageProps) {
               prefetch={false}
               aria-label="Next page"
             >
-              Next →
+              Next <span aria-hidden="true">→</span>
             </Link>
           ) : (
             <span className={`${styles.pageBtn} ${styles.pageBtnDisabled}`}>Next →</span>

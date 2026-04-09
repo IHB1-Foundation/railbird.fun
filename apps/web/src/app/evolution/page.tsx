@@ -165,7 +165,7 @@ export default async function EvolutionPage() {
                       <span style={{ marginLeft: "auto", color: "var(--muted)", fontSize: "0.68rem" }}>{formatTime(e.timestamp)}</span>
                       {e.txHash && (
                         <a href={explorerTxUrl(e.txHash)} target="_blank" rel="noopener noreferrer" style={{ color: "var(--muted)", fontSize: "0.68rem", fontFamily: "monospace" }}>
-                          {e.txHash.slice(0, 8)}…↗
+                          {e.txHash.slice(0, 8)}… <span aria-hidden="true">↗</span>
                         </a>
                       )}
                     </div>

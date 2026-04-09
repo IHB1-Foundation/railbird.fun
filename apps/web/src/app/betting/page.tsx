@@ -39,7 +39,7 @@ export default async function BettingPage() {
         </ErrorBoundary>
         <div style={{ marginTop: "1rem", textAlign: "center" }}>
           <Link href={`/table/${table.tableId}`} className="btn btn-ghost" style={{ fontSize: "0.82rem" }}>
-            ← Back to Table
+            <span aria-hidden="true">←</span> Back to Table
           </Link>
         </div>
       </section>

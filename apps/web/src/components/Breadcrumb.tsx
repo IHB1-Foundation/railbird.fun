@@ -75,7 +75,7 @@ export function Breadcrumb({ crumbs }: BreadcrumbProps) {
             color: "var(--muted)",
           }}
         >
-          ← Back
+          <span aria-hidden="true">←</span> Back
         </Link>
       )}
 

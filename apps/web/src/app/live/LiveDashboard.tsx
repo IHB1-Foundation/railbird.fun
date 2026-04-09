@@ -241,7 +241,7 @@ export function LiveDashboard() {
         )}
         {isBigPot && <span className={styles.bigPotBadge}>BIG POT</span>}
         <Link href="/" style={{ marginLeft: "auto", fontSize: "0.75rem", color: "#4b5563", textDecoration: "none" }}>
-          ← Back
+          <span aria-hidden="true">←</span> Back
         </Link>
         <button className={styles.fullscreenBtn} onClick={toggleFullscreen}>
           {isFullscreen ? "⛶ Exit" : "⛶ Fullscreen"}

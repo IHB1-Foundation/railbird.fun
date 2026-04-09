@@ -436,7 +436,7 @@ export default function CreateAgentPage() {
 
           <div style={{ display: "flex", gap: "1rem", marginTop: "1rem" }}>
             <button onClick={() => setStep(1)} style={{ padding: "0.75rem 1.5rem", background: "#1F2937", border: "1px solid #374151", borderRadius: "0.5rem", color: "#9CA3AF", cursor: "pointer" }}>
-              ← Back
+              <span aria-hidden="true">←</span> Back
             </button>
             <button
               onClick={() => {
@@ -507,7 +507,7 @@ export default function CreateAgentPage() {
 
           <div style={{ display: "flex", gap: "1rem" }}>
             <button onClick={() => setStep(2)} style={{ padding: "0.75rem 1.5rem", background: "#1F2937", border: "1px solid #374151", borderRadius: "0.5rem", color: "#9CA3AF", cursor: "pointer" }}>
-              ← Back
+              <span aria-hidden="true">←</span> Back
             </button>
             <button
               onClick={() => setStep(4)}
@@ -574,7 +574,7 @@ export default function CreateAgentPage() {
               disabled={deployStatus !== "idle" && deployStatus !== "error"}
               style={{ padding: "0.75rem 1.5rem", background: "#1F2937", border: "1px solid #374151", borderRadius: "0.5rem", color: "#9CA3AF", cursor: "pointer" }}
             >
-              ← Back
+              <span aria-hidden="true">←</span> Back
             </button>
             <button
               onClick={handleDeploy}

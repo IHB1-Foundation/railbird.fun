@@ -134,6 +134,17 @@ async function main() {
   const operatorKey = validatePrivateKey("OPERATOR_PRIVATE_KEY");
 
   // Load configuration from environment
+  // N-4: per-agent evolution config from env vars
+  const evolutionConfig: Record<string, number> = {};
+  const evalWindow = parsePositiveInt("EVOLUTION_EVAL_WINDOW", 0);
+  if (evalWindow > 0) evolutionConfig.evalWindowSize = evalWindow;
+  const mutationStdDev = parseBoundedFloat("EVOLUTION_MUTATION_STD_DEV", -1);
+  if (mutationStdDev >= 0) evolutionConfig.mutationStdDev = mutationStdDev;
+  const minHands = parsePositiveInt("EVOLUTION_MIN_HANDS", 0);
+  if (minHands > 0) evolutionConfig.minHandsBeforeEval = minHands;
+
+  const gtoFeedbackWindowSize = parsePositiveInt("GTO_FEEDBACK_WINDOW_SIZE", 20);
+
   const config = {
     rpcUrl,
     privateKey: operatorKey,
@@ -145,6 +156,8 @@ async function main() {
     strategy,
     vectorStore,
     playerRegistryAddress: process.env.PLAYER_REGISTRY_ADDRESS as `0x${string}` | undefined,
+    ...(Object.keys(evolutionConfig).length > 0 ? { evolutionConfig } : {}),
+    gtoFeedbackWindowSize,
   };
 
   const maxHands = parseInt(optionalEnv("MAX_HANDS", "0"));
@@ -171,6 +184,8 @@ async function main() {
     ...(geminiModel ? { geminiModel } : {}),
     ...(persona ? { persona: persona.id } : {}),
     maxHands: maxHands || "unlimited",
+    ...(Object.keys(evolutionConfig).length > 0 ? { evolutionConfig } : {}),
+    gtoFeedbackWindowSize,
   }, 'Configuration');
 
   // Create and run bot

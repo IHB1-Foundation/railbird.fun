@@ -17,6 +17,7 @@ import { StrategyOptimizer } from "./evolution/optimizer.js";
 import type { HandResult, PerformanceScore, StrategyParams } from "./evolution/types.js";
 import { DEFAULT_EVOLUTION_CONFIG } from "./evolution/types.js";
 import { DeviationAnalyzer } from "./gto/deviation.js";
+import type { DeviationResult } from "./gto/deviation.js";
 import type { FacingAction } from "./gto/ranges.js";
 import { OpponentTracker } from "./opponent/tracker.js";
 import { CounterStrategyAdvisor } from "./opponent/counter.js";
@@ -36,6 +37,10 @@ export interface AgentBotConfig {
   vectorStore?: VectorStore;
   /** PlayerRegistry contract address for on-chain strategy registration. */
   playerRegistryAddress?: `0x${string}`;
+  /** Per-agent evolution tuning (overrides DEFAULT_EVOLUTION_CONFIG). */
+  evolutionConfig?: Partial<import("./evolution/types.js").EvolutionConfig>;
+  /** Number of preflop decisions to collect before applying GTO feedback (default: 20). */
+  gtoFeedbackWindowSize?: number;
 }
 
 export interface BotStats {
@@ -94,10 +99,14 @@ export class AgentBot {
 
   // T-1103: Self-play evolution state
   private evolutionEvaluator = new PerformanceEvaluator();
-  private evolutionOptimizer = new StrategyOptimizer(DEFAULT_EVOLUTION_CONFIG);
+  private evolutionOptimizer: StrategyOptimizer;
+  private effectiveEvolutionConfig: import("./evolution/types.js").EvolutionConfig;
   private handResultWindow: HandResult[] = [];
   private prevPerformanceScore: PerformanceScore | null = null;
   private evolutionTotalHandsEvaluated: number = 0;
+
+  // N-3: GTO deviation feedback window
+  private gtoDeviationWindow: DeviationResult[] = [];
 
   // T-R3-02: Escalating logging for persistent hole card failures
   /** Whether we've already emitted the first circuit-open WARN (suppresses duplicates). */
@@ -135,6 +144,9 @@ export class AgentBot {
 
   constructor(config: AgentBotConfig) {
     this.config = config;
+    // N-4: per-agent evolution config (merge with defaults)
+    this.effectiveEvolutionConfig = { ...DEFAULT_EVOLUTION_CONFIG, ...config.evolutionConfig };
+    this.evolutionOptimizer = new StrategyOptimizer(this.effectiveEvolutionConfig);
     this.chainClient = new ChainClient({
       rpcUrl: config.rpcUrl,
       privateKey: config.privateKey,
@@ -442,8 +454,8 @@ export class AgentBot {
           this.handResultWindow.push(handResult);
           // Run evolution every evalWindowSize hands, after minHandsBeforeEval
           if (
-            this.handResultWindow.length >= DEFAULT_EVOLUTION_CONFIG.evalWindowSize &&
-            this.stats.handsPlayed >= DEFAULT_EVOLUTION_CONFIG.minHandsBeforeEval
+            this.handResultWindow.length >= this.effectiveEvolutionConfig.evalWindowSize &&
+            this.stats.handsPlayed >= this.effectiveEvolutionConfig.minHandsBeforeEval
           ) {
             this.runEvolutionAsync(this.handResultWindow.splice(0)).catch((err: unknown) => {
               logger.warn({ err: err instanceof Error ? err.message : String(err) }, "Evolution run failed (non-fatal)");
@@ -785,6 +797,12 @@ export class AgentBot {
               severity: deviation.severity,
             };
             logger.debug({ gtoPos, aiAction, gtoAction: deviation.gtoAction, isDeviation: deviation.isDeviation, severity: deviation.severity.toFixed(2) }, "[GTO] Deviation analysis");
+            // N-3: accumulate deviations for feedback loop
+            this.gtoDeviationWindow.push(deviation);
+            const feedbackWindowSize = this.config.gtoFeedbackWindowSize ?? 20;
+            if (this.gtoDeviationWindow.length >= feedbackWindowSize) {
+              this.applyGTOFeedback(this.gtoDeviationWindow.splice(0));
+            }
           } catch (err) {
             logger.debug({ err: err instanceof Error ? err.message : String(err) }, "[GTO] Deviation analysis failed (non-fatal)");
           }
@@ -838,6 +856,76 @@ export class AgentBot {
   }
 
   /**
+   * N-3: Apply GTO deviation feedback to strategy persona params.
+   * Nudges aggression/tightness toward GTO-aligned play based on observed deviations.
+   * Small corrections (proportional to deviation rate, max ±0.05) to avoid oscillation.
+   */
+  private applyGTOFeedback(window: DeviationResult[]): void {
+    const strat = this.strategy as unknown as {
+      persona?: { id: string; aggression: number; tightness: number; bluffFrequency: number };
+    };
+    const persona = strat.persona;
+    if (!persona || window.length === 0) return;
+
+    const agg = this.gtoAnalyzer.getAggregate(window);
+    const n = window.length;
+
+    // Rate of each deviation type
+    const tighterRate = (agg.deviationsByType.tighter ?? 0) / n;
+    const looserRate  = (agg.deviationsByType.looser  ?? 0) / n;
+    const passiveRate = (agg.deviationsByType.passive ?? 0) / n;
+    const aggressiveRate = (agg.deviationsByType.aggressive ?? 0) / n;
+
+    // Correction coefficient: scale up to 0.05 when 50%+ of decisions are a given deviation type
+    const MAX_NUDGE = 0.05;
+    const THRESHOLD = 0.15; // only nudge if deviation rate exceeds this
+
+    let aggressionDelta = 0;
+    let tightnessDelta = 0;
+
+    if (looserRate > THRESHOLD) {
+      // Too loose → tighten up
+      tightnessDelta += Math.min(looserRate * MAX_NUDGE * 2, MAX_NUDGE);
+    }
+    if (tighterRate > THRESHOLD) {
+      // Too tight → loosen up
+      tightnessDelta -= Math.min(tighterRate * MAX_NUDGE * 2, MAX_NUDGE);
+    }
+    if (passiveRate > THRESHOLD) {
+      // Too passive → be more aggressive
+      aggressionDelta += Math.min(passiveRate * MAX_NUDGE * 2, MAX_NUDGE);
+    }
+    if (aggressiveRate > THRESHOLD) {
+      // Too aggressive → calm down
+      aggressionDelta -= Math.min(aggressiveRate * MAX_NUDGE * 2, MAX_NUDGE);
+    }
+
+    if (aggressionDelta === 0 && tightnessDelta === 0) {
+      logger.debug(
+        { conformance: agg.conformance.toFixed(1), avgSeverity: agg.avgSeverity.toFixed(2) },
+        "[GTO-FEEDBACK] No adjustment needed"
+      );
+      return;
+    }
+
+    const prevAggression = persona.aggression;
+    const prevTightness = persona.tightness;
+    persona.aggression = Math.max(0.1, Math.min(0.95, persona.aggression + aggressionDelta));
+    persona.tightness  = Math.max(0.1, Math.min(0.95, persona.tightness  + tightnessDelta));
+
+    logger.info(
+      {
+        conformance: agg.conformance.toFixed(1),
+        avgSeverity: agg.avgSeverity.toFixed(2),
+        deviations: agg.deviationsByType,
+        aggression: `${prevAggression.toFixed(3)}→${persona.aggression.toFixed(3)}`,
+        tightness:  `${prevTightness.toFixed(3)}→${persona.tightness.toFixed(3)}`,
+      },
+      "[GTO-FEEDBACK] Strategy adjusted toward GTO"
+    );
+  }
+
+  /**
    * T-1103: Run one evolution step asynchronously (non-blocking).
    * Evaluates the current hand window, optionally updates persona params,
    * and registers the new strategy on-chain if improved.
@@ -865,7 +953,7 @@ export class AgentBot {
       const { newParams, prevParams, delta } = result;
       logger.info(
         {
-          version: `v${this.evolutionTotalHandsEvaluated / DEFAULT_EVOLUTION_CONFIG.evalWindowSize}`,
+          version: `v${this.evolutionTotalHandsEvaluated / this.effectiveEvolutionConfig.evalWindowSize}`,
           aggression: `${prevParams.aggression.toFixed(3)}→${newParams.aggression.toFixed(3)}`,
           tightness: `${prevParams.tightness.toFixed(3)}→${newParams.tightness.toFixed(3)}`,
           bluffFrequency: `${prevParams.bluffFrequency.toFixed(3)}→${newParams.bluffFrequency.toFixed(3)}`,

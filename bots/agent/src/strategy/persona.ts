@@ -89,3 +89,41 @@ export function getPersona(id: string): PersonaConfig | undefined {
 export function getAllPersonas(): PersonaConfig[] {
   return PERSONAS;
 }
+
+function clamp(value: number): number {
+  return Math.max(0, Math.min(1, value));
+}
+
+/**
+ * Create a custom persona from a partial config.
+ * Clamps all numeric parameters to [0, 1].
+ * Auto-generates systemPromptOverride if not provided.
+ */
+export function createCustomPersona(config: Partial<PersonaConfig> & { name: string }): PersonaConfig {
+  const aggression = clamp(config.aggression ?? 0.5);
+  const tightness = clamp(config.tightness ?? 0.5);
+  const bluffFrequency = clamp(config.bluffFrequency ?? 0.3);
+  const positionAwareness = clamp(config.positionAwareness ?? 0.7);
+
+  const systemPromptOverride = config.systemPromptOverride ?? (
+    `You are a custom poker agent named "${config.name}". ` +
+    `Aggression level: ${aggression.toFixed(2)} (0=passive, 1=extremely aggressive). ` +
+    `Tightness: ${tightness.toFixed(2)} (0=plays many hands, 1=only premium hands). ` +
+    `Bluff frequency: ${bluffFrequency.toFixed(2)} (0=never bluffs, 1=bluffs frequently). ` +
+    `Position awareness: ${positionAwareness.toFixed(2)} (0=ignores position, 1=fully position-aware). ` +
+    `Adapt your play style to match these parameters precisely.`
+  );
+
+  return {
+    id: `custom_${config.name.toLowerCase().replace(/\s+/g, "_")}`,
+    name: config.name,
+    description: config.description ?? `Custom persona: ${config.name}`,
+    aggression,
+    tightness,
+    bluffFrequency,
+    positionAwareness,
+    systemPromptOverride,
+    emoji: config.emoji ?? "🤖",
+    colorAccent: config.colorAccent ?? "#6B7280",
+  };
+}

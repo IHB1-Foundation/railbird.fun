@@ -72,6 +72,41 @@ export interface PersonaSummary {
 }
 
 /**
+ * Fleet agent configuration — passed to fleet service when creating an agent.
+ */
+export interface FleetAgentConfig {
+  ownerAddress: string;
+  tableAddress: string;
+  personaConfig: {
+    name: string;
+    emoji: string;
+    colorAccent: string;
+    aggression: number;
+    tightness: number;
+    bluffFrequency: number;
+    positionAwareness: number;
+    systemPrompt?: string;
+  };
+  systemPrompt?: string;
+}
+
+/**
+ * Fleet agent status returned by fleet API.
+ */
+export interface FleetAgentStatus {
+  agentId: string;
+  operatorAddress: string;
+  tableAddress: string;
+  ownerAddress: string;
+  personaName: string;
+  personaEmoji: string;
+  status: "starting" | "live" | "stopped" | "crashed";
+  pid?: number;
+  restarts: number;
+  createdAt: number;
+}
+
+/**
  * Environment variable names for chain config
  */
 export const ENV_VARS = {

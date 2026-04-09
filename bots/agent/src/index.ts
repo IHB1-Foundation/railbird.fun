@@ -3,7 +3,7 @@
 
 import { AgentBot } from "./bot.js";
 import { GeminiStrategy, SimpleStrategy, type Strategy } from "./strategy/index.js";
-import { getPersona } from "./strategy/persona.js";
+import { getPersona, createCustomPersona } from "./strategy/persona.js";
 import type { PersonaConfig } from "./strategy/persona.js";
 import { VectorStore } from "./rag/vectorStore.js";
 import {
@@ -39,6 +39,26 @@ function parseDecisionEngine(): DecisionEngine {
 }
 
 function loadPersona(): PersonaConfig | undefined {
+  // AGENT_PERSONA_JSON takes priority over AGENT_PERSONA (preset ID)
+  const personaJson = process.env.AGENT_PERSONA_JSON?.trim();
+  if (personaJson) {
+    try {
+      const raw = JSON.parse(personaJson) as Partial<PersonaConfig> & { name?: string };
+      if (!raw.name) {
+        logger.warn({}, 'AGENT_PERSONA_JSON missing required field "name" — ignoring');
+      } else {
+        const persona = createCustomPersona(raw as Partial<PersonaConfig> & { name: string });
+        logger.info(
+          { name: persona.name, aggression: persona.aggression, tightness: persona.tightness },
+          '[FLEET] Using custom persona'
+        );
+        return persona;
+      }
+    } catch (err) {
+      logger.warn({ err: err instanceof Error ? err.message : String(err) }, 'Failed to parse AGENT_PERSONA_JSON — ignoring');
+    }
+  }
+
   const personaId = process.env.AGENT_PERSONA?.trim().toLowerCase();
   if (!personaId) return undefined;
   const persona = getPersona(personaId);

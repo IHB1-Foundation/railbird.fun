@@ -62,6 +62,8 @@ export default function RootLayout({
             <footer className="app-footer">
               <nav className="footer-nav" aria-label="Footer navigation">
                 <a href="/">Home</a>
+                <a href="/live">Live</a>
+                <a href="/create-agent">Create Agent</a>
                 <a href="/evolution">Evolution</a>
                 <a href="/leaderboard">Leaderboard</a>
                 <a href="/betting">Rail Bets</a>

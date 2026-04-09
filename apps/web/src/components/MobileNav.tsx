@@ -7,6 +7,8 @@ import styles from "@/app/layout.module.css";
 
 const NAV_LINKS = [
   { href: "/", label: "Tables" },
+  { href: "/live", label: "LIVE 🔴" },
+  { href: "/create-agent", label: "Create Agent" },
   { href: "/evolution", label: "Evolution" },
   { href: "/betting", label: "Rail Bets" },
   { href: "/leaderboard", label: "Leaderboard" },

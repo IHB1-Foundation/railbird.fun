@@ -146,6 +146,7 @@ export default function CreateAgentPage() {
   const [deployStatus, setDeployStatus] = useState<DeployStatus>("idle");
   const [deployedAgentId, setDeployedAgentId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [nameError, setNameError] = useState<string | null>(null);
 
   // Fetch tables for step 3
   useEffect(() => {
@@ -310,19 +311,29 @@ export default function CreateAgentPage() {
             <div>
               {/* Name */}
               <div style={{ marginBottom: "1rem" }}>
-                <label style={{ display: "block", fontSize: "0.875rem", color: "#9CA3AF", marginBottom: "0.25rem" }}>
+                <label htmlFor="agent-name" style={{ display: "block", fontSize: "0.875rem", color: "#9CA3AF", marginBottom: "0.25rem" }}>
                   Agent Name (1–24 chars)
                 </label>
                 <input
+                  id="agent-name"
                   type="text" maxLength={24} value={persona.name}
-                  onChange={(e) => setPersona((p) => ({ ...p, name: e.target.value }))}
+                  onChange={(e) => { setPersona((p) => ({ ...p, name: e.target.value })); setNameError(null); }}
                   placeholder="e.g. Serpent"
+                  aria-invalid={!!nameError}
+                  aria-describedby={nameError ? "name-error" : undefined}
                   style={{
-                    width: "100%", background: "#1F2937", border: "1px solid #374151",
+                    width: "100%", background: "#1F2937",
+                    border: `1px solid ${nameError ? "var(--danger)" : "#374151"}`,
                     borderRadius: "0.5rem", padding: "0.5rem 0.75rem", color: "#F9FAFB",
                     fontSize: "1rem", boxSizing: "border-box",
+                    boxShadow: nameError ? "0 0 0 3px rgba(255,98,110,0.12)" : "none",
                   }}
                 />
+                {nameError && (
+                  <p id="name-error" role="alert" style={{ fontSize: "0.78rem", color: "var(--danger)", marginTop: "0.3rem" }}>
+                    {nameError}
+                  </p>
+                )}
               </div>
 
               {/* Presets */}
@@ -428,12 +439,17 @@ export default function CreateAgentPage() {
               ← Back
             </button>
             <button
-              onClick={() => setStep(3)}
-              disabled={!persona.name.trim()}
+              onClick={() => {
+                if (!persona.name.trim()) {
+                  setNameError("Agent name is required (1–24 characters).");
+                  return;
+                }
+                setStep(3);
+              }}
               style={{
-                flex: 1, padding: "0.75rem", background: persona.name.trim() ? "#8B5CF6" : "#374151",
+                flex: 1, padding: "0.75rem", background: "#8B5CF6",
                 border: "none", borderRadius: "0.5rem", color: "#fff",
-                cursor: persona.name.trim() ? "pointer" : "not-allowed", fontWeight: 600,
+                cursor: "pointer", fontWeight: 600,
               }}
             >
               Select Table →

@@ -743,7 +743,7 @@ export class EventListener {
         "Seeded table snapshot from chain"
       );
     } catch (error) {
-      logger.error({ err: error }, "Failed to seed table snapshot from chain (continuing with log replay)");
+      logger.warn({ err: error }, "Failed to seed table snapshot from chain (continuing with log replay)");
     }
   }
 }

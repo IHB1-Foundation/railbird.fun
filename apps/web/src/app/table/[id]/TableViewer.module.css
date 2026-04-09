@@ -668,6 +668,30 @@
   background: rgba(255, 98, 110, 0.18);
 }
 
+/* Tablet layout (D-36): 768–1024px */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .seatsOrbit {
+    position: static;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.6rem;
+    margin-top: 1rem;
+  }
+  .seatNode {
+    position: static;
+    transform: none;
+  }
+  .tableSurface {
+    aspect-ratio: auto;
+    padding: 1rem;
+  }
+  .tableCenter {
+    position: static;
+    transform: none;
+    width: 100%;
+  }
+}
+
 @media (max-width: 840px) {
   .tableHeader,
   .ownerBanner {

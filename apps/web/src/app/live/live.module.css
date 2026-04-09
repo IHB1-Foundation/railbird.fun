@@ -460,7 +460,20 @@
   margin-bottom: var(--space-2);
 }
 
-/* Mobile responsive */
+/* Tablet layout (D-36): 768–1024px — narrow sidebar */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .liveBody {
+    grid-template-columns: 1fr 260px;
+  }
+  .mainPane {
+    padding: 1rem;
+  }
+  .sidePane {
+    padding: 0.75rem;
+  }
+}
+
+/* Mobile layout */
 @media (max-width: 768px) {
   .liveBody {
     grid-template-columns: 1fr;

@@ -24,6 +24,14 @@
   color: #101324;
 }
 
+@media (max-width: 480px) {
+  .pokerCard {
+    width: 1.7rem;
+    height: 2.3rem;
+    font-size: 0.72rem;
+  }
+}
+
 .pokerCard.unknown {
   background:
     repeating-linear-gradient(

@@ -26,7 +26,9 @@
     "Liberation Mono", "Courier New", monospace;
 
   /* Missing utility tokens */
-  --text-muted: #6b7280;
+  /* D-67: #6b7280 gives ~4.79:1 contrast on --background — just above WCAG AA 4.5:1.
+     Raised to #7c84a2 for improved small-text legibility. */
+  --text-muted: #7c84a2;
   --border-color: rgba(31, 41, 55, 0.9);
 
   /* Border-radius scale (D-5) */

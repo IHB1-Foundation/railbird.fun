@@ -107,7 +107,7 @@
 }
 .commentaryTime {
   font-size: 0.7rem;
-  color: #4b5563;
+  color: var(--muted);
   margin-right: 0.375rem;
 }
 
@@ -290,7 +290,7 @@
   align-items: center;
   justify-content: center;
   min-height: 400px;
-  color: #4b5563;
+  color: var(--muted);
   text-align: center;
   gap: 1rem;
 }
@@ -334,7 +334,7 @@
 .headerBack {
   margin-left: auto;
   font-size: var(--text-xs);
-  color: #4b5563;
+  color: var(--muted);
   text-decoration: none;
 }
 
@@ -449,7 +449,7 @@
 
 .seatFoldedText {
   font-size: 0.65rem;
-  color: #4b5563;
+  color: var(--muted);
 }
 
 /* Commentary label (D-22) */

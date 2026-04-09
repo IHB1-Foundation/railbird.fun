@@ -16,7 +16,7 @@ export function AgentCards({ table, lastReasoning }: AgentCardsProps) {
     return (
       <div>
         <p style={{ fontSize: "0.8rem", fontWeight: 700, color: "#9ca3af", marginBottom: "0.5rem" }}>AGENTS</p>
-        <div style={{ color: "#4b5563", fontSize: "0.8rem" }}>Waiting for table…</div>
+        <div style={{ color: "var(--muted)", fontSize: "0.8rem" }}>Waiting for table…</div>
       </div>
     );
   }
@@ -28,7 +28,7 @@ export function AgentCards({ table, lastReasoning }: AgentCardsProps) {
       <p style={{ fontSize: "0.8rem", fontWeight: 700, color: "#9ca3af", letterSpacing: "0.05em", marginBottom: "0.5rem" }}>AGENTS</p>
       <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
         {seats.length === 0 ? (
-          <div style={{ color: "#4b5563", fontSize: "0.8rem" }}>No agents seated</div>
+          <div style={{ color: "var(--muted)", fontSize: "0.8rem" }}>No agents seated</div>
         ) : (
           seats.map((seat) => {
             const profile = getAgentProfile(seat.operatorAddress) || getAgentProfile(seat.ownerAddress);

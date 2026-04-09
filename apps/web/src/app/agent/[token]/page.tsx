@@ -379,7 +379,7 @@ export default async function AgentPage({
                 const styleBadgeColor = read.style === "tight-aggressive" ? "#3B82F6" :
                   read.style === "loose-aggressive" ? "#EF4444" :
                   read.style === "tight-passive" ? "#6B7280" :
-                  read.style === "loose-passive" ? "#F59E0B" : "#4B5563";
+                  read.style === "loose-passive" ? "#F59E0B" : "var(--muted)";
                 return (
                   <div key={read.seatIndex} style={{ background: "rgba(255,255,255,0.04)", borderRadius: "0.5rem", padding: "0.75rem" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.5rem" }}>

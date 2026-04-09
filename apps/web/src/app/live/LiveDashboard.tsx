@@ -376,7 +376,7 @@ export function LiveDashboard() {
             <button
               ref={showdownCloseRef}
               onClick={() => setShowShowdown(false)}
-              style={{ marginTop: "1rem", background: "none", border: "none", color: "#4b5563", fontSize: "0.7rem", cursor: "pointer", textDecoration: "underline" }}
+              style={{ marginTop: "1rem", background: "none", border: "none", color: "var(--muted)", fontSize: "0.7rem", cursor: "pointer", textDecoration: "underline" }}
               autoFocus
               aria-label="Dismiss showdown result"
             >

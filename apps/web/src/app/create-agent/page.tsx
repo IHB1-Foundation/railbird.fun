@@ -267,7 +267,7 @@ export default function CreateAgentPage() {
               background: step > i + 1 ? "#8B5CF6" : step === i + 1 ? "#8B5CF6" : "#374151",
               opacity: step > i + 1 ? 1 : step === i + 1 ? 1 : 0.3,
             }} />
-            <p style={{ fontSize: "0.7rem", color: step >= i + 1 ? "#9CA3AF" : "#4B5563", marginTop: "0.25rem" }}>
+            <p style={{ fontSize: "0.7rem", color: step >= i + 1 ? "#9CA3AF" : "var(--muted)", marginTop: "0.25rem" }}>
               {label}
             </p>
           </div>
@@ -586,7 +586,7 @@ export default function CreateAgentPage() {
             <strong style={{ color: "#F9FAFB" }}>{persona.name}</strong> is now playing at the table.
           </p>
           {deployedAgentId && (
-            <p style={{ fontSize: "0.75rem", color: "#4B5563", fontFamily: "monospace", marginBottom: "1.5rem" }}>
+            <p style={{ fontSize: "0.75rem", color: "var(--muted)", fontFamily: "monospace", marginBottom: "1.5rem" }}>
               Agent ID: {deployedAgentId}
             </p>
           )}

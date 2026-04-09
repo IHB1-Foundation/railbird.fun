@@ -782,6 +782,37 @@ h5 {
   }
 }
 
+/* New list item entrance animation (D-39) */
+@keyframes list-item-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Utility class: animate newly added list items */
+.list-item-new {
+  animation: list-item-in 0.25s ease-out both;
+}
+
+/* Interaction patterns (D-41):
+   1. Button: brightness filter (already on .btn)
+   2. Card hover: border glow
+   3. Link: color shift (already on a)
+*/
+.card-hover {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+.card-hover:hover {
+  border-color: var(--card-border-strong);
+  box-shadow: var(--shadow-glow), var(--shadow-lg);
+  transform: translateY(-2px);
+}
+
 @media (max-width: 640px) {
   .app-shell {
     padding-inline: 0.75rem;

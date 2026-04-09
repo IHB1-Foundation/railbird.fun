@@ -24,6 +24,17 @@ export interface GTODeviationData {
   severity: number;
 }
 
+export interface DecisionBreakdown {
+  handStrength: string;
+  potOdds: string;
+  evEstimate: string;
+  opponentRead: string;
+  keyFactor: string;
+  confidence: number;
+  gtoDeviation?: { action: string; severity: number; explanation: string };
+  counterStrategy?: string;
+}
+
 export interface SubmitReasoningParams {
   tableAddress: string;
   handId: string;
@@ -37,6 +48,8 @@ export interface SubmitReasoningParams {
   gtoDeviation?: GTODeviationData;
   /** T-1203: Opponent model read at time of decision */
   opponentRead?: { seatIndex: number; profile: unknown; counterAdvice: unknown };
+  /** T-1205: Deep decision breakdown for Why? explainability */
+  breakdown?: DecisionBreakdown;
 }
 
 export interface NonceResponse {

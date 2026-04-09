@@ -5,6 +5,8 @@ import { formatChips, formatTime, shortenAddress, cn, ZERO_ADDRESS } from "@/lib
 import { getAgentProfile } from "@/lib/agentProfiles";
 import { ACTION_LABELS } from "@/lib/types";
 import type { TableResponse, ReasoningFactors } from "@/lib/types";
+import { DecisionBreakdown } from "@/components/DecisionBreakdown";
+import type { DecisionBreakdownData } from "@/lib/types";
 import styles from "./TableViewer.module.css";
 
 const VALID_ACTION_TYPES = new Set(Object.keys(ACTION_LABELS));
@@ -95,6 +97,7 @@ function ActionItem({
   actionIdx: number;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [whyExpanded, setWhyExpanded] = useState(false);
   const [verifyExpanded, setVerifyExpanded] = useState(false);
   const safeActionType = sanitizeActionType(action.actionType);
   const safeSeatIndex = sanitizeSeatIndex(action.seatIndex, maxSeats);
@@ -106,6 +109,8 @@ function ActionItem({
   const actionLabel = ACTION_LABELS[safeActionType] ?? "Unknown";
   const colorClass = actionColorClass(safeActionType);
   const hasReasoning = !!action.reasoning;
+  const hasBreakdown = !!(action as { breakdown?: DecisionBreakdownData }).breakdown;
+  const breakdown = (action as { breakdown?: DecisionBreakdownData }).breakdown;
   const isAiAction = hasReasoning;
 
   return (
@@ -118,8 +123,28 @@ function ActionItem({
               {actionPrefix(safeActionType)}{actionLabel}
               {action.amount !== "0" && ` ${formatChips(action.amount)} ${chipSymbol}`}
             </span>
+            {/* T-1205: Confidence badge (always visible when breakdown exists) */}
+            {breakdown && (
+              <DecisionBreakdown data={breakdown} mode="compact" />
+            )}
           </span>
           <div className={styles.actionBadges}>
+            {/* T-1205: Why? button */}
+            {hasBreakdown && (
+              <button
+                style={{
+                  fontSize: "0.7rem", fontWeight: 700, background: whyExpanded ? "rgba(139,92,246,0.3)" : "rgba(139,92,246,0.1)",
+                  border: "1px solid rgba(139,92,246,0.4)", borderRadius: "0.25rem",
+                  color: "#c4b5fd", padding: "0.1rem 0.4rem", cursor: "pointer",
+                }}
+                onClick={() => setWhyExpanded((v) => !v)}
+                aria-expanded={whyExpanded}
+                aria-label="Show decision breakdown"
+                title="Why did the AI make this decision?"
+              >
+                Why?
+              </button>
+            )}
             {hasReasoning && (
               <button
                 className={styles.reasoningBadge}
@@ -152,6 +177,10 @@ function ActionItem({
           <span className={styles.actionActor}>
             {shortenAddress(seat.ownerAddress)}
           </span>
+        )}
+        {/* T-1205: Decision breakdown panel */}
+        {whyExpanded && breakdown && (
+          <DecisionBreakdown data={breakdown} mode="expanded" />
         )}
         {expanded && action.reasoning && (
           <ReasoningPanel reasoning={action.reasoning} factors={action.factors} />

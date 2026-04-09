@@ -33,11 +33,27 @@ export interface ReasoningFactors {
   riskAssessment?: string; // e.g., "medium risk — flush draw possible on board"
 }
 
+/**
+ * T-1205: Deep decision breakdown for explainability.
+ * Parsed from Gemini structured output.
+ */
+export interface DecisionBreakdown {
+  handStrength: string;    // e.g., "Top pair with ace kicker — top 15% of hands"
+  potOdds: string;         // e.g., "Need 25% equity to call. Estimated equity: 62%"
+  evEstimate: string;      // e.g., "+EV call: risking 200 to win 800"
+  opponentRead: string;    // e.g., "Opponent's check suggests weakness or slow-play"
+  keyFactor: string;       // The single most important factor
+  confidence: number;      // 0–100
+  gtoDeviation?: { action: string; severity: number; explanation: string };
+  counterStrategy?: string;
+}
+
 export interface ActionDecision {
   action: Decision;
   raiseAmount?: bigint;         // Only for RAISE
   reasoning?: string;           // Natural language explanation of the decision
   factors?: ReasoningFactors;   // Structured reasoning factors
+  breakdown?: DecisionBreakdown; // T-1205: Deep explainability breakdown
 }
 
 export type MaybePromise<T> = T | Promise<T>;

@@ -47,6 +47,17 @@ export interface ReasoningFactors {
   riskAssessment?: string;
 }
 
+export interface DecisionBreakdownData {
+  handStrength: string;
+  potOdds: string;
+  evEstimate: string;
+  opponentRead: string;
+  keyFactor: string;
+  confidence: number;
+  gtoDeviation?: { action: string; severity: number; explanation: string };
+  counterStrategy?: string;
+}
+
 export interface ActionResponse {
   seatIndex: number;
   actionType: string;
@@ -58,6 +69,8 @@ export interface ActionResponse {
   timestamp: string;
   reasoning?: string;
   factors?: ReasoningFactors;
+  /** T-1205: Deep decision breakdown for Why? button */
+  breakdown?: DecisionBreakdownData;
   /** True when the AI decision was verified on-chain via DecisionRevealed event. */
   verified?: boolean;
   /** Transaction hash of the revealDecision() call, if verified. */

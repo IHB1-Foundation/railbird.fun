@@ -2,6 +2,7 @@ import { Decision } from "./types.js";
 import type {
   ActionDecision,
   DecisionContext,
+  DecisionBreakdown,
   HoleCards,
   ReasoningFactors,
   Strategy,
@@ -29,6 +30,7 @@ interface GeminiRawDecision {
   raiseTarget?: unknown;
   reasoning?: unknown;
   factors?: unknown;
+  breakdown?: unknown;
 }
 
 export interface GeminiStrategyConfig {
@@ -276,39 +278,42 @@ export class GeminiStrategy implements Strategy {
     // Extract factors (graceful — never blocks action decision)
     const factors = extractReasoningFactors(rawDecision.factors);
 
+    // T-1205: Extract decision breakdown
+    const breakdown = extractDecisionBreakdown(rawDecision.breakdown);
+
     if (!normalizedAction) {
-      return { ...fallback, reasoning, factors };
+      return { ...fallback, reasoning, factors, breakdown };
     }
 
     if (normalizedAction === Decision.CHECK) {
       return context.canCheck
-        ? { action: Decision.CHECK, reasoning, factors }
-        : { ...fallback, reasoning, factors };
+        ? { action: Decision.CHECK, reasoning, factors, breakdown }
+        : { ...fallback, reasoning, factors, breakdown };
     }
 
     if (normalizedAction === Decision.CALL) {
       if (context.canCheck) {
-        return { action: Decision.CHECK, reasoning, factors };
+        return { action: Decision.CHECK, reasoning, factors, breakdown };
       }
       return context.amountToCall > 0n
-        ? { action: Decision.CALL, reasoning, factors }
-        : { action: Decision.CHECK, reasoning, factors };
+        ? { action: Decision.CALL, reasoning, factors, breakdown }
+        : { action: Decision.CHECK, reasoning, factors, breakdown };
     }
 
     if (normalizedAction === Decision.FOLD) {
       return context.canCheck
-        ? { action: Decision.CHECK, reasoning, factors }
-        : { action: Decision.FOLD, reasoning, factors };
+        ? { action: Decision.CHECK, reasoning, factors, breakdown }
+        : { action: Decision.FOLD, reasoning, factors, breakdown };
     }
 
     const bounds = getRaiseBounds(context);
     if (!bounds.canRaise) {
-      return { ...fallback, reasoning, factors };
+      return { ...fallback, reasoning, factors, breakdown };
     }
 
     const requestedRaise = parseBigIntValue(rawDecision.raiseTarget ?? rawDecision.raiseAmount);
     if (requestedRaise === null) {
-      return { ...fallback, reasoning, factors };
+      return { ...fallback, reasoning, factors, breakdown };
     }
 
     const clampedRaise = clampBigInt(
@@ -321,6 +326,7 @@ export class GeminiStrategy implements Strategy {
       raiseAmount: clampedRaise,
       reasoning,
       factors,
+      breakdown,
     };
   }
 
@@ -439,8 +445,9 @@ export class GeminiStrategy implements Strategy {
       ...(ragSection ? [ragSection] : []),
       ...(context.opponentRead ? [context.opponentRead] : []),
       "Return exactly one compact JSON object and no extra text.",
-      'Format: {"action":"fold|check|call|raise","raiseTarget":"<integer in chip units>","reasoning":"<1-2 sentence explanation in English>","factors":{"handStrength":"...","potOdds":"...","position":"...","opponentRead":"...","sizing":"...","riskAssessment":"..."}}',
+      'Format: {"action":"fold|check|call|raise","raiseTarget":"<integer in chip units>","reasoning":"<1-2 sentence explanation in English>","factors":{"handStrength":"...","potOdds":"...","position":"...","opponentRead":"...","sizing":"...","riskAssessment":"..."},"breakdown":{"handStrength":"<description + percentile>","potOdds":"<calculation>","evEstimate":"<+EV or -EV reasoning>","opponentRead":"<what you think about opponent range>","keyFactor":"<single most important factor>","confidence":<0-100>}}',
       "Always include reasoning explaining WHY you chose this action, referencing specific game factors.",
+      "Always include a breakdown field with handStrength, potOdds, evEstimate, opponentRead, keyFactor, and confidence (0-100).",
       "Stay in character as described above.",
       "Rules: never output an illegal action; if unsure choose check or call.",
       "All-in rules: if amountToCall > stack, calling commits only your remaining stack.",
@@ -554,6 +561,24 @@ function describePosition(seatIndex: number, buttonSeat: number, numSeats: numbe
   if (relative === 2) return "BB";
   if (relative === numSeats - 1) return "CO";
   return `UTG+${relative - 3}`;
+}
+
+function extractDecisionBreakdown(raw: unknown): DecisionBreakdown | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const obj = raw as Record<string, unknown>;
+  const getString = (key: string): string | undefined =>
+    typeof obj[key] === "string" ? (obj[key] as string) : undefined;
+  const handStrength = getString("handStrength");
+  const potOdds = getString("potOdds");
+  const evEstimate = getString("evEstimate");
+  const opponentRead = getString("opponentRead");
+  const keyFactor = getString("keyFactor");
+  const confidenceRaw = obj["confidence"];
+  const confidence = typeof confidenceRaw === "number"
+    ? Math.max(0, Math.min(100, Math.round(confidenceRaw)))
+    : 50;
+  if (!handStrength || !potOdds || !evEstimate || !opponentRead || !keyFactor) return undefined;
+  return { handStrength, potOdds, evEstimate, opponentRead, keyFactor, confidence };
 }
 
 function extractReasoningFactors(raw: unknown): ReasoningFactors | undefined {

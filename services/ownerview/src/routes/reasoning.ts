@@ -31,6 +31,17 @@ export interface OpponentReadData {
   counterAdvice: unknown;
 }
 
+export interface DecisionBreakdown {
+  handStrength: string;
+  potOdds: string;
+  evEstimate: string;
+  opponentRead: string;
+  keyFactor: string;
+  confidence: number;
+  gtoDeviation?: { action: string; severity: number; explanation: string };
+  counterStrategy?: string;
+}
+
 export interface ReasoningEntry {
   tableAddress: string;
   handId: string;
@@ -44,6 +55,8 @@ export interface ReasoningEntry {
   gtoDeviation?: GTODeviationData;
   /** T-1203: Opponent model data at time of decision */
   opponentRead?: OpponentReadData;
+  /** T-1205: Deep decision breakdown for Why? explainability */
+  breakdown?: DecisionBreakdown;
   timestamp: number;
 }
 
@@ -95,7 +108,7 @@ export function createReasoningRoutes(): Router {
       return;
     }
 
-    const { gtoDeviation, opponentRead } = req.body as Record<string, unknown>;
+    const { gtoDeviation, opponentRead, breakdown } = req.body as Record<string, unknown>;
 
     const entry: ReasoningEntry = {
       tableAddress: tableAddress.toLowerCase(),
@@ -108,6 +121,7 @@ export function createReasoningRoutes(): Router {
       factors: factors && typeof factors === "object" ? (factors as ReasoningFactors) : undefined,
       gtoDeviation: gtoDeviation && typeof gtoDeviation === "object" ? (gtoDeviation as GTODeviationData) : undefined,
       opponentRead: opponentRead && typeof opponentRead === "object" ? (opponentRead as OpponentReadData) : undefined,
+      breakdown: breakdown && typeof breakdown === "object" ? (breakdown as DecisionBreakdown) : undefined,
       timestamp: Date.now(),
     };
 

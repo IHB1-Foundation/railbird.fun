@@ -803,6 +803,7 @@ export class AgentBot {
           factors: decision.factors,
           gtoDeviation,
           opponentRead: opponentReadData,
+          breakdown: decision.breakdown,
         };
         this.ownerviewClient.submitReasoning(reasoningParams).catch((err: unknown) => {
           logger.warn({ err: err instanceof Error ? err.message : String(err) }, "Failed to submit reasoning (non-fatal)");

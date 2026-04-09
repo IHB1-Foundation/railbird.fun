@@ -1022,3 +1022,32 @@ export async function getAgentStrategies(agent: string, limit = 50): Promise<Str
   );
   return result.rows;
 }
+
+// ============ Decision Audit (T-1206) ============
+
+export async function upsertDecisionAudit(
+  tableAddress: string,
+  handId: bigint,
+  seatIndex: number,
+  reasoningHash: string,
+  commitTxHash: string,
+  blockNumber: bigint
+): Promise<void> {
+  await query(
+    `INSERT INTO decision_audit
+       (table_address, hand_id, seat_index, reasoning_hash, commit_tx_hash, block_number)
+     VALUES ($1, $2, $3, $4, $5, $6)
+     ON CONFLICT (table_address, hand_id, seat_index) DO UPDATE SET
+       reasoning_hash = EXCLUDED.reasoning_hash,
+       commit_tx_hash = EXCLUDED.commit_tx_hash,
+       block_number = EXCLUDED.block_number`,
+    [
+      tableAddress.toLowerCase(),
+      handId.toString(),
+      seatIndex,
+      reasoningHash,
+      commitTxHash,
+      blockNumber.toString(),
+    ]
+  );
+}

@@ -161,6 +161,13 @@ export interface DecisionRevealedArgs {
   reasoning: string;
 }
 
+export interface DecisionCommittedArgs {
+  handId: bigint;
+  seatIndex: number;
+  commitHash: `0x${string}`;
+  reasoningHash: `0x${string}`;
+}
+
 export interface StrategyUpdatedArgs {
   agent: string;
   version: bigint;

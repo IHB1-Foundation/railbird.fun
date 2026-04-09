@@ -336,3 +336,69 @@ export async function getMetaShifts(period: "24h" | "7d" | "all" = "all"): Promi
     return null;
   }
 }
+
+// ============ T-1206: AI Audit Trail ============
+
+export interface AuditDecision {
+  seat_index: number;
+  reasoning_hash: string;
+  commit_tx_hash: string;
+  block_number: string;
+  verified: boolean;
+}
+
+export interface AuditTrailResponse {
+  tableAddress: string;
+  handId: string;
+  decisions: AuditDecision[];
+}
+
+export interface VerifyResult {
+  verified: boolean;
+  computedHash?: string;
+  onChainHash?: string;
+  reason?: string;
+}
+
+export async function getAuditTrail(tableAddress: string, handId: string): Promise<AuditTrailResponse | null> {
+  try {
+    return await fetchJson<AuditTrailResponse>(`/audit/${tableAddress}/${handId}`);
+  } catch {
+    return null;
+  }
+}
+
+export async function verifyDecision(params: {
+  tableAddress: string;
+  handId: string;
+  seatIndex: number;
+  reasoning: string;
+  factors?: unknown;
+  breakdown?: unknown;
+  opponentRead?: unknown;
+}): Promise<VerifyResult> {
+  const { tableAddress, handId, seatIndex, reasoning, factors, breakdown, opponentRead } = params;
+  const res = await fetch(`${INDEXER_BASE}/api/audit/verify`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ tableAddress, handId, seatIndex, reasoning, factors, breakdown, opponentRead }),
+  });
+  if (!res.ok) throw new Error(`Verify failed: ${res.status}`);
+  return res.json() as Promise<VerifyResult>;
+}
+
+export async function getAgentAuditSummary(tableAddress: string, handIds: string[]): Promise<{ verifiedCount: number; totalCount: number }> {
+  if (handIds.length === 0) return { verifiedCount: 0, totalCount: 0 };
+  let verifiedCount = 0;
+  let totalCount = 0;
+  // Check last 5 hands for performance
+  const recentHands = handIds.slice(-5);
+  await Promise.all(recentHands.map(async (handId) => {
+    const trail = await getAuditTrail(tableAddress, handId);
+    if (trail) {
+      totalCount += trail.decisions.length;
+      verifiedCount += trail.decisions.filter((d) => d.reasoning_hash && d.reasoning_hash !== "0x0000000000000000000000000000000000000000000000000000000000000000").length;
+    }
+  }));
+  return { verifiedCount, totalCount };
+}

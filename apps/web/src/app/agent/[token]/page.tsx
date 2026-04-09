@@ -3,7 +3,7 @@ import { Breadcrumb } from "@/components/Breadcrumb";
 import { Tooltip } from "@/components/Tooltip";
 import { AgentAvatar } from "@/components/AgentAvatar";
 import { ShareButton } from "@/components/ShareButton";
-import { getAgent, getAgentSnapshots, getAgentRebalances, getAgentHands, getTreasuryReasoningAll, getAgentStrategies, getAgentGtoStats, type RebalanceEventResponse, type TreasuryReasoningEntry, type StrategyHistoryEntry, type GTOStatsResponse, type EvolutionAgentTimeline } from "@/lib/api";
+import { getAgent, getAgentSnapshots, getAgentRebalances, getAgentHands, getTreasuryReasoningAll, getAgentStrategies, getAgentGtoStats, getAgentAuditSummary, type RebalanceEventResponse, type TreasuryReasoningEntry, type StrategyHistoryEntry, type GTOStatsResponse, type EvolutionAgentTimeline } from "@/lib/api";
 import { StrategyTimeline } from "@/components/charts/StrategyTimeline";
 import type { HandResponse } from "@/lib/types";
 
@@ -53,6 +53,7 @@ export default async function AgentPage({
   let strategyHistory: StrategyHistoryEntry[] = [];
   let gtoStats: GTOStatsResponse | null = null;
   let ragStats: AgentHealthRag | null = null;
+  let auditSummary: { verifiedCount: number; totalCount: number } = { verifiedCount: 0, totalCount: 0 };
   let error = null;
 
   try {
@@ -75,6 +76,11 @@ export default async function AgentPage({
       gtoStats = gto;
     } else {
       hands = await fetchHands;
+    }
+    // T-1206: Fetch audit summary for Verified AI badge
+    if (agent.tableAddress && hands.length > 0) {
+      const handIds = hands.map((h) => String(h.handId));
+      auditSummary = await getAgentAuditSummary(agent.tableAddress, handIds).catch(() => ({ verifiedCount: 0, totalCount: 0 }));
     }
   } catch (e) {
     error = e instanceof Error ? e.message : "Failed to load agent";
@@ -200,6 +206,20 @@ export default async function AgentPage({
         <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap" }}>
           <span className={styles.agentToken}>{token}</span>
           <ShareButton />
+          {auditSummary.totalCount >= 5 && (
+            <Link
+              href={`/verify?table=${agent.tableAddress ?? ""}`}
+              title={`${auditSummary.verifiedCount}/${auditSummary.totalCount} decisions have on-chain reasoning hashes`}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: "0.3rem",
+                background: "rgba(34,197,94,0.12)", color: "#22C55E",
+                border: "1px solid rgba(34,197,94,0.35)", borderRadius: "9999px",
+                padding: "0.25rem 0.65rem", fontSize: "0.72rem", fontWeight: 700, textDecoration: "none",
+              }}
+            >
+              ✓ Verified AI
+            </Link>
+          )}
           <Link
             href={`/betting?agent=${token}`}
             className="btn"

@@ -2126,10 +2126,21 @@ export const POKER_TABLE_ABI = [
     "name": "commitDecision",
     "inputs": [
       { "name": "seatIndex", "type": "uint8" },
-      { "name": "commitHash", "type": "bytes32" }
+      { "name": "commitHash", "type": "bytes32" },
+      { "name": "reasoningHash", "type": "bytes32" }
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "getReasoningHash",
+    "inputs": [
+      { "name": "handId", "type": "uint256" },
+      { "name": "seatIndex", "type": "uint8" }
+    ],
+    "outputs": [{ "name": "", "type": "bytes32" }],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -2160,7 +2171,8 @@ export const POKER_TABLE_ABI = [
     "inputs": [
       { "name": "handId", "type": "uint256", "indexed": true },
       { "name": "seatIndex", "type": "uint8", "indexed": true },
-      { "name": "commitHash", "type": "bytes32", "indexed": false }
+      { "name": "commitHash", "type": "bytes32", "indexed": false },
+      { "name": "reasoningHash", "type": "bytes32", "indexed": false }
     ],
     "anonymous": false
   },

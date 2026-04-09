@@ -3929,7 +3929,7 @@ contract DecisionCommitmentTest is Test {
     uint256 constant BIG_BLIND = 20;
     uint256 constant BUY_IN = 1000;
 
-    event DecisionCommitted(uint256 indexed handId, uint8 indexed seatIndex, bytes32 commitHash);
+    event DecisionCommitted(uint256 indexed handId, uint8 indexed seatIndex, bytes32 commitHash, bytes32 reasoningHash);
     event DecisionRevealed(uint256 indexed handId, uint8 indexed seatIndex, string action, string reasoning);
 
     function setUp() public {
@@ -3968,7 +3968,7 @@ contract DecisionCommitmentTest is Test {
         bytes32 commitHash = keccak256(abi.encode(handId, uint8(0), "raise", "strong hand", bytes32(uint256(42))));
 
         vm.expectEmit(true, true, false, true);
-        emit DecisionCommitted(handId, 0, commitHash);
+        emit DecisionCommitted(handId, 0, commitHash, bytes32(0));
 
         vm.prank(operator1);
         pokerTable.commitDecision(0, commitHash, bytes32(0));
@@ -4061,5 +4061,61 @@ contract DecisionCommitmentTest is Test {
 
         vm.expectRevert("No commitment found");
         pokerTable.revealDecision(handId, 0, "fold", "", bytes32(uint256(1)));
+    }
+
+    // ======== T-1206: Reasoning Hash Tests ========
+
+    function test_CommitDecision_StoresReasoningHash() public {
+        uint256 handId = pokerTable.currentHandId();
+        bytes32 commitHash = bytes32(uint256(1));
+        bytes32 rHash = keccak256(abi.encodePacked('{"reasoning":"fold weak","factors":{}}'));
+
+        vm.prank(operator1);
+        pokerTable.commitDecision(0, commitHash, rHash);
+
+        assertEq(pokerTable.getReasoningHash(handId, 0), rHash, "Reasoning hash should be stored");
+    }
+
+    function test_CommitDecision_ZeroReasoningHashAllowed() public {
+        uint256 handId = pokerTable.currentHandId();
+        bytes32 commitHash = bytes32(uint256(2));
+
+        vm.prank(operator1);
+        pokerTable.commitDecision(0, commitHash, bytes32(0));
+
+        assertEq(pokerTable.getReasoningHash(handId, 0), bytes32(0), "Zero reasoning hash should be stored as-is");
+    }
+
+    function test_CommitDecision_EmitsReasoningHashInEvent() public {
+        uint256 handId = pokerTable.currentHandId();
+        bytes32 commitHash = bytes32(uint256(3));
+        bytes32 rHash = keccak256(abi.encodePacked("my reasoning payload"));
+
+        vm.expectEmit(true, true, false, true);
+        emit DecisionCommitted(handId, 0, commitHash, rHash);
+
+        vm.prank(operator1);
+        pokerTable.commitDecision(0, commitHash, rHash);
+    }
+
+    function test_GetReasoningHash_ReturnsZeroBeforeCommit() public view {
+        uint256 handId = pokerTable.currentHandId();
+        assertEq(pokerTable.getReasoningHash(handId, 0), bytes32(0), "Should return zero before commit");
+    }
+
+    function test_CommitDecision_ReasoningHashOverwrittenOnRecommit() public {
+        uint256 handId = pokerTable.currentHandId();
+        bytes32 commitHash1 = bytes32(uint256(10));
+        bytes32 rHash1 = keccak256(abi.encodePacked("first reasoning"));
+        bytes32 commitHash2 = bytes32(uint256(11));
+        bytes32 rHash2 = keccak256(abi.encodePacked("second reasoning"));
+
+        vm.prank(operator1);
+        pokerTable.commitDecision(0, commitHash1, rHash1);
+
+        vm.prank(operator1);
+        pokerTable.commitDecision(0, commitHash2, rHash2);
+
+        assertEq(pokerTable.getReasoningHash(handId, 0), rHash2, "Second reasoning hash should overwrite first");
     }
 }

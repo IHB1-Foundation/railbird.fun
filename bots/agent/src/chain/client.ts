@@ -502,7 +502,8 @@ export class ChainClient {
    * commitHash = keccak256(abi.encode(handId, seatIndex, action, reasoning, salt))
    * Returns the tx hash, or null if the call reverts (non-fatal).
    */
-  async commitDecision(seatIndex: number, commitHash: `0x${string}`): Promise<string | null> {
+  async commitDecision(seatIndex: number, commitHash: `0x${string}`, reasoningHash?: `0x${string}`): Promise<string | null> {
+    const ZERO_BYTES32 = "0x0000000000000000000000000000000000000000000000000000000000000000" as `0x${string}`;
     return this.nonceManager.withNonce(async (nonce) => {
       const hash = await this.walletClient.writeContract({
         chain: this.chain,
@@ -510,7 +511,7 @@ export class ChainClient {
         address: this.pokerTableAddress,
         abi: POKER_TABLE_ABI,
         functionName: "commitDecision",
-        args: [seatIndex, commitHash],
+        args: [seatIndex, commitHash, reasoningHash ?? ZERO_BYTES32],
         nonce,
       });
       await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });

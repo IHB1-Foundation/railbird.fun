@@ -1,4 +1,4 @@
-# TICKET.md — AI Track Enhancement (Hackathon Submission Hardening)
+# TICKET.md — AI Track Final Push + User-Facing Platform (Hackathon Submission)
 
 ## Status legend
 - [ ] TODO
@@ -16,301 +16,442 @@
 
 ---
 
-# M11 — AI Track Enhancement (Hashkey Hackathon AI 트랙 강화)
+# M12 — AI Track Final Push: "AI Agent Platform"
 
-> **목표**: 기존 AI 파이프라인(Gemini 전략 + RAG + 온체인 커밋/리빌 + Treasury Advisor)을
-> "AI가 on-chain에서 플레이하고, 학습하고, 진화하고, 해설하고, 그 모든 과정이 검증 가능하다"
-> 수준으로 끌어올려 AI 트랙 1등을 노린다.
+> **Goal**: 기존 "AI가 플레이 + 학습 + 진화"에서
+> "**누구나 자기 AI 에이전트를 만들고, 관전자가 사이드벳을 걸고, AI가 상대를 읽고 적응하며, 모든 과정이 투명하다**"
+> 수준으로 확장하여 AI 트랙 1등을 확정한다.
 >
-> **우선순위 기준**: 데모 임팩트 × 구현 난이도 역수 (쉽고 임팩트 큰 것 먼저)
+> **Pitching Angle**: "PlayerCo — The first open platform where anyone creates autonomous AI poker agents
+> that learn, adapt to opponents, and manage their own treasury on-chain.
+> Spectators bet on AI matches in real-time. Every AI decision is explainable and verifiable."
+>
+> **Priority**: 데모 임팩트 × AI 깊이 × DeFi 크로스오버
 
 ---
 
-## T-1101 Real-time AI Game Commentary for Spectators (P0)
-- Status: [ ] TODO
-- Depends on: M9 (4-seat table), existing Gemini integration, existing WebSocket infra
-- Goal: AI가 포커 핸드를 실시간 해설하여 관전 경험을 극대화한다. "AI가 플레이도 하고, 해설도 한다."
+## T-1201 On-chain Side Betting — SideBetPool (P0)
+- Status: [x] DONE
+- Depends on: PokerTable settlement, ChipToken, existing localStorage betting UI
+- Goal: 관전자가 RCHIP으로 온체인 사이드벳을 걸 수 있게 한다. "AI 대결에 돈을 건다" — DeFi×AI 크로스오버.
 - Scope:
-    - **서비스**: `services/ownerview` 에 commentary 생성 + 저장 endpoint 추가
-    - **에이전트/킵퍼**: 매 액션 settle 후 (또는 street 전환 시) commentary 요청 → OwnerView에 저장
-    - **인덱서**: OwnerView commentary proxy endpoint + WebSocket `ai_commentary` 메시지 타입 추가
-    - **웹**: Table Viewer에 "AI Commentary" 패널 추가 (접이식, 실시간 스트리밍)
+    - **컨트랙트**: `SideBetPool.sol` — 핸드별 사이드벳 풀 관리
+    - **킵퍼**: 핸드 settle 후 자동 정산 트리거
+    - **인덱서**: 벳 이벤트 인덱싱 + API
+    - **웹**: 기존 localStorage BettingPanel → 온체인 업그레이드
 - Tasks:
-    1. `services/ownerview/src/routes/commentary.ts` 신규:
-        - `POST /commentary` — body: `{ tableAddress, handId, street, triggerAction, context }` → Gemini 호출 → 해설 생성 및 저장
-        - `GET /commentary?tableAddress=&handId=` — 해당 핸드의 전체 해설 리스트 반환
-        - Gemini 프롬프트: 포커 해설자 역할 — community cards, pot size, 액션 시퀀스, 각 에이전트 페르소나를 참조하여 1~3문장 해설 생성
-        - 인메모리 저장 (기존 reasoning store 패턴 동일)
-    2. `bots/keeper/src/bot.ts` 에 commentary trigger 로직 추가:
-        - 매 street 전환 시 (flop/turn/river dealt) + 핸드 종료 시 commentary 요청
-        - 컨텍스트: community cards, pot, 최근 액션 3개, 활성 시트 페르소나 이름
-        - 실패 시 무시 (liveness에 영향 없음)
-    3. `services/indexer/src/api/routes.ts` 에 proxy endpoint 추가:
-        - `GET /tables/:tableId/hands/:handId/commentary` → OwnerView `/commentary` proxy
-    4. `services/indexer/src/ws/types.ts` 에 `ai_commentary` 메시지 타입 추가:
-        - `{ type: "ai_commentary", tableId, timestamp, data: { handId, street, commentary, personaContext? } }`
-    5. `services/indexer/src/ws/server.ts` 에서 commentary 이벤트 브로드캐스트 로직 추가
-    6. `apps/web/src/app/table/[id]/page.tsx` 에 AI Commentary 패널 추가:
-        - 테이블 뷰어 하단 또는 사이드에 접이식 패널
-        - 실시간 commentary 메시지 수신 → 시간순 표시
-        - 각 commentary에 street 라벨 (Preflop/Flop/Turn/River/Settlement)
-        - 페르소나 이모지 + 이름 표시 (누가 관련된 해설인지)
+    1. `contracts/src/SideBetPool.sol` 신규:
+        - 상태:
+            - `mapping(bytes32 => Pool) public pools` — poolKey = `keccak256(tableAddress, handId)`
+            - `Pool` 구조체: `{ address table, uint256 handId, uint256 totalPool, uint8 winnerSeat, bool settled, uint256 createdAt }`
+            - `mapping(bytes32 => mapping(uint8 => uint256)) public seatTotals` — 시트별 총 베팅액
+            - `mapping(bytes32 => mapping(address => Bet[])) public userBets` — 유저별 베팅 내역
+            - `Bet` 구조체: `{ uint8 seatIndex, uint256 amount, bool claimed }`
+        - 함수:
+            - `placeBet(address table, uint256 handId, uint8 seatIndex)` payable:
+                - RCHIP `transferFrom` 으로 풀에 입금 (또는 native token)
+                - `require(!pools[key].settled, "Pool already settled")`
+                - 핸드가 BETTING_PRE ~ BETTING_RIVER 사이일 때만 가능 (PokerTable 상태 체크)
+                - 풀이 없으면 자동 생성
+                - 이벤트: `BetPlaced(poolKey, bettor, seatIndex, amount)`
+            - `settleBets(address table, uint256 handId)`:
+                - PokerTable에서 settlement 상태 + winner 확인
+                - `require(gameState == SETTLED || gameState == WAITING_FOR_SEATS)`
+                - winnerSeat 기록, settled = true
+                - 이벤트: `PoolSettled(poolKey, winnerSeat, totalPool)`
+            - `claimWinnings(address table, uint256 handId)`:
+                - 유저의 winning bet에 대해 비례 배분 계산
+                - `payout = userBetOnWinner * totalPool / seatTotals[winnerSeat]`
+                - RCHIP transfer
+                - 이벤트: `WinningsClaimed(poolKey, bettor, payout)`
+            - `getPoolInfo(address table, uint256 handId)` view
+            - `getUserBets(address table, uint256 handId, address user)` view
+            - `getSeatOdds(address table, uint256 handId)` view — 시트별 implied odds 반환
+        - 보안:
+            - Reentrancy guard (checks-effects-interactions 또는 ReentrancyGuard)
+            - settled 후 추가 베팅 불가
+            - 중복 claim 불가 (Bet.claimed flag)
+    2. `contracts/test/SideBetPool.t.sol`:
+        - placeBet 성공 / 실패 (already settled, invalid seat)
+        - 다중 유저 베팅 → settle → claim 흐름
+        - 비례 배분 정확성 (3명이 각각 다른 시트에 다른 금액 베팅)
+        - claim 후 재 claim 불가
+        - 빈 풀 settle 처리
+        - reentrancy 방어
+        - 최소 10개 테스트
+    3. `bots/keeper/src/bot.ts` — settle 트리거:
+        - 핸드 정산 후 `settleBets()` 자동 호출
+        - rebalancedHands 패턴과 동일하게 중복 방지 Set 사용
+    4. `services/indexer/src/` — SideBetPool 이벤트 인덱싱:
+        - DB 테이블: `side_bets(pool_key, table_address, hand_id, bettor, seat_index, amount, tx_hash, block_number, timestamp)`
+        - DB 테이블: `side_bet_settlements(pool_key, winner_seat, total_pool, settled_at)`
+        - API:
+            - `GET /sidebets/:tableAddress/:handId` — 풀 정보 + 시트별 총액
+            - `GET /sidebets/:tableAddress/:handId/user/:address` — 유저 베팅 내역
+            - `GET /sidebets/leaderboard` — 사이드벳 수익 랭킹
+    5. `apps/web/src/components/BettingPanel.tsx` 온체인 업그레이드:
+        - 기존 localStorage 로직 제거 → 온체인 트랜잭션으로 교체
+        - `placeBet()`: ChipToken approve → SideBetPool.placeBet() 트랜잭션
+        - `claimWinnings()`: settle 후 claim 버튼
+        - 실시간 풀 크기 / 시트별 odds 표시 (인덱서 API 폴링 또는 WS)
+        - 지갑 연결 필수 (ConnectWallet 프롬프트)
+        - 트랜잭션 상태 표시 (pending/confirmed/failed)
+    6. `apps/web/src/app/table/[id]/TableViewer.tsx` — 사이드벳 위젯 통합:
+        - 테이블 뷰어에 "Side Bets" 탭/패널 추가
+        - 각 시트 패널에 현재 총 베팅액 표시
+        - 핸드 종료 시 사이드벳 결과 표시
 - Acceptance:
-    - `POST /commentary` 호출 시 Gemini가 1~3문장 포커 해설 생성 및 저장
-    - `GET /commentary` 로 핸드별 해설 조회 가능
-    - WebSocket으로 `ai_commentary` 메시지가 실시간 브로드캐스트
-    - Table Viewer에 Commentary 패널이 표시되고 실시간 업데이트
-    - Gemini API 실패 시 graceful skip (게임 진행에 영향 없음)
-    - 해설 내용에 hole card 정보가 포함되지 않음 (showdown 전까지)
-- Commit: `feat(ownerview,keeper,indexer,web): add real-time AI game commentary for spectators`
+    - `placeBet()` 으로 RCHIP 온체인 사이드벳 성공
+    - 핸드 settle 후 `settleBets()` 자동 실행
+    - winner에 베팅한 유저가 비례 배분으로 payout 수령
+    - 인덱서에서 사이드벳 데이터 조회 가능
+    - 웹 UI에서 온체인 베팅/클레임 플로우 동작
+    - Foundry 테스트 최소 10개
+- Commit: `feat(contracts,keeper,indexer,web): add on-chain side betting pool for AI matches`
 
 ---
 
-## T-1102 On-chain AI Strategy Registry (P0)
-- Status: [ ] TODO
-- Depends on: existing PlayerRegistry, existing persona system
-- Goal: AI 에이전트의 전략 버전/설정을 온체인에 기록하여 "검증 가능한 AI 진화" 내러티브를 확립한다.
+## T-1202 Open Agent Registration & Fleet Manager (P0)
+- Status: [x] DONE
+- Depends on: PlayerRegistry, existing agent bot, existing persona system
+- Goal: 누구나 자기만의 AI 에이전트를 설정하고 테이블에 앉힐 수 있다. "AI Agent Platform" 내러티브의 핵심.
 - Scope:
-    - **컨트랙트**: `PlayerRegistry` 에 strategy config 기록 기능 추가
-    - **에이전트**: 부팅 시 현재 전략 설정을 온체인에 기록
-    - **인덱서**: strategy update 이벤트 인덱싱
-    - **웹**: 에이전트 프로필에 전략 버전 이력 표시
+    - **웹**: `/create-agent` 위자드 페이지 (페르소나 설정 + 배포)
+    - **서비스**: `services/fleet/` — 에이전트 라이프사이클 관리 서비스
+    - **에이전트**: 동적 페르소나 설정 지원 확장
 - Tasks:
-    1. `contracts/src/PlayerRegistry.sol` 확장:
-        - 새 매핑: `mapping(address => StrategyRecord[]) public strategyHistory`
-        - `StrategyRecord` 구조체: `{ bytes32 configHash, string personaId, uint16 aggressionBps, uint16 tightnessBps, uint16 bluffFreqBps, uint256 version, uint256 timestamp }`
-        - `updateStrategy(bytes32 configHash, string personaId, uint16 aggressionBps, uint16 tightnessBps, uint16 bluffFreqBps)` — owner/operator만 호출 가능, version 자동 증가
-        - `getStrategyHistory(agent, offset, limit)` — 페이지네이션 지원
-        - `getLatestStrategy(agent)` — 현재 활성 전략 반환
-        - 이벤트: `StrategyUpdated(address indexed agent, uint256 version, bytes32 configHash, string personaId, uint16 aggressionBps, uint16 tightnessBps, uint16 bluffFreqBps)`
-    2. `contracts/test/PlayerRegistry.t.sol` 에 테스트 추가:
-        - strategy update 성공/실패 (권한 체크)
-        - history 조회 + 페이지네이션
-        - version 자동 증가 검증
+    1. `apps/web/src/app/create-agent/page.tsx` 신규 — Agent Creation Wizard:
+        - **Step 1: Connect Wallet** — 지갑 연결 확인
+        - **Step 2: Persona Config**:
+            - Agent Name (텍스트 입력, 1-24자)
+            - Emoji 선택 (프리셋 그리드: 🦈🔥🪨🧠🐺🦊🐻🦅🐍🎯)
+            - Color Accent 선택 (프리셋 8색)
+            - **Strategy Sliders**:
+                - Aggression: 0.0 ~ 1.0 (슬라이더 + 숫자 표시)
+                - Tightness: 0.0 ~ 1.0
+                - Bluff Frequency: 0.0 ~ 1.0
+                - Position Awareness: 0.0 ~ 1.0
+            - **Personality Prompt** (optional textarea):
+                - 기본 프리셋 4종 (shark/maniac/rock/adaptive) 선택 시 자동 채워짐
+                - 커스텀 수정 가능 (200자 이내)
+            - **프리셋 Quick Pick**: "Use Preset" 버튼으로 기존 4종 중 선택 → 모든 파라미터 자동 세팅
+            - 실시간 레이더 차트 프리뷰 (PersonaRadar 컴포넌트 재활용)
+        - **Step 3: Select Table**:
+            - 사용 가능한 테이블 리스트 (빈 시트 있는 테이블)
+            - 테이블별 stakes, 현재 착석 에이전트, 빈 시트 수 표시
+        - **Step 4: Fund & Deploy**:
+            - 필요한 RCHIP buy-in 금액 표시
+            - ChipToken approve + seat registration 트랜잭션
+            - "Deploy Agent" 버튼 → fleet API 호출
+            - 배포 상태 표시 (registering → seating → starting → live)
+        - 내비게이션에 "Create Agent" 링크 추가
+    2. `services/fleet/` 신규 — Agent Fleet Manager:
+        - `services/fleet/src/index.ts` — Express 서버 엔트리
+        - `services/fleet/src/api.ts` — REST API:
+            - `POST /fleet/agents` — 새 에이전트 생성 요청
+                - body: `{ ownerAddress, tableAddress, personaConfig, systemPrompt? }`
+                - 프리펀딩된 operator 지갑 풀에서 하나 할당
+                - 에이전트 봇 프로세스 spawn
+                - 반환: `{ agentId, operatorAddress, status }`
+            - `GET /fleet/agents` — 실행 중인 에이전트 목록
+            - `GET /fleet/agents/:id` — 에이전트 상태
+            - `DELETE /fleet/agents/:id` — 에이전트 중지 (owner만)
+            - `GET /fleet/wallets/available` — 사용 가능한 operator 지갑 수
+        - `services/fleet/src/pool.ts` — Operator Wallet Pool:
+            - 환경변수: `FLEET_OPERATOR_KEYS` (콤마 구분 private keys)
+            - 지갑 할당/반환 관리
+            - 사용 중/사용 가능 상태 추적
+        - `services/fleet/src/spawner.ts` — Agent Process Manager:
+            - `child_process.fork()` 로 agent bot 프로세스 생성
+            - 환경변수로 persona config 전달
+            - 프로세스 health 모니터링 (5초 heartbeat)
+            - 크래시 시 자동 재시작 (최대 3회)
+            - graceful shutdown
+        - `services/fleet/src/types.ts` — Fleet 타입 정의
+    3. `bots/agent/src/bot.ts` 확장 — 동적 페르소나:
+        - `AGENT_PERSONA_JSON` 환경변수 지원: JSON 문자열로 커스텀 PersonaConfig 주입
+        - 기존 `AGENT_PERSONA` (ID) 대비 우선순위: JSON > ID > default
+        - 부팅 시 로그: `[FLEET] Using custom persona: {name} (aggression={x}, tightness={y})`
+    4. `bots/agent/src/strategy/persona.ts` 확장:
+        - `createCustomPersona(config: Partial<PersonaConfig> & { name: string })`: 커스텀 페르소나 생성
+        - validation: 모든 숫자 파라미터 [0, 1] 범위 클램핑
+        - systemPromptOverride 자동 생성 (파라미터 기반 템플릿)
+    5. `packages/shared/src/types.ts` — Fleet 관련 타입 추가:
+        - `FleetAgentConfig`, `FleetAgentStatus` 인터페이스
+    6. `pnpm-workspace.yaml` 에 `services/fleet` 추가
+    7. `services/fleet/package.json` + `tsconfig.json` 설정
+- Acceptance:
+    - `/create-agent` 에서 4단계 위자드로 커스텀 에이전트 생성 가능
+    - 슬라이더로 전략 파라미터 조정 시 레이더 차트 실시간 업데이트
+    - 프리셋 선택 시 모든 파라미터 자동 세팅
+    - Fleet API에 POST 시 에이전트 봇 프로세스 자동 생성
+    - 생성된 에이전트가 실제 테이블에서 Gemini 기반 플레이 시작
+    - 에이전트 중지 시 프로세스 clean shutdown
+    - 커스텀 persona JSON으로 에이전트 부팅 성공
+- Commit: `feat(web,fleet,agent): add open agent registration portal with fleet manager`
+
+---
+
+## T-1203 Opponent Modeling & Adaptive Counter-Strategy (P0)
+- Status: [x] DONE
+- Depends on: existing Gemini strategy, existing RAG, existing action history
+- Goal: AI 에이전트가 상대의 플레이 패턴을 추적하고 이에 맞춰 전략을 실시간 적응한다. "AI가 상대를 읽는다" — 포커 AI의 본질.
+- Scope:
+    - **에이전트**: opponent tracker + counter-strategy 모듈
+    - **OwnerView**: opponent model 데이터 저장/조회
+    - **웹**: 에이전트 프로필에 opponent read 표시
+- Tasks:
+    1. `bots/agent/src/opponent/tracker.ts` 신규:
+        - `OpponentTracker` 클래스:
+            - 입력: 관찰된 액션 스트림 (seatIndex, action, street, amount, isPreflop)
+            - 시트별 통계 추적:
+                - `VPIP` (Voluntarily Put $ In Pot): preflop에서 자발적으로 팟에 참여한 비율
+                - `PFR` (Pre-Flop Raise %): preflop raise 비율
+                - `AF` (Aggression Factor): (bets + raises) / calls (0이면 passive, 3+ 이면 aggressive)
+                - `foldToCBet` (%): flop에서 c-bet에 fold한 비율
+                - `WTSD` (Went To Showdown %): showdown까지 간 비율
+                - `W$SD` (Won $ at Showdown %): showdown에서 이긴 비율
+                - `3betFreq`: 3bet 빈도
+                - `checkRaiseFreq`: check-raise 빈도
+            - `observe(seatIndex, action, context)`: 액션 관찰 및 통계 업데이트
+            - `getProfile(seatIndex) => OpponentProfile`: 현재 통계 요약
+            - `getSampleSize(seatIndex) => number`: 관찰된 핸드 수
+            - 최소 샘플 사이즈: 5핸드 이전에는 "unknown" 반환
+    2. `bots/agent/src/opponent/counter.ts` 신규:
+        - `CounterStrategyAdvisor` 클래스:
+            - `advise(opponentProfile: OpponentProfile) => CounterAdvice`:
+                - **vs Tight-Passive** (high tightness, low AF): "Steal blinds aggressively. Their raises mean real strength — fold marginal hands."
+                - **vs Loose-Aggressive** (low tightness, high AF): "Tighten up. Trap with strong hands. Don't bluff — they'll call or re-raise."
+                - **vs Tight-Aggressive** (high tightness, high AF): "Respect their raises. 3-bet polarized. Exploit their fold-to-3bet."
+                - **vs Loose-Passive** (low tightness, low AF): "Value bet widely. Don't bluff — they'll call. Isolate with strong hands."
+                - **vs Unknown** (insufficient data): "Play standard GTO-leaning strategy. Gather information."
+            - `CounterAdvice`: `{ style: string, adjustments: { aggression: number, tightness: number, bluffFreq: number }, promptInjection: string }`
+            - adjustments는 base persona에 대한 delta (+/- 0.0~0.2 범위)
+    3. `bots/agent/src/opponent/types.ts` 신규:
+        - `OpponentProfile`, `CounterAdvice`, `OpponentStats` 타입 정의
+    4. `bots/agent/src/bot.ts` 에 opponent modeling 통합:
+        - 매 액션 관찰 시 `OpponentTracker.observe()` 호출
+        - 의사결정 전: 현재 상대의 `OpponentProfile` 조회
+        - `CounterStrategyAdvisor.advise()` 결과를 Gemini 프롬프트에 주입:
+            ```
+            === OPPONENT READ ===
+            Seat {X} ({name}): {style} player
+            Stats (over {N} hands): VPIP {vpip}%, PFR {pfr}%, AF {af}, Fold-to-CBet {ftcb}%
+            Counter-strategy: {promptInjection}
+            Recommended adjustments: aggression {delta}, tightness {delta}
+            ===
+            ```
+        - evolution과 독립: opponent adjustments는 일시적 (해당 핸드/세션만), evolution은 영구적
+    5. `bots/agent/src/opponent/tracker.test.ts` + `counter.test.ts`:
+        - tracker: 다양한 액션 시퀀스 → VPIP/PFR/AF 정확성 검증
+        - counter: 각 opponent 타입에 대한 올바른 counter-advice 생성 검증
+        - edge case: 0핸드 관찰, 모든 핸드 fold, all-in maniac
+        - 최소 15개 테스트
+    6. `services/ownerview/src/routes/reasoning.ts` 확장:
+        - `POST /reasoning` body에 `opponentRead?: { seatIndex, profile, counterAdvice }` 추가
+        - `GET /reasoning` 응답에 opponentRead 포함
+    7. `apps/web/src/app/agent/[token]/page.tsx` — "Opponent Reads" 섹션:
+        - 최근 핸드에서의 상대 프로필 표시 (카드 형태)
+        - 각 상대: 이름/이모지 + VPIP/PFR/AF 수치 + 스타일 분류 배지
+        - counter-strategy 요약 텍스트
+- Acceptance:
+    - 매 핸드마다 상대 통계가 업데이트
+    - 5핸드 이후부터 유의미한 opponent profile 생성
+    - counter-strategy가 Gemini 프롬프트에 주입되어 의사결정에 영향
+    - 상대 스타일이 올바르게 분류됨 (tight-passive, loose-aggressive 등)
+    - opponent read 데이터가 OwnerView에 저장되고 웹에서 조회 가능
+    - 유닛 테스트 최소 15개
+- Commit: `feat(agent,ownerview,web): add opponent modeling with adaptive counter-strategy`
+
+---
+
+## T-1204 Live Demo "ESPN Mode" Page (P0)
+- Status: [x] DONE
+- Depends on: existing TableViewer, existing WebSocket infra, existing AI Commentary
+- Goal: 심사위원이 URL 하나 열면 30초 안에 "AI가 플레이하고 있다"를 체감하는 킬러 데모 페이지.
+- Scope:
+    - **웹**: `/live` 페이지 — 실시간 AI 대결 중계 모드
+- Tasks:
+    1. `apps/web/src/app/live/page.tsx` 신규 — ESPN Mode:
+        - **레이아웃**: 풀스크린 최적화, 네비게이션 최소화
+        - **메인 영역** (70%):
+            - 현재 가장 활발한 테이블 자동 선택 (최근 액션 기준)
+            - 테이블 뷰: 커뮤니티 카드 + 팟 + 시트 패널 (TableViewer 컴포넌트 재활용)
+            - "LIVE" 배지 (빨간 점 애니메이션)
+            - 핸드 넘버 + 스트리트 표시
+        - **AI Commentary 오버레이** (하단):
+            - 최신 해설 3개 표시 (fade-in 애니메이션)
+            - 해설자 톤: 스포츠 중계 스타일
+        - **사이드바** (30%):
+            - **Agent Cards**: 각 에이전트의 이름/이모지/현재 스택/ELO
+            - **AI Thinking** (실시간): 마지막 액션의 AI reasoning 요약 (2줄)
+            - **Side Bets**: 현재 사이드벳 풀 크기 + 시트별 배당률 (T-1201 연동)
+            - **Stats Ticker**: 오늘 총 핸드 수, 가장 큰 팟, 현재 리더
+        - **이벤트 하이라이트**:
+            - 올인 시 화면 효과 (border glow)
+            - 쇼다운 시 결과 오버레이 (승자 + 핸드 + 팟 금액)
+            - 큰 팟(평균의 3배+) 시 "BIG POT" 배지
+        - **자동 테이블 전환**:
+            - 여러 테이블이 있을 때 가장 흥미로운 테이블로 자동 전환
+            - 기준: 쇼다운 임박, 올인 상황, 큰 팟
+            - 수동 테이블 선택도 가능
+        - **풀스크린 토글**: F11 또는 버튼으로 fullscreen API 호출
+    2. `apps/web/src/app/live/LiveDashboard.tsx` — 메인 대시보드 컴포넌트
+    3. `apps/web/src/app/live/AgentCards.tsx` — 에이전트 카드 사이드바
+    4. `apps/web/src/app/live/StatsTicker.tsx` — 통계 티커
+    5. `apps/web/src/app/live/live.module.css` — ESPN 스타일 CSS
+    6. 내비게이션에 "LIVE" 링크 추가 (빨간 점 표시)
+- Acceptance:
+    - `/live` 접속 시 즉시 라이브 AI 대결 화면 표시
+    - AI Commentary가 실시간으로 흐름
+    - 에이전트 카드에 현재 스택/ELO 표시
+    - 올인/쇼다운 시 시각 효과 동작
+    - 풀스크린 모드 동작
+    - 모바일 반응형 (세로 레이아웃)
+    - 데이터 없을 때 "Waiting for next hand..." 상태 표시
+- Commit: `feat(web): add live ESPN-mode demo page for AI matches`
+
+---
+
+## T-1205 AI Decision Deep Explainability — "Why?" (P1)
+- Status: [x] DONE
+- Depends on: existing reasoning data, existing GTO deviation, T-1203 opponent modeling
+- Goal: 각 AI 액션에 대해 "왜 이 결정을 했는지" 심층 분석을 제공한다. "Explainable AI in DeFi" 내러티브.
+- Scope:
+    - **에이전트**: reasoning 데이터에 structured decision breakdown 추가
+    - **OwnerView**: explainability 데이터 저장/조회
+    - **웹**: ActionLog에 "Why?" 인터랙션 추가
+- Tasks:
+    1. `bots/agent/src/strategy/geminiStrategy.ts` 확장:
+        - Gemini 프롬프트에 structured output 요청 추가:
+            ```
+            Also provide a decision breakdown in this exact format:
+            HAND_STRENGTH: [description + percentile, e.g., "Top pair with ace kicker — top 15% of hands"]
+            POT_ODDS: [calculation, e.g., "Need 25% equity to call. Estimated equity: 62%"]
+            EV_ESTIMATE: [expected value reasoning, e.g., "+EV call: risking 200 to win 800"]
+            OPPONENT_READ: [what you think about opponent's range, e.g., "Opponent's check suggests weakness or slow-play"]
+            KEY_FACTOR: [the single most important factor in this decision]
+            CONFIDENCE: [0-100, how confident you are in this decision]
+            ```
+        - 파싱: Gemini 응답에서 각 필드를 추출하여 `DecisionBreakdown` 객체 생성
+    2. `bots/agent/src/strategy/types.ts` 확장:
+        - `DecisionBreakdown` 인터페이스:
+            ```typescript
+            interface DecisionBreakdown {
+              handStrength: string;
+              potOdds: string;
+              evEstimate: string;
+              opponentRead: string;
+              keyFactor: string;
+              confidence: number;
+              gtoDeviation?: { action: string; severity: number; explanation: string };
+              counterStrategy?: string;
+            }
+            ```
+    3. `services/ownerview/src/routes/reasoning.ts` 확장:
+        - `POST /reasoning` body에 `breakdown?: DecisionBreakdown` 추가
+        - `GET /reasoning` 응답에 breakdown 포함
+    4. `apps/web/src/app/table/[id]/ActionLog.tsx` — "Why?" 버튼:
+        - 각 액션 행에 "Why?" 버튼 (reasoning 데이터 있는 경우만)
+        - 클릭 시 expand → `DecisionBreakdown` 표시:
+            - **Hand Strength**: 카드 아이콘 + percentile bar
+            - **Pot Odds**: 계산식 + equity bar
+            - **EV Estimate**: +/- EV 컬러코딩
+            - **Opponent Read**: 상대 프로필 링크 (T-1203 연동)
+            - **Key Factor**: 강조 표시
+            - **Confidence**: 0-100 게이지
+            - **GTO Note**: deviation 있으면 "Deviated from GTO: {explanation}" 표시
+        - 접힌 상태에서도 confidence 배지 표시 (높으면 green, 낮으면 orange)
+    5. `apps/web/src/components/DecisionBreakdown.tsx` 신규:
+        - 재사용 가능한 decision breakdown 표시 컴포넌트
+        - compact mode (인라인) / expanded mode (카드)
+    6. `apps/web/src/app/table/[id]/ActionLog.module.css` 확장:
+        - Why? 버튼 + breakdown 카드 스타일
+- Acceptance:
+    - 각 AI 액션에 "Why?" 버튼 표시
+    - 클릭 시 6개 breakdown 필드가 시각적으로 표시
+    - confidence 게이지 동작
+    - GTO deviation 정보 연동
+    - opponent read 정보 연동 (T-1203 이후)
+    - reasoning 없는 액션에는 "Why?" 버튼 미표시
+    - 모바일에서도 breakdown 카드 정상 렌더링
+- Commit: `feat(agent,ownerview,web): add deep AI decision explainability with Why? button`
+
+---
+
+## T-1206 On-chain Verifiable AI Audit Trail (P1)
+- Status: [x] DONE
+- Depends on: existing commitDecision/revealDecision, existing reasoning data
+- Goal: AI의 모든 의사결정 과정(reasoning + factors)의 해시를 온체인에 기록하여 사후 검증 가능하게 한다. "Trustless AI" 내러티브.
+- Scope:
+    - **에이전트**: reasoning hash 계산 + 온체인 커밋 확장
+    - **컨트랙트**: commitDecision에 reasoningHash 필드 추가
+    - **인덱서**: reasoning hash 인덱싱 + verification API
+    - **웹**: "Verified AI" 배지 + verification 페이지
+- Tasks:
+    1. `contracts/src/table/BettingEngine.sol` 확장:
+        - `commitDecision()` 에 추가 파라미터: `bytes32 reasoningHash`
+        - 저장: `mapping(uint256 => mapping(uint8 => bytes32)) public reasoningHashes` (handId => seatIndex => hash)
+        - `revealDecision()` 시 reasoningHash도 이벤트에 포함
+        - 이벤트 확장: `DecisionCommitted(handId, seatIndex, commitHash, reasoningHash)`
+        - 새 view: `getReasoningHash(uint256 handId, uint8 seatIndex) => bytes32`
+    2. `contracts/test/PokerTable.t.sol` 확장:
+        - reasoningHash 커밋/조회 테스트
+        - zero hash 허용 (reasoning 없는 경우)
         - 이벤트 emission 검증
-    3. `bots/agent/src/bot.ts` 에 strategy registration 로직 추가:
-        - 에이전트 부팅 시 현재 persona config → configHash 계산 (keccak256 of serialized config)
-        - `updateStrategy()` 온체인 호출
-        - 전략 변경 시 (T-1103 self-play evolution 후) 자동 재등록
-    4. `services/indexer/src/` 에 `StrategyUpdated` 이벤트 인덱싱:
-        - DB 테이블: `strategy_history(agent, version, config_hash, persona_id, aggression_bps, tightness_bps, bluff_freq_bps, block_number, tx_hash, timestamp)`
-        - API: `GET /agents/:address/strategies` — 전략 이력 반환
-    5. `apps/web/src/app/agent/[token]/page.tsx` 에 "Strategy History" 섹션 추가:
-        - 버전별 전략 변경 타임라인
-        - 각 버전: persona name, 파라미터 변경 diff (이전 대비 aggression +5% 등)
-        - configHash → explorer 링크
-- Acceptance:
-    - `updateStrategy()` 호출 시 온체인에 전략 레코드 기록 + 이벤트 발생
-    - owner/operator 외 호출 시 revert
-    - 에이전트 부팅 시 자동으로 현재 전략을 온체인에 등록
-    - 인덱서에서 strategy_history 조회 가능
-    - 웹에서 전략 버전 이력 타임라인 표시
-    - Foundry 테스트 최소 8개 추가
-- Commit: `feat(contracts,agent,indexer,web): add on-chain AI strategy registry with version tracking`
-
----
-
-## T-1103 Self-Play Strategy Evolution (Online Learning Loop) (P0)
-- Status: [ ] TODO
-- Depends on: T-1102 (on-chain strategy registry), existing RAG vector store, existing persona system
-- Goal: AI 에이전트가 자기 대국 결과를 분석해서 전략 파라미터를 자동 조정한다. "AI가 진짜 on-chain에서 학습한다."
-- Scope:
-    - **에이전트**: 매 N핸드마다 최근 성과를 평가하고 persona 파라미터를 evolutionary strategy로 조정
-    - **RAG 연동**: 학습 메타데이터를 RAG knowledge base에 기록
-    - **온체인**: 조정된 파라미터를 T-1102 strategy registry에 기록
-- Tasks:
-    1. `bots/agent/src/evolution/evaluator.ts` 신규:
-        - `PerformanceEvaluator` 클래스:
-            - 입력: 최근 N핸드 (기본 20)의 결과 (win/loss/fold, PnL, 포지션별 승률)
-            - 출력: `PerformanceScore { winRate, avgPnl, positionalEdge, bluffSuccessRate, foldEfficiency }`
-            - 각 메트릭 0~1 정규화
-    2. `bots/agent/src/evolution/optimizer.ts` 신규:
-        - `StrategyOptimizer` 클래스 (gradient-free evolutionary strategy):
-            - 현재 파라미터: `{ aggression, tightness, bluffFrequency }`
-            - 돌연변이: 각 파라미터에 ±δ (기본 0.05) 가우시안 노이즈 추가
-            - 선택: 현재 파라미터의 PerformanceScore vs 이전 윈도우의 PerformanceScore 비교
-            - 개선되면 새 파라미터 채택, 아니면 유지 (1+1 ES)
-            - 파라미터 클램핑: aggression [0.1, 0.95], tightness [0.1, 0.95], bluffFrequency [0.0, 0.8]
-            - `evolve(currentParams, currentScore, prevScore) => { newParams, evolved: boolean, delta }`
-    3. `bots/agent/src/evolution/types.ts` 신규:
-        - `PerformanceScore`, `EvolutionResult`, `EvolutionConfig` 타입 정의
-        - `EvolutionConfig`: `{ evalWindowSize: 20, mutationStdDev: 0.05, minHandsBeforeEval: 10 }`
-    4. `bots/agent/src/bot.ts` 에 evolution loop 통합:
-        - 핸드 카운터 유지 → 매 `evalWindowSize` 핸드마다 evaluator + optimizer 실행
-        - evolved=true 시:
-            a) persona 파라미터 in-memory 업데이트
-            b) Gemini systemPromptOverride에 반영
-            c) T-1102 `updateStrategy()` 온체인 호출
-            d) 로그: `[EVOLUTION] v{N} → v{N+1}: aggression {old}→{new}, tightness {old}→{new}, bluff {old}→{new}`
-        - 최소 `minHandsBeforeEval` 핸드 이전에는 evolution 스킵
-    5. `bots/agent/src/evolution/evaluator.test.ts` + `optimizer.test.ts`:
-        - evaluator: 다양한 핸드 시퀀스에 대한 PerformanceScore 계산 검증
-        - optimizer: 개선 시 파라미터 변경, 악화 시 유지, 클램핑 동작 검증
-        - edge case: 모든 핸드 win, 모든 핸드 lose, N=0 핸드
-- Acceptance:
-    - 20핸드 플레이 후 자동으로 성과 평가 실행
-    - 성과가 이전 윈도우보다 개선되면 파라미터 자동 조정
-    - 조정된 파라미터가 즉시 Gemini 프롬프트에 반영
-    - T-1102를 통해 새 전략 버전이 온체인에 기록
-    - 파라미터가 정의된 범위 밖으로 벗어나지 않음
-    - evolution이 게임 진행을 블록하지 않음 (비동기)
-    - 유닛 테스트 최소 12개
-- Commit: `feat(agent): implement self-play strategy evolution with on-chain version tracking`
-
----
-
-## T-1104 GTO Baseline + Deviation Analysis (P1)
-- Status: [ ] TODO
-- Depends on: existing Gemini strategy, existing HandEvaluator
-- Goal: AI 의사결정을 Game Theory Optimal 기준과 비교하여 "explainable AI" 내러티브를 강화한다.
-- Scope:
-    - **에이전트**: 프리플롭 GTO 레인지 테이블 + deviation 계산 모듈
-    - **OwnerView**: deviation 데이터 저장/조회
-    - **인덱서**: deviation 통계 집계
-    - **웹**: 에이전트 프로필에 GTO Conformance 메트릭 표시
-- Tasks:
-    1. `bots/agent/src/gto/ranges.ts` 신규:
-        - 프리플롭 GTO 레인지 룩업 테이블 (heads-up/4-handed 포지션별):
-            - 포지션별 (UTG, CO, BTN, SB, BB) open-raise/call/3bet 레인지
-            - 핸드 표기: "AKs", "QJo", "TT" 등 → action 매핑
-            - 소스: 공개 GTO 솔버 결과 기반 단순화 (169 핸드 조합)
-        - `getGTOAction(position, holeCards, facingAction) => { action: "raise"|"call"|"fold", frequency: number }`
-        - frequency: mixed strategy인 경우 확률 (e.g., "ATs UTG raise 70% / fold 30%")
-    2. `bots/agent/src/gto/deviation.ts` 신규:
-        - `DeviationAnalyzer` 클래스:
-            - `analyze(position, holeCards, aiAction, facingAction) => DeviationResult`
-            - `DeviationResult`: `{ gtoAction, gtoFrequency, aiAction, isDeviation: boolean, deviationType: "tighter"|"looser"|"passive"|"aggressive"|"aligned", severity: 0~1 }`
-            - severity: 0 = GTO 일치, 1 = 정반대 (e.g., GTO raise 100% → AI fold)
-        - `getAggregate(deviations: DeviationResult[]) => { conformance: number, avgSeverity, deviationsByType }`
-    3. `bots/agent/src/bot.ts` 에 deviation tracking 통합:
-        - 매 프리플롭 의사결정 후 `DeviationAnalyzer.analyze()` 호출
-        - 결과를 OwnerView에 POST (기존 reasoning 저장 경로 확장)
-    4. `services/ownerview/src/routes/reasoning.ts` 확장:
-        - `POST /reasoning` body에 `gtoDeviation?: DeviationResult` 필드 추가
-        - `GET /reasoning` 응답에 deviation 데이터 포함
-    5. `services/indexer/src/api/routes.ts` 에 deviation 통계 endpoint:
-        - `GET /agents/:address/gto-stats` → 최근 N핸드의 GTO conformance %, deviation breakdown
-    6. `apps/web/src/app/agent/[token]/page.tsx` 에 "GTO Analysis" 섹션:
-        - GTO Conformance 게이지 (0~100%)
-        - Deviation breakdown: tighter/looser/passive/aggressive 비율 차트
-        - 최근 5핸드의 "AI chose X, GTO suggests Y" 비교 카드
-        - 색상: conformance 높으면 green, 낮으면 orange (judgement, not "bad")
-    7. `bots/agent/src/gto/ranges.test.ts` + `deviation.test.ts`:
-        - ranges: 대표 핸드별 GTO 액션 검증 (AA는 항상 raise, 72o UTG는 항상 fold 등)
-        - deviation: aligned/deviation 분류 정확성, severity 계산, aggregate conformance
-- Acceptance:
-    - 169개 프리플롭 핸드 조합에 대해 포지션별 GTO 액션 조회 가능
-    - 매 프리플롭 의사결정마다 GTO deviation이 자동 계산
-    - 에이전트 프로필에 GTO Conformance % 표시
-    - deviation breakdown 차트가 정상 렌더링
-    - "AI chose X, GTO suggests Y" 비교 UI 동작
-    - 유닛 테스트 최소 15개 (ranges 8 + deviation 7)
-- Commit: `feat(agent,ownerview,indexer,web): add GTO baseline and deviation analysis`
-
----
-
-## T-1105 Multi-Agent Strategy Evolution Dashboard (P1)
-- Status: [ ] TODO
-- Depends on: T-1102 (strategy registry), T-1103 (evolution), existing ELO system
-- Goal: 에이전트들의 전략이 시간에 따라 어떻게 변화하고 상호작용하는지 시각화한다. "AI 메타게임 진화를 관찰할 수 있다."
-- Scope:
-    - **인덱서**: strategy evolution 시계열 데이터 집계 API
-    - **웹**: 새 `/evolution` 페이지 + 에이전트 프로필 evolution 차트
-- Tasks:
-    1. `services/indexer/src/api/routes.ts` 에 evolution 데이터 API 추가:
-        - `GET /evolution/timeline?agents=addr1,addr2,...&limit=100`
-            - 반환: 에이전트별 `{ agent, strategies: [{ version, aggressionBps, tightnessBps, bluffFreqBps, handNumber, timestamp, eloAtTime }] }`
-        - `GET /evolution/meta-shifts?period=24h|7d|all`
-            - 반환: 시간대별 전체 에이전트 평균 aggression/tightness 추이 (메타 트렌드)
-    2. `apps/web/src/app/evolution/page.tsx` 신규 — Evolution Dashboard 페이지:
-        - **Strategy Timeline Chart** (multi-line): 각 에이전트의 aggression/tightness를 핸드 넘버 X축으로 표시
-            - 라인 색상: 에이전트 페르소나 colorAccent
-            - 호버: 해당 시점의 전략 파라미터 + ELO 표시
-        - **Meta Game Radar**: 현재 시점 전체 에이전트의 평균 전략 레이더 차트
-        - **ELO vs Strategy Scatter**: X축 aggression, Y축 ELO → 어떤 전략이 현재 메타에서 유리한지 시각화
-        - **Evolution Event Log**: 최근 전략 변경 이벤트 타임라인 (에이전트 이름, 파라미터 delta, on-chain tx link)
-    3. `apps/web/src/app/agent/[token]/page.tsx` "AI Strategy Profile" 섹션 강화:
-        - 기존 레이더 차트 하단에 "Strategy Evolution" 미니 차트 추가:
-            - 이 에이전트의 aggression/tightness 변화를 시간축으로 표시
-            - 마지막 evolution 이벤트 하이라이트
-    4. `apps/web/src/components/charts/` 에 차트 컴포넌트:
-        - `StrategyTimeline.tsx` — multi-line 시계열 차트 (CSS-based 또는 lightweight 라이브러리)
-        - `MetaRadar.tsx` — 전체 에이전트 평균 레이더
-        - `EloStrategyScatter.tsx` — 산점도
-    5. 내비게이션에 `/evolution` 링크 추가
-- Acceptance:
-    - `/evolution` 페이지에서 전체 에이전트의 전략 변화 타임라인 확인 가능
-    - 에이전트별 라인이 구분되고 호버 시 상세 정보 표시
-    - ELO vs Strategy 산점도에서 현재 메타 트렌드 파악 가능
-    - 에이전트 프로필에 개별 전략 진화 미니 차트 표시
-    - 데이터 없는 경우 적절한 빈 상태 표시
-    - 모바일 반응형 레이아웃
-- Commit: `feat(indexer,web): add multi-agent strategy evolution dashboard`
-
----
-
-## T-1106 Treasury AI Multi-Signal Enhancement (P1)
-- Status: [ ] TODO
-- Depends on: existing TreasuryAdvisor, existing vault snapshots, T-1103 (evolution data)
-- Goal: Treasury AI의 분석 깊이를 강화하여 "AI가 DeFi 트레이딩을 자율적으로 수행" 내러티브를 뒷받침한다.
-- Scope:
-    - **킵퍼**: TreasuryAdvisor에 다중 시그널 분석 추가
-    - **웹**: 리밸런싱 이력에 강화된 분석 표시
-- Tasks:
-    1. `bots/keeper/src/treasury/signals.ts` 신규:
-        - `SignalCollector` 클래스 — 리밸런싱 의사결정 전 다중 시그널 수집:
-            - **Performance Signal**: 최근 5핸드 승률 + 누적 PnL 추세 (상승/하락/횡보)
-            - **NAV Momentum**: 최근 5 vault snapshot에서 NAV/share 변화율 (moving average)
-            - **Rebalance History Signal**: 최근 5회 리밸런싱 결과 분석 (buy 후 NAV 상승했나? sell 후 안정적이었나?)
-            - **Volatility Signal**: 최근 PnL의 표준편차 → 높으면 보수적, 낮으면 적극적 리밸런싱 추천
-        - `collectSignals(vaultState, recentHands, recentSnapshots, recentRebalances) => MultiSignalContext`
-        - `MultiSignalContext`: `{ performanceTrend, navMomentum, rebalanceEffectiveness, volatility, overallSentiment: "bullish"|"bearish"|"neutral" }`
-    2. `bots/keeper/src/treasury/advisor.ts` 확장:
-        - `TreasuryAdvisor.advise()` 에 `MultiSignalContext` 주입
-        - Gemini 프롬프트에 시그널 요약 추가:
+    3. `bots/agent/src/bot.ts` — reasoning hash 계산:
+        - `commitDecision` 호출 전:
+            ```typescript
+            const reasoningPayload = JSON.stringify({ reasoning, factors, breakdown, opponentRead });
+            const reasoningHash = keccak256(toBytes(reasoningPayload));
             ```
-            Additional market signals:
-            - Performance: {trend} (win rate {x}%, cumulative PnL {y})
-            - NAV momentum: {momentum} ({z}% change over last 5 snapshots)
-            - Recent rebalance effectiveness: {effectiveness}
-            - Volatility: {vol} (std dev of recent PnL)
-            - Overall sentiment: {sentiment}
-            
-            Factor these signals into your buy/sell/skip decision and sizing.
-            ```
-        - 응답 factors에 새 필드 추가: `volatilityAssessment`, `momentumRead`
-    3. `bots/keeper/src/treasury/signals.test.ts`:
-        - 상승 추세 → bullish sentiment 검증
-        - 고변동성 → conservative sizing 권장 검증
-        - 빈 데이터 → neutral fallback 검증
-    4. `services/ownerview/src/routes/reasoning.ts` — treasury reasoning에 signals 필드 추가:
-        - `POST /treasury-reasoning` body에 `signals?: MultiSignalContext` 추가
-        - `GET /treasury-reasoning` 응답에 signals 포함
-    5. `apps/web/src/app/agent/[token]/page.tsx` 리밸런싱 확장 UI:
-        - 기존 expandable row에 "Market Signals" 서브섹션 추가:
-            - Performance trend badge (Bullish / Bearish / Neutral + 색상)
-            - NAV momentum indicator (↑↓→ + 변화율 %)
-            - Volatility gauge (Low / Medium / High)
-            - Rebalance effectiveness score
+        - `commitDecision(commitHash, reasoningHash)` 으로 호출
+    4. `services/indexer/src/` — reasoning hash 인덱싱:
+        - DB 테이블: `decision_audit(hand_id, seat_index, reasoning_hash, commit_tx_hash, block_number, verified)`
+        - API:
+            - `GET /audit/:tableAddress/:handId` — 해당 핸드의 모든 AI 결정 audit trail
+            - `POST /audit/verify` — body: `{ handId, seatIndex, reasoning, factors }` → 서버에서 hash 재계산 → 온체인 hash와 비교 → `{ verified: boolean }`
+    5. `apps/web/src/app/agent/[token]/page.tsx` — "Verified AI" 배지:
+        - 최근 20핸드의 reasoning hash가 모두 온체인에 존재하면 "Verified AI" 배지 표시
+        - 배지 클릭 → verification 상세 모달:
+            - 핸드별 reasoning hash 목록
+            - 각 hash → block explorer 링크
+            - 검증 상태 (green check / red x)
+    6. `apps/web/src/app/verify/page.tsx` 신규 — AI Decision Verifier:
+        - 입력: table address + hand ID
+        - 표시: 해당 핸드의 모든 AI 결정
+            - 각 결정: action + reasoning 요약 + on-chain hash + verification status
+        - "Verify" 버튼: reasoning 데이터 → hash 재계산 → 온체인 대조
+        - 결과: "All decisions verified" / "Mismatch found at seat X"
 - Acceptance:
-    - TreasuryAdvisor가 4개 시그널을 수집하여 Gemini 프롬프트에 주입
-    - 리밸런싱 reasoning에 시그널 기반 분석이 포함
-    - 웹 UI에서 시그널 데이터가 시각적으로 표시
-    - 시그널 수집 실패 시 graceful degradation (기존 advisor 동작 유지)
-    - 유닛 테스트 최소 8개
-- Commit: `feat(keeper,ownerview,web): enhance treasury AI with multi-signal analysis`
+    - `commitDecision` 시 reasoningHash가 온체인에 기록
+    - `getReasoningHash()` 로 온체인 hash 조회 가능
+    - 인덱서에서 audit trail 조회 가능
+    - verify API에서 reasoning 데이터 ↔ 온체인 hash 대조 성공
+    - "Verified AI" 배지가 에이전트 프로필에 표시
+    - `/verify` 페이지에서 핸드별 검증 가능
+    - Foundry 테스트 최소 5개 추가
+- Commit: `feat(contracts,agent,indexer,web): add on-chain verifiable AI audit trail`
 
 ---
 
-# 전체 실행 계획 요약
+# Execution Plan Summary
 
-| 티켓 | 설명 | 난이도 | 데모 임팩트 | 핵심 내러티브 |
-|------|------|--------|------------|---------------|
-| T-1101 | AI Game Commentary | 중하 | ★★★★★ | "AI가 플레이도 하고 해설도 한다" |
-| T-1102 | On-chain Strategy Registry | 중 | ★★★★ | "검증 가능한 AI 진화" |
-| T-1103 | Self-Play Evolution | 중상 | ★★★★★ | "AI가 on-chain에서 학습한다" |
-| T-1104 | GTO Deviation Analysis | 중 | ★★★★ | "Explainable AI" |
-| T-1105 | Evolution Dashboard | 중 | ★★★★ | "메타게임 진화 관찰" |
-| T-1106 | Treasury Multi-Signal | 중하 | ★★★ | "자율 DeFi 트레이딩" |
+| Ticket | Description | Effort | Demo Impact | AI Depth | Narrative |
+|--------|-------------|--------|-------------|----------|-----------|
+| T-1201 | On-chain Side Betting | Medium | ★★★★★ | ★★ | "AI 대결에 돈을 건다" (DeFi×AI) |
+| T-1202 | Open Agent Registration | Medium-High | ★★★★★ | ★★★ | "누구나 AI 에이전트를 만든다" |
+| T-1203 | Opponent Modeling | Medium | ★★★★ | ★★★★★ | "AI가 상대를 읽고 적응한다" |
+| T-1204 | Live ESPN Mode | Low-Medium | ★★★★★ | ★★ | "30초 안에 체감하는 AI 대결" |
+| T-1205 | Deep Explainability | Low-Medium | ★★★★ | ★★★★ | "Explainable AI in DeFi" |
+| T-1206 | AI Audit Trail | Medium | ★★★ | ★★★★★ | "Trustless & Verifiable AI" |
 
-**피칭 앵글**: "PlayerCo — AI agents that play poker, learn from experience, evolve their strategies, and manage their own treasury. All verifiable on-chain."
+**Judge-facing Pitch Flow:**
+1. Open `/live` → "Look, AI agents are playing poker right now" (T-1204)
+2. "Anyone can create their own AI agent" → show `/create-agent` (T-1202)
+3. "Spectators bet on AI matches" → show side betting pool (T-1201)
+4. Click "Why?" → "Every AI decision is explainable" (T-1205)
+5. Show opponent modeling → "AI reads opponents and adapts in real-time" (T-1203)
+6. Show `/verify` → "All AI decisions are verifiable on-chain" (T-1206)
+
+**Killer Sentence:** "PlayerCo is the first open AI agent platform where autonomous agents play poker, learn from opponents, manage their own capital — and anyone can create one, bet on matches, and verify every AI decision on-chain."

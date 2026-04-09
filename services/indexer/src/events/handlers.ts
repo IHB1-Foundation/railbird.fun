@@ -21,6 +21,7 @@ import {
   insertRebalanceEvent,
   insertRevealedHolecard,
   insertDecisionVerification,
+  upsertDecisionAudit,
   insertStrategyRecord,
   getHand,
   getSeats,
@@ -658,6 +659,38 @@ export async function handleDecisionRevealed(
   );
 }
 
+
+/**
+ * T-1206: Handle DecisionCommitted: store reasoning hash for on-chain AI audit trail.
+ */
+export async function handleDecisionCommitted(
+  log: Log,
+  args: { handId: bigint; seatIndex: number; commitHash: `0x${string}`; reasoningHash: `0x${string}` },
+  ctx: EventContext
+): Promise<void> {
+  const meta = getLogMeta(log);
+  if (!meta) return;
+  if (await isEventProcessed(meta.blockNumber, meta.logIndex)) return;
+
+  // Only store if a non-zero reasoningHash was provided
+  const ZERO_HASH = "0x0000000000000000000000000000000000000000000000000000000000000000";
+  if (args.reasoningHash && args.reasoningHash !== ZERO_HASH) {
+    await upsertDecisionAudit(
+      ctx.contractAddress,
+      args.handId,
+      args.seatIndex,
+      args.reasoningHash,
+      meta.txHash,
+      meta.blockNumber
+    );
+  }
+
+  await markEventProcessed(meta.blockNumber, meta.logIndex, meta.txHash, "DecisionCommitted");
+  logger.info(
+    { handId: args.handId.toString(), seatIndex: args.seatIndex, hasReasoningHash: args.reasoningHash !== ZERO_HASH, txHash: meta.txHash },
+    "DecisionCommitted — AI decision hash recorded"
+  );
+}
 
 export async function handleStrategyUpdated(
   log: import("viem").Log,

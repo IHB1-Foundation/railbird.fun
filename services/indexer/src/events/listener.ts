@@ -22,6 +22,7 @@ import type {
   CardIntegrityViolationArgs,
   HoleCardsRevealedArgs,
   DecisionRevealedArgs,
+  DecisionCommittedArgs,
   AgentRegisteredArgs,
   OperatorUpdatedArgs,
   OwnerUpdatedArgs,
@@ -347,6 +348,13 @@ export class EventListener {
           await handlers.handleDecisionRevealed(
             log,
             decoded.args as unknown as DecisionRevealedArgs,
+            tableContext
+          );
+          break;
+        case "DecisionCommitted":
+          await handlers.handleDecisionCommitted(
+            log,
+            decoded.args as unknown as DecisionCommittedArgs,
             tableContext
           );
           break;

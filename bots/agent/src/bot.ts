@@ -718,8 +718,19 @@ export class AgentBot {
         [state.currentHandId, seatIndex, actionStr, reasoning, salt]
       )
     );
-    this.chainClient.commitDecision(seatIndex, commitHash).then((txHash) => {
-      logger.debug({ handId: String(state.currentHandId), seatIndex, txHash }, "AI decision committed on-chain");
+    // T-1206: Compute reasoning hash for on-chain audit trail
+    let reasoningHash: `0x${string}` | undefined;
+    if (reasoning) {
+      const reasoningPayload = JSON.stringify({
+        reasoning,
+        factors: decision.factors,
+        breakdown: decision.breakdown,
+        opponentRead: opponentRead,
+      });
+      reasoningHash = keccak256(new TextEncoder().encode(reasoningPayload) as unknown as `0x${string}`);
+    }
+    this.chainClient.commitDecision(seatIndex, commitHash, reasoningHash).then((txHash) => {
+      logger.debug({ handId: String(state.currentHandId), seatIndex, txHash, hasReasoningHash: !!reasoningHash }, "AI decision committed on-chain");
       // Store for later reveal (overwrites any prior commitment for this hand)
       this.pendingReveal = { handId: state.currentHandId, seatIndex, action: actionStr, reasoning, salt };
     }).catch((err: unknown) => {

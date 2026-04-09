@@ -1,7 +1,9 @@
+import Link from "next/link";
 import { getTables } from "@/lib/api";
 import { BettingPanel } from "@/components/BettingPanel";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { EmptyState } from "@/components/EmptyState";
+import { Breadcrumb } from "@/components/Breadcrumb";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +15,7 @@ export default async function BettingPage() {
     if (!table) {
       return (
         <section className="page-section">
+          <Breadcrumb crumbs={[{ label: "Home", href: "/" }, { label: "Rail Bets" }]} />
           <h2 className="section-title">Rail Bets</h2>
           <EmptyState
             icon="🎲"
@@ -25,9 +28,21 @@ export default async function BettingPage() {
     }
 
     return (
-      <ErrorBoundary label="Betting Panel">
-        <BettingPanel initialTable={table} />
-      </ErrorBoundary>
+      <section className="page-section">
+        <Breadcrumb crumbs={[
+          { label: "Home", href: "/" },
+          { label: `Table #${table.tableId}`, href: `/table/${table.tableId}` },
+          { label: "Rail Bets" },
+        ]} />
+        <ErrorBoundary label="Betting Panel">
+          <BettingPanel initialTable={table} />
+        </ErrorBoundary>
+        <div style={{ marginTop: "1rem", textAlign: "center" }}>
+          <Link href={`/table/${table.tableId}`} className="btn btn-ghost" style={{ fontSize: "0.82rem" }}>
+            ← Back to Table
+          </Link>
+        </div>
+      </section>
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";

@@ -53,29 +53,47 @@ export default function MyAgentsPage() {
   // Not connected - Step 1
   if (!isConnected) {
     return (
-      <div className={styles.authPrompt}>
-        <h2>My Agents</h2>
-        <div className={styles.authSteps}>
-          <div className={`${styles.authStep} ${styles.authStepActive}`}>
-            <span className={styles.authStepNum}>1</span>
-            <div>
-              <strong>Connect your wallet</strong>
-              <p>Link your MetaMask or compatible wallet to identify your agents.</p>
+      <section className="page-section">
+        <div className={styles.authPrompt}>
+          <h2>My Agents</h2>
+          <p className="text-muted" style={{ fontSize: "0.85rem", marginBottom: "1rem" }}>
+            Connect your wallet to view and manage your AI poker agents.
+          </p>
+          <div className={styles.authSteps}>
+            <div className={`${styles.authStep} ${styles.authStepActive}`}>
+              <span className={styles.authStepNum}>1</span>
+              <div>
+                <strong>Connect your wallet</strong>
+                <p>Link your MetaMask or compatible wallet to identify your agents.</p>
+              </div>
+            </div>
+            <div className={styles.authStep}>
+              <span className={styles.authStepNum}>2</span>
+              <div>
+                <strong>Sign a message</strong>
+                <p>Verify ownership without spending gas.</p>
+              </div>
             </div>
           </div>
-          <div className={styles.authStep}>
-            <span className={styles.authStepNum}>2</span>
-            <div>
-              <strong>Sign a message</strong>
-              <p>Verify ownership without spending gas.</p>
-            </div>
+          <p className={styles.authProgress}>Step 1 of 2</p>
+          <button onClick={connect} className="wallet-button">
+            🦊 Connect Wallet
+          </button>
+        </div>
+
+        {/* Preview CTA for logged-out users (D-15) */}
+        <div className="card" style={{ marginTop: "2rem", textAlign: "center", padding: "2rem 1.5rem" }}>
+          <div style={{ fontSize: "2.5rem", marginBottom: "0.75rem" }}>🤖</div>
+          <h3 style={{ marginBottom: "0.5rem", fontSize: "1.1rem" }}>Build your own AI poker agent</h3>
+          <p className="text-muted" style={{ fontSize: "0.85rem", maxWidth: "42ch", margin: "0 auto 1.25rem" }}>
+            Design an agent persona, deploy it on HashKey Chain, and watch it compete autonomously with Gemini-powered decisions.
+          </p>
+          <div style={{ display: "flex", gap: "0.75rem", justifyContent: "center", flexWrap: "wrap" }}>
+            <Link href="/create-agent" className="btn">Create Agent</Link>
+            <Link href="/leaderboard" className="btn btn-ghost">View Leaderboard</Link>
           </div>
         </div>
-        <p className={styles.authProgress}>Step 1 of 2</p>
-        <button onClick={connect} className="wallet-button">
-          🦊 Connect Wallet
-        </button>
-      </div>
+      </section>
     );
   }
 

@@ -4,6 +4,7 @@ import { getLeaderboard } from "@/lib/api";
 import { LeaderboardTable } from "./LeaderboardTable";
 import { LastUpdated } from "@/components/LastUpdated";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { Breadcrumb } from "@/components/Breadcrumb";
 import type { LeaderboardMetric, LeaderboardPeriod } from "@/lib/types";
 import styles from "./leaderboard.module.css";
 
@@ -45,6 +46,7 @@ export default async function LeaderboardPage({ searchParams }: PageProps) {
 
   return (
     <section className="page-section">
+      <Breadcrumb crumbs={[{ label: "Home", href: "/" }, { label: "Leaderboard" }]} />
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem" }}>
         <h2 className="section-title" style={{ margin: 0 }}>Leaderboard</h2>
         {data && <LastUpdated timestamp={data.updatedAt} />}

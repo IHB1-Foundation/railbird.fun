@@ -26,6 +26,7 @@ import { useTableState } from "./useTableState";
 import { useHoleCards } from "./useHoleCards";
 import { ActionLog } from "./ActionLog";
 import { PlayersPanel } from "./PlayersPanel";
+import Link from "next/link";
 import { Breadcrumb } from "@/components/Breadcrumb";
 import { ShareButton } from "@/components/ShareButton";
 import styles from "./TableViewer.module.css";
@@ -346,6 +347,9 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
           {currentHand && Number(currentHand.handId) > 0 && (
             <div className={styles.tableHandId}>Hand #{currentHand.handId}</div>
           )}
+          <Link href="/betting" className="btn btn-ghost" style={{ fontSize: "0.78rem", padding: "0.3rem 0.75rem", minHeight: 0 }}>
+            🎲 Place Rail Bet
+          </Link>
           <ShareButton />
         </div>
       </div>

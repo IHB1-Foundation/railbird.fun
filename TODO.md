@@ -170,19 +170,32 @@
 
 | 코드 | 제목 | 상태 |
 |------|------|------|
-| C-1 | 에이전트 자동 리필 | ⬜ |
-| C-2 | GEMINI_API_KEY 핸들링 | ⬜ |
-| C-3 | .env.example HSK 업데이트 | ⬜ |
-| C-4 | 제거된 view 함수 대응 | ⬜ |
-| H-1 | 로딩/에러/빈 상태 | ⬜ |
+| C-1 | 에이전트 자동 리필 | ✅ |
+| C-2 | GEMINI_API_KEY 핸들링 | ✅ |
+| C-3 | .env.example HSK 업데이트 | ✅ |
+| C-4 | 제거된 view 함수 대응 | ✅ |
+| H-1 | 로딩/에러/빈 상태 | ✅ |
 | H-2 | 모바일 반응형 | ⬜ |
-| H-3 | 에러 메시지 유출 방지 | ⬜ |
-| H-4 | API 페이지네이션 제한 | ⬜ |
-| H-5 | nad.fun 위젯 UX | ⬜ |
-| H-6 | create-agent 하드코딩 | ⬜ |
-| H-7 | Health endpoint 강화 | ⬜ |
-| M-1 ~ M-7 | 안정성 항목들 | ⬜ |
-| N-1 ~ N-8 | 폴리시 항목들 | ⬜ |
+| H-3 | 에러 메시지 유출 방지 | ✅ |
+| H-4 | API 페이지네이션 제한 | ✅ |
+| H-5 | nad.fun 위젯 UX | ✅ |
+| H-6 | create-agent 하드코딩 | ✅ |
+| H-7 | Health endpoint 강화 | ✅ |
+| M-1 | Error Boundary 누락 | ✅ |
+| M-2 | Opponent Model 리셋 | ✅ |
+| M-3 | Rate limiter 내부 허용 | ✅ |
+| M-4 | CHAIN_ENV 검증 | ✅ (기존 구현) |
+| M-5 | Side-bet settlement | ✅ (기존 구현) |
+| M-6 | DB 인덱스 추가 | ✅ |
+| M-7 | 에러 응답 형식 통일 | ⬜ |
+| N-1 | console.log 정리 | ✅ |
+| N-2 | DB 마이그레이션 개선 | ✅ |
+| N-3 | GTO deviation 피드백 | ⬜ |
+| N-4 | Evolution 파라미터 | ⬜ |
+| N-5 | ABI 버전 관리 | ⬜ |
+| N-6 | KAIA 레거시 정리 | ✅ |
+| N-7 | Hole card 암호화 문서 | ⬜ |
+| N-8 | CI/CD 파이프라인 | ⬜ |
 | D-1 ~ D-9 | 디자인 시스템 | ⬜ |
 | D-10 ~ D-17 | 네비게이션/IA | ⬜ |
 | D-18 ~ D-24 | 컴포넌트 품질 | ⬜ |

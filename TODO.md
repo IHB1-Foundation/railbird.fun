@@ -242,9 +242,15 @@
 | D-67 | 컬러 대비 | ✅ (#4b5563 → var(--muted)) |
 | D-68 | 화살표 접근성 | ✅ (aria-hidden 적용) |
 | D-69 | 키보드 단축키 | ✅ (g+h/l/b/c/e/m, ? 도움말) |
-| D-2,D-6,D-7,D-8,D-9 | 스페이싱/그림자/버튼/카드/인풋 | ⬜ |
-| D-10,D-14,D-16 | 네비게이션/IA 심화 | ⬜ |
-| D-18 | 대형 파일 분할 | ⬜ |
+| D-2 | 스페이싱 토큰 적용 (layout, page CSS) | ✅ |
+| D-6 | 그림자 토큰 통일 (SeatPanel, WalletButton, VrfWidget) | ✅ |
+| D-7 | 버튼 variant 체계 (btn-link 추가, create-agent 수정) | ✅ |
+| D-8 | 카드 컴포넌트 추상화 (Card/CardHeader/CardBody/CardFooter) | ✅ |
+| D-9 | 인풋/폼 스타일 토큰화 (create-agent CSS 모듈화) | ✅ |
+| D-10 | 데스크탑 네비게이션 | ✅ (MobileNav topNav로 구현됨) |
+| D-14 | 글로벌 검색 (⌘K SearchPalette) | ✅ |
+| D-16 | 페이지네이션 (LiveDashboard, PlayersPanel show-more) | ✅ |
+| D-18 | 대형 파일 분할 (create-agent, home page) | ✅ |
 
 ---
 

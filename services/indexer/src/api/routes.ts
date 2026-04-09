@@ -147,12 +147,19 @@ router.use(globalRateLimit);
 router.get("/health", async (_req, res) => {
   const wsStats = getWsManager().getStats();
 
-  // Check database readiness
+  // Check database readiness and fetch last processed block
   let dbReady = false;
+  let lastBlock: number | null = null;
   try {
     const { query: dbQuery } = await import("../db/index.js");
     await dbQuery("SELECT 1");
     dbReady = true;
+    const stateRow = await dbQuery<{ last_processed_block: string }>(
+      "SELECT last_processed_block FROM indexer_state WHERE id = 1"
+    );
+    if (stateRow.rows.length > 0) {
+      lastBlock = parseInt(stateRow.rows[0].last_processed_block, 10);
+    }
   } catch {
     dbReady = false;
   }
@@ -174,13 +181,17 @@ router.get("/health", async (_req, res) => {
   res.status(allReady ? 200 : 503).json({
     status: allReady ? "ready" : "degraded",
     timestamp: new Date().toISOString(),
+    lastBlock,
     dependencies: {
       database: dbReady ? "ready" : "unavailable",
       chain: chainReady ? "ready" : "unavailable",
       eventListener: listenerHealth,
     },
     pool: poolStats,
-    websocket: wsStats,
+    websocket: {
+      connections: wsStats.totalConnections,
+      tables: wsStats.tables,
+    },
   });
 });
 

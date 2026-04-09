@@ -539,26 +539,20 @@ export default function CreateAgentPage() {
 
       {/* ── Step 5: Success ───────────────────────────────────────────── */}
       {step === 5 && (
-        <div style={{ background: "#111827", borderRadius: "0.75rem", padding: "2rem", textAlign: "center" }}>
-          <div style={{ fontSize: "4rem", marginBottom: "1rem" }}>{persona.emoji}</div>
-          <h2 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#10B981", marginBottom: "0.5rem" }}>
-            Agent Live!
-          </h2>
-          <p style={{ color: "#6B7280", marginBottom: "1rem" }}>
-            <strong style={{ color: "#F9FAFB" }}>{persona.name}</strong> is now playing at the table.
+        <div className={styles.successCard}>
+          <div className={styles.successEmoji}>{persona.emoji}</div>
+          <h2 className={styles.successTitle}>Agent Live!</h2>
+          <p className="muted">
+            <strong style={{ color: "var(--foreground)" }}>{persona.name}</strong> is now playing at the table.
           </p>
           {deployedAgentId && (
-            <p style={{ fontSize: "0.75rem", color: "var(--muted)", fontFamily: "monospace", marginBottom: "1.5rem" }}>
+            <p className="text-mono text-sm muted" style={{ marginBottom: "1.5rem" }}>
               Agent ID: {deployedAgentId}
             </p>
           )}
-          <div style={{ display: "flex", gap: "1rem", justifyContent: "center", flexWrap: "wrap" }}>
-            <a href="/live" style={{ padding: "0.75rem 1.5rem", background: "#EF4444", borderRadius: "0.5rem", color: "#fff", textDecoration: "none", fontWeight: 600 }}>
-              Watch Live
-            </a>
-            <a href="/" style={{ padding: "0.75rem 1.5rem", background: "#1F2937", border: "1px solid #374151", borderRadius: "0.5rem", color: "#9CA3AF", textDecoration: "none" }}>
-              View Tables
-            </a>
+          <div className={styles.successActions}>
+            <a href="/live" className="btn btn-danger">Watch Live</a>
+            <a href="/" className="btn btn-secondary">View Tables</a>
           </div>
         </div>
       )}

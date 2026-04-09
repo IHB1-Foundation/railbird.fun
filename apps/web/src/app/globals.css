@@ -337,6 +337,22 @@ h5 {
   box-shadow: 0 12px 24px rgba(255, 98, 110, 0.28);
 }
 
+.btn-link {
+  background: none;
+  border-color: transparent;
+  color: var(--accent-soft);
+  box-shadow: none;
+  padding-inline: 0.25rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: rgba(200, 169, 255, 0.4);
+}
+
+.btn-link:hover {
+  color: #e1d5ff;
+  text-decoration-color: rgba(225, 213, 255, 0.7);
+}
+
 .btn-ghost {
   background: rgba(255, 255, 255, 0.04);
   border-color: rgba(129, 108, 249, 0.45);
@@ -361,7 +377,8 @@ h5 {
 .btn-ghost:disabled,
 .btn-danger:disabled,
 .btn-secondary:disabled,
-.btn-join:disabled {
+.btn-join:disabled,
+.btn-link:disabled {
   opacity: 0.45;
   cursor: not-allowed;
   pointer-events: none;

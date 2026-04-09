@@ -60,6 +60,35 @@
   font-size: 0.875rem;
 }
 
+/* Step 5: Success card */
+.successCard {
+  background: var(--background-soft);
+  border: 1px solid rgba(57, 217, 138, 0.3);
+  border-radius: var(--radius-md);
+  padding: var(--space-8);
+  text-align: center;
+}
+
+.successEmoji {
+  font-size: 4rem;
+  margin-bottom: var(--space-4);
+}
+
+.successTitle {
+  font-size: var(--text-xl);
+  font-weight: var(--font-bold);
+  color: var(--success);
+  margin-bottom: var(--space-2);
+}
+
+.successActions {
+  display: flex;
+  gap: var(--space-4);
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: var(--space-6);
+}
+
 @media (max-width: 640px) {
   /* D-32: Mobile responsive create-agent */
   .stepCard {

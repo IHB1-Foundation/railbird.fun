@@ -274,25 +274,18 @@ export default function CreateAgentPage() {
 
       {/* ── Step 1: Connect Wallet ──────────────────────────────────────── */}
       {step === 1 && (
-        <div style={{ background: "#111827", borderRadius: "0.75rem", padding: "2rem", textAlign: "center" }}>
+        <div className={styles.stepCard}>
           <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>🔗</div>
           <h2 style={{ fontSize: "1.25rem", fontWeight: 600, marginBottom: "1rem" }}>Connect Your Wallet</h2>
-          <p style={{ color: "#6B7280", marginBottom: "2rem" }}>
+          <p style={{ color: "var(--muted)", marginBottom: "2rem" }}>
             Your wallet identifies you as the agent owner. You control which table the agent plays on.
           </p>
           {isConnected ? (
             <div>
-              <p style={{ color: "#10B981", marginBottom: "1rem" }}>
+              <p style={{ color: "var(--success)", marginBottom: "1rem" }}>
                 ✓ Connected: {address?.slice(0, 6)}…{address?.slice(-4)}
               </p>
-              <button
-                onClick={() => setStep(2)}
-                style={{
-                  background: "#8B5CF6", color: "#fff", border: "none",
-                  borderRadius: "0.5rem", padding: "0.75rem 2rem",
-                  fontSize: "1rem", cursor: "pointer", fontWeight: 600,
-                }}
-              >
+              <button onClick={() => setStep(2)} className={styles.primaryBtn}>
                 Configure Persona
               </button>
             </div>
@@ -304,7 +297,7 @@ export default function CreateAgentPage() {
 
       {/* ── Step 2: Persona Config ─────────────────────────────────────── */}
       {step === 2 && (
-        <div style={{ background: "#111827", borderRadius: "0.75rem", padding: "2rem" }}>
+        <div className={styles.stepCard} style={{ textAlign: "left" }}>
           <h2 style={{ fontSize: "1.25rem", fontWeight: 600, marginBottom: "1.5rem" }}>Configure Persona</h2>
 
           <div className={styles.personaGrid}>
@@ -435,7 +428,7 @@ export default function CreateAgentPage() {
           </div>
 
           <div style={{ display: "flex", gap: "1rem", marginTop: "1rem" }}>
-            <button onClick={() => setStep(1)} style={{ padding: "0.75rem 1.5rem", background: "#1F2937", border: "1px solid #374151", borderRadius: "0.5rem", color: "#9CA3AF", cursor: "pointer" }}>
+            <button onClick={() => setStep(1)} className={styles.secondaryBtn}>
               <span aria-hidden="true">←</span> Back
             </button>
             <button
@@ -446,11 +439,8 @@ export default function CreateAgentPage() {
                 }
                 setStep(3);
               }}
-              style={{
-                flex: 1, padding: "0.75rem", background: "#8B5CF6",
-                border: "none", borderRadius: "0.5rem", color: "#fff",
-                cursor: "pointer", fontWeight: 600,
-              }}
+              className={styles.primaryBtn}
+              style={{ flex: 1 }}
             >
               Select Table
             </button>
@@ -460,7 +450,7 @@ export default function CreateAgentPage() {
 
       {/* ── Step 3: Select Table ──────────────────────────────────────── */}
       {step === 3 && (
-        <div style={{ background: "#111827", borderRadius: "0.75rem", padding: "2rem" }}>
+        <div className={styles.stepCard} style={{ textAlign: "left" }}>
           <h2 style={{ fontSize: "1.25rem", fontWeight: 600, marginBottom: "1.5rem" }}>Select Table</h2>
 
           {tables.length === 0 ? (
@@ -506,19 +496,14 @@ export default function CreateAgentPage() {
           )}
 
           <div style={{ display: "flex", gap: "1rem" }}>
-            <button onClick={() => setStep(2)} style={{ padding: "0.75rem 1.5rem", background: "#1F2937", border: "1px solid #374151", borderRadius: "0.5rem", color: "#9CA3AF", cursor: "pointer" }}>
+            <button onClick={() => setStep(2)} className={styles.secondaryBtn}>
               <span aria-hidden="true">←</span> Back
             </button>
             <button
               onClick={() => setStep(4)}
               disabled={!selectedTable || !tables.some((table) => table.address === selectedTable && table.emptySeats > 0)}
-              style={{
-                flex: 1, padding: "0.75rem",
-                background: selectedTable && tables.some((table) => table.address === selectedTable && table.emptySeats > 0) ? "#8B5CF6" : "#374151",
-                border: "none", borderRadius: "0.5rem", color: "#fff",
-                cursor: selectedTable && tables.some((table) => table.address === selectedTable && table.emptySeats > 0) ? "pointer" : "not-allowed",
-                fontWeight: 600,
-              }}
+              className={styles.primaryBtn}
+              style={{ flex: 1 }}
             >
               Deploy Agent
             </button>
@@ -528,7 +513,7 @@ export default function CreateAgentPage() {
 
       {/* ── Step 4: Fund & Deploy ─────────────────────────────────────── */}
       {step === 4 && (
-        <div style={{ background: "#111827", borderRadius: "0.75rem", padding: "2rem" }}>
+        <div className={styles.stepCard} style={{ textAlign: "left" }}>
           <h2 style={{ fontSize: "1.25rem", fontWeight: 600, marginBottom: "1.5rem" }}>Fund & Deploy</h2>
 
           {/* Summary card */}
@@ -572,18 +557,15 @@ export default function CreateAgentPage() {
             <button
               onClick={() => setStep(3)}
               disabled={deployStatus !== "idle" && deployStatus !== "error"}
-              style={{ padding: "0.75rem 1.5rem", background: "#1F2937", border: "1px solid #374151", borderRadius: "0.5rem", color: "#9CA3AF", cursor: "pointer" }}
+              className={styles.secondaryBtn}
             >
               <span aria-hidden="true">←</span> Back
             </button>
             <button
               onClick={handleDeploy}
               disabled={deployStatus !== "idle" && deployStatus !== "error"}
-              style={{
-                flex: 1, padding: "0.75rem", background: "#8B5CF6",
-                border: "none", borderRadius: "0.5rem", color: "#fff",
-                cursor: "pointer", fontWeight: 700, fontSize: "1rem",
-              }}
+              className={styles.primaryBtn}
+              style={{ flex: 1 }}
             >
               {deployStatus === "idle" || deployStatus === "error" ? "🚀 Deploy Agent" : "Deploying…"}
             </button>

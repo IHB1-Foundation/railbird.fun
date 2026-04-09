@@ -319,6 +319,147 @@
   line-height: 1;
 }
 
+/* Header elements (D-22) */
+.headerTitle {
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: var(--foreground);
+}
+
+.headerHand {
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+
+.headerBack {
+  margin-left: auto;
+  font-size: var(--text-xs);
+  color: #4b5563;
+  text-decoration: none;
+}
+
+/* Main board panel (D-22) */
+.mainBoard {
+  background: var(--background-soft, #0d1020);
+  border-radius: var(--radius-md);
+  padding: var(--space-6);
+}
+
+/* Community cards section (D-22) */
+.communitySection {
+  margin-bottom: var(--space-4);
+}
+
+.communitySectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-3);
+}
+
+.communityLabel {
+  font-size: var(--text-sm);
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+}
+
+.communityState {
+  font-size: var(--text-sm);
+  color: var(--accent);
+  font-weight: var(--font-semibold);
+}
+
+.communityEmpty {
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+
+/* Pot info row (D-22) */
+.potRow {
+  display: flex;
+  gap: 2rem;
+  margin-bottom: var(--space-5);
+}
+
+.potStat {
+  display: flex;
+  flex-direction: column;
+}
+
+.potLabel {
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+
+.potValue {
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
+  color: var(--foreground);
+}
+
+.potValueBet {
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
+  color: var(--text-gold);
+}
+
+.allInBadge {
+  align-self: center;
+  background: #7f1d1d;
+  color: #fca5a5;
+  font-weight: var(--font-bold);
+  font-size: var(--text-sm);
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-full);
+}
+
+/* Seat grid (D-22) */
+.seatGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--space-2);
+}
+
+.seatCard {
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+}
+
+.seatCardActive {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.seatCardFolded {
+  background: rgba(255, 255, 255, 0.02);
+  opacity: 0.6;
+}
+
+.seatLabel {
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+
+.seatName {
+  font-size: var(--text-sm);
+  font-weight: var(--font-bold);
+  font-family: var(--text-mono);
+}
+
+.seatFoldedText {
+  font-size: 0.65rem;
+  color: #4b5563;
+}
+
+/* Commentary label (D-22) */
+.commentaryLabel {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  letter-spacing: var(--tracking-wide);
+  margin-bottom: var(--space-2);
+}
+
 /* Mobile responsive */
 @media (max-width: 768px) {
   .liveBody {

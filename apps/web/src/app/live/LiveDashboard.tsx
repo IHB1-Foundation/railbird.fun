@@ -233,14 +233,14 @@ export function LiveDashboard() {
           <div className={styles.liveDot} />
           LIVE
         </div>
-        <span style={{ fontSize: "0.9rem", fontWeight: 600, color: "#f9fafb" }}>AI Poker Arena</span>
+        <span className={styles.headerTitle}>AI Poker Arena</span>
         {hand && (
-          <span style={{ fontSize: "0.8rem", color: "#6b7280" }}>
+          <span className={styles.headerHand}>
             Hand #{hand.handId} · {gameStateLabel}
           </span>
         )}
         {isBigPot && <span className={styles.bigPotBadge}>BIG POT</span>}
-        <Link href="/" style={{ marginLeft: "auto", fontSize: "0.75rem", color: "#4b5563", textDecoration: "none" }}>
+        <Link href="/" className={styles.headerBack}>
           <span aria-hidden="true">←</span> Back
         </Link>
         <button className={styles.fullscreenBtn} onClick={toggleFullscreen}>
@@ -269,20 +269,20 @@ export function LiveDashboard() {
 
           {!activeTable ? (
             <div className={styles.waitingState}>
-              <div style={{ fontSize: "3rem" }}>♠</div>
+              <div aria-hidden="true" style={{ fontSize: "3rem" }}>♠</div>
               <p style={{ fontSize: "1.1rem", fontWeight: 600 }}>Waiting for next hand…</p>
-              <p style={{ fontSize: "0.875rem" }}>AI agents are being deployed.</p>
+              <p>AI agents are being deployed.</p>
             </div>
           ) : (
-            <div className={isAllIn ? styles.allInGlow : ""} style={{ background: "#111827", borderRadius: "0.75rem", padding: "1.5rem" }}>
+            <div className={`${isAllIn ? styles.allInGlow : ""} ${styles.mainBoard}`}>
               {/* Community cards */}
-              <div style={{ marginBottom: "1rem" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
-                  <span style={{ fontSize: "0.8rem", color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em" }}>Community Cards</span>
-                  <span style={{ fontSize: "0.8rem", color: "#8b5cf6", fontWeight: 600 }}>{gameStateLabel}</span>
+              <div className={styles.communitySection}>
+                <div className={styles.communitySectionHeader}>
+                  <span className={styles.communityLabel}>Community Cards</span>
+                  <span className={styles.communityState}>{gameStateLabel}</span>
                 </div>
                 {communityCards.length === 0 ? (
-                  <p style={{ color: "#374151", fontSize: "0.875rem" }}>Cards dealt after preflop betting</p>
+                  <p className={styles.communityEmpty}>Cards dealt after preflop betting</p>
                 ) : (
                   <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
                     {communityCards.map((c, i) => <CardChip key={i} card={c} />)}
@@ -291,42 +291,32 @@ export function LiveDashboard() {
               </div>
 
               {/* Pot */}
-              <div style={{ display: "flex", gap: "2rem", marginBottom: "1.25rem" }}>
-                <div>
-                  <div style={{ fontSize: "0.7rem", color: "#6b7280" }}>POT</div>
-                  <div style={{ fontSize: "1.5rem", fontWeight: 800, color: "#f9fafb" }}>
-                    {hand?.pot ?? "0"} RCHIP
-                  </div>
+              <div className={styles.potRow}>
+                <div className={styles.potStat}>
+                  <div className={styles.potLabel}>POT</div>
+                  <div className={styles.potValue}>{hand?.pot ?? "0"} RCHIP</div>
                 </div>
-                <div>
-                  <div style={{ fontSize: "0.7rem", color: "#6b7280" }}>CURRENT BET</div>
-                  <div style={{ fontSize: "1.5rem", fontWeight: 800, color: "#fbbf24" }}>
-                    {hand?.currentBet ?? "0"} RCHIP
-                  </div>
+                <div className={styles.potStat}>
+                  <div className={styles.potLabel}>CURRENT BET</div>
+                  <div className={styles.potValueBet}>{hand?.currentBet ?? "0"} RCHIP</div>
                 </div>
                 {isAllIn && (
                   <div style={{ alignSelf: "center" }}>
-                    <span style={{ background: "#7f1d1d", color: "#fca5a5", fontWeight: 800, fontSize: "0.875rem", padding: "0.25rem 0.75rem", borderRadius: "9999px" }}>
-                      ALL-IN!
-                    </span>
+                    <span className={styles.allInBadge}>ALL-IN!</span>
                   </div>
                 )}
               </div>
 
               {/* Seat panels (minimal) */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: "0.5rem" }}>
+              <div className={styles.seatGrid}>
                 {(activeTable.seats ?? []).map((seat) => (
-                  <div key={seat.seatIndex} style={{
-                    background: seat.isActive ? "rgba(139,92,246,0.1)" : "rgba(255,255,255,0.03)",
-                    border: `1px solid ${seat.isActive ? "rgba(139,92,246,0.3)" : "rgba(255,255,255,0.06)"}`,
-                    borderRadius: "0.5rem", padding: "0.5rem 0.625rem",
-                    opacity: seat.isActive ? 1 : 0.5,
-                  }}>
-                    <div style={{ fontSize: "0.72rem", color: "#6b7280" }}>Seat {seat.seatIndex}</div>
-                    <div style={{ fontSize: "0.875rem", fontWeight: 700, fontFamily: "monospace" }}>
-                      {seat.stack} RCHIP
-                    </div>
-                    {!seat.isActive && <div style={{ fontSize: "0.65rem", color: "#4b5563" }}>folded</div>}
+                  <div
+                    key={seat.seatIndex}
+                    className={`${styles.seatCard} ${seat.isActive ? styles.seatCardActive : styles.seatCardFolded}`}
+                  >
+                    <div className={styles.seatLabel}>Seat {seat.seatIndex}</div>
+                    <div className={styles.seatName}>{seat.stack} RCHIP</div>
+                    {!seat.isActive && <div className={styles.seatFoldedText}>folded</div>}
                   </div>
                 ))}
               </div>
@@ -336,7 +326,7 @@ export function LiveDashboard() {
           {/* Commentary */}
           {commentary.length > 0 && (
             <div className={styles.commentaryBox} aria-live="polite" aria-label="Game commentary">
-              <p style={{ fontSize: "0.72rem", color: "#6b7280", letterSpacing: "0.05em", marginBottom: "0.5rem" }}>COMMENTARY</p>
+              <p className={styles.commentaryLabel}>COMMENTARY</p>
               {commentary.map((c, i) => (
                 <div key={i} className={styles.commentaryEntry}>
                   <span className={styles.commentaryTime}>{c.time}</span>

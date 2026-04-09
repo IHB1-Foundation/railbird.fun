@@ -62,10 +62,14 @@ interface SeatStats {
 /**
  * Per-seat action frequency tracker.
  * Infers opponent tendencies by comparing successive table state snapshots.
- * Frequencies are lifetime-cumulative (reset on new GeminiStrategy instance only).
+ * Frequencies reset on each new hand (or when explicitly cleared).
  */
 class OpponentModel {
   private stats = new Map<number, SeatStats>();
+
+  reset(): void {
+    this.stats.clear();
+  }
 
   private getOrCreate(seatIndex: number): SeatStats {
     let s = this.stats.get(seatIndex);
@@ -126,7 +130,7 @@ export class GeminiStrategy implements Strategy {
   private readonly fallbackStrategy: Strategy;
   private readonly persona: PersonaConfig | undefined;
   private readonly vectorStore: VectorStore | undefined;
-  private readonly opponentModel = new OpponentModel();
+  private opponentModel = new OpponentModel();
 
   /** Previous table state snapshot for action inference between our turns. */
   private prevState: TableState | null = null;
@@ -161,9 +165,12 @@ export class GeminiStrategy implements Strategy {
       const reason = error instanceof Error ? error.message : String(error);
       logger.warn({ reason }, "GeminiStrategy falling back to simple strategy");
       const fallbackDecision = await this.fallbackStrategy.decide(context);
+      const fallbackReasoning = fallbackDecision.reasoning
+        ? `Fallback: ${reason}. ${fallbackDecision.reasoning}`
+        : `Fallback: ${reason}. Playing safe with ${fallbackDecision.action}.`;
       return {
         ...fallbackDecision,
-        reasoning: fallbackDecision.reasoning ?? `Fallback: ${reason}. Playing safe with ${fallbackDecision.action}.`,
+        reasoning: fallbackReasoning,
       };
     } finally {
       // Save state snapshot for next call's diff
@@ -179,8 +186,12 @@ export class GeminiStrategy implements Strategy {
   private _updateOpponentModel(state: TableState, mySeatIndex: number): void {
     const prev = this.prevState;
     if (!prev) return;
-    // Reset tracking if a new hand started
-    if (state.currentHandId !== this.prevHandId) return;
+    // Reset model on new hand so stale tendencies don't carry over
+    if (state.currentHandId !== this.prevHandId) {
+      this.opponentModel.reset();
+      logger.debug({ handId: state.currentHandId.toString() }, "OpponentModel reset for new hand");
+      return;
+    }
 
     const numSeats = state.seats.length;
     for (let i = 0; i < numSeats; i++) {

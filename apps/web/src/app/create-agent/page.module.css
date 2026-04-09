@@ -1,5 +1,29 @@
 /* H-2: Mobile responsive overrides for create-agent page */
 
+/* Page wrapper */
+.pageWrapper {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: clamp(1rem, 4vw, 2rem) clamp(0.75rem, 4vw, 1rem);
+}
+
+.pageTitle {
+  font-size: clamp(var(--text-xl), 4vw, 1.75rem);
+  font-weight: var(--font-bold);
+  margin-bottom: var(--space-2);
+}
+
+.pageSubtitle {
+  margin-bottom: var(--space-8);
+}
+
+/* Progress track */
+.progressTrack {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-8);
+}
+
 /* Step card (D-22) */
 .stepCard {
   background: var(--background-soft, #0d1020);
@@ -58,6 +82,269 @@
   grid-template-columns: 1fr 1fr;
   gap: 0.5rem;
   font-size: 0.875rem;
+}
+
+/* Form fields (D-9) */
+.formGroup {
+  margin-bottom: var(--space-4);
+}
+
+.formLabel {
+  display: block;
+  font-size: var(--text-sm);
+  color: var(--muted);
+  margin-bottom: var(--space-1);
+}
+
+.formInput {
+  width: 100%;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: var(--input-radius);
+  padding: var(--input-padding);
+  color: var(--foreground);
+  font-size: var(--text-base);
+  font-family: inherit;
+  box-sizing: border-box;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.formInput:focus-visible {
+  outline: none;
+  border-color: var(--input-border-focus);
+  box-shadow: 0 0 0 3px rgba(129, 108, 249, 0.15);
+}
+
+.formInput.hasError {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px rgba(255, 98, 110, 0.12);
+}
+
+.formError {
+  font-size: var(--text-xs);
+  color: var(--danger);
+  margin-top: var(--space-1);
+}
+
+.sliderRow {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: var(--space-1);
+}
+
+.sliderLabel {
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+
+.sliderValue {
+  font-size: var(--text-sm);
+  color: var(--foreground);
+  font-family: var(--text-mono);
+}
+
+.presetRow {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.presetBtn {
+  background: var(--input-bg);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-3);
+  color: var(--muted);
+  font-size: var(--text-xs);
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.presetBtn:hover {
+  border-color: var(--accent);
+  color: var(--foreground);
+}
+
+.colorSwatch {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.colorSwatch.selected {
+  border-color: #fff;
+}
+
+.colorRow {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.radarPreview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.radarCard {
+  background: var(--input-bg);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  border: 2px solid var(--border-subtle);
+}
+
+.radarEmoji {
+  font-size: 2rem;
+  text-align: center;
+  margin-bottom: var(--space-2);
+}
+
+.radarName {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  text-align: center;
+  margin-top: var(--space-2);
+}
+
+/* Step 3: Table select */
+.tableOption {
+  background: var(--input-bg);
+  border: 2px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.tableOption:hover:not(:disabled) {
+  border-color: var(--border-strong);
+}
+
+.tableOption.selected {
+  background: rgba(129, 108, 249, 0.1);
+  border-color: var(--accent);
+}
+
+.tableOption:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.tableOptionRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.tableAddress {
+  font-weight: var(--font-semibold);
+  color: var(--foreground);
+  margin-bottom: var(--space-1);
+}
+
+.tableMeta {
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+
+.badge {
+  border-radius: var(--radius-full);
+  padding: 0.125rem var(--space-2);
+  font-size: var(--text-xs);
+}
+
+.badge.open {
+  background: rgba(57, 217, 138, 0.15);
+  color: var(--success);
+}
+
+.badge.full {
+  background: rgba(255, 98, 110, 0.15);
+  color: var(--danger);
+}
+
+/* Step 4: Deploy summary */
+.summaryCard {
+  background: var(--input-bg);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  margin-bottom: var(--space-6);
+  border: 1px solid var(--border-subtle);
+}
+
+.summaryAgentRow {
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+  margin-bottom: var(--space-4);
+}
+
+.summaryEmoji {
+  font-size: 2.5rem;
+}
+
+.summaryName {
+  font-weight: var(--font-bold);
+  color: var(--foreground);
+}
+
+.summaryStats {
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+
+.errorAlert {
+  background: rgba(255, 98, 110, 0.1);
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  margin-bottom: var(--space-4);
+  color: var(--danger-soft);
+  font-size: var(--text-sm);
+}
+
+.progressAlert {
+  background: rgba(129, 108, 249, 0.1);
+  border: 1px solid rgba(129, 108, 249, 0.5);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  margin-bottom: var(--space-4);
+  color: var(--accent-soft);
+  font-size: var(--text-sm);
+}
+
+.btnRow {
+  display: flex;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.progressBar {
+  height: 4px;
+  border-radius: 2px;
+  transition: background 0.3s ease, opacity 0.3s ease;
+}
+
+.progressLabel {
+  font-size: var(--text-xs);
+  margin-top: var(--space-1);
+}
+
+.stepTitle {
+  font-size: var(--text-xl);
+  font-weight: var(--font-semibold);
+  margin-bottom: var(--space-6);
+}
+
+.stepSubtitle {
+  color: var(--muted);
+  margin-bottom: var(--space-8);
 }
 
 /* Step 5: Success card */

@@ -80,19 +80,17 @@ function RadarPreview({ persona }: { persona: PersonaConfig }) {
 function Slider({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
   const id = `slider-${label.toLowerCase().replace(/\s+/g, "-")}`;
   return (
-    <div style={{ marginBottom: "0.75rem" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.25rem" }}>
-        <label htmlFor={id} style={{ fontSize: "0.875rem", color: "#9CA3AF" }}>{label}</label>
-        <span style={{ fontSize: "0.875rem", color: "#F9FAFB", fontFamily: "monospace" }} aria-hidden="true">
-          {value.toFixed(2)}
-        </span>
+    <div className={styles.formGroup}>
+      <div className={styles.sliderRow}>
+        <label htmlFor={id} className={styles.sliderLabel}>{label}</label>
+        <span className={styles.sliderValue} aria-hidden="true">{value.toFixed(2)}</span>
       </div>
       <input
         id={id}
         type="range" min={0} max={1} step={0.01} value={value}
         onChange={(e) => onChange(parseFloat(e.target.value))}
         aria-valuetext={value.toFixed(2)}
-        style={{ width: "100%", accentColor: "#8B5CF6" }}
+        style={{ width: "100%", accentColor: "var(--accent)" }}
       />
     </div>
   );
@@ -211,27 +209,25 @@ export default function CreateAgentPage() {
   // ─── Step rendering ──────────────────────────────────────────────────────
 
   return (
-    <div style={{ maxWidth: "640px", margin: "0 auto", padding: "clamp(1rem, 4vw, 2rem) clamp(0.75rem, 4vw, 1rem)" }}>
+    <div className={styles.pageWrapper}>
       <Breadcrumb crumbs={[{ label: "Home", href: "/" }, { label: "Create Agent" }]} />
-      <h1 style={{ fontSize: "1.75rem", fontWeight: 700, marginBottom: "0.5rem" }}>
-        Create Your AI Agent
-      </h1>
-      <p style={{ color: "#6B7280", marginBottom: "2rem" }}>
+      <h1 className={styles.pageTitle}>Create Your AI Agent</h1>
+      <p className={`muted ${styles.pageSubtitle}`}>
         Deploy a custom poker-playing AI agent to compete on-chain.
       </p>
 
       {/* Progress */}
-      <div style={{ display: "flex", gap: "0.5rem", marginBottom: "2rem" }}>
+      <div className={styles.progressTrack}>
         {["Wallet", "Persona", "Table", "Deploy"].map((label, i) => (
           <div key={i} style={{ flex: 1 }}>
-            <div style={{
-              height: "4px", borderRadius: "2px",
-              background: step > i + 1 ? "#8B5CF6" : step === i + 1 ? "#8B5CF6" : "#374151",
-              opacity: step > i + 1 ? 1 : step === i + 1 ? 1 : 0.3,
-            }} />
-            <p style={{ fontSize: "0.7rem", color: step >= i + 1 ? "#9CA3AF" : "var(--muted)", marginTop: "0.25rem" }}>
-              {label}
-            </p>
+            <div
+              className={styles.progressBar}
+              style={{
+                background: step >= i + 1 ? "var(--accent)" : "var(--border-default)",
+                opacity: step >= i + 1 ? 1 : 0.35,
+              }}
+            />
+            <p className={`${styles.progressLabel} ${step >= i + 1 ? "" : "muted"}`}>{label}</p>
           </div>
         ))}
       </div>
@@ -240,8 +236,8 @@ export default function CreateAgentPage() {
       {step === 1 && (
         <div className={styles.stepCard}>
           <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>🔗</div>
-          <h2 style={{ fontSize: "1.25rem", fontWeight: 600, marginBottom: "1rem" }}>Connect Your Wallet</h2>
-          <p style={{ color: "var(--muted)", marginBottom: "2rem" }}>
+          <h2 className={styles.stepTitle}>Connect Your Wallet</h2>
+          <p className={`muted ${styles.stepSubtitle}`}>
             Your wallet identifies you as the agent owner. You control which table the agent plays on.
           </p>
           {isConnected ? (
@@ -262,13 +258,13 @@ export default function CreateAgentPage() {
       {/* ── Step 2: Persona Config ─────────────────────────────────────── */}
       {step === 2 && (
         <div className={styles.stepCard} style={{ textAlign: "left" }}>
-          <h2 style={{ fontSize: "1.25rem", fontWeight: 600, marginBottom: "1.5rem" }}>Configure Persona</h2>
+          <h2 className={styles.stepTitle}>Configure Persona</h2>
 
           <div className={styles.personaGrid}>
             <div>
               {/* Name */}
-              <div style={{ marginBottom: "1rem" }}>
-                <label htmlFor="agent-name" style={{ display: "block", fontSize: "0.875rem", color: "#9CA3AF", marginBottom: "0.25rem" }}>
+              <div className={styles.formGroup}>
+                <label htmlFor="agent-name" className={styles.formLabel}>
                   Agent Name (1–24 chars)
                 </label>
                 <input
@@ -278,35 +274,21 @@ export default function CreateAgentPage() {
                   placeholder="e.g. Serpent"
                   aria-invalid={!!nameError}
                   aria-describedby={nameError ? "name-error" : undefined}
-                  style={{
-                    width: "100%", background: "#1F2937",
-                    border: `1px solid ${nameError ? "var(--danger)" : "#374151"}`,
-                    borderRadius: "0.5rem", padding: "0.5rem 0.75rem", color: "#F9FAFB",
-                    fontSize: "1rem", boxSizing: "border-box",
-                    boxShadow: nameError ? "0 0 0 3px rgba(255,98,110,0.12)" : "none",
-                  }}
+                  className={`${styles.formInput}${nameError ? ` ${styles.hasError}` : ""}`}
                 />
                 {nameError && (
-                  <p id="name-error" role="alert" style={{ fontSize: "0.78rem", color: "var(--danger)", marginTop: "0.3rem" }}>
+                  <p id="name-error" role="alert" className={styles.formError}>
                     {nameError}
                   </p>
                 )}
               </div>
 
               {/* Presets */}
-              <div style={{ marginBottom: "1rem" }}>
-                <p style={{ fontSize: "0.875rem", color: "#9CA3AF", marginBottom: "0.5rem" }}>Quick Presets</p>
-                <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+              <div className={styles.formGroup}>
+                <p className={styles.formLabel}>Quick Presets</p>
+                <div className={styles.presetRow}>
                   {PRESET_NAMES.map((id) => (
-                    <button
-                      key={id}
-                      onClick={() => applyPreset(id)}
-                      style={{
-                        background: "#1F2937", border: "1px solid #374151",
-                        borderRadius: "0.375rem", padding: "0.25rem 0.75rem",
-                        color: "#D1D5DB", fontSize: "0.75rem", cursor: "pointer",
-                      }}
-                    >
+                    <button key={id} onClick={() => applyPreset(id)} className={styles.presetBtn}>
                       {PERSONA_PRESETS[id].emoji} {id}
                     </button>
                   ))}
@@ -314,18 +296,15 @@ export default function CreateAgentPage() {
               </div>
 
               {/* Emoji */}
-              <div style={{ marginBottom: "1rem" }}>
-                <p style={{ fontSize: "0.875rem", color: "#9CA3AF", marginBottom: "0.5rem" }}>Emoji</p>
-                <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+              <div className={styles.formGroup}>
+                <p className={styles.formLabel}>Emoji</p>
+                <div className={styles.presetRow}>
                   {EMOJI_OPTIONS.map((em) => (
                     <button
                       key={em}
                       onClick={() => setPersona((p) => ({ ...p, emoji: em }))}
-                      style={{
-                        fontSize: "1.25rem", padding: "0.25rem 0.5rem",
-                        border: `2px solid ${persona.emoji === em ? "#8B5CF6" : "#374151"}`,
-                        borderRadius: "0.375rem", background: "transparent", cursor: "pointer",
-                      }}
+                      className={styles.presetBtn}
+                      style={{ fontSize: "1.25rem", borderColor: persona.emoji === em ? "var(--accent)" : undefined }}
                     >
                       {em}
                     </button>
@@ -334,18 +313,16 @@ export default function CreateAgentPage() {
               </div>
 
               {/* Color */}
-              <div style={{ marginBottom: "1.5rem" }}>
-                <p style={{ fontSize: "0.875rem", color: "#9CA3AF", marginBottom: "0.5rem" }}>Color Accent</p>
-                <div style={{ display: "flex", gap: "0.5rem" }}>
+              <div className={styles.formGroup}>
+                <p className={styles.formLabel}>Color Accent</p>
+                <div className={styles.colorRow}>
                   {COLOR_OPTIONS.map((c) => (
                     <button
                       key={c}
                       onClick={() => setPersona((p) => ({ ...p, colorAccent: c }))}
-                      style={{
-                        width: "24px", height: "24px", borderRadius: "50%",
-                        background: c, border: `2px solid ${persona.colorAccent === c ? "#fff" : "transparent"}`,
-                        cursor: "pointer",
-                      }}
+                      className={`${styles.colorSwatch}${persona.colorAccent === c ? ` ${styles.selected}` : ""}`}
+                      style={{ background: c }}
+                      aria-label={`Color ${c}`}
                     />
                   ))}
                 </div>
@@ -358,40 +335,33 @@ export default function CreateAgentPage() {
               <Slider label="Position Awareness" value={persona.positionAwareness} onChange={(v) => setPersona((p) => ({ ...p, positionAwareness: v }))} />
 
               {/* Optional system prompt */}
-              <div style={{ marginBottom: "1rem" }}>
-                <label style={{ display: "block", fontSize: "0.875rem", color: "#9CA3AF", marginBottom: "0.25rem" }}>
+              <div className={styles.formGroup}>
+                <label htmlFor="system-prompt" className={styles.formLabel}>
                   Personality Prompt (optional, max 200 chars)
                 </label>
                 <textarea
+                  id="system-prompt"
                   maxLength={200} value={persona.systemPrompt}
                   onChange={(e) => setPersona((p) => ({ ...p, systemPrompt: e.target.value }))}
                   placeholder="e.g. Be mysterious, never reveal your hand strength..."
                   rows={3}
-                  style={{
-                    width: "100%", background: "#1F2937", border: "1px solid #374151",
-                    borderRadius: "0.5rem", padding: "0.5rem 0.75rem", color: "#F9FAFB",
-                    fontSize: "0.875rem", resize: "vertical", boxSizing: "border-box",
-                  }}
+                  className={styles.formInput}
+                  style={{ resize: "vertical" }}
                 />
               </div>
             </div>
 
             {/* Radar preview */}
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.5rem" }}>
-              <div style={{
-                background: "#1F2937", borderRadius: "0.75rem", padding: "1rem",
-                border: `2px solid ${persona.colorAccent}40`,
-              }}>
-                <div style={{ fontSize: "2rem", textAlign: "center" }}>{persona.emoji}</div>
+            <div className={styles.radarPreview}>
+              <div className={styles.radarCard} style={{ borderColor: `${persona.colorAccent}40` }}>
+                <div className={styles.radarEmoji}>{persona.emoji}</div>
                 <RadarPreview persona={persona} />
-                <p style={{ fontSize: "0.75rem", color: "#6B7280", textAlign: "center", marginTop: "0.5rem" }}>
-                  {persona.name || "Unnamed"}
-                </p>
+                <p className={styles.radarName}>{persona.name || "Unnamed"}</p>
               </div>
             </div>
           </div>
 
-          <div style={{ display: "flex", gap: "1rem", marginTop: "1rem" }}>
+          <div className={styles.btnRow}>
             <button onClick={() => setStep(1)} className={styles.secondaryBtn}>
               <span aria-hidden="true">←</span> Back
             </button>
@@ -415,10 +385,10 @@ export default function CreateAgentPage() {
       {/* ── Step 3: Select Table ──────────────────────────────────────── */}
       {step === 3 && (
         <div className={styles.stepCard} style={{ textAlign: "left" }}>
-          <h2 style={{ fontSize: "1.25rem", fontWeight: 600, marginBottom: "1.5rem" }}>Select Table</h2>
+          <h2 className={styles.stepTitle}>Select Table</h2>
 
           {tables.length === 0 ? (
-            <p style={{ color: "#6B7280" }}>Loading tables…</p>
+            <p className="muted">Loading tables…</p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: "1.5rem" }}>
               {tables.map((table) => (
@@ -426,32 +396,19 @@ export default function CreateAgentPage() {
                   key={table.address}
                   onClick={() => setSelectedTable(table.address)}
                   disabled={table.emptySeats === 0}
-                  style={{
-                    background: selectedTable === table.address ? "#1E1B4B" : "#1F2937",
-                    border: `2px solid ${selectedTable === table.address ? "#8B5CF6" : "#374151"}`,
-                    borderRadius: "0.5rem", padding: "1rem",
-                    cursor: table.emptySeats > 0 ? "pointer" : "not-allowed",
-                    textAlign: "left",
-                    opacity: table.emptySeats > 0 ? 1 : 0.6,
-                  }}
+                  className={`${styles.tableOption}${selectedTable === table.address ? ` ${styles.selected}` : ""}`}
                 >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div className={styles.tableOptionRow}>
                     <div>
-                      <p style={{ fontWeight: 600, color: "#F9FAFB", marginBottom: "0.25rem" }}>
-                        {table.address.slice(0, 10)}…
-                      </p>
-                      <p style={{ fontSize: "0.875rem", color: "#9CA3AF" }}>
+                      <p className={styles.tableAddress}>{table.address.slice(0, 10)}…</p>
+                      <p className={styles.tableMeta}>
                         Blinds: {table.smallBlind}/{table.bigBlind} RCHIP · {table.activePlayers} seated · {table.emptySeats} open
                       </p>
                     </div>
                     {table.emptySeats > 0 ? (
-                      <span style={{ background: "#064E3B", color: "#10B981", borderRadius: "9999px", padding: "0.125rem 0.5rem", fontSize: "0.75rem" }}>
-                        Open
-                      </span>
+                      <span className={`${styles.badge} ${styles.open}`}>Open</span>
                     ) : (
-                      <span style={{ background: "#450A0A", color: "#EF4444", borderRadius: "9999px", padding: "0.125rem 0.5rem", fontSize: "0.75rem" }}>
-                        Full
-                      </span>
+                      <span className={`${styles.badge} ${styles.full}`}>Full</span>
                     )}
                   </div>
                 </button>
@@ -459,7 +416,7 @@ export default function CreateAgentPage() {
             </div>
           )}
 
-          <div style={{ display: "flex", gap: "1rem" }}>
+          <div className={styles.btnRow}>
             <button onClick={() => setStep(2)} className={styles.secondaryBtn}>
               <span aria-hidden="true">←</span> Back
             </button>
@@ -478,46 +435,44 @@ export default function CreateAgentPage() {
       {/* ── Step 4: Fund & Deploy ─────────────────────────────────────── */}
       {step === 4 && (
         <div className={styles.stepCard} style={{ textAlign: "left" }}>
-          <h2 style={{ fontSize: "1.25rem", fontWeight: 600, marginBottom: "1.5rem" }}>Fund & Deploy</h2>
+          <h2 className={styles.stepTitle}>Fund & Deploy</h2>
 
           {/* Summary card */}
-          <div style={{ background: "#1F2937", borderRadius: "0.5rem", padding: "1rem", marginBottom: "1.5rem" }}>
-            <div style={{ display: "flex", gap: "1rem", alignItems: "center", marginBottom: "1rem" }}>
-              <span style={{ fontSize: "2.5rem" }}>{persona.emoji}</span>
+          <div className={styles.summaryCard}>
+            <div className={styles.summaryAgentRow}>
+              <span className={styles.summaryEmoji}>{persona.emoji}</span>
               <div>
-                <p style={{ fontWeight: 700, color: "#F9FAFB" }}>{persona.name}</p>
-                <p style={{ fontSize: "0.875rem", color: "#9CA3AF" }}>
+                <p className={styles.summaryName}>{persona.name}</p>
+                <p className={styles.summaryStats}>
                   Aggr {persona.aggression.toFixed(2)} · Tight {persona.tightness.toFixed(2)} · Bluff {persona.bluffFrequency.toFixed(2)}
                 </p>
               </div>
             </div>
             <div className={styles.statsGrid}>
               <div>
-                <span style={{ color: "#6B7280" }}>Table</span>
-                <p style={{ color: "#F9FAFB" }}>{selectedTable.slice(0, 10)}…</p>
+                <span className="muted">Table</span>
+                <p>{selectedTable.slice(0, 10)}…</p>
               </div>
               <div>
-                <span style={{ color: "#6B7280" }}>Buy-in (est.)</span>
-                <p style={{ color: "#F9FAFB" }}>1,000 RCHIP</p>
+                <span className="muted">Buy-in (est.)</span>
+                <p>1,000 RCHIP</p>
               </div>
             </div>
           </div>
 
           {error && (
-            <div style={{ background: "#450A0A", border: "1px solid #EF4444", borderRadius: "0.5rem", padding: "0.75rem", marginBottom: "1rem", color: "#FCA5A5", fontSize: "0.875rem" }}>
-              {error}
-            </div>
+            <div className={styles.errorAlert}>{error}</div>
           )}
 
           {deployStatus !== "idle" && deployStatus !== "error" && deployStatus !== "live" && (
-            <div style={{ background: "#1E1B4B", border: "1px solid #8B5CF6", borderRadius: "0.5rem", padding: "0.75rem", marginBottom: "1rem", color: "#C4B5FD", fontSize: "0.875rem" }}>
+            <div className={styles.progressAlert}>
               {deployStatus === "registering" && "⏳ Registering agent…"}
               {deployStatus === "seating" && "🎯 Seating at table…"}
               {deployStatus === "starting" && "🚀 Starting agent process…"}
             </div>
           )}
 
-          <div style={{ display: "flex", gap: "1rem" }}>
+          <div className={styles.btnRow}>
             <button
               onClick={() => setStep(3)}
               disabled={deployStatus !== "idle" && deployStatus !== "error"}

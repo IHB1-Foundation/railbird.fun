@@ -11,41 +11,6 @@ import "./PokerTableBase.sol";
  */
 abstract contract BettingEngine is PokerTableBase {
 
-    // ============ Dealer Seed Commit/Reveal ============
-
-    function submitDealerSeedCommit(uint256 handId, bytes32 commitment) external onlyDealer {
-        require(handId == currentHandId, "Must be current hand");
-        require(commitment != bytes32(0), "Empty commitment");
-        require(dealerSeedCommits[handId] == bytes32(0), "DealerSeed: already committed");
-        require(
-            gameState == GameState.WAITING_VRF_HOLECARDS ||
-            gameState == GameState.WAITING_FOR_HOLECARDS ||
-            gameState == GameState.BETTING_PRE,
-            "DealerSeed: too late to commit"
-        );
-
-        dealerSeedCommits[handId] = commitment;
-        emit DealerSeedCommitted(handId, commitment);
-    }
-
-    function revealDealerSeed(uint256 handId, bytes32 seed) external {
-        require(handId > 0 && handId <= currentHandId, "Invalid hand ID");
-        require(dealerSeedCommits[handId] != bytes32(0), "DealerSeed: no commitment");
-        require(dealerSeedReveals[handId] == bytes32(0), "DealerSeed: already revealed");
-
-        if (handId == currentHandId) {
-            require(
-                gameState == GameState.SHOWDOWN || gameState == GameState.SETTLED,
-                "DealerSeed: not in showdown"
-            );
-        }
-
-        require(keccak256(abi.encodePacked(seed)) == dealerSeedCommits[handId], "DealerSeed: commitment mismatch");
-
-        dealerSeedReveals[handId] = seed;
-        emit DealerSeedRevealed(handId, seed);
-    }
-
     // ============ Actions ============
 
     function fold(uint8 seatIndex)
@@ -79,7 +44,7 @@ abstract contract BettingEngine is PokerTableBase {
     {
         require(
             seats[seatIndex].currentBet == currentHand.currentBet,
-            "Cannot check, must call or raise"
+            "CK"
         );
 
         _recordAction();
@@ -98,7 +63,7 @@ abstract contract BettingEngine is PokerTableBase {
         oneActionPerBlock
     {
         uint256 toCall = currentHand.currentBet - seats[seatIndex].currentBet;
-        require(toCall > 0, "Nothing to call, use check");
+        require(toCall > 0, "NC");
 
         uint256 actualCall = toCall < seats[seatIndex].stack ? toCall : seats[seatIndex].stack;
 
@@ -110,14 +75,9 @@ abstract contract BettingEngine is PokerTableBase {
         currentHand.pot += actualCall;
         currentHand.hasActed[seatIndex] = true;
 
-        if (seats[seatIndex].stack == 0) {
-            seats[seatIndex].isAllIn = true;
-            emit SeatAllIn(currentHandId, seatIndex, seats[seatIndex].currentBet);
-        }
+        if (seats[seatIndex].stack == 0) seats[seatIndex].isAllIn = true;
 
         emit ActionTaken(currentHandId, seatIndex, ActionType.CALL, toCall, currentHand.pot);
-        emit PotUpdated(currentHandId, currentHand.pot);
-        emit SeatUpdated(seatIndex, seats[seatIndex].owner, seats[seatIndex].operator, seats[seatIndex].stack);
 
         _advanceAction(seatIndex);
     }
@@ -136,14 +96,14 @@ abstract contract BettingEngine is PokerTableBase {
         bool isAllInRaise = stack <= additional;
 
         if (!isAllInRaise) {
-            require(raiseToAmount > currentHand.currentBet, "Raise must exceed current bet");
+            require(raiseToAmount > currentHand.currentBet, "R1");
             uint256 minRaise = currentHand.currentBet + currentHand.lastRaiseSize;
-            require(raiseToAmount >= minRaise, "Raise too small");
-            require(stack >= additional, "Insufficient stack");
+            require(raiseToAmount >= minRaise, "R2");
+            require(stack >= additional, "R3");
         } else {
             additional = stack;
             raiseToAmount = seats[seatIndex].currentBet + stack;
-            require(raiseToAmount > currentHand.currentBet, "Raise must exceed current bet");
+            require(raiseToAmount > currentHand.currentBet, "R1");
         }
 
         _recordAction();
@@ -158,10 +118,7 @@ abstract contract BettingEngine is PokerTableBase {
         currentHand.lastAggressor = seatIndex;
         currentHand.hasActed[seatIndex] = true;
 
-        if (seats[seatIndex].stack == 0) {
-            seats[seatIndex].isAllIn = true;
-            emit SeatAllIn(currentHandId, seatIndex, seats[seatIndex].currentBet);
-        }
+        if (seats[seatIndex].stack == 0) seats[seatIndex].isAllIn = true;
 
         for (uint8 i = 0; i < numSeats; i++) {
             if (i != seatIndex && seats[i].isActive) {
@@ -170,14 +127,12 @@ abstract contract BettingEngine is PokerTableBase {
         }
 
         emit ActionTaken(currentHandId, seatIndex, ActionType.RAISE, raiseToAmount, currentHand.pot);
-        emit PotUpdated(currentHandId, currentHand.pot);
-        emit SeatUpdated(seatIndex, seats[seatIndex].owner, seats[seatIndex].operator, seats[seatIndex].stack);
 
         _advanceAction(seatIndex);
     }
 
     function forceTimeout() external inBettingState oneActionPerBlock {
-        require(block.timestamp > actionDeadline, "Deadline not passed");
+        require(block.timestamp > actionDeadline, "DP");
 
         uint8 seatIndex = currentHand.actorSeat;
 
@@ -192,12 +147,10 @@ abstract contract BettingEngine is PokerTableBase {
 
         if (canCheckNow) {
             currentHand.hasActed[seatIndex] = true;
-            emit ForceTimeout(currentHandId, seatIndex, ActionType.CHECK);
             emit ActionTaken(currentHandId, seatIndex, ActionType.CHECK, 0, currentHand.pot);
             _advanceAction(seatIndex);
         } else {
             seats[seatIndex].isActive = false;
-            emit ForceTimeout(currentHandId, seatIndex, ActionType.FOLD);
             emit ActionTaken(currentHandId, seatIndex, ActionType.FOLD, 0, currentHand.pot);
 
             (uint8 activeCount, uint8 lastActive) = _countActivePlayers();
@@ -334,7 +287,6 @@ abstract contract BettingEngine is PokerTableBase {
     }
 
     function _completeBettingRound() internal {
-        GameState currentState = gameState;
         GameState nextState;
 
         if (gameState == GameState.BETTING_PRE) {
@@ -348,8 +300,6 @@ abstract contract BettingEngine is PokerTableBase {
         } else {
             revert InvalidGameState();
         }
-
-        emit BettingRoundComplete(currentHandId, currentState, nextState);
 
         if (nextState == GameState.SHOWDOWN) {
             _buildSidePots();

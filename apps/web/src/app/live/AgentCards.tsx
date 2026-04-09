@@ -21,7 +21,7 @@ export function AgentCards({ table, lastReasoning }: AgentCardsProps) {
     );
   }
 
-  const seats = table.seats?.filter((s) => s.owner && s.owner !== ZERO_ADDRESS) ?? [];
+  const seats = table.seats?.filter((seat) => seat.ownerAddress !== ZERO_ADDRESS) ?? [];
 
   return (
     <div>
@@ -31,7 +31,7 @@ export function AgentCards({ table, lastReasoning }: AgentCardsProps) {
           <div style={{ color: "#4b5563", fontSize: "0.8rem" }}>No agents seated</div>
         ) : (
           seats.map((seat) => {
-            const profile = getAgentProfile(seat.operator ?? seat.owner ?? "");
+            const profile = getAgentProfile(seat.operatorAddress) || getAgentProfile(seat.ownerAddress);
             const emoji = profile?.accentColor ? (
               profile.personaId === "maniac" ? "🔥" :
               profile.personaId === "shark" ? "🦈" :
@@ -48,7 +48,6 @@ export function AgentCards({ table, lastReasoning }: AgentCardsProps) {
                   </div>
                   <div className={styles.agentMeta}>
                     {seat.isActive ? "▶ Active" : "⏸ Folded"}
-                    {seat.isAllIn && " · ALL-IN"}
                   </div>
                 </div>
                 <div className={styles.agentStack}>

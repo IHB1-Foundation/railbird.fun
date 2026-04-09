@@ -1,5 +1,6 @@
-// Structured logger using pino
-// Production: JSON format; Development: pretty-print via pino-pretty (optional)
+// Structured logger using pino.
+// Pretty transport is enabled only in explicit development mode so missing
+// optional local tooling never crashes tests or default CLI runs.
 
 import pino from "pino";
 
@@ -26,8 +27,7 @@ export function createLogger({ service, level }: LoggerOptions): pino.Logger {
     (process.env.NODE_ENV === "production" ? "info" : "debug");
 
   const transport =
-    process.env.NODE_ENV !== "production" &&
-    process.env.NODE_ENV !== "test"
+    process.env.NODE_ENV === "development"
       ? {
           target: "pino-pretty",
           options: {

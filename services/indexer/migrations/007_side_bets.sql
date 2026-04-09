@@ -51,4 +51,4 @@ CREATE TABLE IF NOT EXISTS decision_audit (
 CREATE INDEX IF NOT EXISTS idx_decision_audit_table_hand ON decision_audit (table_address, hand_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_decision_audit_unique ON decision_audit (table_address, hand_id, seat_index);
 
-INSERT INTO schema_versions (version) VALUES (7) ON CONFLICT DO NOTHING;
+

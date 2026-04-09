@@ -58,7 +58,7 @@ contract PokerTable is SeatManager, BettingEngine, SettlementEngine {
         }
         _evictBustedSeats();
         if (gameState == GameState.TOURNAMENT_OVER) return;
-        require(_countPlayableSeats() >= 2, "Need at least 2 funded seats");
+        require(_countPlayableSeats() >= 2, "N2");
 
         uint8 sbSeat;
         uint8 bbSeat;
@@ -69,7 +69,7 @@ contract PokerTable is SeatManager, BettingEngine, SettlementEngine {
             sbSeat = _nextPlayableSeat(buttonSeat);
             bbSeat = _nextPlayableSeat(sbSeat);
         }
-        require(sbSeat != bbSeat, "Need at least 2 funded seats");
+        require(sbSeat != bbSeat, "N2");
 
         currentHandId++;
 
@@ -110,8 +110,6 @@ contract PokerTable is SeatManager, BettingEngine, SettlementEngine {
                 seats[i].totalHandBet += postAmount;
                 if (seats[i].stack == 0) seats[i].isAllIn = true;
                 initialPot += postAmount;
-                emit PostBlindPosted(currentHandId, i, postAmount);
-                emit SeatUpdated(i, seats[i].owner, seats[i].operator, seats[i].stack);
             }
             needsPostBlind[i] = false;
         }
@@ -135,9 +133,6 @@ contract PokerTable is SeatManager, BettingEngine, SettlementEngine {
         lastActionBlock = block.number;
 
         emit HandStarted(currentHandId, smallBlind, bigBlind, buttonSeat);
-        emit SeatUpdated(sbSeat, seats[sbSeat].owner, seats[sbSeat].operator, seats[sbSeat].stack);
-        emit SeatUpdated(bbSeat, seats[bbSeat].owner, seats[bbSeat].operator, seats[bbSeat].stack);
-        emit PotUpdated(currentHandId, initialPot);
 
         uint256 hcRequestId = 0;
         if (vrfAdapter != address(0)) {
@@ -159,10 +154,10 @@ contract PokerTable is SeatManager, BettingEngine, SettlementEngine {
      * @dev Callable by anyone once the hole-card VRF has been fulfilled and all commits are on-chain.
      */
     function advanceToPreflop() external {
-        require(gameState == GameState.WAITING_FOR_HOLECARDS, "Not waiting for hole cards");
+        require(gameState == GameState.WAITING_FOR_HOLECARDS, "HC");
         for (uint8 i = 0; i < numSeats; i++) {
             if (seats[i].isActive) {
-                require(holeCommits[currentHandId][i] != bytes32(0), "Missing hole commit");
+                require(holeCommits[currentHandId][i] != bytes32(0), "MC");
             }
         }
         gameState = GameState.BETTING_PRE;
@@ -181,10 +176,10 @@ contract PokerTable is SeatManager, BettingEngine, SettlementEngine {
      * @param randomness The random value from VRF.
      */
     function fulfillVRF(uint256 requestId, uint256 randomness) external {
-        require(msg.sender == vrfAdapter, "Only VRF adapter");
+        require(msg.sender == vrfAdapter, "V1");
 
         if (gameState == GameState.WAITING_VRF_HOLECARDS) {
-            require(requestId == pendingHoleCardVRFRequestId, "Invalid request ID");
+            require(requestId == pendingHoleCardVRFRequestId, "V2");
             bytes32 randomnessHash = keccak256(abi.encodePacked(randomness));
             holeCardVRFRandomnessHash[currentHandId] = randomnessHash;
             pendingHoleCardVRFRequestId = 0;
@@ -197,9 +192,9 @@ contract PokerTable is SeatManager, BettingEngine, SettlementEngine {
             gameState == GameState.WAITING_VRF_FLOP ||
             gameState == GameState.WAITING_VRF_TURN ||
             gameState == GameState.WAITING_VRF_RIVER,
-            "Not waiting for VRF"
+            "V3"
         );
-        require(requestId == pendingVRFRequestId, "Invalid request ID");
+        require(requestId == pendingVRFRequestId, "V2");
 
         _dealCommunityCards(randomness);
 
@@ -242,9 +237,9 @@ contract PokerTable is SeatManager, BettingEngine, SettlementEngine {
             gameState == GameState.WAITING_VRF_FLOP ||
             gameState == GameState.WAITING_VRF_TURN ||
             gameState == GameState.WAITING_VRF_RIVER,
-            "Not waiting for VRF"
+            "V3"
         );
-        require(vrfAdapter != address(0), "No VRF adapter");
+        require(vrfAdapter != address(0), "V4");
         if (block.timestamp <= vrfRequestTimestamp + VRF_TIMEOUT) revert VRFTimeoutNotReached();
 
         uint256 oldRequestId = pendingVRFRequestId;
@@ -264,15 +259,15 @@ contract PokerTable is SeatManager, BettingEngine, SettlementEngine {
      * @dev Auto-aborts the hand if MAX_HOLE_CARD_VRF_RETRIES is exceeded.
      */
     function reRequestHoleCardVRF() external {
-        require(gameState == GameState.WAITING_VRF_HOLECARDS, "Not waiting for hole card VRF");
-        require(vrfAdapter != address(0), "No VRF adapter");
+        require(gameState == GameState.WAITING_VRF_HOLECARDS, "V5");
+        require(vrfAdapter != address(0), "V4");
         if (block.timestamp <= vrfRequestTimestamp + VRF_TIMEOUT) revert VRFTimeoutNotReached();
 
         uint256 handId = currentHandId;
         holeCardVRFRetryCount[handId]++;
 
         if (holeCardVRFRetryCount[handId] > MAX_HOLE_CARD_VRF_RETRIES) {
-            _abortHandReturnBlinds("Max VRF retries exceeded");
+            _abortHandReturnBlinds("V6");
             return;
         }
 
@@ -286,116 +281,6 @@ contract PokerTable is SeatManager, BettingEngine, SettlementEngine {
         vrfRequestTimestamp = block.timestamp;
 
         emit HoleCardVRFReRequested(handId, oldRequestId, newRequestId);
-    }
-
-    // ============ AI Decision Commitment ============
-
-    /**
-     * @notice Commit the hash of an AI decision before revealing it.
-     * @dev Called by the operator before (or alongside) submitting an action.
-     *      commitHash = keccak256(abi.encode(handId, seatIndex, action, reasoning, salt))
-     *      A new commit overwrites any previous one for the same hand/seat (latest wins).
-     * @param seatIndex     The seat index the operator controls.
-     * @param commitHash    The precomputed commitment hash.
-     * @param reasoningHash keccak256 of the full reasoning payload JSON (0 if not available).
-     */
-    function commitDecision(uint8 seatIndex, bytes32 commitHash, bytes32 reasoningHash) external {
-        require(seatIndex < numSeats, "Invalid seat");
-        _checkOperator(seatIndex);
-        require(commitHash != bytes32(0), "Empty commitment");
-        decisionCommits[currentHandId][seatIndex] = commitHash;
-        reasoningHashes[currentHandId][seatIndex] = reasoningHash;
-        emit DecisionCommitted(currentHandId, seatIndex, commitHash, reasoningHash);
-    }
-
-    /**
-     * @notice Get the reasoning hash for a specific hand/seat decision.
-     */
-    function getReasoningHash(uint256 handId, uint8 seatIndex) external view returns (bytes32) {
-        return reasoningHashes[handId][seatIndex];
-    }
-
-    /**
-     * @notice Reveal and verify a previously committed AI decision.
-     * @dev Only callable after the hand is SETTLED. Verifies the commitment and emits DecisionRevealed.
-     * @param handId    The hand ID the decision was made in.
-     * @param seatIndex The seat index.
-     * @param action    The action string ("fold", "check", "call", "raise").
-     * @param reasoning The natural-language reasoning string.
-     * @param salt      The random salt used when computing commitHash.
-     */
-    function revealDecision(
-        uint256 handId,
-        uint8 seatIndex,
-        string calldata action,
-        string calldata reasoning,
-        bytes32 salt
-    ) external {
-        require(gameState == GameState.SETTLED || gameState == GameState.WAITING_FOR_SEATS, "Hand not settled");
-        bytes32 stored = decisionCommits[handId][seatIndex];
-        require(stored != bytes32(0), "No commitment found");
-        bytes32 expected = keccak256(abi.encode(handId, seatIndex, action, reasoning, salt));
-        require(expected == stored, "Commitment mismatch");
-        emit DecisionRevealed(handId, seatIndex, action, reasoning);
-    }
-
-    // ============ View Getters ============
-
-    function getSeat(uint8 seatIndex) external view returns (Seat memory) {
-        require(seatIndex < numSeats, "Invalid seat");
-        return seats[seatIndex];
-    }
-
-    function getHandInfo() external view returns (
-        uint256 handId,
-        uint256 pot,
-        uint256 currentBetAmount,
-        uint8 actorSeat,
-        GameState state
-    ) {
-        return (
-            currentHand.handId,
-            currentHand.pot,
-            currentHand.currentBet,
-            currentHand.actorSeat,
-            gameState
-        );
-    }
-
-    function getSidePotCount() external view returns (uint8) {
-        return currentHand.sidePotCount;
-    }
-
-    function getSidePot(uint8 potIndex) external view returns (uint256 amount, bool[MAX_SEATS] memory eligible) {
-        require(potIndex < currentHand.sidePotCount, "Invalid pot index");
-        return (sidePots[potIndex].amount, sidePots[potIndex].eligible);
-    }
-
-    function getActionDeadline() external view returns (uint256) {
-        return actionDeadline;
-    }
-
-    function canCheck(uint8 seatIndex) external view returns (bool) {
-        if (seatIndex >= numSeats) return false;
-        return seats[seatIndex].currentBet == currentHand.currentBet;
-    }
-
-    function getAmountToCall(uint8 seatIndex) external view returns (uint256) {
-        if (seatIndex >= numSeats) return 0;
-        if (seats[seatIndex].currentBet >= currentHand.currentBet) return 0;
-        return currentHand.currentBet - seats[seatIndex].currentBet;
-    }
-
-    function getCommunityCards() external view returns (uint8[5] memory) {
-        return communityCards;
-    }
-
-    function canStartHand() external view returns (bool) {
-        if (gameState == GameState.TOURNAMENT_OVER) return false;
-        if (gameState == GameState.WAITING_VRF_HOLECARDS) return false;
-        if (gameState == GameState.WAITING_FOR_HOLECARDS) return false;
-        if (!(gameState == GameState.WAITING_FOR_SEATS || gameState == GameState.SETTLED)) return false;
-        return _countPlayableSeats() >= 2;
     }
 
     // ============ Internal Hand Helpers ============

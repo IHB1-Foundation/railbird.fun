@@ -1,5 +1,6 @@
 // Express application setup
 
+import crypto from "node:crypto";
 import express from "express";
 import { router } from "./routes.js";
 import { createLogger, registry, metricsContentType } from "@playerco/shared";

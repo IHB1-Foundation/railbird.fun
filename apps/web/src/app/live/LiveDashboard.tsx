@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
-import { INDEXER_BASE } from "@/lib/api";
+import { INDEXER_BASE, getTable, getTables } from "@/lib/api";
 import type { TableResponse, HandResponse } from "@/lib/types";
 import { AgentCards } from "./AgentCards";
 import { StatsTicker } from "./StatsTicker";
@@ -38,6 +38,25 @@ interface SideBetInfo {
   seatOdds: { seat: number; odds: string }[];
 }
 
+function isLiveTable(table: TableResponse): boolean {
+  return table.gameState !== "WAITING_FOR_SEATS" && table.gameState !== "SETTLED";
+}
+
+function compareTableActivity(a: TableResponse, b: TableResponse): number {
+  const aLive = isLiveTable(a) ? 1 : 0;
+  const bLive = isLiveTable(b) ? 1 : 0;
+  if (aLive !== bLive) return bLive - aLive;
+
+  const aPot = BigInt(a.currentHand?.pot ?? "0");
+  const bPot = BigInt(b.currentHand?.pot ?? "0");
+  if (aPot !== bPot) return bPot > aPot ? 1 : -1;
+
+  const aHandId = BigInt(a.currentHandId || "0");
+  const bHandId = BigInt(b.currentHandId || "0");
+  if (aHandId === bHandId) return 0;
+  return bHandId > aHandId ? 1 : -1;
+}
+
 export function LiveDashboard() {
   const [tables, setTables] = useState<TableResponse[]>([]);
   const [activeTableId, setActiveTableId] = useState<string | null>(null);
@@ -54,46 +73,44 @@ export function LiveDashboard() {
   const [showdownInfo, setShowdownInfo] = useState<{ winner: number; pot: string } | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const prevHandIdRef = useRef<string | null>(null);
+  const lastCommentaryKeyRef = useRef<string | null>(null);
 
-  const isAllIn = hand?.actions?.some((a) => a.actionType === "raise" && a.amount && BigInt(a.amount) > 500n) ?? false;
+  const isAllIn = hand?.actions?.some((a) => (
+    a.actionType === "ALL_IN" || (a.actionType === "RAISE" && a.amount && BigInt(a.amount) > 500n)
+  )) ?? false;
   const avgPot = biggestPot / 3n;
   const isBigPot = hand ? BigInt(hand.pot ?? 0) > avgPot && avgPot > 0n : false;
 
   // Fetch table list
   const fetchTables = useCallback(async () => {
     try {
-      const res = await fetch(`${INDEXER_BASE}/api/tables`, { cache: "no-store" });
-      if (!res.ok) return;
-      const data = await res.json() as { tables: TableResponse[] };
-      setTables(data.tables ?? []);
+      const nextTables = await getTables();
+      setTables(nextTables);
 
-      // Auto-select most active table
-      const active = [...(data.tables ?? [])].sort((a, b) => {
-        const aId = BigInt(a.currentHandId ?? 0);
-        const bId = BigInt(b.currentHandId ?? 0);
-        return aId > bId ? -1 : 1;
-      })[0];
-
-      if (active && !activeTableId) {
-        setActiveTableId(active.contractAddress);
-      }
-    } catch { /* ignore */ }
-  }, [activeTableId]);
+      const mostActiveTable = [...nextTables].sort(compareTableActivity)[0] ?? null;
+      setActiveTableId((current) => {
+        if (current && nextTables.some((table) => table.tableId === current)) {
+          return current;
+        }
+        return mostActiveTable?.tableId ?? null;
+      });
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   // Fetch active table state
   const fetchTableState = useCallback(async () => {
     if (!activeTableId) return;
     try {
-      const res = await fetch(`${INDEXER_BASE}/api/tables/${activeTableId}`, { cache: "no-store" });
-      if (!res.ok) return;
-      const table = await res.json() as TableResponse;
+      const table = await getTable(activeTableId);
       setActiveTable(table);
 
       const currentHand = table.currentHand;
       setHand(currentHand);
 
       // Detect showdown
-      if (currentHand?.gameState === "SETTLED" && currentHand.winnerSeat !== null && prevHandIdRef.current !== currentHand.handId) {
+      if (table.gameState === "SETTLED" && currentHand && currentHand.winnerSeat !== null && prevHandIdRef.current !== currentHand.handId) {
         setShowdownInfo({ winner: currentHand.winnerSeat, pot: currentHand.settlementAmount ?? currentHand.pot });
         setShowShowdown(true);
         setTimeout(() => setShowShowdown(false), 5000);
@@ -114,14 +131,16 @@ export function LiveDashboard() {
         const pot = BigInt(currentHand.pot);
         setBiggestPot((p) => (pot > p ? pot : p));
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }, [activeTableId]);
 
   // Fetch side bet data
   const fetchSideBet = useCallback(async () => {
-    if (!activeTableId || !hand?.handId) return;
+    if (!activeTable?.contractAddress || !hand?.handId) return;
     try {
-      const res = await fetch(`${INDEXER_BASE}/api/sidebets/${activeTableId}/${hand.handId}`, { cache: "no-store" });
+      const res = await fetch(`${INDEXER_BASE}/api/sidebets/${activeTable.contractAddress}/${hand.handId}`, { cache: "no-store" });
       if (!res.ok) return;
       const data = await res.json() as { totalPool?: string; seatTotals?: Record<string, string> };
       const totalPool = BigInt(data.totalPool ?? 0);
@@ -131,8 +150,10 @@ export function LiveDashboard() {
         return { seat: parseInt(seat, 10), odds: `${pct}%` };
       });
       setSideBet({ totalPool, seatOdds });
-    } catch { /* ignore */ }
-  }, [activeTableId, hand?.handId]);
+    } catch {
+      /* ignore */
+    }
+  }, [activeTable?.contractAddress, hand?.handId]);
 
   // Add commentary entry
   const addCommentary = useCallback((text: string) => {
@@ -145,23 +166,28 @@ export function LiveDashboard() {
     if (!hand?.actions?.length) return;
     const lastAction = hand.actions[hand.actions.length - 1];
     if (!lastAction) return;
+    const commentaryKey = `${hand.handId}:${lastAction.txHash}:${lastAction.blockNumber}:${lastAction.seatIndex}`;
+    if (lastCommentaryKeyRef.current === commentaryKey) return;
     const { seatIndex, actionType, amount, potAfter } = lastAction;
     let text = "";
-    if (actionType === "fold") text = `Seat ${seatIndex} folds. Pot: ${potAfter} RCHIP`;
-    else if (actionType === "call") text = `Seat ${seatIndex} calls ${amount}. Pot: ${potAfter} RCHIP`;
-    else if (actionType === "raise") text = `Seat ${seatIndex} raises to ${amount}! Pot: ${potAfter} RCHIP`;
-    else if (actionType === "check") text = `Seat ${seatIndex} checks.`;
-    if (text) addCommentary(text);
-  }, [hand?.actions?.length, addCommentary, hand?.actions]);
+    if (actionType === "FOLD") text = `Seat ${seatIndex} folds. Pot: ${potAfter} RCHIP`;
+    else if (actionType === "CALL") text = `Seat ${seatIndex} calls ${amount}. Pot: ${potAfter} RCHIP`;
+    else if (actionType === "RAISE") text = `Seat ${seatIndex} raises to ${amount}! Pot: ${potAfter} RCHIP`;
+    else if (actionType === "CHECK") text = `Seat ${seatIndex} checks.`;
+    if (text) {
+      lastCommentaryKeyRef.current = commentaryKey;
+      addCommentary(text);
+    }
+  }, [hand?.actions, hand?.actions?.length, hand?.handId, addCommentary]);
 
   // Set leader from leaderboard
   useEffect(() => {
     fetch(`${INDEXER_BASE}/api/leaderboard?metric=roi&period=24h`, { cache: "no-store" })
       .then((r) => r.json())
-      .then((data: { entries?: Array<{ agentAddress: string }> }) => {
+      .then((data: { entries?: Array<{ tokenAddress: string }> }) => {
         const top = data.entries?.[0];
-        if (top?.agentAddress) {
-          setCurrentLeader(top.agentAddress.slice(0, 8) + "…");
+        if (top?.tokenAddress) {
+          setCurrentLeader(top.tokenAddress.slice(0, 8) + "…");
         }
       })
       .catch(() => {});
@@ -229,11 +255,11 @@ export function LiveDashboard() {
             <div className={styles.tableSelector}>
               {tables.map((t) => (
                 <button
-                  key={t.contractAddress}
-                  onClick={() => setActiveTableId(t.contractAddress)}
-                  className={activeTableId === t.contractAddress ? `${styles.tableSelectorBtn} ${styles.tableSelectorBtnActive}` : styles.tableSelectorBtn}
+                  key={t.tableId}
+                  onClick={() => setActiveTableId(t.tableId)}
+                  className={activeTableId === t.tableId ? `${styles.tableSelectorBtn} ${styles.tableSelectorBtnActive}` : styles.tableSelectorBtn}
                 >
-                  {t.contractAddress.slice(0, 8)}… (Hand #{t.currentHandId})
+                  Table #{t.tableId} (Hand #{t.currentHandId})
                 </button>
               ))}
             </div>
@@ -298,7 +324,6 @@ export function LiveDashboard() {
                     <div style={{ fontSize: "0.875rem", fontWeight: 700, fontFamily: "monospace" }}>
                       {seat.stack} RCHIP
                     </div>
-                    {seat.isAllIn && <div style={{ fontSize: "0.65rem", color: "#ef4444", fontWeight: 700 }}>ALL-IN</div>}
                     {!seat.isActive && <div style={{ fontSize: "0.65rem", color: "#4b5563" }}>folded</div>}
                   </div>
                 ))}

@@ -3,33 +3,7 @@ pragma solidity ^0.8.24;
 
 import "../interfaces/IVRFAdapter.sol";
 import "../interfaces/IERC20.sol";
-import "../interfaces/IKYCSBTChecker.sol";
-import "../HandEvaluator.sol";
-import { ShuffleVerifier, SeatReveal } from "../ShuffleVerifier.sol";
 import { SafeTransfer } from "../lib/SafeTransfer.sol";
-
-/// @dev Minimal interface for PlayerRegistry ownership/operator lookups.
-interface IPlayerRegistry {
-    function agents(address agent) external view returns (
-        address vault,
-        address table,
-        address owner,
-        address operator,
-        string memory metaURI,
-        bool isRegistered
-    );
-}
-
-/// @dev Minimal interface for vault settlement callbacks.
-interface IPlayerVaultMinimal {
-    function onSettlement(uint256 handId, int256 pnl) external;
-}
-
-/// @dev Minimal interface for vault escrow tracking.
-interface IPlayerVaultEscrow {
-    function fundBuyIn(address table, uint256 amount) external;
-    function releaseEscrow(address table, uint256 amount) external;
-}
 
 /**
  * @title PokerTableBase
@@ -114,49 +88,25 @@ abstract contract PokerTableBase {
 
     // ============ Events ============
     event SeatUpdated(uint8 indexed seatIndex, address owner, address operator, uint256 stack);
-    event SeatTopUp(uint8 indexed seatIndex, address indexed owner, uint256 amount, uint256 stackAfter);
-    event SeatCashOut(uint8 indexed seatIndex, address indexed owner, address indexed recipient, uint256 amount, uint256 stackAfter);
     event SeatClosed(uint8 indexed seatIndex, address indexed owner, address indexed recipient, uint256 amount);
-    event SeatEvicted(uint8 indexed seatIndex, address indexed owner);
-    event SeatAllIn(uint256 indexed handId, uint8 indexed seatIndex, uint256 totalBet);
     event HandStarted(uint256 indexed handId, uint256 smallBlind, uint256 bigBlind, uint8 buttonSeat);
     event ActionTaken(uint256 indexed handId, uint8 indexed seatIndex, ActionType action, uint256 amount, uint256 potAfter);
-    event PotUpdated(uint256 indexed handId, uint256 pot);
-    event BettingRoundComplete(uint256 indexed handId, GameState fromState, GameState toState);
     event VRFRequested(uint256 indexed handId, GameState street, uint256 requestId);
     event CommunityCardsDealt(uint256 indexed handId, GameState street, uint8[] cards);
     event HandSettled(uint256 indexed handId, uint8 winnerSeat, uint256 potAmount);
-    event VaultCallbackFailed(uint256 indexed handId, address indexed seatOwner, address indexed vault, bytes reason);
-    event ShowdownTimedOut(uint256 indexed handId, uint8 activePlayers, uint256 potAmount);
-    event ForceTimeout(uint256 indexed handId, uint8 indexed seatIndex, ActionType forcedAction);
     event HoleCommitSubmitted(uint256 indexed handId, uint8 indexed seatIndex, bytes32 commitment);
     event HoleCardsRevealed(uint256 indexed handId, uint8 indexed seatIndex, uint8 card1, uint8 card2);
     event VRFReRequested(uint256 indexed handId, GameState street, uint256 oldRequestId, uint256 newRequestId);
     event TournamentWinner(address indexed winner, uint8 indexed seatIndex, uint256 finalStack);
-    event PostBlindPosted(uint256 indexed handId, uint8 indexed seatIndex, uint256 amount);
     event CardIntegrityViolation(uint256 indexed handId, uint8 indexed seatIndex, uint8 card, uint8 communityIndex);
-    event KYCCheckPassed(address indexed player, uint8 seatIndex);
-    event EncryptionKeyRegistered(uint8 indexed seatIndex, bytes pubKey);
-    event DealerSeedCommitted(uint256 indexed handId, bytes32 commitment);
-    event DealerSeedRevealed(uint256 indexed handId, bytes32 seed);
     event HoleCardVRFFulfilled(uint256 indexed handId, bytes32 randomnessHash);
     event HoleCardVRFReRequested(uint256 indexed handId, uint256 oldRequestId, uint256 newRequestId);
     event PreflopStarted(uint256 indexed handId, uint8 actorSeat, uint256 actionDeadline);
-    event ShuffleUnverified(uint256 indexed handId);
-    event ShuffleIntegrityViolation(uint256 indexed handId, bytes32 dealerSeed);
-    event ShuffleVerified(uint256 indexed handId, bytes32 dealerSeed);
     event HandAborted(uint256 indexed handId, string reason);
     event AdminUpdated(address indexed oldAdmin, address indexed newAdmin);
     event DealerUpdated(address indexed oldDealer, address indexed newDealer);
     event TablePaused(address indexed by);
     event TableUnpaused(address indexed by);
-    event EmergencyWithdrawRequested(uint8 indexed seatIndex, uint256 unlockAt);
-    event EmergencyWithdrawExecuted(uint8 indexed seatIndex, address indexed recipient, uint256 amount);
-    event VRFAdapterUpdated(address indexed oldAdapter, address indexed newAdapter);
-    event PlayerRegistryUpdated(address indexed oldRegistry, address indexed newRegistry);
-    event BlindsUpdated(uint256 oldSmallBlind, uint256 oldBigBlind, uint256 newSmallBlind, uint256 newBigBlind);
-    event DecisionCommitted(uint256 indexed handId, uint8 indexed seatIndex, bytes32 commitHash, bytes32 reasoningHash);
-    event DecisionRevealed(uint256 indexed handId, uint8 indexed seatIndex, string action, string reasoning);
 
     // ============ Custom Errors ============
     error OneActionPerBlock();
@@ -197,20 +147,11 @@ abstract contract PokerTableBase {
     mapping(uint8 => bool) public needsPostBlind;
 
     // ============ Trustless Dealer State ============
-    mapping(uint8 => bytes) public encryptionKeys;
-    mapping(uint256 => bytes32) public dealerSeedCommits;
-    mapping(uint256 => bytes32) public dealerSeedReveals;
     mapping(uint256 => bytes32) public holeCardVRFRandomnessHash;
     uint256 public pendingHoleCardVRFRequestId;
 
     uint8 public constant MAX_HOLE_CARD_VRF_RETRIES = 3;
     mapping(uint256 => uint8) public holeCardVRFRetryCount;
-
-    // ============ AI Decision Commitment State ============
-    /// @notice Off-chain AI decision commitments: handId => seatIndex => keccak256(abi.encode(handId, seatIndex, action, reasoning, salt))
-    mapping(uint256 => mapping(uint8 => bytes32)) public decisionCommits;
-    /// @notice Off-chain AI reasoning hash per decision: handId => seatIndex => keccak256(reasoningPayload)
-    mapping(uint256 => mapping(uint8 => bytes32)) public reasoningHashes;
 
     // ============ Hand Settlement Results ============
     /// @notice Winner seat index per settled hand (set at settlement time).
@@ -218,25 +159,16 @@ abstract contract PokerTableBase {
     /// @notice True once a hand has been settled.
     mapping(uint256 => bool) public handSettledFlag;
 
-    address public kycSBT;
-    address public playerRegistry;
     address public admin;
     address public dealer;
 
-    // ============ Pause / Emergency State ============
+    // ============ Pause State ============
     bool public paused;
-    uint256 public constant EMERGENCY_TIMELOCK = 7 days;
-    mapping(uint8 => uint256) public emergencyWithdrawRequestedAt;
 
     // ============ Modifiers ============
     function _checkOperator(uint8 seatIndex) internal view {
-        require(seatIndex < numSeats, "Invalid seat");
-        if (msg.sender == seats[seatIndex].operator || msg.sender == seats[seatIndex].owner) return;
-        if (playerRegistry != address(0)) {
-            (,,, address regOperator, , bool isRegistered) = IPlayerRegistry(playerRegistry).agents(seats[seatIndex].owner);
-            if (isRegistered && msg.sender == regOperator) return;
-        }
-        revert("Not operator");
+        require(seatIndex < numSeats, "S1");
+        require(msg.sender == seats[seatIndex].operator || msg.sender == seats[seatIndex].owner, "OP");
     }
     modifier onlyOperator(uint8 seatIndex) { _checkOperator(seatIndex); _; }
 
@@ -246,7 +178,7 @@ abstract contract PokerTableBase {
             gameState == GameState.BETTING_FLOP ||
             gameState == GameState.BETTING_TURN ||
             gameState == GameState.BETTING_RIVER,
-            "Not in betting state"
+            "BS"
         );
     }
     modifier inBettingState() { _checkBettingState(); _; }
@@ -257,7 +189,7 @@ abstract contract PokerTableBase {
     modifier isActorTurn(uint8 seatIndex) { _checkActorTurn(seatIndex); _; }
 
     function _checkDeadline() internal view {
-        require(block.timestamp <= actionDeadline, "Action deadline passed");
+        require(block.timestamp <= actionDeadline, "DL");
     }
     modifier withinDeadline() { _checkDeadline(); _; }
 
@@ -266,9 +198,9 @@ abstract contract PokerTableBase {
     }
     modifier oneActionPerBlock() { _checkOneActionPerBlock(); _; }
 
-    modifier onlyAdmin() { require(msg.sender == admin, "Not admin"); _; }
-    modifier onlyDealer() { require(msg.sender == dealer, "Not dealer"); _; }
-    modifier whenNotPaused() { require(!paused, "Table paused"); _; }
+    modifier onlyAdmin() { require(msg.sender == admin, "AD"); _; }
+    modifier onlyDealer() { require(msg.sender == dealer, "DL2"); _; }
+    modifier whenNotPaused() { require(!paused, "PA"); _; }
 
     // ============ Abstract cross-module declarations ============
     // Declared here so sibling abstract contracts can call each other's implementations.
@@ -290,22 +222,22 @@ abstract contract PokerTableBase {
         uint8 _numSeats,
         address _dealer
     ) {
-        require(_tableId > 0, "Table ID must be > 0");
-        require(_smallBlind > 0, "Small blind must be > 0");
-        require(_bigBlind >= _smallBlind, "Big blind must be >= small blind");
-        require(_vrfAdapter != address(0), "Invalid VRF adapter");
-        require(_chipToken != address(0), "Invalid chip token");
-        require(_actionTimeout >= 1 minutes && _actionTimeout <= 60 minutes, "actionTimeout out of range");
-        require(_vrfTimeout >= 30 seconds && _vrfTimeout <= 30 minutes, "vrfTimeout out of range");
-        require(_showdownTimeout >= 1 minutes && _showdownTimeout <= 60 minutes, "showdownTimeout out of range");
-        require(_numSeats >= 2 && _numSeats <= MAX_SEATS, "numSeats out of range (2-9)");
-        require(_dealer != address(0), "Invalid dealer");
+        require(_tableId > 0, "P1");
+        require(_smallBlind > 0, "P2");
+        require(_bigBlind >= _smallBlind, "P3");
+        require(_vrfAdapter != address(0), "P4");
+        require(_chipToken != address(0), "P5");
+        require(_actionTimeout >= 1 minutes && _actionTimeout <= 60 minutes, "P6");
+        require(_vrfTimeout >= 30 seconds && _vrfTimeout <= 30 minutes, "P7");
+        require(_showdownTimeout >= 1 minutes && _showdownTimeout <= 60 minutes, "P8");
+        require(_numSeats >= 2 && _numSeats <= MAX_SEATS, "P9");
+        require(_dealer != address(0), "P10");
+        (_kycSBT);
         tableId = _tableId;
         smallBlind = _smallBlind;
         bigBlind = _bigBlind;
         vrfAdapter = _vrfAdapter;
         chipToken = IERC20(_chipToken);
-        kycSBT = _kycSBT;
         ACTION_TIMEOUT = _actionTimeout;
         VRF_TIMEOUT = _vrfTimeout;
         SHOWDOWN_TIMEOUT = _showdownTimeout;

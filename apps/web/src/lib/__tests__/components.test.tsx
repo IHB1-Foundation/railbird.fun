@@ -8,6 +8,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, act, getAllByText } from "@testing-library/react";
 import React, { type ReactNode } from "react";
+import { useWebSocket } from "@/lib/useWebSocket";
 import type { TableResponse } from "../types";
 
 // ─── Shared fixtures ──────────────────────────────────────────────────────────
@@ -362,9 +363,9 @@ describe("BettingPanel", () => {
     return result;
   }
 
-  it("renders Rail Bets section title", async () => {
+  it("renders Predict the Winner section title", async () => {
     await renderPanel();
-    expect(screen.getByText("Rail Bets")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: /predict the winner/i })).toBeTruthy();
   });
 
   it("renders Virtual Bankroll display", async () => {
@@ -384,7 +385,7 @@ describe("BettingPanel", () => {
 
   it("renders Bet Slip with stake input", async () => {
     await renderPanel();
-    expect(screen.getByLabelText(/stake/i)).toBeTruthy();
+    expect(screen.getByRole("textbox", { name: /stake \(rchip\)/i })).toBeTruthy();
   });
 
   it("renders Place Bet button (disabled when market closed)", async () => {
@@ -423,6 +424,11 @@ describe("BettingPanel", () => {
 describe("TableViewer", () => {
   beforeEach(() => {
     setEthereum(undefined);
+    vi.mocked(useWebSocket).mockReturnValue({
+      status: "connected",
+      reconnectAttempts: 0,
+      nextRetryIn: 0,
+    });
     vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: true,
       json: async () => ({}),
@@ -450,7 +456,7 @@ describe("TableViewer", () => {
 
   it("renders game state as 'Waiting for Seats' in initial state", async () => {
     await renderTableViewer();
-    expect(screen.getAllByText(/waiting for seats/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/waiting for players/i).length).toBeGreaterThan(0);
   });
 
   it("renders game state label as 'Pre-flop' during BETTING_PRE", async () => {
@@ -522,7 +528,7 @@ describe("TableViewer", () => {
     expect(allText).toMatch(/raise|action log/i);
   });
 
-  it("shows block number in action log", async () => {
+  it("shows rendered action details in action log", async () => {
     const now = new Date().toISOString();
     await renderTableViewer({
       gameState: "BETTING_FLOP",
@@ -552,8 +558,9 @@ describe("TableViewer", () => {
       },
     });
 
-    // Block number 99999 should appear in the action log (T-M3-19)
+    // ActionLog no longer renders block numbers; assert the visible action text instead.
     const allText = document.body.textContent ?? "";
-    expect(allText).toContain("99999");
+    expect(allText).toMatch(/action log/i);
+    expect(allText).toMatch(/call/i);
   });
 });

@@ -55,3 +55,4 @@ ENVIRONMENT.md
 KAIA_WALLETS.md
 lcov.info
 *.tsbuildinfo
+.vercel

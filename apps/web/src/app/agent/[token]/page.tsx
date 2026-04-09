@@ -12,6 +12,25 @@ interface AgentHealthRag {
   lastUpdated: string | null;
 }
 
+interface OpponentReadSummary {
+  seatIndex: number;
+  profile?: {
+    vpip?: number;
+    pfr?: number;
+    af?: number;
+    style?: string;
+  };
+  counterAdvice?: {
+    style?: string;
+    promptInjection?: string;
+  };
+}
+
+type AgentAction = HandResponse["actions"][number] & {
+  handId: string;
+  opponentRead?: OpponentReadSummary;
+};
+
 async function fetchAgentHealth(url: string): Promise<AgentHealthRag | null> {
   try {
     const res = await fetch(url, { next: { revalidate: 30 }, signal: AbortSignal.timeout(2000) });
@@ -131,7 +150,12 @@ export default async function AgentPage({
   const losses = hands.length - wins;
 
   // AI Decision Pattern — compute from recent hands
-  const allActions = hands.flatMap((h) => h.actions);
+  const allActions: AgentAction[] = hands.flatMap((h) =>
+    h.actions.map((action) => ({
+      ...action,
+      handId: String(h.handId),
+    }) as AgentAction)
+  );
   const actionCounts = { fold: 0, check: 0, call: 0, raise: 0 };
   for (const a of allActions) {
     const t = a.actionType?.toLowerCase();
@@ -329,7 +353,7 @@ export default async function AgentPage({
         const opponentReads: Array<{ seatIndex: number; style: string; vpip: number; pfr: number; af: number; counterAdvice: string; handId: string }> = [];
         const seenSeats = new Set<number>();
         for (const action of [...allActions].reverse()) {
-          const read = (action as Record<string, unknown>).opponentRead as { seatIndex: number; profile?: { vpip?: number; pfr?: number; af?: number; style?: string }; counterAdvice?: { style?: string; promptInjection?: string } } | undefined;
+          const read = action.opponentRead;
           if (read && !seenSeats.has(read.seatIndex)) {
             seenSeats.add(read.seatIndex);
             const profile = read.profile ?? {};
@@ -341,7 +365,7 @@ export default async function AgentPage({
               pfr: profile.pfr ?? 0,
               af: profile.af ?? 0,
               counterAdvice: advice.promptInjection ?? advice.style ?? "Gathering data…",
-              handId: String((action as Record<string, unknown>).handId ?? ""),
+              handId: action.handId,
             });
           }
         }

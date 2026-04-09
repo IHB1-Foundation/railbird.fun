@@ -88,7 +88,7 @@ describe("useWebSocket — initial connection", () => {
     const { result } = renderHook(() =>
       useWebSocket({ tableId: "tbl1", onMessage })
     );
-    expect(result.current).toBe("connecting");
+    expect(result.current.status).toBe("connecting");
   });
 
   it("transitions to connected after WS open", async () => {
@@ -99,7 +99,7 @@ describe("useWebSocket — initial connection", () => {
     await act(async () => {
       latestWs().simulateOpen();
     });
-    expect(result.current).toBe("connected");
+    expect(result.current.status).toBe("connected");
   });
 
   it("calls onMessage when a valid message arrives", async () => {
@@ -148,13 +148,13 @@ describe("useWebSocket — reconnection", () => {
     await act(async () => {
       latestWs().simulateOpen();
     });
-    expect(result.current).toBe("connected");
+    expect(result.current.status).toBe("connected");
 
     // Simulate disconnect
     await act(async () => {
       latestWs().simulateClose();
     });
-    expect(result.current).toBe("reconnecting");
+    expect(result.current.status).toBe("reconnecting");
 
     // Advance timers to trigger reconnect
     await act(async () => {
@@ -193,7 +193,7 @@ describe("useWebSocket — reconnection", () => {
     await act(async () => { latestWs().simulateClose(); });
     await act(async () => {}); // flush state updates
 
-    expect(result.current).toBe("polling");
+    expect(result.current.status).toBe("polling");
   });
 
   it("resets reconnect counter after successful reconnection", async () => {
@@ -213,7 +213,7 @@ describe("useWebSocket — reconnection", () => {
     await act(async () => { vi.advanceTimersByTime(200); });
     await act(async () => { latestWs().simulateOpen(); });
 
-    expect(result.current).toBe("connected");
+    expect(result.current.status).toBe("connected");
   });
 });
 
@@ -230,7 +230,7 @@ describe("useWebSocket — polling fallback", () => {
 
     // After React effects run
     await act(async () => {});
-    expect(result.current).toBe("polling");
+    expect(result.current.status).toBe("polling");
   });
 
   it("polling calls onMessage with poll_update type", async () => {

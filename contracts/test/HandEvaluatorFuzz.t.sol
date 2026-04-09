@@ -172,9 +172,8 @@ contract HandEvaluatorFuzzTest is Test {
         uint256 score = HandEvaluator.evaluate(comm, h1, h2);
         uint256 category = score >> 20;
 
-        // Category: 1=high card, 2=pair, 3=two pair, 4=trips,
-        //           5=straight, 6=flush, 7=full house, 8=quads, 9=straight flush
-        assertGe(category, 1, "Category must be at least 1");
-        assertLe(category, 9, "Category cannot exceed 9");
+        // Category: 0=high card, 1=pair, 2=two pair, 3=trips,
+        //           4=straight, 5=flush, 6=full house, 7=quads, 8=straight flush
+        assertLe(category, 8, "Category cannot exceed 8");
     }
 }

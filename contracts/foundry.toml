@@ -15,6 +15,16 @@ via_ir = true
 optimizer = true
 optimizer_runs = 1
 
+# HSK deploy profile: no via_ir, legacy optimizer — avoids stack-too-deep with linked libraries
+[profile.deploy-hsk]
+src = "src"
+out = "out"
+libs = ["lib"]
+solc = "0.8.24"
+via_ir = false
+optimizer = true
+optimizer_runs = 1
+
 [rpc_endpoints]
 hashkey-testnet = "https://testnet.hsk.xyz"
 hashkey-mainnet = "https://mainnet.hsk.xyz"

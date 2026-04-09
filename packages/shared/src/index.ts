@@ -9,6 +9,8 @@ export type {
   ChainConfig,
   PersonaId,
   PersonaSummary,
+  FleetAgentConfig,
+  FleetAgentStatus,
 } from "./types.js";
 
 export { ENV_VARS, GameState } from "./types.js";
@@ -53,7 +55,7 @@ export {
 } from "./metrics.js";
 
 // Contract ABIs (generated from Foundry artifacts)
-export { POKER_TABLE_ABI, PLAYER_REGISTRY_ABI, PLAYER_VAULT_ABI } from "./abis/index.js";
+export { POKER_TABLE_ABI, PLAYER_REGISTRY_ABI, PLAYER_VAULT_ABI, SIDE_BET_POOL_ABI } from "./abis/index.js";
 
 // Agent profiles
 export { getAgentProfile } from "./agentProfiles.js";

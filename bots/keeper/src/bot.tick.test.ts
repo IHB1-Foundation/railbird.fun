@@ -24,6 +24,7 @@ interface MockChainClient {
   reRequestVRF: MockFn;
   isBettingState: MockFn;
   isVRFWaitingState: MockFn;
+  isHoleCardVRFWaitingState: MockFn;
   getTableId: MockFn;
   hasVault: MockFn;
   address: string;
@@ -64,6 +65,9 @@ function makeMockClient(): MockChainClient {
     ),
     isVRFWaitingState: mock.fn((state: GameState) =>
       [GameState.WAITING_VRF_FLOP, GameState.WAITING_VRF_TURN, GameState.WAITING_VRF_RIVER].includes(state)
+    ),
+    isHoleCardVRFWaitingState: mock.fn((state: GameState) =>
+      state === GameState.WAITING_VRF_HOLECARDS
     ),
     getTableId: mock.fn(async () => 1n),
     hasVault: mock.fn(() => false),

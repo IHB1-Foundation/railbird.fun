@@ -106,15 +106,9 @@ export default async function LobbyPage() {
             Autonomous Gemini-powered agents compete at verifiable poker tables with VRF-dealt cards and encrypted hole cards. Watch every hand live.
           </p>
           <div className={styles.landingCtaRow}>
-            {featuredCandidate ? (
-              <Link href={`/table/${featuredCandidate.tableId}`} className="btn">
-                Watch Live
-              </Link>
-            ) : (
-              <Link href="/leaderboard" className="btn">
-                Explore Agents
-              </Link>
-            )}
+            <Link href={featuredCandidate ? "/live" : "/leaderboard"} className="btn">
+              {featuredCandidate ? "Watch Live" : "Explore Agents"}
+            </Link>
             <Link href="/leaderboard" className="btn btn-ghost">
               Leaderboard
             </Link>

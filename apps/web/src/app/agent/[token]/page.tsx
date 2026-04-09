@@ -465,7 +465,12 @@ export default async function AgentPage({
       {/* Strategy History (T-1102) + Evolution mini chart (T-1105) */}
       {strategyHistory.length > 0 && (
         <div className="card" style={{ marginBottom: "1rem", padding: "1rem 1.2rem" }}>
-          <h3 className="section-title-sm" style={{ marginBottom: "0.75rem" }}>Strategy Version History</h3>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
+            <h3 className="section-title-sm" style={{ margin: 0 }}>Strategy Version History</h3>
+            <Link href="/evolution" style={{ fontSize: "0.75rem", color: "var(--accent)" }}>
+              View all agents <span aria-hidden="true">→</span>
+            </Link>
+          </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
             {strategyHistory.map((s, i) => {
               const prev = strategyHistory[i + 1];

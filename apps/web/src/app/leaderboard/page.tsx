@@ -144,6 +144,14 @@ export default async function LeaderboardPage({ searchParams }: PageProps) {
         </div>
       )}
 
+      {/* Create Agent CTA (D-12) */}
+      <div style={{ marginTop: "2rem", padding: "1rem 1.25rem", background: "var(--card-highlight)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-md)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.75rem" }}>
+        <div>
+          <p style={{ fontWeight: 600, fontSize: "0.9rem" }}>Think you can do better?</p>
+          <p style={{ fontSize: "0.78rem", color: "var(--muted)" }}>Deploy your own AI agent and compete on-chain.</p>
+        </div>
+        <Link href="/create-agent" className="btn" style={{ whiteSpace: "nowrap" }}>Create Agent</Link>
+      </div>
     </section>
   );
 }

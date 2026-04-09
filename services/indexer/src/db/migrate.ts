@@ -49,6 +49,9 @@ function parseMigrationVersion(filename: string): number | null {
   return match ? parseInt(match[1], 10) : null;
 }
 
+/** Advisory lock key — arbitrary but stable integer to identify the migration lock. */
+const MIGRATION_LOCK_KEY = 8_675_309;
+
 async function migrate(): Promise<void> {
   logger.info("Running database migrations...");
 
@@ -58,49 +61,79 @@ async function migrate(): Promise<void> {
     .filter((f) => f.endsWith(".sql"))
     .sort();
 
+  // Validate file-system consistency: no duplicate version numbers
+  const seenVersions = new Set<number>();
+  for (const file of files) {
+    const version = parseMigrationVersion(file);
+    if (version === null) continue;
+    if (seenVersions.has(version)) {
+      throw new Error(`Duplicate migration version ${version} detected (file: ${file})`);
+    }
+    seenVersions.add(version);
+  }
+
   const pool = getPool();
 
   await ensureSchemaVersionsTable();
-  const applied = await getAppliedVersions();
 
-  let ran = 0;
-  let skipped = 0;
-
-  for (const file of files) {
-    const version = parseMigrationVersion(file);
-    if (version === null) {
-      logger.warn({ file }, "Skipping non-versioned migration file");
-      continue;
+  // Acquire a PostgreSQL advisory lock to prevent concurrent migration runs
+  // (e.g. two pods starting simultaneously in a rolling deploy).
+  const lockClient = await pool.connect();
+  try {
+    const lockResult = await lockClient.query<{ pg_try_advisory_lock: boolean }>(
+      "SELECT pg_try_advisory_lock($1)",
+      [MIGRATION_LOCK_KEY]
+    );
+    if (!lockResult.rows[0].pg_try_advisory_lock) {
+      logger.info("Another process is already running migrations — skipping");
+      return;
     }
 
-    if (applied.has(version)) {
-      skipped++;
-      continue;
+    const applied = await getAppliedVersions();
+
+    let ran = 0;
+    let skipped = 0;
+
+    for (const file of files) {
+      const version = parseMigrationVersion(file);
+      if (version === null) {
+        logger.warn({ file }, "Skipping non-versioned migration file");
+        continue;
+      }
+
+      if (applied.has(version)) {
+        skipped++;
+        continue;
+      }
+
+      const sqlPath = path.join(migrationsDir, file);
+      const sql = fs.readFileSync(sqlPath, "utf-8");
+
+      logger.info({ version, file }, "Applying migration");
+      const client = await pool.connect();
+      try {
+        await client.query("BEGIN");
+        await client.query(sql);
+        await client.query(
+          "INSERT INTO schema_versions (version) VALUES ($1)",
+          [version]
+        );
+        await client.query("COMMIT");
+        ran++;
+      } catch (err) {
+        await client.query("ROLLBACK");
+        throw new Error(`Migration ${file} failed: ${err instanceof Error ? err.message : String(err)}`);
+      } finally {
+        client.release();
+      }
     }
 
-    const sqlPath = path.join(migrationsDir, file);
-    const sql = fs.readFileSync(sqlPath, "utf-8");
-
-    logger.info({ version, file }, "Applying migration");
-    const client = await pool.connect();
-    try {
-      await client.query("BEGIN");
-      await client.query(sql);
-      await client.query(
-        "INSERT INTO schema_versions (version) VALUES ($1)",
-        [version]
-      );
-      await client.query("COMMIT");
-      ran++;
-    } catch (err) {
-      await client.query("ROLLBACK");
-      throw new Error(`Migration ${file} failed: ${err instanceof Error ? err.message : String(err)}`);
-    } finally {
-      client.release();
-    }
+    logger.info({ ran, skipped }, "Migrations complete");
+  } finally {
+    // Release advisory lock when done (connection close also releases it)
+    await lockClient.query("SELECT pg_advisory_unlock($1)", [MIGRATION_LOCK_KEY]).catch(() => undefined);
+    lockClient.release();
   }
-
-  logger.info({ ran, skipped }, "Migrations complete");
 }
 
 // Run if executed directly

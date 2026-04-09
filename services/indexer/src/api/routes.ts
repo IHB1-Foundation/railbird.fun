@@ -426,7 +426,7 @@ router.get("/agents/:address", async (req, res) => {
 router.get("/agents/:address/snapshots", async (req, res) => {
   try {
     const tokenAddress = req.params.address.toLowerCase();
-    const limit = Math.min(parseInt(req.query.limit as string) || 100, 1000);
+    const limit = Math.min(parseInt(req.query.limit as string) || 100, 100);
 
     const agent = await getAgent(tokenAddress);
     if (!agent || !agent.vault_address) {
@@ -479,7 +479,7 @@ router.get("/agents/:address/hands", async (req, res) => {
 router.get("/agents/:address/rebalances", async (req, res) => {
   try {
     const tokenAddress = req.params.address.toLowerCase();
-    const limit = Math.min(parseInt(req.query.limit as string) || 50, 500);
+    const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
 
     const agent = await getAgent(tokenAddress);
     if (!agent || !agent.vault_address) {
@@ -515,7 +515,7 @@ router.get("/agents/:address/rebalances", async (req, res) => {
  */
 router.get("/agents/:address/gto-stats", async (req, res) => {
   const address = req.params.address.toLowerCase();
-  const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
+  const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
 
   try {
     // Fetch agent's recent hands to get tableAddress + handIds
@@ -602,7 +602,7 @@ router.get("/agents/:address/gto-stats", async (req, res) => {
 router.get("/agents/:address/strategies", async (req, res) => {
   try {
     const address = req.params.address.toLowerCase();
-    const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
+    const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
     const records = await getAgentStrategies(address, limit);
     res.json({
       agent: address,
@@ -917,7 +917,7 @@ router.get("/leaderboard", leaderboardRateLimit, async (req, res) => {
 router.get("/evolution/timeline", async (req, res) => {
   try {
     const agentsParam = (req.query.agents as string | undefined) ?? "";
-    const limit = Math.min(parseInt(req.query.limit as string) || 100, 500);
+    const limit = Math.min(parseInt(req.query.limit as string) || 100, 100);
 
     let agentAddresses: string[];
     if (agentsParam) {

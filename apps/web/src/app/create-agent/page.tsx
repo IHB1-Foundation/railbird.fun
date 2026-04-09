@@ -7,6 +7,7 @@ import { PERSONA_PRESETS } from "@/lib/agentProfiles";
 import { getTables } from "@/lib/api";
 import { ZERO_ADDRESS } from "@/lib/utils";
 import { Breadcrumb } from "@/components/Breadcrumb";
+import { PersonaRadar } from "@/components/PersonaRadar";
 import styles from "./page.module.css";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -59,59 +60,20 @@ const TABLE_MAX_SEATS = Number(process.env.NEXT_PUBLIC_TABLE_MAX_SEATS || "9");
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
+// D-20: RadarPreview replaced by shared PersonaRadar component
 function RadarPreview({ persona }: { persona: PersonaConfig }) {
-  const dim = 140;
-  const cx = dim / 2;
-  const cy = dim / 2;
-  const r = dim * 0.35;
-
-  const axes = [
-    { key: "aggression" as const, label: "Aggr" },
-    { key: "tightness" as const, label: "Tight" },
-    { key: "bluffFrequency" as const, label: "Bluff" },
-    { key: "positionAwareness" as const, label: "Pos" },
-  ];
-
-  const angleOffset = -Math.PI / 2;
-  const points = axes.map((axis, i) => {
-    const angle = angleOffset + (2 * Math.PI * i) / axes.length;
-    const val = persona[axis.key];
-    return {
-      label: axis.label,
-      x: cx + r * val * Math.cos(angle),
-      y: cy + r * val * Math.sin(angle),
-      lx: cx + (r + 16) * Math.cos(angle),
-      ly: cy + (r + 16) * Math.sin(angle),
-    };
-  });
-
-  const rings = [0.25, 0.5, 0.75, 1.0];
-  const polygonPoints = points.map((p) => `${p.x},${p.y}`).join(" ");
-
   return (
-    <svg width={dim} height={dim} viewBox={`0 0 ${dim} ${dim}`} style={{ display: "block" }}>
-      {rings.map((ring) => {
-        const ringPts = axes.map((_, i) => {
-          const angle = angleOffset + (2 * Math.PI * i) / axes.length;
-          return `${cx + r * ring * Math.cos(angle)},${cy + r * ring * Math.sin(angle)}`;
-        }).join(" ");
-        return <polygon key={ring} points={ringPts} fill="none" stroke="#374151" strokeWidth="1" />;
-      })}
-      {axes.map((_, i) => {
-        const angle = angleOffset + (2 * Math.PI * i) / axes.length;
-        return (
-          <line key={i} x1={cx} y1={cy}
-            x2={cx + r * Math.cos(angle)} y2={cy + r * Math.sin(angle)}
-            stroke="#374151" strokeWidth="1" />
-        );
-      })}
-      <polygon points={polygonPoints}
-        fill={persona.colorAccent + "40"} stroke={persona.colorAccent} strokeWidth="2" />
-      {points.map((p, i) => (
-        <text key={i} x={p.lx} y={p.ly} textAnchor="middle" dominantBaseline="middle"
-          fontSize="9" fill="#9CA3AF">{p.label}</text>
-      ))}
-    </svg>
+    <PersonaRadar
+      axes={[
+        { label: "Aggr", value: persona.aggression },
+        { label: "Tight", value: persona.tightness },
+        { label: "Bluff", value: persona.bluffFrequency },
+        { label: "Pos", value: persona.positionAwareness },
+      ]}
+      colorAccent={persona.colorAccent}
+      name={persona.name || "Agent"}
+      size="large"
+    />
   );
 }
 

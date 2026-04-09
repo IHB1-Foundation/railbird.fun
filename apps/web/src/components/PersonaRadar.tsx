@@ -1,46 +1,54 @@
 "use client";
 
-import type { PersonaSummary } from "@/lib/agentProfiles";
 import styles from "./PersonaRadar.module.css";
 
+interface RadarAxis {
+  label: string;
+  value: number; // 0–1
+}
+
 interface PersonaRadarProps {
-  persona: PersonaSummary;
+  /** Array of axes to render. Minimum 3, maximum 6. */
+  axes: RadarAxis[];
+  /** Accent colour for the data polygon. */
+  colorAccent?: string;
+  /** Descriptive name for aria-label. */
+  name?: string;
   size?: "small" | "large";
 }
 
-type Axis = { key: keyof Pick<PersonaSummary, "aggression" | "tightness" | "bluffFrequency">; label: string };
-
-const AXES: Axis[] = [
-  { key: "aggression", label: "Aggression" },
-  { key: "tightness", label: "Tightness" },
-  { key: "bluffFrequency", label: "Bluff" },
-];
-
 /**
- * CSS-only radar chart (SVG polygon) for 3-axis persona visualization.
- * No external libraries required.
+ * D-20: Unified SVG radar chart.
+ * Replaces both the inline RadarPreview in create-agent/page.tsx
+ * and the original MetaRadar-adjacent PersonaRadar.
+ * No external libraries — pure SVG.
  */
-export function PersonaRadar({ persona, size = "large" }: PersonaRadarProps) {
+export function PersonaRadar({
+  axes,
+  colorAccent = "#8B5CF6",
+  name = "Persona",
+  size = "large",
+}: PersonaRadarProps) {
   const dim = size === "small" ? 80 : 160;
   const cx = dim / 2;
   const cy = dim / 2;
-  const r = dim * 0.38;
+  const r = dim * 0.35;
+  const labelOffset = size === "small" ? 10 : 18;
 
-  // 3 axes equally spaced (120° apart), starting from top
   const angleOffset = -Math.PI / 2;
-  const points = AXES.map((axis, i) => {
-    const angle = angleOffset + (2 * Math.PI * i) / AXES.length;
-    const val = persona[axis.key] as number;
+  const n = axes.length;
+
+  const points = axes.map((axis, i) => {
+    const angle = angleOffset + (2 * Math.PI * i) / n;
     return {
       label: axis.label,
-      x: cx + r * val * Math.cos(angle),
-      y: cy + r * val * Math.sin(angle),
-      lx: cx + (r + (size === "small" ? 10 : 20)) * Math.cos(angle),
-      ly: cy + (r + (size === "small" ? 10 : 20)) * Math.sin(angle),
+      x: cx + r * axis.value * Math.cos(angle),
+      y: cy + r * axis.value * Math.sin(angle),
+      lx: cx + (r + labelOffset) * Math.cos(angle),
+      ly: cy + (r + labelOffset) * Math.sin(angle),
     };
   });
 
-  // Grid rings
   const rings = [0.25, 0.5, 0.75, 1.0];
   const polygonPoints = points.map((p) => `${p.x},${p.y}`).join(" ");
 
@@ -50,43 +58,39 @@ export function PersonaRadar({ persona, size = "large" }: PersonaRadarProps) {
       height={dim}
       className={`${styles.radar} ${size === "small" ? styles.radarSmall : styles.radarLarge}`}
       viewBox={`0 0 ${dim} ${dim}`}
-      aria-label={`Persona radar chart for ${persona.name}`}
+      aria-label={`${name} radar chart`}
     >
       {/* Grid rings */}
       {rings.map((ring) => {
-        const ringPts = AXES.map((_, i) => {
-          const angle = angleOffset + (2 * Math.PI * i) / AXES.length;
+        const ringPts = axes.map((_, i) => {
+          const angle = angleOffset + (2 * Math.PI * i) / n;
           return `${cx + r * ring * Math.cos(angle)},${cy + r * ring * Math.sin(angle)}`;
         }).join(" ");
-        return (
-          <polygon
-            key={ring}
-            points={ringPts}
-            className={styles.radarGrid}
-          />
-        );
+        return <polygon key={ring} points={ringPts} className={styles.radarGrid} />;
       })}
 
       {/* Axis lines */}
-      {points.map((p, i) => (
-        <line
-          key={i}
-          x1={cx}
-          y1={cy}
-          x2={cx + r * Math.cos(angleOffset + (2 * Math.PI * i) / AXES.length)}
-          y2={cy + r * Math.sin(angleOffset + (2 * Math.PI * i) / AXES.length)}
-          className={styles.radarAxis}
-        />
-      ))}
+      {axes.map((_, i) => {
+        const angle = angleOffset + (2 * Math.PI * i) / n;
+        return (
+          <line
+            key={i}
+            x1={cx} y1={cy}
+            x2={cx + r * Math.cos(angle)}
+            y2={cy + r * Math.sin(angle)}
+            className={styles.radarAxis}
+          />
+        );
+      })}
 
       {/* Data polygon */}
       <polygon
         points={polygonPoints}
         className={styles.radarFill}
-        style={{ fill: persona.colorAccent + "40", stroke: persona.colorAccent }}
+        style={{ fill: colorAccent + "40", stroke: colorAccent }}
       />
 
-      {/* Labels (only for large) */}
+      {/* Labels */}
       {size === "large" && points.map((p, i) => (
         <text
           key={i}
@@ -100,5 +104,40 @@ export function PersonaRadar({ persona, size = "large" }: PersonaRadarProps) {
         </text>
       ))}
     </svg>
+  );
+}
+
+// ── Convenience wrappers for existing callers ─────────────────────────────────
+
+interface PersonaSummaryLike {
+  name?: string;
+  colorAccent?: string;
+  aggression: number;
+  tightness: number;
+  bluffFrequency: number;
+}
+
+/**
+ * Renders the standard 3-axis persona radar (aggression / tightness / bluff).
+ * Drop-in replacement for the old PersonaRadar that accepted a PersonaSummary.
+ */
+export function PersonaSummaryRadar({
+  persona,
+  size = "large",
+}: {
+  persona: PersonaSummaryLike;
+  size?: "small" | "large";
+}) {
+  return (
+    <PersonaRadar
+      axes={[
+        { label: "Aggression", value: persona.aggression },
+        { label: "Tightness", value: persona.tightness },
+        { label: "Bluff", value: persona.bluffFrequency },
+      ]}
+      colorAccent={persona.colorAccent}
+      name={persona.name ?? "Agent"}
+      size={size}
+    />
   );
 }

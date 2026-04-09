@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth";
 import { PERSONA_PRESETS } from "@/lib/agentProfiles";
 import { getTables } from "@/lib/api";
 import { ZERO_ADDRESS } from "@/lib/utils";
+import styles from "./page.module.css";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -302,7 +303,7 @@ export default function CreateAgentPage() {
         <div style={{ background: "#111827", borderRadius: "0.75rem", padding: "2rem" }}>
           <h2 style={{ fontSize: "1.25rem", fontWeight: 600, marginBottom: "1.5rem" }}>Configure Persona</h2>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "2rem" }}>
+          <div className={styles.personaGrid}>
             <div>
               {/* Name */}
               <div style={{ marginBottom: "1rem" }}>
@@ -522,7 +523,7 @@ export default function CreateAgentPage() {
                 </p>
               </div>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem", fontSize: "0.875rem" }}>
+            <div className={styles.statsGrid}>
               <div>
                 <span style={{ color: "#6B7280" }}>Table</span>
                 <p style={{ color: "#F9FAFB" }}>{selectedTable.slice(0, 10)}…</p>

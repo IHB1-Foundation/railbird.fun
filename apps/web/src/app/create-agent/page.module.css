@@ -1,0 +1,26 @@
+/* H-2: Mobile responsive overrides for create-agent page */
+
+/* Step 2: Persona config — form + radar preview side by side on desktop */
+.personaGrid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2rem;
+}
+
+/* Step 4: Deploy stats summary */
+.statsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+}
+
+@media (max-width: 640px) {
+  .personaGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .statsGrid {
+    grid-template-columns: 1fr;
+  }
+}

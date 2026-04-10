@@ -149,9 +149,10 @@ body {
   min-height: 100vh;
   position: relative;
   color: var(--foreground);
+  /* G-3: Casino floor ambiance — violet↔cyan slow glow shift */
   background:
-    radial-gradient(1200px 760px at 0% -15%, rgba(129, 108, 249, 0.26), transparent 68%),
-    radial-gradient(1000px 680px at 100% 0%, rgba(90, 66, 226, 0.25), transparent 64%),
+    radial-gradient(1200px 760px at 0% -15%, rgba(167, 139, 250, 0.22), transparent 68%),
+    radial-gradient(1000px 680px at 100% 0%, rgba(34, 211, 238, 0.12), transparent 64%),
     linear-gradient(180deg, #06070b 0%, #070916 62%, #06070b 100%);
   font-family: var(--font-roboto), Roboto, "Segoe UI", Helvetica, Arial, sans-serif;
   letter-spacing: 0.01em;
@@ -166,18 +167,34 @@ body::after {
   z-index: -1;
 }
 
+/* G-3: Film grain noise layer (replaces dot grid) */
 body::before {
   inset: 0;
-  background-image: radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px);
-  background-size: 28px 28px;
-  opacity: 0.2;
+  /* SVG noise via data URI */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+  opacity: 0.5;
 }
 
+/* G-3: Slow moving neon glow — violet↔cyan color shift */
 body::after {
   inset: auto -12% -34% -12%;
   height: 420px;
-  background: radial-gradient(circle at 50% 0%, rgba(129, 108, 249, 0.35), transparent 70%);
+  background: radial-gradient(circle at 50% 0%, rgba(167, 139, 250, 0.3), transparent 70%);
   filter: blur(18px);
+  animation: ambient-glow 8s ease-in-out infinite alternate;
+}
+
+@keyframes ambient-glow {
+  0%   { background: radial-gradient(circle at 50% 0%, rgba(167, 139, 250, 0.3), transparent 70%); }
+  50%  { background: radial-gradient(circle at 50% 0%, rgba(34, 211, 238, 0.18), transparent 70%); }
+  100% { background: radial-gradient(circle at 50% 0%, rgba(167, 139, 250, 0.3), transparent 70%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body::after {
+    animation: none;
+  }
 }
 
 /* Screen-reader only utility */

@@ -463,17 +463,17 @@ export function LiveDashboard({
             aria-hidden="true"
           />
           <div className={styles.showdownCard}>
-            <div style={{ fontSize: "3rem", marginBottom: "0.5rem" }} aria-hidden="true">🏆</div>
-            <h2 id={showdownTitleId} style={{ fontSize: "1.5rem", fontWeight: 800, color: "#8b5cf6", marginBottom: "0.25rem" }}>
+            <div className={styles.showdownIcon} aria-hidden="true">🏆</div>
+            <h2 id={showdownTitleId} className={styles.showdownTitle}>
               Seat {showdownInfo.winner} Wins!
             </h2>
-            <p style={{ color: "#9ca3af", fontSize: "0.875rem" }}>
+            <p className={styles.showdownPot}>
               Pot: {showdownInfo.pot} RCHIP
             </p>
             <button
               ref={showdownCloseRef}
               onClick={() => setShowShowdown(false)}
-              style={{ marginTop: "1rem", background: "none", border: "none", color: "var(--muted)", fontSize: "0.7rem", cursor: "pointer", textDecoration: "underline" }}
+              className={styles.showdownDismiss}
               autoFocus
               aria-label="Dismiss showdown result"
             >

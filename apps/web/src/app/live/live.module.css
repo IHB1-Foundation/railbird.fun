@@ -258,12 +258,43 @@
   to   { opacity: 1; }
 }
 .showdownCard {
-  background: #111827;
+  background: var(--background-soft);
   border: 2px solid var(--accent);
-  border-radius: 1rem;
+  border-radius: var(--radius-lg);
   padding: 2rem 3rem;
   text-align: center;
   min-width: 280px;
+}
+
+/* PD-I4: showdown overlay content — moved from inline styles */
+.showdownIcon {
+  font-size: 3rem;
+  margin-bottom: 0.5rem;
+  line-height: 1;
+  display: block;
+}
+
+.showdownTitle {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--neon-violet);
+  margin-bottom: 0.25rem;
+}
+
+.showdownPot {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.showdownDismiss {
+  margin-top: 1rem;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 0.7rem;
+  cursor: pointer;
+  text-decoration: underline;
+  min-height: 44px; /* PD-F1 */
 }
 
 /* Table selector */

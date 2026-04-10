@@ -24,6 +24,8 @@
   --club: #39d98a;
   --text-mono: "JetBrains Mono", "SFMono-Regular", Menlo, Monaco, Consolas,
     "Liberation Mono", "Courier New", monospace;
+  /* G-4: Display font — Space Grotesk for headers, stats, brand elements */
+  --font-display: var(--font-display, "Space Grotesk"), "Segoe UI", system-ui, sans-serif;
 
   /* Missing utility tokens */
   /* D-67: #6b7280 gives ~4.79:1 contrast on --background — just above WCAG AA 4.5:1.
@@ -312,6 +314,13 @@ h5 {
     align-items: center;
     gap: 0.5rem;
   }
+}
+
+/* G-4: Display font applied to headings and key stats */
+h1, h2, h3 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 .content-shell {

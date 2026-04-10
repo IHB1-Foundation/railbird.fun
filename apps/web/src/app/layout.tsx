@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
-import { Roboto } from "next/font/google";
+import { Roboto, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import styles from "./layout.module.css";
 import { Providers } from "./providers";
@@ -14,6 +14,12 @@ const roboto = Roboto({
   subsets: ["latin"],
   weight: ["400", "500", "700"],
   variable: "--font-roboto",
+});
+
+const spaceGrotesk = Space_Grotesk({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-display",
 });
 
 export const metadata: Metadata = {
@@ -37,7 +43,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={roboto.variable}>
+      <body className={`${roboto.variable} ${spaceGrotesk.variable}`}>
         <Providers>
           <KeyboardShortcutsHelp />
           <a href="#main-content" className="skip-to-content">Skip to main content</a>

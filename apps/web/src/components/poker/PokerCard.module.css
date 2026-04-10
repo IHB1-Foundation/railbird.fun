@@ -1,9 +1,12 @@
+/* PD-H1: use CSS custom property + aspect-ratio so size variants stay proportional */
 .pokerCard {
+  --card-w: 2.1rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.1rem;
-  height: 2.85rem;
+  width: var(--card-w);
+  aspect-ratio: 21 / 29;
+  height: auto;
   border-radius: 0.35rem;
   /* G-7: multi-layer 3D embossed background */
   background:

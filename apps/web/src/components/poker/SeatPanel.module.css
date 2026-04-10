@@ -5,7 +5,7 @@
   background:
     linear-gradient(165deg, rgba(9, 11, 22, 0.87), rgba(14, 17, 28, 0.93));
   border: 1px solid rgba(188, 161, 112, 0.42);
-  border-radius: 14px;
+  border-radius: var(--radius-md); /* PD-G1: use token */
   text-align: center;
   box-shadow:
     var(--shadow-md),

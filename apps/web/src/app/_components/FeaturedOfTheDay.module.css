@@ -18,6 +18,8 @@
   align-items: center;
   gap: 0.4rem;
   letter-spacing: 0.03em;
+  /* PD-H9: explicit line-height prevents dot animation from shifting the row */
+  line-height: 1.2;
   margin-bottom: 0.2rem;
 }
 

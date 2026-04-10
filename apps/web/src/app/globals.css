@@ -123,6 +123,18 @@
   --shadow-seat-active: 0 0 0 2px rgba(255, 213, 124, 0.5), 0 0 24px rgba(255, 179, 74, 0.45);
   --shadow-btn-accent: 0 8px 18px rgba(104, 79, 246, 0.35);
   --shadow-btn-warning: 0 8px 18px rgba(249, 157, 44, 0.35);
+  /* PD-G2: extended shadow tokens */
+  --shadow-card-hover: 0 16px 40px rgba(0, 0, 0, 0.38), 0 0 0 1px rgba(129, 108, 249, 0.2);
+  --shadow-card-active: 0 4px 12px rgba(0, 0, 0, 0.28);
+  --shadow-table-felt: inset 0 2px 20px rgba(34, 197, 94, 0.06);
+
+  /* PD-E3: Card padding tokens */
+  --card-padding-sm: var(--space-3);      /* 0.75rem */
+  --card-padding-md: var(--space-4);      /* 1rem */
+  --card-padding-lg: var(--space-6);      /* 1.5rem */
+
+  /* PD-F3: text-muted-soft for large/decorative text that can use lighter color */
+  --text-muted-soft: #9ba3c1;
 
   /* Typography scale */
   --text-2xs: 0.65rem;
@@ -550,10 +562,19 @@ h3, h4, h5 { line-height: 1.25; }
   background: linear-gradient(160deg, var(--card-bg), var(--card-bg-strong));
   border: 1px solid var(--card-border);
   border-radius: var(--radius-lg);
-  padding: var(--space-4);
+  /* PD-E3: use card-padding token so .landingHero and others remain explicit */
+  padding: var(--card-padding-md);
   box-shadow:
     var(--shadow-lg),
     inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+/* PD-G2: hover/active shadow tokens available for components */
+.card-hover:hover {
+  box-shadow: var(--shadow-card-hover);
+}
+.card-hover:active {
+  box-shadow: var(--shadow-card-active);
 }
 
 .card-grid {

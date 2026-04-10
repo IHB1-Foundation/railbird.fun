@@ -192,7 +192,7 @@ async function main() {
 
   // Create and run bot
   const bot = new AgentBot(config);
-  const healthPort = parseInt(process.env.HEALTH_PORT || "9100", 10);
+  const healthPort = parseInt(process.env.HEALTH_PORT || process.env.PORT || "9100", 10);
   const health = startHealthServer({
     service: "agent-bot",
     port: healthPort,

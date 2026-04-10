@@ -3,7 +3,10 @@
 import {
   createPublicClient,
   createWalletClient,
+  encodePacked,
   http,
+  keccak256,
+  parseAbiItem,
   type PublicClient,
   type WalletClient,
   type Account,
@@ -39,6 +42,13 @@ const ERC20_APPROVE_ABI = [
 ] as const;
 
 export { GameState };
+
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+const ZERO_BYTES32 = `0x${"0".repeat(64)}` as const;
+const HOLE_CARD_VRF_LOG_LOOKBACK = BigInt(process.env.HOLE_CARD_VRF_LOG_LOOKBACK || "200000");
+const RANDOMNESS_FULFILLED_EVENT = parseAbiItem(
+  "event RandomnessFulfilled(uint256 indexed requestId, address indexed table, uint256 randomness)"
+);
 
 export interface Seat {
   owner: Address;
@@ -144,6 +154,24 @@ export class ChainClient {
     return this.tableIdCache;
   }
 
+  async getDealerAddress(): Promise<Address> {
+    const dealer = await this.publicClient.readContract({
+      address: this.pokerTableAddress,
+      abi: POKER_TABLE_ABI,
+      functionName: "dealer",
+    });
+    return dealer as Address;
+  }
+
+  async getAdminAddress(): Promise<Address> {
+    const admin = await this.publicClient.readContract({
+      address: this.pokerTableAddress,
+      abi: POKER_TABLE_ABI,
+      functionName: "admin",
+    });
+    return admin as Address;
+  }
+
   async getBlockNumber(): Promise<bigint> {
     return this.publicClient.getBlockNumber();
   }
@@ -161,7 +189,6 @@ export class ChainClient {
       lastActionBlock,
       pendingVRFRequestId,
       vrfRequestTimestamp,
-      canStartHand,
     ] = await Promise.all([
       this.publicClient.readContract({
         address: this.pokerTableAddress,
@@ -193,12 +220,22 @@ export class ChainClient {
         abi: POKER_TABLE_ABI,
         functionName: "vrfRequestTimestamp",
       }),
-      this.publicClient.readContract({
+    ]);
+
+    let canStartHand = false;
+    try {
+      const result = await this.publicClient.readContract({
         address: this.pokerTableAddress,
         abi: POKER_TABLE_ABI,
         functionName: "canStartHand",
-      }),
-    ]);
+      });
+      canStartHand = result as boolean;
+    } catch {
+      // Some deployed table versions do not expose a stable canStartHand()
+      // view. Fall back to the on-chain startHand() preconditions that are
+      // readable off-chain so the keeper can still start ready tables.
+      canStartHand = await this.deriveCanStartHand((gameStateRaw as number) as GameState);
+    }
 
     return {
       gameState: (gameStateRaw as number) as GameState,
@@ -209,6 +246,44 @@ export class ChainClient {
       vrfRequestTimestamp: vrfRequestTimestamp as bigint,
       canStartHand: canStartHand as boolean,
     };
+  }
+
+  private async deriveCanStartHand(gameState: GameState): Promise<boolean> {
+    if (gameState !== GameState.WAITING_FOR_SEATS && gameState !== GameState.SETTLED) {
+      return false;
+    }
+
+    try {
+      const [numSeatsRaw, pausedRaw] = await Promise.all([
+        this.publicClient.readContract({
+          address: this.pokerTableAddress,
+          abi: POKER_TABLE_ABI,
+          functionName: "numSeats",
+        }),
+        this.publicClient.readContract({
+          address: this.pokerTableAddress,
+          abi: POKER_TABLE_ABI,
+          functionName: "paused",
+        }),
+      ]);
+
+      if (pausedRaw as boolean) {
+        return false;
+      }
+
+      const numSeats = Number(numSeatsRaw);
+      const seats = await Promise.all(
+        Array.from({ length: numSeats }, (_, seatIndex) => this.getSeat(seatIndex))
+      );
+
+      const playableSeatCount = seats.filter(
+        (seat) => seat.owner !== ZERO_ADDRESS && seat.stack > 0n
+      ).length;
+
+      return playableSeatCount >= 2;
+    } catch {
+      return false;
+    }
   }
 
   async getHoleCommit(handId: bigint, seatIndex: number): Promise<`0x${string}`> {
@@ -321,6 +396,38 @@ export class ChainClient {
         abi: POKER_TABLE_ABI,
         functionName: "submitHoleCommit",
         args: [handId, seatIndex, commitment],
+        nonce,
+      });
+      await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });
+      return hash;
+    });
+  }
+
+  async setDealer(dealer: Address): Promise<Hash> {
+    return this.nonceManager.withNonce(async (nonce) => {
+      const hash = await this.walletClient.writeContract({
+        chain: this.chain,
+        account: this.account,
+        address: this.pokerTableAddress,
+        abi: POKER_TABLE_ABI,
+        functionName: "setDealer",
+        args: [dealer],
+        nonce,
+      });
+      await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });
+      return hash;
+    });
+  }
+
+  async advanceToPreflop(): Promise<Hash> {
+    return this.nonceManager.withNonce(async (nonce) => {
+      const hash = await this.walletClient.writeContract({
+        chain: this.chain,
+        account: this.account,
+        address: this.pokerTableAddress,
+        abi: POKER_TABLE_ABI,
+        functionName: "advanceToPreflop",
+        args: [],
         nonce,
       });
       await this.publicClient.waitForTransactionReceipt({ hash, timeout: this.txTimeoutMs });
@@ -488,13 +595,24 @@ export class ChainClient {
   }
 
   async getSeat(seatIndex: number): Promise<Seat> {
-    const result = await this.publicClient.readContract({
-      address: this.pokerTableAddress,
-      abi: POKER_TABLE_ABI,
-      functionName: "getSeat",
-      args: [seatIndex],
-    }) as { owner: Address; operator: Address; stack: bigint; isActive: boolean; currentBet: bigint; isAllIn: boolean; totalHandBet: bigint };
-    return result as Seat;
+    try {
+      const result = await this.publicClient.readContract({
+        address: this.pokerTableAddress,
+        abi: POKER_TABLE_ABI,
+        functionName: "getSeat",
+        args: [seatIndex],
+      }) as { owner: Address; operator: Address; stack: bigint; isActive: boolean; currentBet: bigint; isAllIn: boolean; totalHandBet: bigint };
+      return result as Seat;
+    } catch {
+      const result = await this.publicClient.readContract({
+        address: this.pokerTableAddress,
+        abi: POKER_TABLE_ABI,
+        functionName: "seats",
+        args: [BigInt(seatIndex)],
+      }) as readonly [Address, Address, bigint, boolean, bigint, boolean, bigint];
+      const [owner, operator, stack, isActive, currentBet, isAllIn, totalHandBet] = result;
+      return { owner, operator, stack, isActive, currentBet, isAllIn, totalHandBet };
+    }
   }
 
   async getChipToken(): Promise<Address> {
@@ -513,6 +631,68 @@ export class ChainClient {
       functionName: "bigBlind",
     });
     return result as bigint;
+  }
+
+  async getHoleCardVrfRandomness(handId: bigint): Promise<bigint> {
+    const randomnessHash = await this.publicClient.readContract({
+      address: this.pokerTableAddress,
+      abi: POKER_TABLE_ABI,
+      functionName: "holeCardVRFRandomnessHash",
+      args: [handId],
+    });
+    if (randomnessHash === ZERO_BYTES32) {
+      return 0n;
+    }
+
+    const vrfAdapter = await this.publicClient.readContract({
+      address: this.pokerTableAddress,
+      abi: POKER_TABLE_ABI,
+      functionName: "vrfAdapter",
+    }) as Address;
+
+    if (vrfAdapter === ZERO_ADDRESS) {
+      throw new Error("VRF adapter is not configured for this table");
+    }
+
+    const latestBlock = await this.publicClient.getBlockNumber();
+    const fromBlock =
+      latestBlock > HOLE_CARD_VRF_LOG_LOOKBACK
+        ? latestBlock - HOLE_CARD_VRF_LOG_LOOKBACK
+        : 0n;
+
+    const fulfilledLogs = await this.publicClient.getLogs({
+      address: vrfAdapter,
+      event: RANDOMNESS_FULFILLED_EVENT,
+      args: { table: this.pokerTableAddress },
+      fromBlock,
+      toBlock: "latest",
+    });
+
+    for (const log of [...fulfilledLogs].reverse()) {
+      const randomness = log.args.randomness;
+      if (typeof randomness !== "bigint") {
+        continue;
+      }
+
+      const candidateHash = keccak256(encodePacked(["uint256"], [randomness]));
+      if (candidateHash.toLowerCase() === (randomnessHash as `0x${string}`).toLowerCase()) {
+        return randomness;
+      }
+    }
+
+    throw new Error(
+      `Unable to resolve hole card VRF randomness for hand ${handId.toString()} within the last ${HOLE_CARD_VRF_LOG_LOOKBACK.toString()} blocks`
+    );
+  }
+
+  async getEncryptionKey(seatIndex: number): Promise<`0x${string}`> {
+    const result = await this.publicClient.readContract({
+      address: this.pokerTableAddress,
+      abi: POKER_TABLE_ABI,
+      functionName: "getEncryptionKey",
+      args: [seatIndex],
+    });
+    return result as `0x${string}`;
   }
 
   async approveChipToken(tokenAddress: Address, amount: bigint): Promise<Hash> {

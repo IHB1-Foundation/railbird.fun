@@ -245,6 +245,7 @@ export class AgentBot {
     this.running = true;
     const pollInterval = Math.max(200, this.config.pollIntervalMs || 1000);
     this.currentBackoffMs = pollInterval;
+    let encryptionPubKey: Uint8Array | null = null;
 
     logger.info({ address: this.address, table: this.config.pokerTableAddress, maxHands: maxHands || "unlimited" }, "AgentBot starting");
 
@@ -260,14 +261,24 @@ export class AgentBot {
 
     // Derive encryption key pair (once per run) and inject into ownerviewClient
     try {
-      const { privKey } = await deriveEncryptionKeyPair(this.config.privateKey);
+      const { privKey, pubKey } = await deriveEncryptionKeyPair(this.config.privateKey);
       this.encryptionPrivKey = privKey;
+      encryptionPubKey = pubKey;
       logger.info("Encryption key pair derived");
       if (this.ownerviewClient) {
         this.ownerviewClient.setEncryptionPrivKey(privKey);
       }
     } catch (error) {
       logger.warn({ error }, "Failed to derive encryption key pair");
+    }
+
+    if (this.ownerviewClient && encryptionPubKey) {
+      try {
+        await this.ownerviewClient.registerEncryptionKey(encryptionPubKey);
+        logger.info("Registered encryption key with OwnerView service");
+      } catch (error) {
+        logger.warn({ error }, "Failed to register encryption key with OwnerView");
+      }
     }
 
     // Register current strategy on-chain (T-1102)

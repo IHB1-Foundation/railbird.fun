@@ -1,10 +1,11 @@
 // OwnerView API client for wallet authentication and hole card fetching
 
-import { type Address } from "viem";
+import { toHex, type Address } from "viem";
 import { secp256k1 } from "@noble/curves/secp256k1.js";
 import { hkdf } from "@noble/hashes/hkdf.js";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { hexToBytes, fetchWithTimeout } from "@playerco/shared";
+import { ensureWebCrypto } from "../runtime/webcrypto.js";
 
 export interface SubmitReasoningFactors {
   handStrength: string;
@@ -100,6 +101,7 @@ const DEFAULT_REQUEST_TIMEOUT_MS = parseInt(process.env.REQUEST_TIMEOUT_MS || "1
 
 const AES_KEY_LEN = 32;
 const TAG_LEN = 16;
+const webCrypto = ensureWebCrypto();
 
 export class OwnerViewClient {
   private baseUrl: string;
@@ -177,6 +179,28 @@ export class OwnerViewClient {
 
     this.token = token;
     this.tokenExpiresAt = expiresAt;
+  }
+
+  async registerEncryptionKey(pubKey: Uint8Array): Promise<void> {
+    await this.ensureAuthenticated();
+
+    const res = await fetchWithTimeout(
+      `${this.baseUrl}/owner/encryption-key`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this.token}`,
+        },
+        body: JSON.stringify({ pubKey: toHex(pubKey) }),
+      },
+      this.requestTimeoutMs
+    );
+
+    if (!res.ok) {
+      const errorBody = await res.json().catch(() => ({ error: "Request failed" })) as { error?: string };
+      throw new Error(errorBody.error || `Failed to register encryption key: ${res.status}`);
+    }
   }
 
   /**
@@ -304,7 +328,7 @@ export class OwnerViewClient {
     // HKDF-SHA256 -> AES-256 key
     const aesKey = hkdf(sha256, sharedX, undefined, undefined, AES_KEY_LEN);
 
-    const cryptoKey = await crypto.subtle.importKey(
+    const cryptoKey = await webCrypto.subtle.importKey(
       "raw",
       aesKey.buffer as ArrayBuffer,
       { name: "AES-GCM" },
@@ -319,7 +343,7 @@ export class OwnerViewClient {
 
     let decryptedBuf: ArrayBuffer;
     try {
-      decryptedBuf = await crypto.subtle.decrypt(
+      decryptedBuf = await webCrypto.subtle.decrypt(
         { name: "AES-GCM", iv: iv.buffer as ArrayBuffer, tagLength: TAG_LEN * 8 },
         cryptoKey,
         ciphertextWithTag.buffer as ArrayBuffer
@@ -336,4 +360,3 @@ export class OwnerViewClient {
     return [decrypted[0], decrypted[1]];
   }
 }
-

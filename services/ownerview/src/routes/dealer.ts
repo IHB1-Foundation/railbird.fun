@@ -1,6 +1,8 @@
 import { timingSafeEqual } from "crypto";
 import { Router, type Request, type Response, type NextFunction } from "express";
+import type { Address } from "@playerco/shared";
 import { DealerService, DealerError } from "../dealer/index.js";
+import { EncryptionKeyStore } from "../encryptionKeyStore.js";
 
 /**
  * Middleware that validates DEALER_API_KEY on privileged dealer endpoints.
@@ -41,7 +43,11 @@ function createDealerAuthMiddleware(apiKey: string) {
  * All dealer endpoints are protected with operator auth (API key).
  * Pass dealerApiKey to enable protection. If undefined, endpoints are unprotected (local dev only).
  */
-export function createDealerRoutes(dealerService: DealerService, dealerApiKey?: string): Router {
+export function createDealerRoutes(
+  dealerService: DealerService,
+  dealerApiKey?: string,
+  encryptionKeyStore?: EncryptionKeyStore
+): Router {
   const router = Router();
 
   // Apply auth middleware to all dealer routes if API key is configured
@@ -56,7 +62,7 @@ export function createDealerRoutes(dealerService: DealerService, dealerApiKey?: 
    * Body: { tableId: string, handId: string }
    */
   router.post("/deal", async (req: Request, res: Response) => {
-    const { tableId, handId, vrfRandomness, dealerSeed, encryptionKeys } = req.body;
+    const { tableId, handId, vrfRandomness, dealerSeed, encryptionKeys, seatOwners } = req.body;
 
     if (!tableId || typeof tableId !== "string") {
       res.status(400).json({ error: "Missing or invalid tableId", code: "INVALID_TABLE_ID" });
@@ -70,23 +76,63 @@ export function createDealerRoutes(dealerService: DealerService, dealerApiKey?: 
       res.status(400).json({ error: "Missing vrfRandomness", code: "INVALID_PARAMS" });
       return;
     }
-    if (!dealerSeed || typeof dealerSeed !== "string") {
-      res.status(400).json({ error: "Missing or invalid dealerSeed", code: "INVALID_PARAMS" });
-      return;
-    }
-    if (!encryptionKeys || typeof encryptionKeys !== "object") {
-      res.status(400).json({ error: "Missing encryptionKeys map", code: "INVALID_PARAMS" });
+    const resolvedDealerSeed =
+      typeof dealerSeed === "string" && dealerSeed.length > 0
+        ? (dealerSeed as `0x${string}`)
+        : DealerService.generateDealerSeed();
+
+    const keysMap = new Map<number, Uint8Array>();
+
+    if (encryptionKeys && typeof encryptionKeys === "object") {
+      for (const [seatStr, hexKey] of Object.entries(encryptionKeys as Record<string, string>)) {
+        const seatIdx = Number(seatStr);
+        if (!Number.isInteger(seatIdx) || seatIdx < 0 || seatIdx > 8) continue;
+        if (typeof hexKey !== "string" || !/^0x[a-fA-F0-9]+$/.test(hexKey)) continue;
+        const hex = hexKey.replace(/^0x/, "");
+        keysMap.set(seatIdx, Uint8Array.from(Buffer.from(hex, "hex")));
+      }
+    } else if (seatOwners && typeof seatOwners === "object" && encryptionKeyStore) {
+      const missingSeats: number[] = [];
+
+      for (const [seatStr, ownerAddress] of Object.entries(seatOwners as Record<string, string>)) {
+        const seatIdx = Number(seatStr);
+        if (!Number.isInteger(seatIdx) || seatIdx < 0 || seatIdx > 8) continue;
+        if (typeof ownerAddress !== "string" || !/^0x[a-fA-F0-9]{40}$/.test(ownerAddress)) {
+          missingSeats.push(seatIdx);
+          continue;
+        }
+
+        const pubKeyHex = await encryptionKeyStore.get(ownerAddress.toLowerCase() as Address);
+        if (!pubKeyHex) {
+          missingSeats.push(seatIdx);
+          continue;
+        }
+
+        const hex = pubKeyHex.replace(/^0x/, "");
+        keysMap.set(seatIdx, Uint8Array.from(Buffer.from(hex, "hex")));
+      }
+
+      if (missingSeats.length > 0) {
+        res.status(400).json({
+          error: `Missing encryption keys for seats: ${missingSeats.join(",")}`,
+          code: "MISSING_ENCRYPTION_KEYS",
+        });
+        return;
+      }
+    } else {
+      res.status(400).json({
+        error: "Missing encryptionKeys map or seatOwners map",
+        code: "INVALID_PARAMS",
+      });
       return;
     }
 
-    // encryptionKeys arrives as { "0": "0x...", "1": "0x..." } (JSON object)
-    const keysMap = new Map<number, Uint8Array>();
-    for (const [seatStr, hexKey] of Object.entries(encryptionKeys as Record<string, string>)) {
-      const seatIdx = Number(seatStr);
-      if (!Number.isInteger(seatIdx) || seatIdx < 0 || seatIdx > 8) continue;
-      // hex key → Uint8Array
-      const hex = (hexKey as string).replace(/^0x/, "");
-      keysMap.set(seatIdx, Uint8Array.from(Buffer.from(hex, "hex")));
+    if (keysMap.size === 0) {
+      res.status(400).json({
+        error: "No usable encryption keys resolved for this hand",
+        code: "INVALID_PARAMS",
+      });
+      return;
     }
 
     try {
@@ -94,7 +140,7 @@ export function createDealerRoutes(dealerService: DealerService, dealerApiKey?: 
         tableId,
         handId,
         vrfRandomness: BigInt(vrfRandomness),
-        dealerSeed: dealerSeed as `0x${string}`,
+        dealerSeed: resolvedDealerSeed,
         encryptionKeys: keysMap,
       });
 

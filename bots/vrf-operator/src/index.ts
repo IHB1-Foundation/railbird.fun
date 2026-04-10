@@ -49,7 +49,7 @@ async function main(): Promise<void> {
     rescanFromRequestId: process.env.VRF_OPERATOR_RESCAN_FROM_REQUEST_ID
       ? BigInt(process.env.VRF_OPERATOR_RESCAN_FROM_REQUEST_ID)
       : undefined,
-    randomSalt: process.env.VRF_OPERATOR_RANDOM_SALT || "railbird-vrf-operator",
+    randomSalt: process.env.VRF_OPERATOR_RANDOM_SALT || undefined,
     fixedRandomness: parseOptionalBigInt("VRF_OPERATOR_FIXED_RANDOMNESS"),
   };
 
@@ -62,7 +62,7 @@ async function main(): Promise<void> {
 
   const bot = new VrfOperatorBot(config);
 
-  const healthPort = parseInt(process.env.HEALTH_PORT || "9102", 10);
+  const healthPort = parseInt(process.env.HEALTH_PORT || process.env.PORT || "9102", 10);
   const health = startHealthServer({
     service: "vrf-operator",
     port: healthPort,

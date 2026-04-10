@@ -2,15 +2,36 @@ import { Router, type Response } from "express";
 import type { AuthenticatedRequest } from "../middleware/index.js";
 import { ChainService, ChainError } from "../chain/index.js";
 import { HoleCardStore, HoleCardError } from "../holecards/index.js";
+import { EncryptionKeyStore } from "../encryptionKeyStore.js";
 
 /**
  * Create owner routes with required services
  */
 export function createOwnerRoutes(
   chainService: ChainService,
-  holeCardStore: HoleCardStore
+  holeCardStore: HoleCardStore,
+  encryptionKeyStore: EncryptionKeyStore
 ): Router {
   const router = Router();
+
+  router.post("/encryption-key", async (req: AuthenticatedRequest, res: Response) => {
+    const pubKey = req.body?.pubKey;
+
+    if (!pubKey || typeof pubKey !== "string" || !/^0x[a-fA-F0-9]{66}$/.test(pubKey)) {
+      res.status(400).json({
+        error: "Missing or invalid pubKey (expected 33-byte compressed secp256k1 key)",
+        code: "INVALID_PUBKEY",
+      });
+      return;
+    }
+
+    await encryptionKeyStore.set(req.wallet!, pubKey.toLowerCase() as `0x${string}`);
+
+    res.status(201).json({
+      address: req.wallet,
+      stored: true,
+    });
+  });
 
   /**
    * GET /owner/holecards?tableId=&handId=

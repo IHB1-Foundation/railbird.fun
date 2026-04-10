@@ -3,6 +3,9 @@ import { hkdf } from "@noble/hashes/hkdf.js";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { randomBytes } from "@noble/hashes/utils.js";
 import type { Card } from "../holecards/types.js";
+import { ensureWebCrypto } from "../runtime/webcrypto.js";
+
+const webCrypto = ensureWebCrypto();
 
 /**
  * ECIES encryption payload for hole cards.
@@ -59,7 +62,7 @@ export async function encryptHoleCards(
   const iv = randomBytes(IV_LEN);
   const plaintext = new Uint8Array([cards[0], cards[1]]);
 
-  const cryptoKey = await crypto.subtle.importKey(
+  const cryptoKey = await webCrypto.subtle.importKey(
     "raw",
     aesKey,
     { name: "AES-GCM" },
@@ -67,7 +70,7 @@ export async function encryptHoleCards(
     ["encrypt"]
   );
 
-  const encryptedBuf = await crypto.subtle.encrypt(
+  const encryptedBuf = await webCrypto.subtle.encrypt(
     { name: "AES-GCM", iv, tagLength: TAG_LEN * 8 },
     cryptoKey,
     plaintext
@@ -102,7 +105,7 @@ export async function decryptHoleCards(
   // Derive AES key
   const aesKey = hkdf(sha256, sharedX, undefined, undefined, AES_KEY_LEN);
 
-  const cryptoKey = await crypto.subtle.importKey(
+  const cryptoKey = await webCrypto.subtle.importKey(
     "raw",
     aesKey,
     { name: "AES-GCM" },
@@ -117,7 +120,7 @@ export async function decryptHoleCards(
 
   let decryptedBuf: ArrayBuffer;
   try {
-    decryptedBuf = await crypto.subtle.decrypt(
+    decryptedBuf = await webCrypto.subtle.decrypt(
       { name: "AES-GCM", iv, tagLength: TAG_LEN * 8 },
       cryptoKey,
       ciphertextWithTag

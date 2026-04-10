@@ -106,7 +106,7 @@ async function main() {
     (pokerTableAddress) => new KeeperBot({ ...baseConfig, pokerTableAddress })
   );
 
-  const healthPort = parseInt(process.env.HEALTH_PORT || "9101", 10);
+  const healthPort = parseInt(process.env.HEALTH_PORT || process.env.PORT || "9101", 10);
   const health = startHealthServer({
     service: "keeper-bot",
     port: healthPort,

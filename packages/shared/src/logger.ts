@@ -43,5 +43,9 @@ export function createLogger({ service, level }: LoggerOptions): pino.Logger {
     level: level ?? defaultLevel,
     ...(transport ? { transport } : {}),
     base: { service },
+    serializers: {
+      err: pino.stdSerializers.err,
+      error: pino.stdSerializers.err,
+    },
   });
 }

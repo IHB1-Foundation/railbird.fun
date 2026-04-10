@@ -62,10 +62,27 @@ export class ChainService {
         currentBet: result.currentBet,
       };
     } catch (err) {
-      throw new ChainError(
-        `Failed to read seat from contract: ${err instanceof Error ? err.message : String(err)}`,
-        "CONTRACT_ERROR"
-      );
+      try {
+        const result = await this.client.readContract({
+          address: this.pokerTableAddress,
+          abi: PokerTableABI,
+          functionName: "seats",
+          args: [BigInt(seatIndex)],
+        }) as readonly [Address, Address, bigint, boolean, bigint, boolean, bigint];
+
+        return {
+          owner: result[0],
+          operator: result[1],
+          stack: result[2],
+          isActive: result[3],
+          currentBet: result[4],
+        };
+      } catch (fallbackErr) {
+        throw new ChainError(
+          `Failed to read seat from contract: ${fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr)}`,
+          "CONTRACT_ERROR"
+        );
+      }
     }
   }
 

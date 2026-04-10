@@ -517,6 +517,33 @@ export class KeeperBot {
     return Boolean(this.config.ownerviewUrl && this.config.dealerApiKey);
   }
 
+  private async ensureDealerAuthority(): Promise<boolean> {
+    const [dealer, admin] = await Promise.all([
+      this.chainClient.getDealerAddress(),
+      this.chainClient.getAdminAddress(),
+    ]);
+
+    if (dealer.toLowerCase() === this.address.toLowerCase()) {
+      return true;
+    }
+
+    if (admin.toLowerCase() !== this.address.toLowerCase()) {
+      this.log.warn(
+        { dealer, admin, keeper: this.address },
+        "Keeper is not the configured dealer and cannot self-heal dealer assignment"
+      );
+      return false;
+    }
+
+    const hash = await this.chainClient.setDealer(this.address);
+    this.recordAction("setDealer");
+    this.log.info(
+      { previousDealer: dealer, newDealer: this.address, tx: hash },
+      "Updated table dealer to keeper"
+    );
+    return true;
+  }
+
   private async checkAndSubmitHoleCommits(state: TableState): Promise<void> {
     if (!this.hasDealerIntegration() || this.tableId === null) {
       return;
@@ -524,10 +551,15 @@ export class KeeperBot {
     if (state.currentHandId === 0n) {
       return;
     }
-    if (state.gameState === GameState.WAITING_FOR_SEATS || state.gameState === GameState.SETTLED) {
+    if (state.gameState !== GameState.WAITING_FOR_HOLECARDS) {
       return;
     }
     if (this.commitSyncedHands.has(state.currentHandId)) {
+      return;
+    }
+
+    const hasDealerAuthority = await this.ensureDealerAuthority();
+    if (!hasDealerAuthority) {
       return;
     }
 
@@ -545,6 +577,10 @@ export class KeeperBot {
       this.stats.apiErrors++;
       return;
     }
+    if (commitments.length === 0) {
+      return;
+    }
+
     let submitted = 0;
     for (const { seatIndex, commitment } of commitments) {
       const existing = await this.chainClient.getHoleCommit(state.currentHandId, seatIndex);
@@ -563,14 +599,28 @@ export class KeeperBot {
       }
     }
 
+    if (submitted > 0) {
+      this.recordAction("submitHoleCommit");
+    }
+
+    try {
+      const hash = await this.chainClient.advanceToPreflop();
+      this.log.info({ handId: state.currentHandId.toString(), tx: hash }, "Advanced to preflop");
+    } catch (error) {
+      const errorMsg = String(error);
+      if (!errorMsg.includes("HC") && !errorMsg.includes("MC")) {
+        throw error;
+      }
+      if (errorMsg.includes("MC")) {
+        return;
+      }
+    }
+
     this.commitSyncedHands.add(state.currentHandId);
     // Prune entries to keep only the last 100 hand IDs to prevent unbounded growth
     if (this.commitSyncedHands.size > 100) {
       const oldest = this.commitSyncedHands.values().next().value;
       if (oldest !== undefined) this.commitSyncedHands.delete(oldest);
-    }
-    if (submitted > 0) {
-      this.recordAction("submitHoleCommit");
     }
   }
 
@@ -654,12 +704,36 @@ export class KeeperBot {
 
     // Only POST /dealer/deal for hands that haven't been dealt yet
     if (!this.dealtHands.has(handId)) {
+      const vrfRandomness = await this.chainClient.getHoleCardVrfRandomness(handId);
+      if (vrfRandomness === 0n) {
+        return [];
+      }
+
+      const maxSeats = await this.chainClient.getMaxSeats();
+      const seatOwners: Record<string, `0x${string}`> = {};
+      for (let seatIndex = 0; seatIndex < maxSeats; seatIndex++) {
+        const seat = await this.chainClient.getSeat(seatIndex);
+        if (seat.owner.toLowerCase() === "0x0000000000000000000000000000000000000000") {
+          continue;
+        }
+        seatOwners[String(seatIndex)] = seat.owner;
+      }
+
+      if (Object.keys(seatOwners).length === 0) {
+        return [];
+      }
+
       const dealRes = await fetchWithTimeout(
         `${baseUrl}/dealer/deal`,
         {
           method: "POST",
           headers: { "content-type": "application/json", ...authHeader },
-          body: JSON.stringify({ tableId, handId: handIdStr }),
+          body: JSON.stringify({
+            tableId,
+            handId: handIdStr,
+            vrfRandomness: vrfRandomness.toString(),
+            seatOwners,
+          }),
         },
         DEFAULT_REQUEST_TIMEOUT_MS
       );

@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import { type Address, createLogger } from "@playerco/shared";
 
@@ -7,6 +8,7 @@ import { ChainService } from "./chain/index.js";
 import { HoleCardStore } from "./holecards/index.js";
 import { DealerService, HandStartedEventListener } from "./dealer/index.js";
 import { DealerSeedStore } from "./dealer/dealerSeedStore.js";
+import { EncryptionKeyStore } from "./encryptionKeyStore.js";
 import { createAuthMiddleware } from "./middleware/index.js";
 import { createAuthRoutes, createOwnerRoutes, createDealerRoutes, createReasoningRoutes, createTreasuryReasoningRouter, createCommentaryRoutes } from "./routes/index.js";
 import { logMemoryWarning } from "./routes/reasoning.js";
@@ -60,6 +62,7 @@ export interface AppContext {
   chainService?: ChainService;
   holeCardStore: HoleCardStore;
   dealerService: DealerService;
+  encryptionKeyStore: EncryptionKeyStore;
   eventListener?: HandStartedEventListener;
   /** Stop the retention cleanup interval */
   stopRetention?: () => void;
@@ -104,7 +107,7 @@ export async function createApp(config: AppConfig): Promise<AppContext> {
     const incoming = req.headers["x-request-id"];
     const requestId =
       (typeof incoming === "string" && incoming.length > 0 ? incoming : null) ??
-      crypto.randomUUID();
+      randomUUID();
     res.locals["requestId"] = requestId;
     res.setHeader("X-Request-ID", requestId);
     logger.debug({ method: req.method, path: req.path, requestId }, "Incoming request");
@@ -137,6 +140,11 @@ export async function createApp(config: AppConfig): Promise<AppContext> {
     ? config.dataDir.replace(/\/holecards\/?$/, "") + "/seeds"
     : undefined;
   const dealerSeedStore = new DealerSeedStore(seedDataDir);
+  const encryptionKeyPersistPath = config.dataDir
+    ? config.dataDir.replace(/\/holecards\/?$/, "") + "/encryption-keys.json"
+    : undefined;
+  const encryptionKeyStore = new EncryptionKeyStore(encryptionKeyPersistPath);
+  await encryptionKeyStore.init();
 
   // Dealer service (generates and stores hole cards)
   const dealerService = new DealerService(holeCardStore, dealerSeedStore);
@@ -181,12 +189,12 @@ export async function createApp(config: AppConfig): Promise<AppContext> {
   logMemoryWarning();
 
   // Dealer routes (protected with API key when configured)
-  app.use("/dealer", createDealerRoutes(dealerService, config.dealerApiKey));
+  app.use("/dealer", createDealerRoutes(dealerService, config.dealerApiKey, encryptionKeyStore));
 
   // Owner routes (authenticated, requires chain service)
   if (chainService) {
     const authMiddleware = createAuthMiddleware(authService);
-    app.use("/owner", authMiddleware, createOwnerRoutes(chainService, holeCardStore));
+    app.use("/owner", authMiddleware, createOwnerRoutes(chainService, holeCardStore, encryptionKeyStore));
   } else {
     // Return 503 if owner routes are requested but chain service is not configured
     app.use("/owner", (_req: Request, res: Response) => {
@@ -247,5 +255,14 @@ export async function createApp(config: AppConfig): Promise<AppContext> {
     });
   });
 
-  return { app, authService, chainService, holeCardStore, dealerService, eventListener, stopRetention };
+  return {
+    app,
+    authService,
+    chainService,
+    holeCardStore,
+    dealerService,
+    encryptionKeyStore,
+    eventListener,
+    stopRetention,
+  };
 }

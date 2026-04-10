@@ -64,10 +64,12 @@
   font-family: var(--text-mono);
   margin-bottom: 0.22rem;
   color: #e7e8ef;
+  min-width: 0; /* PD-A1: needed for ellipsis in flex/grid context */
   max-width: 100%;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-align: left; /* PD-H3: text-align:center + ellipsis creates unbalanced clips */
 }
 
 .aggressionBadge {

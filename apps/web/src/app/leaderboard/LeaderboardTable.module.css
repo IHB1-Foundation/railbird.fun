@@ -144,6 +144,7 @@
 .addressLink,
 .addressCell {
   display: inline-block;
+  min-width: 0; /* PD-A1: needed for ellipsis in flex/grid context */
   max-width: 100%;
   white-space: nowrap;
   overflow: hidden;
@@ -220,6 +221,7 @@
 .agentCardName {
   font-weight: 600;
   font-size: 0.88rem;
+  min-width: 0; /* PD-A1: needed for ellipsis within flex/grid parent */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

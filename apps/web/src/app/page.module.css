@@ -283,6 +283,7 @@
 
 .tableContractValue {
   display: inline-block;
+  min-width: 0; /* PD-A1: needed for ellipsis in flex/grid context */
   max-width: 100%;
   vertical-align: bottom;
   white-space: nowrap;
@@ -323,6 +324,7 @@
 
 .seatAddr {
   width: 100%;
+  min-width: 0; /* PD-A1: needed for ellipsis in flex/grid context */
   line-height: 1.25;
   max-width: 100%;
   white-space: nowrap;

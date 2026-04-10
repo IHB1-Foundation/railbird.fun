@@ -82,7 +82,14 @@
 }
 
 .infoRow {
+  /* PD-H14: general text uses break-word, mono addresses use break-all child selector */
   word-break: break-word;
+}
+
+.infoRow code,
+.infoRow .mono {
+  /* break-all for 0x hashes so they don't overflow narrow containers */
+  word-break: break-all;
 }
 
 /* ── Treasury AI Reasoning ── */

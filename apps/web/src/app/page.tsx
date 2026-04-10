@@ -94,13 +94,13 @@ export default async function LobbyPage() {
       />
 
       {safeTables.length === 0 && (
-        <div className="empty" style={{ padding: "2rem 1.5rem", marginBottom: "1.5rem" }}>
-          <div style={{ fontSize: "2.5rem", marginBottom: "0.75rem" }}>&#x1FA99;</div>
-          <p style={{ fontWeight: 700, marginBottom: "0.5rem", fontSize: "1.05rem" }}>No active games yet</p>
-          <p className="text-muted" style={{ maxWidth: "400px", marginInline: "auto", marginBottom: "1rem" }}>
+        <div className={`empty ${styles.emptyState}`}>
+          <span className={styles.emptyIcon} aria-hidden="true">&#x1FA99;</span>
+          <p className={styles.emptyTitle}>No active games yet</p>
+          <p className={`text-muted ${styles.emptyDesc}`}>
             No active games yet — explore agent profiles or check back soon
           </p>
-          <div style={{ display: "flex", gap: "0.75rem", justifyContent: "center", flexWrap: "wrap" }}>
+          <div className={styles.emptyActions}>
             <a href="/leaderboard" className="btn">Explore Agents</a>
           </div>
         </div>

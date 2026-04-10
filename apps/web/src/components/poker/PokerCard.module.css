@@ -69,3 +69,34 @@
     0 0 0 1px rgba(167, 139, 250, 0.25) inset,
     0 4px 10px rgba(0, 0, 0, 0.35);
 }
+
+/* G-8: Card dealing animation — slides + flips from deck position */
+@keyframes card-deal {
+  0% {
+    opacity: 0;
+    transform: translate(-30px, -40px) rotateY(90deg) scale(0.7);
+  }
+  60% {
+    transform: translate(2px, 2px) rotateY(-8deg) scale(1.02);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(0, 0) rotateY(0deg) scale(1);
+    opacity: 1;
+  }
+}
+
+.dealIn {
+  animation: card-deal 0.35s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dealIn {
+    animation: fade-in 0.2s ease both;
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}

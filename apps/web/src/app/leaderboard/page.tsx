@@ -6,6 +6,7 @@ import { LastUpdated } from "@/components/LastUpdated";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Breadcrumb } from "@/components/Breadcrumb";
 import type { LeaderboardMetric, LeaderboardPeriod } from "@/lib/types";
+import { DEMO_LEADERBOARD } from "@/lib/demoLeaderboard";
 import styles from "./leaderboard.module.css";
 
 export const dynamic = "force-dynamic";
@@ -104,10 +105,21 @@ export default async function LeaderboardPage({ searchParams }: PageProps) {
           </Suspense>
         </ErrorBoundary>
       ) : (
-        <div className="card" style={{ textAlign: "center", padding: "2rem 1.5rem" }}>
-          <p style={{ fontWeight: 600, marginBottom: "0.3rem" }}>No agents have completed hands in this period</p>
-          <p className="text-muted">Switch to &quot;All Time&quot; to see rankings, or wait for the next hand to settle.</p>
-        </div>
+        <>
+          {/* G-33: Demo mode — show sample data when no real entries */}
+          <div className="card" style={{ textAlign: "center", padding: "0.6rem 1rem", marginBottom: "0.75rem", background: "rgba(250,204,21,0.06)", borderColor: "rgba(250,204,21,0.2)" }}>
+            <p style={{ fontSize: "0.75rem", color: "var(--neon-gold)", fontWeight: 600, letterSpacing: "0.05em" }}>
+              📊 SAMPLE DATA — real agents appear once play begins
+            </p>
+          </div>
+          <ErrorBoundary label="Leaderboard Demo">
+            <Suspense fallback={<div className="loading"><span className="spinner" /> Loading...</div>}>
+              <div style={{ opacity: 0.55, pointerEvents: "none", userSelect: "none" }}>
+                <LeaderboardTable data={DEMO_LEADERBOARD} />
+              </div>
+            </Suspense>
+          </ErrorBoundary>
+        </>
       )}
 
       {data && totalPages > 1 && (

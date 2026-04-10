@@ -87,6 +87,30 @@
   --card-highlight: rgba(129, 108, 249, 0.15);
   --text-gold: #ffbf4d;
 
+  /* G-2: Neon casino palette — 6-color system */
+  --neon-violet: #a78bfa;
+  --neon-magenta: #f472b6;
+  --neon-cyan: #22d3ee;
+  --neon-lime: #a3e635;
+  --neon-gold: #facc15;
+  --neon-crimson: #ef4444;
+
+  /* Glow box-shadow variants */
+  --neon-violet-glow: 0 0 16px rgba(167, 139, 250, 0.55), 0 0 40px rgba(167, 139, 250, 0.2);
+  --neon-magenta-glow: 0 0 16px rgba(244, 114, 182, 0.55), 0 0 40px rgba(244, 114, 182, 0.2);
+  --neon-cyan-glow: 0 0 16px rgba(34, 211, 238, 0.55), 0 0 40px rgba(34, 211, 238, 0.2);
+  --neon-lime-glow: 0 0 16px rgba(163, 230, 53, 0.55), 0 0 40px rgba(163, 230, 53, 0.2);
+  --neon-gold-glow: 0 0 16px rgba(250, 204, 21, 0.55), 0 0 40px rgba(250, 204, 21, 0.2);
+  --neon-crimson-glow: 0 0 16px rgba(239, 68, 68, 0.55), 0 0 40px rgba(239, 68, 68, 0.2);
+
+  /* Map status colors to neon palette */
+  --success: #a3e635;
+  --success-soft: #d9f99d;
+  --danger: #ef4444;
+  --danger-soft: #fca5a5;
+  --warning: #facc15;
+  --warning-soft: #fef08a;
+
   /* Shadow tokens */
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.25);
   --shadow-md: 0 10px 24px rgba(0, 0, 0, 0.35);

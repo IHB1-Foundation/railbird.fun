@@ -1,3 +1,4 @@
+/* PD-E4: explicit padding so .card global change doesn't silently break hero */
 .landingHero {
   position: relative;
   overflow: hidden;
@@ -5,6 +6,7 @@
   grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
   align-items: stretch;
   gap: 1rem;
+  padding: clamp(1rem, 3vw, 1.75rem);
   margin-bottom: 1.15rem;
   border: 1px solid rgba(252, 211, 77, 0.25);
   background:
@@ -362,6 +364,13 @@
 
   .featuredLiveGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* PD-B4: hide visual frame on small phones so hero copy gets full above-fold */
+@media (max-width: 640px) {
+  .landingVisualFrame {
+    display: none;
   }
 }
 

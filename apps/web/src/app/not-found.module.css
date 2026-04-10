@@ -1,0 +1,119 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 70vh;
+  padding: 3rem 1.5rem;
+  text-align: center;
+  gap: 2.5rem;
+}
+
+/* Folded card illustration */
+.cardArt {
+  perspective: 600px;
+}
+
+.foldedCard {
+  position: relative;
+  width: 7rem;
+  height: 9.5rem;
+  animation: card-bust 1.2s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+@keyframes card-bust {
+  0% {
+    transform: perspective(600px) rotateY(0deg) scale(1);
+    opacity: 1;
+  }
+  40% {
+    transform: perspective(600px) rotateY(-40deg) scale(1.05) translateY(-8px);
+  }
+  70% {
+    transform: perspective(600px) rotateY(90deg) scale(0.8) translateY(20px);
+    opacity: 0.6;
+  }
+  100% {
+    transform: perspective(600px) rotateY(95deg) scale(0.7) translateY(30px);
+    opacity: 0.4;
+  }
+}
+
+.cardFace {
+  position: absolute;
+  inset: 0;
+  border-radius: 0.6rem;
+  background: linear-gradient(160deg, #f0f3ff, #dde3f5);
+  border: 1.5px solid rgba(42, 47, 69, 0.3);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.9) inset,
+    0 8px 24px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 0.5rem;
+  gap: 0.1rem;
+}
+
+.cardRank {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #1e293b;
+  font-family: var(--font-display);
+  line-height: 1;
+}
+
+.cardSuit {
+  font-size: 1.2rem;
+  color: #1e293b;
+}
+
+.cardBack {
+  position: absolute;
+  inset: 0;
+  border-radius: 0.6rem;
+  background: repeating-linear-gradient(
+    135deg,
+    rgba(100, 78, 200, 0.92) 0 6px,
+    rgba(72, 54, 160, 0.92) 6px 12px
+  );
+  border: 1.5px solid rgba(167, 139, 250, 0.5);
+  transform: rotateY(180deg);
+  backface-visibility: hidden;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.code {
+  font-family: var(--text-mono);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: var(--neon-crimson);
+  text-transform: uppercase;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 4vw, 2.5rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--foreground);
+  max-width: 480px;
+  text-shadow: 0 0 40px rgba(167, 139, 250, 0.3);
+}
+
+.subtitle {
+  font-size: 1rem;
+  color: var(--muted);
+  max-width: 320px;
+}
+
+.cta {
+  margin-top: 0.5rem;
+}

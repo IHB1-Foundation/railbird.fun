@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+  <!-- Poker chip cursor: outer ring, inner ring, center -->
+  <ellipse cx="12" cy="12" rx="11" ry="11" fill="#7c3aed" stroke="#4c1d95" stroke-width="1.5"/>
+  <ellipse cx="12" cy="12" rx="8.5" ry="8.5" fill="none" stroke="#c4b5fd" stroke-width="1.2" stroke-dasharray="2 2"/>
+  <ellipse cx="12" cy="12" rx="5.5" ry="5.5" fill="#6d28d9" stroke="#4c1d95" stroke-width="1"/>
+  <text x="12" y="16" text-anchor="middle" font-size="7" font-weight="800" fill="#e9d5ff" font-family="system-ui,sans-serif">R</text>
+</svg>

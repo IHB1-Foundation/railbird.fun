@@ -1136,3 +1136,24 @@ h1, h2, h3 {
     animation: none;
   }
 }
+
+/* ── G-34: Custom cursor — poker chip (desktop only) ─────────────────────── */
+
+@media (pointer: fine) {
+  body {
+    cursor: url("/cursors/chip.svg") 12 12, auto;
+  }
+
+  a,
+  button,
+  [role="button"],
+  .btn,
+  .btn-ghost,
+  .tab,
+  input[type="checkbox"],
+  input[type="radio"],
+  select,
+  label[for] {
+    cursor: url("/cursors/card-peek.svg") 12 14, pointer;
+  }
+}

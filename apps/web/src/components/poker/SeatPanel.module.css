@@ -199,22 +199,73 @@
   pointer-events: none;
 }
 
+/* G-11: Dealer button — 3D bevel poker chip style */
 .dealerChip {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1.36rem;
-  height: 1.36rem;
+  width: 1.5rem;
+  height: 1.5rem;
   border-radius: 999px;
-  font-size: 0.72rem;
-  font-weight: 800;
-  color: #2e1e05;
-  background: radial-gradient(circle at 35% 30%, #fff0c8, #efb24e 70%);
-  border: 1px solid rgba(255, 223, 158, 0.52);
+  font-size: 0.65rem;
+  font-weight: 900;
+  font-family: var(--text-mono);
+  color: #1a1000;
+  letter-spacing: 0.01em;
+  /* 3D bevel: outer ring + inner raised disc */
+  background:
+    radial-gradient(circle at 38% 32%, rgba(255,255,255,0.7) 0%, transparent 55%),
+    radial-gradient(circle at center, #fff5d0 0%, #e8a830 60%, #c07020 100%);
+  border: 2px solid #b06020;
   box-shadow:
-    0 0 0 1px rgba(255, 226, 167, 0.45),
-    0 0 16px rgba(255, 197, 96, 0.42);
+    0 0 0 1px rgba(255, 226, 140, 0.6),
+    0 1px 0 rgba(255,255,255,0.5) inset,
+    0 -1px 0 rgba(0,0,0,0.2) inset,
+    0 2px 6px rgba(0, 0, 0, 0.5),
+    0 0 14px rgba(255, 185, 50, 0.5);
   animation: dealer-pulse 1.8s ease-in-out infinite;
+  transition: transform 0.3s ease;
+}
+
+/* G-11: SB/BB marker chips */
+.sbChip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.2rem;
+  height: 1.2rem;
+  border-radius: 999px;
+  font-size: 0.55rem;
+  font-weight: 800;
+  font-family: var(--text-mono);
+  color: #fff;
+  background:
+    radial-gradient(circle at 38% 32%, rgba(255,255,255,0.4) 0%, transparent 55%),
+    radial-gradient(circle at center, #3b82f6 0%, #1d4ed8 100%);
+  border: 1.5px solid #1e40af;
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.3) inset,
+    0 2px 5px rgba(0, 0, 0, 0.4);
+}
+
+.bbChip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.2rem;
+  height: 1.2rem;
+  border-radius: 999px;
+  font-size: 0.55rem;
+  font-weight: 800;
+  font-family: var(--text-mono);
+  color: #fff;
+  background:
+    radial-gradient(circle at 38% 32%, rgba(255,255,255,0.4) 0%, transparent 55%),
+    radial-gradient(circle at center, #dc2626 0%, #991b1b 100%);
+  border: 1.5px solid #7f1d1d;
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.3) inset,
+    0 2px 5px rgba(0, 0, 0, 0.4);
 }
 
 .youPill {

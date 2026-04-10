@@ -1,15 +1,9 @@
-/* G-7: Card size tokens */
-:local {
-  --card-width: 2.1rem;
-  --card-height: 2.85rem;
-}
-
 .pokerCard {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: var(--card-width, 2.1rem);
-  height: var(--card-height, 2.85rem);
+  width: 2.1rem;
+  height: 2.85rem;
   border-radius: 0.35rem;
   /* G-7: multi-layer 3D embossed background */
   background:

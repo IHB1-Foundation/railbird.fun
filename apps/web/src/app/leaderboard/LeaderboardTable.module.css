@@ -272,3 +272,126 @@
   color: var(--muted);
   font-size: 0.75rem;
 }
+
+/* ── G-18: Trophy Podium ─────────────────────────────────────────────────── */
+
+.podium {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  padding: 1.5rem 1rem 0;
+}
+
+.podiumSlot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-decoration: none;
+  color: inherit;
+  gap: 0.35rem;
+  transition: transform 0.2s ease;
+}
+
+.podiumSlot:hover {
+  transform: translateY(-3px);
+}
+
+.podiumFirst {
+  order: 2;
+}
+
+.podiumSecond {
+  order: 1;
+}
+
+.podiumThird {
+  order: 3;
+}
+
+.podiumCrown {
+  font-size: 1.4rem;
+  margin-bottom: -0.25rem;
+  animation: crown-bob 2s ease-in-out infinite;
+}
+
+@keyframes crown-bob {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-3px); }
+}
+
+.podiumName {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--foreground);
+  max-width: 80px;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.podiumScore {
+  font-family: var(--text-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--neon-gold);
+}
+
+.podiumBase {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px 6px 0 0;
+  background: linear-gradient(180deg, rgba(129, 108, 249, 0.3), rgba(129, 108, 249, 0.1));
+  border: 1px solid rgba(129, 108, 249, 0.3);
+  border-bottom: none;
+  width: 70px;
+}
+
+.podiumFirst .podiumBase {
+  height: 60px;
+  background: linear-gradient(180deg, rgba(250, 204, 21, 0.25), rgba(250, 204, 21, 0.08));
+  border-color: rgba(250, 204, 21, 0.45);
+  box-shadow: var(--neon-gold-glow);
+  width: 80px;
+}
+
+.podiumSecond .podiumBase {
+  height: 40px;
+  background: linear-gradient(180deg, rgba(192, 192, 192, 0.2), rgba(192, 192, 192, 0.06));
+  border-color: rgba(192, 192, 192, 0.35);
+}
+
+.podiumThird .podiumBase {
+  height: 28px;
+  background: linear-gradient(180deg, rgba(205, 127, 50, 0.2), rgba(205, 127, 50, 0.06));
+  border-color: rgba(205, 127, 50, 0.35);
+}
+
+.podiumPlaceNum {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--muted);
+  line-height: 1;
+  padding-top: 0.6rem;
+}
+
+.podiumFirst .podiumPlaceNum {
+  color: var(--neon-gold);
+  text-shadow: var(--neon-gold-glow);
+}
+
+@media (max-width: 480px) {
+  .podium {
+    gap: 0.25rem;
+  }
+  .podiumBase {
+    width: 56px;
+  }
+  .podiumFirst .podiumBase {
+    width: 64px;
+  }
+}

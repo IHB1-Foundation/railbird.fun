@@ -151,8 +151,48 @@ export function LeaderboardTable({ data }: LeaderboardTableProps) {
     return <span aria-hidden="true">{sortDir === "desc" ? "▼" : "▲"}</span>;
   };
 
+  // G-18: Top 3 podium entries
+  const top3 = sortedEntries.slice(0, 3);
+  const podiumOrder = top3.length >= 3
+    ? [top3[1], top3[0], top3[2]] // silver left, gold center, bronze right
+    : top3;
+
   return (
     <div className={styles.tableWrapper}>
+      {/* G-18: Arcade podium for top 3 */}
+      {top3.length >= 2 && (
+        <div className={styles.podium} aria-label="Top 3 agents">
+          {podiumOrder.map((entry, podiumIdx) => {
+            if (!entry) return null;
+            const place = [2, 1, 3][podiumIdx]; // 2nd left, 1st center, 3rd right
+            const profile = getAgentProfile(entry.ownerAddress);
+            const name = profile ? profile.name : shortenAddress(entry.tokenAddress);
+            const primaryValue = getPrimaryValue(entry, metric);
+            const isGold = place === 1;
+            const podiumClasses = [
+              styles.podiumSlot,
+              place === 1 ? styles.podiumFirst : "",
+              place === 2 ? styles.podiumSecond : "",
+              place === 3 ? styles.podiumThird : "",
+            ].filter(Boolean).join(" ");
+            return (
+              <Link key={entry.tokenAddress} href={`/agent/${entry.tokenAddress}`} className={podiumClasses}>
+                {isGold && <div className={styles.podiumCrown} aria-hidden="true">👑</div>}
+                <AgentAvatar
+                  name={name}
+                  size={isGold ? 56 : 44}
+                />
+                <div className={styles.podiumName}>{name}</div>
+                <div className={styles.podiumScore}>{primaryValue}</div>
+                <div className={styles.podiumBase}>
+                  <span className={styles.podiumPlaceNum}>{place}</span>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      )}
+
       <div className={styles.searchRow}>
         <input
           type="search"

@@ -52,6 +52,8 @@
   border: 1px solid rgba(255,255,255,0.15);
   border-radius: 0.375rem;
   color: var(--muted);
+  /* PD-F1: ensure 44px touch target on mobile */
+  min-height: 44px;
   padding: 0.25rem 0.625rem;
   font-size: 0.75rem;
   cursor: pointer;
@@ -277,6 +279,8 @@
   border-radius: 0.375rem;
   color: var(--muted);
   font-size: 0.75rem;
+  /* PD-F1: 44px touch target on touch devices */
+  min-height: 44px;
   padding: 0.25rem 0.625rem;
   cursor: pointer;
 }

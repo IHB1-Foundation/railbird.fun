@@ -307,7 +307,7 @@ button,
   min-width: 44px;
 }
 
-/* Visible focus indicators for keyboard navigation */
+/* PD-F2: Visible focus indicators for keyboard navigation — broadened selector list */
 .btn:focus-visible,
 .btn-ghost:focus-visible,
 .tab:focus-visible,
@@ -316,7 +316,9 @@ input:focus-visible,
 select:focus-visible,
 textarea:focus-visible,
 a:focus-visible,
-button:focus-visible {
+button:focus-visible,
+[role="button"]:focus-visible,
+details > summary:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }

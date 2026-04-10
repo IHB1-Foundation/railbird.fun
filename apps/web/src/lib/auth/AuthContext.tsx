@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import type { AuthContextValue, AuthState, HoleCardsResponse } from "./types";
+import { DEFAULT_OWNERVIEW_BASE } from "../api";
 import * as ownerviewApi from "./ownerviewApi";
 import { COOKIE_SESSION_ENABLED } from "./ownerviewApi";
 import { deriveEncryptionKeyPair, clearEncryptionKeyCache } from "./encryptionKey";
@@ -330,7 +331,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (COOKIE_SESSION_ENABLED) {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 5_000);
-      fetch(`${process.env.NEXT_PUBLIC_OWNERVIEW_URL || "https://ownerview.railbird.fun"}/auth/logout`, {
+      fetch(`${process.env.NEXT_PUBLIC_OWNERVIEW_URL || DEFAULT_OWNERVIEW_BASE}/auth/logout`, {
         method: "POST",
         credentials: "include",
         signal: controller.signal,

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import Link from "next/link";
 import Image from "next/image";
 import { Roboto, Space_Grotesk } from "next/font/google";
@@ -36,11 +37,27 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const requestHeaders = await headers();
+  const pathname = requestHeaders.get("x-pathname") || "";
+  const isEmbedRoute = pathname.startsWith("/embed/");
+
+  if (isEmbedRoute) {
+    return (
+      <html lang="en">
+        <body className={`${roboto.variable} ${spaceGrotesk.variable}`}>
+          <Providers>
+            <main id="main-content">{children}</main>
+          </Providers>
+        </body>
+      </html>
+    );
+  }
+
   return (
     <html lang="en">
       <body className={`${roboto.variable} ${spaceGrotesk.variable}`}>
@@ -76,6 +93,7 @@ export default function RootLayout({
                 <a href="/create-agent">Create Agent</a>
                 <a href="/evolution">Evolution</a>
                 <a href="/leaderboard">Leaderboard</a>
+                <a href="/docs">Docs</a>
                 <a href="/betting">Rail Bets</a>
                 <a href="https://github.com/0xYatha/railbird" target="_blank" rel="noopener noreferrer">GitHub</a>
               </nav>

@@ -21,6 +21,7 @@ const STATIC_ITEMS: SearchItem[] = [
   { id: "evolution",  title: "Evolution",       desc: "Agent strategy analytics",  icon: "📈", href: "/evolution",    section: "Pages" },
   { id: "bets",       title: "Rail Bets",       desc: "Sidebet on live games",     icon: "💸", href: "/betting",      section: "Pages" },
   { id: "me",         title: "My Agents",       desc: "Agents you own",            icon: "👤", href: "/me",           section: "Pages" },
+  { id: "docs",       title: "Developer Docs",  desc: "REST and WS integration",   icon: "🧩", href: "/docs",         section: "Pages" },
   { id: "verify",     title: "Verify",          desc: "Verify hand outcomes (VRF)", icon: "🔒", href: "/verify",      section: "Pages" },
 ];
 

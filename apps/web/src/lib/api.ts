@@ -11,7 +11,10 @@ import type {
   PaginatedResponse,
 } from "./types";
 
-export const INDEXER_BASE = process.env.NEXT_PUBLIC_INDEXER_URL || "https://indexer.railbird.fun";
+export const DEFAULT_INDEXER_BASE = "https://indexer-production-4bb1.up.railway.app";
+export const DEFAULT_OWNERVIEW_BASE = "https://ownerview-production.up.railway.app";
+
+export const INDEXER_BASE = process.env.NEXT_PUBLIC_INDEXER_URL || DEFAULT_INDEXER_BASE;
 
 /** @deprecated Use INDEXER_BASE */
 const API_BASE = INDEXER_BASE;
@@ -189,7 +192,7 @@ export async function getTreasuryReasoningAll(vaultAddress: string): Promise<Tre
   const base =
     process.env.OWNERVIEW_INTERNAL_URL ||
     process.env.NEXT_PUBLIC_OWNERVIEW_URL ||
-    "https://ownerview.railbird.fun";
+    DEFAULT_OWNERVIEW_BASE;
   try {
     const res = await fetch(
       `${base}/treasury-reasoning?vaultAddress=${encodeURIComponent(vaultAddress)}`,

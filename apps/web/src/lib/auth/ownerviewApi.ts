@@ -2,9 +2,10 @@
 
 import type { NonceResponse, VerifyResponse, HoleCardsResponse, EncryptedHoleCardsResponse } from "./types";
 import { decryptHoleCards, DecryptionError } from "./holeCardDecrypt";
+import { DEFAULT_OWNERVIEW_BASE } from "../api";
 
 const OWNERVIEW_URL =
-  process.env.NEXT_PUBLIC_OWNERVIEW_URL || "https://ownerview.railbird.fun";
+  process.env.NEXT_PUBLIC_OWNERVIEW_URL || DEFAULT_OWNERVIEW_BASE;
 
 /**
  * When true, session tokens are stored in httpOnly cookies.

@@ -12,6 +12,8 @@ import { NextResponse, type NextRequest } from "next/server";
  */
 export function middleware(request: NextRequest) {
   const isProd = process.env.NODE_ENV === "production";
+  const isEmbedPath = request.nextUrl.pathname.startsWith("/embed/");
+  const embedAncestors = process.env.EMBED_ALLOWED_ORIGINS || "https:";
 
   // Generate a cryptographically random nonce for this request.
   const nonce = crypto.randomUUID().replace(/-/g, "");
@@ -28,6 +30,7 @@ export function middleware(request: NextRequest) {
     "connect-src 'self' wss: ws: https:",
     "font-src 'self' data:",
     "frame-src 'none'",
+    `frame-ancestors ${isEmbedPath ? `'self' ${embedAncestors}` : "'none'"}`,
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -36,6 +39,7 @@ export function middleware(request: NextRequest) {
   // Forward nonce to server components via request header.
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-nonce", nonce);
+  requestHeaders.set("x-pathname", request.nextUrl.pathname);
 
   const response = NextResponse.next({
     request: { headers: requestHeaders },

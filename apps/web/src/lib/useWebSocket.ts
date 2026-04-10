@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import type { TableResponse } from "./types";
+import { DEFAULT_INDEXER_BASE } from "./api";
 
 export type WsStatus = "connecting" | "connected" | "reconnecting" | "polling";
 
@@ -36,7 +37,7 @@ function deriveWsBase(): string {
   if (indexerUrl) {
     return indexerUrl.replace(/^https:\/\//, "wss://").replace(/^http:\/\//, "ws://");
   }
-  return "wss://indexer.railbird.fun";
+  return DEFAULT_INDEXER_BASE.replace(/^https:\/\//, "wss://").replace(/^http:\/\//, "ws://");
 }
 
 const WS_BASE = deriveWsBase();
@@ -109,7 +110,7 @@ export function useWebSocket({
     setStatus("polling");
     const indexerBase =
       (typeof process !== "undefined" && process.env.NEXT_PUBLIC_INDEXER_URL) ||
-      "https://indexer.railbird.fun";
+      DEFAULT_INDEXER_BASE;
     pollTimerRef.current = setInterval(async () => {
       try {
         const res = await fetch(`${indexerBase}/api/tables/${tableId}`, {

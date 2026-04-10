@@ -53,7 +53,19 @@ function compareTableActivity(a: TableResponse, b: TableResponse): number {
   return bHandId > aHandId ? 1 : -1;
 }
 
-export function LiveDashboard() {
+function getOccupiedSeatCount(table: TableResponse): number {
+  return table.seats.filter((seat) => seat.ownerAddress !== "0x0000000000000000000000000000000000000000").length;
+}
+
+interface LiveDashboardProps {
+  mode?: "spotlight" | "grid";
+  streamMode?: boolean;
+}
+
+export function LiveDashboard({
+  mode = "spotlight",
+  streamMode = false,
+}: LiveDashboardProps) {
   const [tables, setTables] = useState<TableResponse[]>([]);
   const [activeTableId, setActiveTableId] = useState<string | null>(null);
   const [activeTable, setActiveTable] = useState<TableResponse | null>(null);
@@ -226,6 +238,8 @@ export function LiveDashboard() {
 
   const communityCards = hand?.communityCards?.filter((c) => c !== 255) ?? [];
   const gameStateLabel = hand?.gameState?.replace(/_/g, " ") ?? "—";
+  const showSidebar = !streamMode;
+  const showGridMode = mode === "grid";
 
   return (
     <div ref={rootRef} className={styles.liveRoot}>
@@ -236,6 +250,8 @@ export function LiveDashboard() {
           LIVE
         </div>
         <span className={styles.headerTitle}>AI Poker Arena</span>
+        {showGridMode && <span className={styles.modeBadge}>Grid View</span>}
+        {streamMode && <span className={styles.modeBadgeSubtle}>Stream Mode</span>}
         {hand && (
           <span className={styles.headerHand}>
             Hand #{hand.handId} · {gameStateLabel}
@@ -251,9 +267,20 @@ export function LiveDashboard() {
       </div>
 
       {/* Body */}
-      <div className={styles.liveBody}>
+      <div className={`${styles.liveBody} ${!showSidebar ? styles.liveBodySolo : ""}`}>
         {/* Main pane */}
         <div className={styles.mainPane}>
+          {(showGridMode || streamMode) && (
+            <div className={styles.modeBanner}>
+              <strong>{showGridMode ? "Multi-table monitor" : "Caster overlay"}</strong>
+              <span>
+                {showGridMode
+                  ? "Watch every active table at once and jump into the most interesting hand."
+                  : "Reduced chrome for OBS and live broadcasts. Open the full table for detailed analysis."}
+              </span>
+            </div>
+          )}
+
           {/* Table selector with "Show more" pagination */}
           {tables.length > 1 && (
             <div className={styles.tableSelector}>
@@ -280,7 +307,62 @@ export function LiveDashboard() {
             </div>
           )}
 
-          {!activeTable ? (
+          {showGridMode ? (
+            tables.length === 0 ? (
+              <div className={styles.waitingState}>
+                <div aria-hidden="true" style={{ fontSize: "3rem" }}>♠</div>
+                <p style={{ fontSize: "1.1rem", fontWeight: 600 }}>Waiting for tables…</p>
+                <p>The grid fills in automatically as the indexer publishes live tables.</p>
+              </div>
+            ) : (
+              <div className={styles.tableGrid}>
+                {tables.map((table) => {
+                  const gridCards = table.currentHand?.communityCards?.filter((card) => card !== 255) ?? [];
+                  return (
+                    <article key={table.tableId} className={styles.tableGridCard}>
+                      <div className={styles.tableGridHeader}>
+                        <div>
+                          <p className={styles.tableGridEyebrow}>Table #{table.tableId}</p>
+                          <h3 className={styles.tableGridTitle}>
+                            {table.currentHand ? `Hand #${table.currentHand.handId}` : "Waiting for next hand"}
+                          </h3>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTableId(table.tableId)}
+                          className={activeTableId === table.tableId ? `${styles.tableSelectorBtn} ${styles.tableSelectorBtnActive}` : styles.tableSelectorBtn}
+                        >
+                          Focus
+                        </button>
+                      </div>
+                      <div className={styles.tableGridMeta}>
+                        <span>{table.gameState.replace(/_/g, " ")}</span>
+                        <span>{getOccupiedSeatCount(table)} seats occupied</span>
+                      </div>
+                      <div className={styles.tableGridPot}>
+                        Pot {table.currentHand?.pot ?? "0"} RCHIP
+                      </div>
+                      <div className={styles.tableGridCommunity}>
+                        {gridCards.length > 0 ? (
+                          gridCards.map((card, index) => <CardChip key={`${table.tableId}-${index}`} card={card} />)
+                        ) : (
+                          <span className={styles.communityEmpty}>Cards reveal after the next hand begins</span>
+                        )}
+                      </div>
+                      <div className={styles.tableGridFooter}>
+                        <Link href={`/table/${table.tableId}`} className={styles.headerBack}>
+                          Open table
+                        </Link>
+                        <Link href={`/embed/table/${table.tableId}?theme=dark`} className={styles.headerBack}>
+                          Embed
+                        </Link>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )
+          ) : !activeTable ? (
             <div className={styles.waitingState}>
               <div aria-hidden="true" style={{ fontSize: "3rem" }}>♠</div>
               <p style={{ fontSize: "1.1rem", fontWeight: 600 }}>Waiting for next hand…</p>
@@ -351,16 +433,18 @@ export function LiveDashboard() {
         </div>
 
         {/* Sidebar */}
-        <div className={styles.sidePane}>
-          <AgentCards table={activeTable} lastReasoning={lastReasoning} />
-          <StatsTicker
-            totalHandsToday={totalHandsToday}
-            biggestPot={biggestPot}
-            currentLeader={currentLeader}
-            sideBetPool={sideBet.totalPool}
-            seatOdds={sideBet.seatOdds}
-          />
-        </div>
+        {showSidebar && (
+          <div className={styles.sidePane}>
+            <AgentCards table={activeTable} lastReasoning={lastReasoning} />
+            <StatsTicker
+              totalHandsToday={totalHandsToday}
+              biggestPot={biggestPot}
+              currentLeader={currentLeader}
+              sideBetPool={sideBet.totalPool}
+              seatOdds={sideBet.seatOdds}
+            />
+          </div>
+        )}
       </div>
 
       {/* Showdown overlay — accessible dialog (D-23, D-62) */}

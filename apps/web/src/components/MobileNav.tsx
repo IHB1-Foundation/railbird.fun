@@ -13,6 +13,7 @@ const NAV_LINKS = [
   { href: "/betting", label: "Rail Bets" },
   { href: "/leaderboard", label: "Leaderboard" },
   { href: "/me", label: "My Agents" },
+  { href: "/docs", label: "Docs" },
 ];
 
 function isActive(href: string, pathname: string): boolean {

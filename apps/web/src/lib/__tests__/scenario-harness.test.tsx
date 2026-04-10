@@ -117,6 +117,7 @@ describe("SCENARIO.md harness", () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
   });
 
   it("covers the judge live flow with ESPN mode, AI thinking, and side-bet stats", async () => {
@@ -164,7 +165,52 @@ describe("SCENARIO.md harness", () => {
     expect(screen.getByText(/Seat 0 raises to 900!/)).toBeTruthy();
   });
 
+  it("covers grid mode and stream mode for spectators and creators", async () => {
+    installFetchMock((url) => {
+      if (url.endsWith("/api/tables")) {
+        return jsonResponse([liveTable, { ...liveTable, tableId: "2", currentHandId: "43" }]);
+      }
+      if (url.endsWith("/api/tables/1")) {
+        return jsonResponse(liveTable);
+      }
+      if (url.includes("/api/sidebets/0x0000000000000000000000000000000000000001/42")) {
+        return jsonResponse({
+          totalPool: "2500",
+          seatTotals: {
+            0: "1400",
+            1: "1100",
+          },
+        });
+      }
+      if (url.includes("/api/leaderboard?metric=roi&period=24h")) {
+        return jsonResponse({
+          entries: [
+            {
+              tokenAddress: "0x1234567890abcdef1234567890abcdef12345678",
+            },
+          ],
+        });
+      }
+      throw new Error(`Unhandled fetch in live mode scenario: ${url}`);
+    });
+
+    const { LiveDashboard } = await import("../../app/live/LiveDashboard");
+
+    await act(async () => {
+      render(<LiveDashboard mode="grid" streamMode />);
+    });
+
+    await waitFor(() => expect(screen.getByText("Grid View")).toBeTruthy(), { timeout: 3000 });
+
+    expect(screen.getByText("Stream Mode")).toBeTruthy();
+    expect(screen.getByText("Multi-table monitor")).toBeTruthy();
+    expect(screen.getAllByText(/Open table/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Embed/i).length).toBeGreaterThan(0);
+  });
+
   it("covers the create-agent wizard against the real indexer table shape", async () => {
+    vi.stubEnv("NEXT_PUBLIC_FLEET_URL", "https://fleet.test");
+
     installFetchMock(async (url, init) => {
       if (url.endsWith("/api/tables")) {
         return jsonResponse([
@@ -188,7 +234,7 @@ describe("SCENARIO.md harness", () => {
         ]);
       }
 
-      if (url.endsWith("/fleet/agents") && init?.method === "POST") {
+      if (url === "https://fleet.test/fleet/agents" && init?.method === "POST") {
         return jsonResponse({ agentId: "agent-123" }, 201);
       }
 
@@ -202,7 +248,7 @@ describe("SCENARIO.md harness", () => {
       render(<CreateAgentPage />);
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /continue/i }));
+    fireEvent.click(screen.getByRole("button", { name: /configure persona/i }));
 
     fireEvent.change(screen.getByPlaceholderText(/e\.g\. serpent/i), {
       target: { value: "DeepShark" },
@@ -211,7 +257,7 @@ describe("SCENARIO.md harness", () => {
 
     await waitFor(() => expect(screen.getByText(/1 seated · 8 open/i)).toBeTruthy(), { timeout: 3000 });
 
-    fireEvent.click(screen.getByRole("button", { name: /fund & deploy/i }));
+    fireEvent.click(screen.getByRole("button", { name: /deploy agent/i }));
     fireEvent.click(screen.getByRole("button", { name: /deploy agent/i }));
 
     await waitFor(() => expect(screen.getByText(/agent live!/i)).toBeTruthy(), { timeout: 3000 });
@@ -330,5 +376,20 @@ describe("SCENARIO.md harness", () => {
 
     await waitFor(() => expect(screen.getByText(/all decisions verified/i)).toBeTruthy(), { timeout: 3000 });
     expect(screen.getByText(/reasoning hash matches on-chain commitment/i)).toBeTruthy();
+  });
+
+  it("covers the developer docs surface for REST and WS integration", async () => {
+    const page = await import("../../app/docs/page");
+    const DocsPage = page.default;
+
+    await act(async () => {
+      render(<DocsPage />);
+    });
+
+    expect(screen.getAllByText("Developer Docs").length).toBeGreaterThan(0);
+    expect(screen.getByText("REST Endpoints")).toBeTruthy();
+    expect(screen.getByText("WebSocket Stream")).toBeTruthy();
+    expect(screen.getAllByText(/\/api\/tables/).length).toBeGreaterThan(0);
+    expect(screen.getByText(/\/ws\/tables\/0/)).toBeTruthy();
   });
 });

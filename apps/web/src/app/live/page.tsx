@@ -7,6 +7,14 @@ export const metadata: Metadata = {
 };
 
 // Full-screen live page — no topbar layout wrapper needed (uses own header)
-export default function LivePage() {
-  return <LiveDashboard />;
+export default async function LivePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ mode?: string; stream?: string }>;
+}) {
+  const params = await searchParams;
+  const mode = params.mode === "grid" ? "grid" : "spotlight";
+  const streamMode = params.stream === "1";
+
+  return <LiveDashboard mode={mode} streamMode={streamMode} />;
 }

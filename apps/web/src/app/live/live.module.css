@@ -68,6 +68,10 @@
   min-height: 0;
 }
 
+.liveBodySolo {
+  grid-template-columns: 1fr;
+}
+
 .mainPane {
   padding: 1.5rem;
   border-right: 1px solid rgba(255,255,255,0.06);
@@ -326,6 +330,52 @@
   color: var(--foreground);
 }
 
+.modeBadge,
+.modeBadgeSubtle {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.modeBadge {
+  background: rgba(56, 189, 248, 0.14);
+  border: 1px solid rgba(56, 189, 248, 0.38);
+  color: #7dd3fc;
+}
+
+.modeBadgeSubtle {
+  background: rgba(250, 204, 21, 0.12);
+  border: 1px solid rgba(250, 204, 21, 0.28);
+  color: #fde68a;
+}
+
+.modeBanner {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+  padding: 0.9rem 1rem;
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.78), rgba(30, 41, 59, 0.82));
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 0.875rem;
+}
+
+.modeBanner strong {
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #e2e8f0;
+}
+
+.modeBanner span {
+  font-size: 0.82rem;
+  color: #cbd5e1;
+}
+
 .headerHand {
   font-size: var(--text-sm);
   color: var(--muted);
@@ -452,6 +502,73 @@
   color: var(--muted);
 }
 
+.tableGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+}
+
+.tableGridCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  padding: 1rem;
+  background: linear-gradient(160deg, rgba(12, 16, 30, 0.95), rgba(17, 24, 39, 0.92));
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 1rem;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.22);
+}
+
+.tableGridHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.tableGridEyebrow {
+  margin: 0 0 0.2rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.tableGridTitle {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.tableGridMeta {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.tableGridPot {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.tableGridCommunity {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  min-height: 48px;
+}
+
+.tableGridFooter {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
 /* Commentary label (D-22) */
 .commentaryLabel {
   font-size: var(--text-xs);
@@ -485,5 +602,9 @@
   }
   .sidePane {
     padding: 1rem;
+  }
+
+  .tableGrid {
+    grid-template-columns: 1fr;
   }
 }

@@ -60,10 +60,14 @@ export const dynamic = "force-dynamic";
 
 export default async function AgentPage({
   params,
+  searchParams,
 }: {
   params: { token: string };
+  searchParams: Promise<{ view?: string }>;
 }) {
   const { token } = await params;
+  const query = await searchParams;
+  const showLossAnalysis = query.view === "losses";
 
   let agent;
   let snapshots;
@@ -269,6 +273,39 @@ export default async function AgentPage({
           </div>
         )}
       </div>
+
+      {showLossAnalysis && (
+        <div className="card" style={{ marginBottom: "1rem", padding: "1rem 1.2rem" }}>
+          <h3 className="section-title-sm" style={{ marginBottom: "0.45rem" }}>Loss Analysis View</h3>
+          <p style={{ fontSize: "0.82rem", color: "var(--muted)", marginBottom: hands.length > 0 ? "0.75rem" : 0 }}>
+            Review recent hands, reasoning summaries, and replay links from one place. Per-seat loss attribution is still being indexed, so this mode currently surfaces the latest hands for manual debugging.
+          </p>
+          {hands.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.55rem" }}>
+              {hands.slice(0, 5).map((hand) => (
+                <div key={hand.handId} style={{ display: "flex", justifyContent: "space-between", gap: "0.75rem", flexWrap: "wrap", padding: "0.65rem 0.75rem", borderRadius: "0.75rem", background: "rgba(255,255,255,0.04)" }}>
+                  <div>
+                    <strong style={{ display: "block", marginBottom: "0.15rem" }}>Hand #{hand.handId}</strong>
+                    <span style={{ fontSize: "0.76rem", color: "var(--muted)" }}>
+                      {hand.actions.length} actions · Pot {hand.pot}
+                    </span>
+                  </div>
+                  <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
+                    <Link href={`/table/${hand.tableId}?hand=${hand.handId}`} className="inline-link">
+                      Replay hand
+                    </Link>
+                    {agent.tableAddress && (
+                      <Link href={`/verify?table=${agent.tableAddress}&hand=${hand.handId}`} className="inline-link">
+                        Verify decisions
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Persona Section */}
       {persona && (

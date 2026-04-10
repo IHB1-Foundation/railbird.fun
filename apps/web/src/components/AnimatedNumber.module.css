@@ -1,0 +1,44 @@
+.root {
+  display: inline-block;
+  transition: transform 0.15s ease;
+  will-change: transform;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Lime flash for increase */
+@keyframes flash-up {
+  0%   { background: rgba(163, 230, 53, 0.25); border-radius: 4px; }
+  100% { background: transparent; }
+}
+
+/* Crimson flash for decrease */
+@keyframes flash-down {
+  0%   { background: rgba(239, 68, 68, 0.25); border-radius: 4px; }
+  100% { background: transparent; }
+}
+
+@keyframes bounce-scale {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+
+.flashUp {
+  animation: flash-up 0.45s ease-out both;
+}
+
+.flashDown {
+  animation: flash-down 0.45s ease-out both;
+}
+
+.bounce {
+  animation: bounce-scale 0.4s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flashUp,
+  .flashDown,
+  .bounce {
+    animation: none;
+  }
+}

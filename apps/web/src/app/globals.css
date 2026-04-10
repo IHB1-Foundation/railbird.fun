@@ -145,6 +145,11 @@ body {
   overflow-x: hidden;
 }
 
+/* PD-B5: Offset anchor scrolling so sticky topbar (72px) never hides target */
+html {
+  scroll-padding-top: 84px;
+}
+
 body {
   min-height: 100vh;
   position: relative;

@@ -367,8 +367,9 @@ h5 {
   padding: 1.25rem 0;
   text-align: center;
   font-size: 0.75rem;
-  color: var(--text-muted, #6b7280);
-  border-top: 1px solid var(--border-color, #1f2937);
+  /* PD-I1: removed stale #6b7280 fallback — token always defined in :root */
+  color: var(--text-muted);
+  border-top: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
   align-items: center;

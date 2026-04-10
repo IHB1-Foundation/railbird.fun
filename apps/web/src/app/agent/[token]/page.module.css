@@ -20,11 +20,12 @@
   vertical-align: middle;
 }
 
+/* PD-H15: larger size + stronger contrast so address is easy to select & copy */
 .agentToken {
   margin-top: 0.25rem;
   font-family: var(--text-mono);
-  font-size: 0.875rem;
-  color: var(--muted);
+  font-size: var(--text-base);
+  color: var(--text-muted);
 }
 
 .statsGrid {

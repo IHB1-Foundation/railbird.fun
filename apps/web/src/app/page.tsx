@@ -50,8 +50,8 @@ export default async function LobbyPage() {
           </div>
         </article>
         <div className="empty error-card">
-          <p style={{ marginBottom: "0.5rem", fontWeight: 600 }}>Unable to load tables</p>
-          <p style={{ marginBottom: "0.75rem", fontSize: "0.875rem", color: "var(--muted)" }}>
+          <p className={styles.errorHeading}>Unable to load tables</p>
+          <p className={styles.errorBody}>
             The indexer service could not be reached. This is usually temporary — please refresh in a few seconds.
           </p>
           <form action="/" method="GET">

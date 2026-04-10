@@ -461,3 +461,15 @@
   justify-content: center;
   flex-wrap: wrap;
 }
+
+/* PD-H13: error state — moved from inline styles in page.tsx */
+.errorHeading {
+  font-weight: var(--font-semibold);
+  margin-bottom: var(--space-2);
+}
+
+.errorBody {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  margin-bottom: var(--space-3);
+}

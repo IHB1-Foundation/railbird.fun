@@ -124,13 +124,28 @@
   --shadow-btn-warning: 0 8px 18px rgba(249, 157, 44, 0.35);
 
   /* Typography scale */
-  --text-xs: 0.7rem;
-  --text-sm: 0.8rem;
+  --text-2xs: 0.65rem;
+  --text-xs: 0.72rem;
+  --text-sm: 0.82rem;
   --text-base: 0.92rem;
   --text-lg: 1.1rem;
   --text-xl: 1.3rem;
   --text-2xl: 1.6rem;
   --text-3xl: 2rem;
+
+  /* PD-C1: Z-index token scale — ordered, no magic numbers */
+  --z-base: 0;
+  --z-dropdown: 10;
+  --z-sticky: 20;
+  --z-fixed: 30;
+  --z-nav-backdrop: 38;
+  --z-nav-drawer: 39;
+  --z-topbar: 40;
+  --z-overlay: 100;
+  --z-modal: 200;
+  --z-toast: 300;
+  --z-tutorial: 400;
+  --z-skip-link: 9999;
 }
 
 * {
@@ -215,23 +230,36 @@ body::after {
   border: 0;
 }
 
-/* Skip-to-content link — visually hidden until focused */
+/* PD-F6: Skip-to-content — sr-only pattern until focused (avoids -9999px anti-pattern) */
 .skip-to-content {
   position: absolute;
-  top: -9999px;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
   left: 0.5rem;
-  z-index: 9999;
+  z-index: var(--z-skip-link);
+  text-decoration: none;
+}
+
+.skip-to-content:focus-visible {
+  width: auto;
+  height: auto;
+  margin: 0;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+  top: 0.5rem;
   padding: 0.5rem 1rem;
   background: var(--accent);
   color: #fff;
   border-radius: 6px;
   font-weight: 600;
   font-size: 0.9rem;
-  text-decoration: none;
-}
-
-.skip-to-content:focus-visible {
-  top: 0.5rem;
 }
 
 a {
@@ -1197,7 +1225,7 @@ body.dev-mode::after {
   position: fixed;
   top: 0.4rem;
   right: 0.4rem;
-  z-index: 99999;
+  z-index: var(--z-skip-link);
   font-family: var(--text-mono);
   font-size: 0.6rem;
   font-weight: 700;

@@ -94,12 +94,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         aria-label="Notifications"
         style={{
           position: "fixed",
-          bottom: "1rem",
+          /* PD-H6: safe-area-inset for iPhone notch/home indicator */
+          bottom: "max(1rem, env(safe-area-inset-bottom))",
           right: "1rem",
           display: "flex",
           flexDirection: "column",
           gap: "0.5rem",
-          zIndex: 9999,
+          /* PD-H6: use --z-toast token (300) via inline var reference */
+          zIndex: "var(--z-toast)" as unknown as number,
           maxWidth: "360px",
         }}
       >

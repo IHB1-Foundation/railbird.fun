@@ -1,0 +1,144 @@
+.row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+/* Season card */
+.seasonCard {
+  padding: 0.85rem 1rem;
+}
+
+.seasonLabel {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--neon-lime);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  letter-spacing: 0.03em;
+  margin-bottom: 0.2rem;
+}
+
+.liveIndicator {
+  color: var(--neon-lime);
+  animation: dot-pulse 1.4s ease-in-out infinite;
+  font-size: 0.6rem;
+}
+
+@keyframes dot-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+
+.seasonSub {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+/* Daily challenge card */
+.challengeCard {
+  padding: 0.85rem 1rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.challengeEyebrow {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--neon-gold);
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+}
+
+.challengeBody {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.challengeIcon {
+  font-size: 1.4rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.challengeTitle {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--foreground);
+  margin-bottom: 0.1rem;
+}
+
+.challengeDesc {
+  font-size: 0.72rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.challengeXp {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--neon-lime);
+  font-family: var(--text-mono);
+  letter-spacing: 0.05em;
+}
+
+/* Featured table card */
+.featuredCard {
+  padding: 0.85rem 1rem;
+  text-decoration: none;
+  color: inherit;
+}
+
+.featuredEyebrow {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--neon-crimson);
+  text-transform: uppercase;
+  margin-bottom: 0.6rem;
+}
+
+.featuredStats {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.featuredStat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.featuredStatValue {
+  font-family: var(--text-mono);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--foreground);
+  font-variant-numeric: tabular-nums;
+}
+
+.featuredStatLabel {
+  font-size: 0.65rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.featuredCta {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--accent-soft);
+  margin-top: 0.25rem;
+}
+
+@media (max-width: 640px) {
+  .row {
+    grid-template-columns: 1fr;
+  }
+}

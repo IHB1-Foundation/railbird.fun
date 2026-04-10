@@ -18,6 +18,7 @@ if [ "${#JWT_SECRET}" -lt 32 ]; then
 fi
 
 # Accept POKER_TABLE_ADDRESSES (preferred, comma-separated) or legacy POKER_TABLE_ADDRESS.
+hydrate_table_env
 if [ -n "${POKER_TABLE_ADDRESSES:-}" ]; then
   export POKER_TABLE_ADDRESSES
 elif [ -n "${POKER_TABLE_ADDRESS:-}" ]; then

@@ -7,14 +7,14 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 slot="${AGENT_SLOT:-}"
 if [ -z "$slot" ] && [ -n "${RAILWAY_SERVICE_NAME:-}" ]; then
   svc="$(printf '%s' "$RAILWAY_SERVICE_NAME" | tr '[:upper:]' '[:lower:]')"
-  if [[ "$svc" =~ ^agent-([1-4])$ ]]; then
+  if [[ "$svc" =~ ^agent-([1-9])$ ]]; then
     slot="${BASH_REMATCH[1]}"
-  elif [[ "$svc" =~ ^agent([1-4])$ ]]; then
+  elif [[ "$svc" =~ ^agent([1-9])$ ]]; then
     slot="${BASH_REMATCH[1]}"
   fi
 fi
-if [[ ! "$slot" =~ ^[1-4]$ ]]; then
-  echo "[railway] AGENT_SLOT must be one of: 1,2,3,4" >&2
+if [[ ! "$slot" =~ ^[1-9]$ ]]; then
+  echo "[railway] AGENT_SLOT must be one of: 1,2,3,4,5,6,7,8,9" >&2
   exit 1
 fi
 
@@ -22,6 +22,8 @@ print_runtime_header "agent-$slot"
 
 require_env RPC_URL
 require_env CHAIN_ID
+
+hydrate_table_env
 
 # AGENT_TABLE_ADDRESS (per-agent) takes precedence over POKER_TABLE_ADDRESS
 if [ -n "${AGENT_TABLE_ADDRESS:-}" ]; then
@@ -33,7 +35,7 @@ else
   exit 1
 fi
 
-export OWNERVIEW_URL="${OWNERVIEW_URL:-https://ownerview.railbird.fun}"
+export OWNERVIEW_URL="$(default_ownerview_url)"
 
 key_var="AGENT_${slot}_OPERATOR_PRIVATE_KEY"
 aggr_var="AGENT_${slot}_AGGRESSION"

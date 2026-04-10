@@ -9,7 +9,7 @@ resolve_role_from_service_name() {
     indexer) echo "indexer" ;;
     keeper) echo "keeper" ;;
     vrf-operator|vrf_operator|vrfoperator) echo "vrf-operator" ;;
-    agent-[1-4]|agent[1-4])
+    agent-[1-9]|agent[1-9])
       echo "agent"
       ;;
     agents|agents-pack|agent-bot|agents-bot)
@@ -24,11 +24,11 @@ resolve_role_from_service_name() {
 resolve_agent_slot_from_service_name() {
   local name
   name="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"
-  if [[ "$name" =~ ^agent-([1-4])$ ]]; then
+  if [[ "$name" =~ ^agent-([1-9])$ ]]; then
     echo "${BASH_REMATCH[1]}"
     return
   fi
-  if [[ "$name" =~ ^agent([1-4])$ ]]; then
+  if [[ "$name" =~ ^agent([1-9])$ ]]; then
     echo "${BASH_REMATCH[1]}"
     return
   fi

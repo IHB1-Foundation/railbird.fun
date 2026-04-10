@@ -78,3 +78,44 @@ default_poll_interval_ms() {
   fi
   echo "$local_default"
 }
+
+first_table_address() {
+  if [ -n "${POKER_TABLE_ADDRESS:-}" ]; then
+    printf '%s\n' "$POKER_TABLE_ADDRESS"
+    return
+  fi
+
+  if [ -n "${POKER_TABLE_ADDRESSES:-}" ]; then
+    printf '%s' "$POKER_TABLE_ADDRESSES" | cut -d',' -f1 | tr -d '[:space:]'
+    return
+  fi
+
+  printf '\n'
+}
+
+hydrate_table_env() {
+  local first
+  first="$(first_table_address)"
+
+  if [ -z "${POKER_TABLE_ADDRESSES:-}" ] && [ -n "${POKER_TABLE_ADDRESS:-}" ]; then
+    export POKER_TABLE_ADDRESSES="$POKER_TABLE_ADDRESS"
+  fi
+
+  if [ -z "${POKER_TABLE_ADDRESS:-}" ] && [ -n "$first" ]; then
+    export POKER_TABLE_ADDRESS="$first"
+  fi
+}
+
+default_ownerview_url() {
+  if [ -n "${OWNERVIEW_URL:-}" ]; then
+    printf '%s\n' "$OWNERVIEW_URL"
+    return
+  fi
+
+  if [ -n "${RAILWAY_SERVICE_OWNERVIEW_URL:-}" ]; then
+    printf 'https://%s\n' "$RAILWAY_SERVICE_OWNERVIEW_URL"
+    return
+  fi
+
+  printf '%s\n' "https://ownerview-production.up.railway.app"
+}

@@ -8,13 +8,14 @@ print_runtime_header "agents-pack"
 
 require_env RPC_URL
 require_env CHAIN_ID
-require_env POKER_TABLE_ADDRESS
-require_env AGENT_1_OPERATOR_PRIVATE_KEY
-require_env AGENT_2_OPERATOR_PRIVATE_KEY
-require_env AGENT_3_OPERATOR_PRIVATE_KEY
-require_env AGENT_4_OPERATOR_PRIVATE_KEY
+for slot in 1 2 3 4 5 6 7 8 9; do
+  require_env "AGENT_${slot}_OPERATOR_PRIVATE_KEY"
+done
 
-export OWNERVIEW_URL="${OWNERVIEW_URL:-https://ownerview.railbird.fun}"
+hydrate_table_env
+require_env POKER_TABLE_ADDRESS
+
+export OWNERVIEW_URL="$(default_ownerview_url)"
 export POLL_INTERVAL_MS="$(default_poll_interval_ms 1000 3000)"
 export MAX_HANDS="${MAX_HANDS:-0}"
 export TURN_ACTION_DELAY_MS="${TURN_ACTION_DELAY_MS:-0}"
@@ -32,12 +33,14 @@ launch_slot() {
   local temp_var="AGENT_${slot}_GEMINI_TEMPERATURE"
   local timeout_var="AGENT_${slot}_GEMINI_TIMEOUT_MS"
   local api_key_var="AGENT_${slot}_GEMINI_API_KEY"
+  local health_var="AGENT_${slot}_HEALTH_PORT"
 
   (
     export OPERATOR_PRIVATE_KEY="${!key_var}"
     export AGGRESSION_FACTOR="${!aggr_var:-0.3}"
     export TURN_ACTION_DELAY_MS="${!delay_var:-$TURN_ACTION_DELAY_MS}"
     export AGENT_DECISION_ENGINE="${!engine_var:-$AGENT_DECISION_ENGINE}"
+    export HEALTH_PORT="${!health_var:-$((9100 + slot - 1))}"
 
     if [ -n "${!model_var:-}" ]; then
       export GEMINI_MODEL="${!model_var}"
@@ -52,7 +55,7 @@ launch_slot() {
       export GEMINI_API_KEY="${!api_key_var}"
     fi
 
-    echo "[railway] starting agent-${slot} aggression=${AGGRESSION_FACTOR} delay_ms=${TURN_ACTION_DELAY_MS} engine=${AGENT_DECISION_ENGINE}"
+    echo "[railway] starting agent-${slot} aggression=${AGGRESSION_FACTOR} delay_ms=${TURN_ACTION_DELAY_MS} engine=${AGENT_DECISION_ENGINE} health_port=${HEALTH_PORT}"
     pnpm --filter @playerco/agent-bot start
   ) &
 
@@ -70,10 +73,9 @@ cleanup() {
 
 trap cleanup SIGINT SIGTERM
 
-launch_slot 1
-launch_slot 2
-launch_slot 3
-launch_slot 4
+for slot in 1 2 3 4 5 6 7 8 9; do
+  launch_slot "$slot"
+done
 
 echo "[railway] agents-pack running pids=${PIDS[*]}"
 

@@ -6,6 +6,8 @@ import bundleAnalyzer from "@next/bundle-analyzer";
 
 const isDev = process.env.NODE_ENV !== "production";
 const withBundleAnalyzer = bundleAnalyzer({ enabled: process.env.ANALYZE === "true" });
+const DEFAULT_INDEXER_URL = "https://indexer-production-4bb1.up.railway.app";
+const DEFAULT_OWNERVIEW_URL = "https://ownerview-production.up.railway.app";
 
 const nextConfig = {
   reactStrictMode: true,
@@ -46,9 +48,9 @@ const nextConfig = {
     // Indexer API — default to localhost in development to prevent
     // accidentally hitting production APIs when env vars are omitted.
     NEXT_PUBLIC_INDEXER_URL:
-      process.env.NEXT_PUBLIC_INDEXER_URL || (isDev ? "http://localhost:3001" : "https://indexer.railbird.fun"),
+      process.env.NEXT_PUBLIC_INDEXER_URL || (isDev ? "http://localhost:3001" : DEFAULT_INDEXER_URL),
     NEXT_PUBLIC_OWNERVIEW_URL:
-      process.env.NEXT_PUBLIC_OWNERVIEW_URL || (isDev ? "http://localhost:4000" : "https://ownerview.railbird.fun"),
+      process.env.NEXT_PUBLIC_OWNERVIEW_URL || (isDev ? "http://localhost:4000" : DEFAULT_OWNERVIEW_URL),
     // Chain config
     NEXT_PUBLIC_RPC_URL: process.env.NEXT_PUBLIC_RPC_URL || "https://testnet.hsk.xyz",
     NEXT_PUBLIC_CHAIN_ID: process.env.NEXT_PUBLIC_CHAIN_ID || "133",
@@ -65,8 +67,6 @@ const nextConfig = {
       {
         source: "/(.*)",
         headers: [
-          // Prevent clickjacking
-          { key: "X-Frame-Options", value: "DENY" },
           // Prevent MIME-type sniffing
           { key: "X-Content-Type-Options", value: "nosniff" },
           // Enforce HTTPS

@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useKeyboardShortcuts } from "@/lib/useKeyboardShortcuts";
+import { useScrollLock } from "@/hooks/useScrollLock";
+import styles from "./KeyboardShortcutsHelp.module.css";
 
 const SHORTCUTS = [
   { keys: ["g", "h"], description: "Go to Home" },
@@ -15,7 +17,9 @@ const SHORTCUTS = [
 
 export function KeyboardShortcutsHelp() {
   const [open, setOpen] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
   useKeyboardShortcuts();
+  useScrollLock(open); // PD-H7 / PD-F5: prevent body scroll while modal is open
 
   useEffect(() => {
     const handler = () => setOpen((v) => !v);
@@ -23,56 +27,57 @@ export function KeyboardShortcutsHelp() {
     return () => window.removeEventListener("keyboard-help-toggle", handler);
   }, []);
 
+  // Focus trap: move focus into card when opened
+  useEffect(() => {
+    if (open) cardRef.current?.focus();
+  }, [open]);
+
+  // ESC to close
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [open]);
+
   if (!open) return null;
 
   return (
     <div
-      role="dialog"
-      aria-modal="true"
-      aria-label="Keyboard shortcuts"
-      style={{
-        position: "fixed", inset: 0, zIndex: 9000,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        background: "rgba(6,7,11,0.75)", backdropFilter: "blur(4px)",
-      }}
+      className={styles.backdrop}
       onClick={() => setOpen(false)}
     >
       <div
-        style={{
-          background: "var(--card-bg-strong, #0b0d1a)", border: "1px solid var(--border-default)",
-          borderRadius: "12px", padding: "1.5rem", minWidth: "280px", maxWidth: "420px", width: "90%",
-        }}
+        ref={cardRef}
+        className={styles.card}
+        tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 style={{ fontSize: "0.95rem", fontWeight: 700, marginBottom: "1rem" }}>
-          Keyboard Shortcuts
-        </h2>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <h2 className={styles.title}>Keyboard Shortcuts</h2>
+        <table className={styles.shortcutTable}>
           <tbody>
             {SHORTCUTS.map(({ keys, description }) => (
-              <tr key={description} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                <td style={{ padding: "0.45rem 0", verticalAlign: "middle" }}>
+              <tr key={description} className={styles.shortcutRow}>
+                <td className={styles.keysCell}>
                   {keys.map((k, i) => (
                     <span key={i}>
-                      <kbd style={{
-                        display: "inline-block", padding: "0.1rem 0.4rem",
-                        background: "rgba(255,255,255,0.08)", borderRadius: "4px",
-                        fontFamily: "monospace", fontSize: "0.78rem", fontWeight: 600,
-                        border: "1px solid var(--border-default)",
-                      }}>{k}</kbd>
-                      {i < keys.length - 1 && <span style={{ margin: "0 0.25rem", color: "var(--muted)" }}>then</span>}
+                      <kbd className={styles.kbd}>{k}</kbd>
+                      {i < keys.length - 1 && (
+                        <span className={styles.separator}>then</span>
+                      )}
                     </span>
                   ))}
                 </td>
-                <td style={{ padding: "0.45rem 0 0.45rem 1rem", fontSize: "0.82rem", color: "var(--muted)" }}>
-                  {description}
-                </td>
+                <td className={styles.descCell}>{description}</td>
               </tr>
             ))}
           </tbody>
         </table>
-        <p style={{ marginTop: "1rem", fontSize: "0.72rem", color: "var(--muted)", textAlign: "center" }}>
-          Click anywhere or press <kbd style={{ fontFamily: "monospace", fontSize: "0.72rem" }}>Esc</kbd> to close
+        <p className={styles.hint}>
+          Click anywhere or press{" "}
+          <kbd className={styles.kbd}>Esc</kbd> to close
         </p>
       </div>
     </div>

@@ -1,0 +1,71 @@
+/* PD-H7: z-index token, body scroll lock, focus trap for keyboard help modal */
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(6, 7, 11, 0.75);
+  backdrop-filter: blur(4px);
+}
+
+.card {
+  background: var(--card-bg-strong);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  min-width: 280px;
+  max-width: 420px;
+  width: 90%;
+}
+
+.title {
+  font-size: var(--text-base);
+  font-weight: var(--font-bold);
+  margin-bottom: 1rem;
+}
+
+.shortcutTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.shortcutRow {
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.keysCell {
+  padding: 0.45rem 0;
+  vertical-align: middle;
+}
+
+.descCell {
+  padding: 0.45rem 0 0.45rem 1rem;
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+
+.kbd {
+  display: inline-block;
+  padding: 0.1rem 0.4rem;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  font-family: var(--text-mono);
+  font-size: var(--text-2xs);
+  font-weight: var(--font-semibold);
+  border: 1px solid var(--border-default);
+}
+
+.separator {
+  margin: 0 0.25rem;
+  color: var(--muted);
+}
+
+.hint {
+  margin-top: 1rem;
+  font-size: var(--text-2xs);
+  color: var(--muted);
+  text-align: center;
+}

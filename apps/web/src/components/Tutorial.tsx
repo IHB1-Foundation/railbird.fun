@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useScrollLock } from "@/hooks/useScrollLock";
 import styles from "./Tutorial.module.css";
 
 const TOUR_KEY = "railbird:tour-completed";
@@ -46,6 +47,7 @@ const STEPS = [
 export function Tutorial() {
   const [visible, setVisible] = useState(false);
   const [step, setStep] = useState(0);
+  useScrollLock(visible); // PD-F5: prevent background scroll when tutorial overlay is active
 
   useEffect(() => {
     // Show only on first visit

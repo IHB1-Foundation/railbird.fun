@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useScrollLock } from "@/hooks/useScrollLock";
 import styles from "./SearchPalette.module.css";
 
 interface SearchItem {
@@ -53,6 +54,7 @@ export function SearchPalette({ open, onClose }: SearchPaletteProps) {
   const [selectedIdx, setSelectedIdx] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+  useScrollLock(open); // PD-F5: prevent body scroll when palette is open
 
   const filtered = STATIC_ITEMS.filter((item) => {
     if (!query) return true;

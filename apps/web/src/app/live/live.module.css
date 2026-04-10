@@ -2,7 +2,7 @@
 
 .liveRoot {
   min-height: 100vh;
-  background: #080c14;
+  background: var(--background);
   color: var(--foreground);
   display: flex;
   flex-direction: column;
@@ -14,7 +14,7 @@
   gap: 1rem;
   padding: 0.75rem 1.5rem;
   background: rgba(0, 0, 0, 0.6);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid var(--border-subtle);
   position: sticky;
   top: 0;
   z-index: var(--z-topbar);
@@ -30,7 +30,7 @@
   font-weight: 700;
   letter-spacing: 0.05em;
   padding: 0.25rem 0.625rem;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
 }
 
 .liveDot {
@@ -49,8 +49,8 @@
 .fullscreenBtn {
   margin-left: auto;
   background: transparent;
-  border: 1px solid rgba(255,255,255,0.15);
-  border-radius: 0.375rem;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
   color: var(--muted);
   /* PD-F1: ensure 44px touch target on mobile */
   min-height: 44px;
@@ -76,7 +76,7 @@
 
 .mainPane {
   padding: 1.5rem;
-  border-right: 1px solid rgba(255,255,255,0.06);
+  border-right: 1px solid var(--border-subtle);
   overflow-y: auto;
 }
 
@@ -91,17 +91,17 @@
 /* Commentary overlay */
 .commentaryBox {
   background: rgba(0,0,0,0.5);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 0.75rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
   padding: 1rem;
   margin-top: 1.5rem;
 }
 
 .commentaryEntry {
   font-size: 0.875rem;
-  color: #d1d5db;
+  color: var(--foreground);
   padding: 0.375rem 0;
-  border-bottom: 1px solid rgba(255,255,255,0.05);
+  border-bottom: 1px solid var(--border-subtle);
   animation: fadeSlide 0.4s ease;
 }
 .commentaryEntry:last-child {
@@ -120,8 +120,8 @@
 /* Agent cards */
 .agentCard {
   background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 0.625rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
   padding: 0.75rem;
   display: flex;
   gap: 0.75rem;
@@ -158,7 +158,7 @@
 .thinkingBox {
   background: rgba(139, 92, 246, 0.08);
   border: 1px solid rgba(139, 92, 246, 0.25);
-  border-radius: 0.5rem;
+  border-radius: var(--radius-sm);
   padding: 0.625rem 0.75rem;
   font-size: 0.78rem;
   color: var(--neon-violet);
@@ -169,8 +169,8 @@
 /* Side bet panel */
 .sideBetPanel {
   background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 0.625rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
   padding: 0.75rem;
 }
 .sideBetTitle {
@@ -195,8 +195,8 @@
 /* Stats ticker */
 .ticker {
   background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 0.625rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
   padding: 0.75rem;
   font-size: 0.75rem;
 }
@@ -214,25 +214,25 @@
 
 /* All-in glow effect */
 .allInGlow {
-  box-shadow: 0 0 0 3px #ef4444, 0 0 30px rgba(239, 68, 68, 0.25);
-  border-radius: 0.75rem;
+  box-shadow: 0 0 0 3px var(--neon-crimson), 0 0 30px rgba(239, 68, 68, 0.25);
+  border-radius: var(--radius-md);
   animation: glowPulse 1.5s ease-in-out infinite;
 }
 @keyframes glowPulse {
-  0%, 100% { box-shadow: 0 0 0 2px #ef4444, 0 0 20px rgba(239, 68, 68, 0.2); }
-  50%       { box-shadow: 0 0 0 4px #ef4444, 0 0 40px rgba(239, 68, 68, 0.4); }
+  0%, 100% { box-shadow: 0 0 0 2px var(--neon-crimson), 0 0 20px rgba(239, 68, 68, 0.2); }
+  50%       { box-shadow: 0 0 0 4px var(--neon-crimson), 0 0 40px rgba(239, 68, 68, 0.4); }
 }
 
 /* Big pot badge */
 .bigPotBadge {
   display: inline-block;
-  background: linear-gradient(135deg, #f59e0b, #ef4444);
+  background: linear-gradient(135deg, var(--warning), var(--neon-crimson));
   color: #fff;
   font-size: 0.7rem;
   font-weight: 800;
   letter-spacing: 0.08em;
   padding: 0.2rem 0.625rem;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   margin-left: 0.75rem;
   vertical-align: middle;
   animation: badgePop 0.3s ease;
@@ -306,8 +306,8 @@
 }
 .tableSelectorBtn {
   background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 0.375rem;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
   color: var(--muted);
   font-size: 0.75rem;
   /* PD-F1: 44px touch target on touch devices */
@@ -339,7 +339,7 @@
 .cardChip {
   background: var(--background-soft);
   border: 1px solid var(--border-default);
-  border-radius: 0.375rem;
+  border-radius: var(--radius-sm);
   padding: 0.375rem 0.625rem;
   display: inline-flex;
   flex-direction: column;
@@ -370,7 +370,7 @@
 .modeBadgeSubtle {
   display: inline-flex;
   align-items: center;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   padding: 0.2rem 0.6rem;
   font-size: 0.7rem;
   font-weight: 700;
@@ -380,13 +380,13 @@
 .modeBadge {
   background: rgba(56, 189, 248, 0.14);
   border: 1px solid rgba(56, 189, 248, 0.38);
-  color: #7dd3fc;
+  color: var(--neon-cyan);
 }
 
 .modeBadgeSubtle {
   background: rgba(250, 204, 21, 0.12);
   border: 1px solid rgba(250, 204, 21, 0.28);
-  color: #fde68a;
+  color: var(--warning-soft);
 }
 
 .modeBanner {
@@ -396,20 +396,20 @@
   margin-bottom: 1rem;
   padding: 0.9rem 1rem;
   background: linear-gradient(135deg, rgba(15, 23, 42, 0.78), rgba(30, 41, 59, 0.82));
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  border-radius: 0.875rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
 }
 
 .modeBanner strong {
   font-size: 0.8rem;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: #e2e8f0;
+  color: var(--foreground);
 }
 
 .modeBanner span {
   font-size: 0.82rem;
-  color: #cbd5e1;
+  color: var(--muted);
 }
 
 .headerHand {
@@ -492,7 +492,7 @@
 
 .allInBadge {
   align-self: center;
-  background: #7f1d1d;
+  background: rgba(127, 29, 29, 0.9);
   color: var(--danger-soft);
   font-weight: var(--font-bold);
   font-size: var(--text-sm);
@@ -550,9 +550,9 @@
   gap: 0.8rem;
   padding: 1rem;
   background: linear-gradient(160deg, rgba(12, 16, 30, 0.95), rgba(17, 24, 39, 0.92));
-  border: 1px solid rgba(148, 163, 184, 0.14);
-  border-radius: 1rem;
-  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.22);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
 }
 
 .tableGridHeader {
@@ -567,14 +567,14 @@
   font-size: 0.72rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #94a3b8;
+  color: var(--text-muted);
 }
 
 .tableGridTitle {
   margin: 0;
   font-size: 1rem;
   font-weight: 700;
-  color: #f8fafc;
+  color: var(--foreground);
 }
 
 .tableGridMeta {
@@ -583,13 +583,13 @@
   gap: 0.75rem;
   flex-wrap: wrap;
   font-size: 0.75rem;
-  color: #94a3b8;
+  color: var(--text-muted);
 }
 
 .tableGridPot {
   font-size: 1.1rem;
   font-weight: 700;
-  color: #f8fafc;
+  color: var(--foreground);
 }
 
 .tableGridCommunity {
@@ -633,7 +633,7 @@
   }
   .mainPane {
     border-right: none;
-    border-bottom: 1px solid rgba(255,255,255,0.06);
+    border-bottom: 1px solid var(--border-subtle);
     padding: 1rem;
   }
   .sidePane {

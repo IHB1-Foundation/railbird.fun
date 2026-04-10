@@ -1,19 +1,41 @@
+/* G-7: Card size tokens */
+:local {
+  --card-width: 2.1rem;
+  --card-height: 2.85rem;
+}
+
 .pokerCard {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.1rem;
-  height: 2.85rem;
+  width: var(--card-width, 2.1rem);
+  height: var(--card-height, 2.85rem);
   border-radius: 0.35rem;
+  /* G-7: multi-layer 3D embossed background */
   background:
-    linear-gradient(180deg, #ffffff, #eceffb);
-  border: 1px solid rgba(42, 47, 69, 0.36);
+    radial-gradient(ellipse at 38% 22%, rgba(255,255,255,0.9) 0%, transparent 55%),
+    linear-gradient(160deg, #f0f3ff 0%, #dde3f5 55%, #ccd3ee 100%);
+  border: 1px solid rgba(42, 47, 69, 0.28);
   box-shadow:
-    0 6px 10px rgba(0, 0, 0, 0.25),
-    inset 0 1px 0 rgba(255, 255, 255, 0.86);
+    0 1px 0 rgba(255,255,255,0.95) inset,
+    0 -1px 0 rgba(0,0,0,0.08) inset,
+    0 4px 8px rgba(0, 0, 0, 0.22),
+    0 8px 16px rgba(0, 0, 0, 0.14);
   font-size: 0.88rem;
   font-weight: 700;
   color: #0a0d1e;
+  /* G-7: subtle 3D tilt on hover */
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transform-style: preserve-3d;
+}
+
+.pokerCard:hover {
+  transform: perspective(600px) rotateY(-4deg) translateY(-2px);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.95) inset,
+    0 -1px 0 rgba(0,0,0,0.08) inset,
+    0 6px 14px rgba(0, 0, 0, 0.28),
+    0 12px 24px rgba(0, 0, 0, 0.18);
 }
 
 .pokerCard.heart {
@@ -33,12 +55,17 @@
 }
 
 .pokerCard.unknown {
+  /* G-7: Railbird branded card back — neon violet pattern */
   background:
+    radial-gradient(ellipse at center, rgba(167,139,250,0.15) 0%, transparent 70%),
     repeating-linear-gradient(
       135deg,
-      rgba(55, 58, 80, 0.98) 0 7px,
-      rgba(42, 45, 67, 0.98) 7px 14px
+      rgba(100, 78, 200, 0.92) 0 6px,
+      rgba(72, 54, 160, 0.92) 6px 12px
     );
-  border-color: rgba(152, 159, 198, 0.42);
-  color: #e0e4f7;
+  border-color: rgba(167, 139, 250, 0.5);
+  color: rgba(200, 180, 255, 0.9);
+  box-shadow:
+    0 0 0 1px rgba(167, 139, 250, 0.25) inset,
+    0 4px 10px rgba(0, 0, 0, 0.35);
 }

@@ -92,12 +92,12 @@
   }
 }
 
+/* PD-B3: remove fixed min-width; wallet button has its own sizing */
 .topbarActions {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: var(--space-2);
-  min-width: 210px;
 }
 
 @media (max-width: 1024px) {

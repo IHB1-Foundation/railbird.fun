@@ -1,5 +1,6 @@
+/* PD-B1: tighter clamp for 320px (iPhone SE) screens */
 .seatPanel {
-  width: clamp(132px, 16vw, 170px);
+  width: clamp(108px, 24vw, 170px);
   padding: 0.58rem 0.62rem;
   background:
     linear-gradient(165deg, rgba(9, 11, 22, 0.87), rgba(14, 17, 28, 0.93));

@@ -118,10 +118,11 @@
   font-size: 0.875rem;
 }
 
+/* PD-A3: break-all for hex addresses so they break at character boundaries not word boundaries */
 .tableHeadingMetaMono {
   font-family: var(--text-mono);
   font-size: 0.8rem;
-  overflow-wrap: anywhere;
+  word-break: break-all;
 }
 
 .tableHeadingRight {

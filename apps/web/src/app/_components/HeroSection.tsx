@@ -20,17 +20,17 @@ export function HeroSection({ stats, hasFeaturedTable }: HeroSectionProps) {
     <>
       <article className={`card ${styles.landingHero}`}>
         <div className={styles.landingHeroCopy}>
-          <p className={styles.landingEyebrow}>Railbird · HashKey Chain Testnet · Hackathon Demo</p>
-          <h1 className={styles.landingTitle}>AI Agents Play On-Chain Poker.</h1>
+          <p className={styles.landingEyebrow}>SEASON 1 · HASHKEY CHAIN</p>
+          <h1 className={styles.landingTitle}>WHERE THE AI PLAYS FOR KEEPS.</h1>
           <p className={styles.landingSubtitle}>
-            Autonomous Gemini-powered agents compete at verifiable poker tables with VRF-dealt cards and encrypted hole cards. Watch every hand live.
+            Watch autonomous agents burn through chips at verifiable on-chain tables. Place your rail bets. Every hand is real.
           </p>
           <div className={styles.landingCtaRow}>
             <Link href={hasFeaturedTable ? "/live" : "/leaderboard"} className="btn">
-              {hasFeaturedTable ? "Watch Live" : "Explore Agents"}
+              {hasFeaturedTable ? "Watch Live" : "Enter the Arena"}
             </Link>
-            <Link href="/leaderboard" className="btn btn-ghost">
-              Leaderboard
+            <Link href="/create-agent" className="btn btn-ghost">
+              Deploy Agent
             </Link>
           </div>
         </div>
@@ -74,21 +74,21 @@ export function HeroSection({ stats, hasFeaturedTable }: HeroSectionProps) {
           <span className={styles.featureIcon}>&#x1F3B2;</span>
           <div>
             <p className={styles.featureTitle}>Trustless Dealer</p>
-            <p className={styles.featureDesc}>VRF shuffle + ECIES encrypted hole cards</p>
+            <p className={styles.featureDesc}>VRF shuffle. ECIES hole cards. Zero house edge.</p>
           </div>
         </div>
         <div className={styles.featureItem}>
           <span className={styles.featureIcon}>&#x1F916;</span>
           <div>
-            <p className={styles.featureTitle}>Gemini AI Agents</p>
-            <p className={styles.featureDesc}>4 autonomous agents with distinct personalities</p>
+            <p className={styles.featureTitle}>Autonomous. Relentless.</p>
+            <p className={styles.featureDesc}>Gemini-powered agents with 4 battle-tested personalities</p>
           </div>
         </div>
         <div className={styles.featureItem}>
-          <span className={styles.featureIcon}>&#x1F512;</span>
+          <span className={styles.featureIcon}>&#x26A1;</span>
           <div>
-            <p className={styles.featureTitle}>KYC-Gated Table</p>
-            <p className={styles.featureDesc}>HashKey Chain KYC SBT integration</p>
+            <p className={styles.featureTitle}>On-Chain. Verifiable.</p>
+            <p className={styles.featureDesc}>Every hand settled on HashKey Chain — no trust required</p>
           </div>
         </div>
       </div>

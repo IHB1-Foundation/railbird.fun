@@ -1,0 +1,44 @@
+.root {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  gap: 0;
+  /* compress chip spacing to look stacked */
+  row-gap: -2px;
+}
+
+.chip {
+  display: block;
+  width: 1.3rem;
+  height: 0.35rem;
+  border-radius: 999px;
+  background: var(--chip-color);
+  border: 1.5px solid var(--chip-border);
+  position: relative;
+  /* 3D depth via multi box-shadow */
+  box-shadow:
+    0 1px 0 var(--chip-border),
+    0 2px 0 rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+  margin-bottom: -1px; /* stack overlap */
+  transition: transform 0.15s ease;
+}
+
+.chip:hover {
+  transform: translateY(-1px) scale(1.04);
+}
+
+.value {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--foreground);
+  font-family: var(--text-mono);
+  font-variant-numeric: tabular-nums;
+}

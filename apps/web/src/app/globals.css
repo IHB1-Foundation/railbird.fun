@@ -25,7 +25,8 @@
   --text-mono: "JetBrains Mono", "SFMono-Regular", Menlo, Monaco, Consolas,
     "Liberation Mono", "Courier New", monospace;
   /* G-4: Display font — Space Grotesk for headers, stats, brand elements */
-  --font-display: var(--font-display, "Space Grotesk"), "Segoe UI", system-ui, sans-serif;
+  /* PD-D5: var() with explicit fallback so chain doesn't break when next/font var is empty */
+  --font-display: var(--font-space-grotesk, "Space Grotesk"), "Segoe UI", system-ui, sans-serif;
 
   /* Missing utility tokens */
   /* D-67: #6b7280 gives ~4.79:1 contrast on --background — just above WCAG AA 4.5:1.
@@ -174,9 +175,25 @@ body {
     radial-gradient(1200px 760px at 0% -15%, rgba(167, 139, 250, 0.22), transparent 68%),
     radial-gradient(1000px 680px at 100% 0%, rgba(34, 211, 238, 0.12), transparent 64%),
     linear-gradient(180deg, #06070b 0%, #070916 62%, #06070b 100%);
-  font-family: var(--font-roboto), Roboto, "Segoe UI", Helvetica, Arial, sans-serif;
-  letter-spacing: 0.01em;
+  font-family: var(--font-roboto, Roboto), "Segoe UI", Helvetica, Arial, sans-serif;
+  /* PD-D4: letter-spacing removed from body — positive tracking harms Korean readability.
+     Applied only to Latin-specific classes. */
+  letter-spacing: normal;
   line-height: 1.45;
+}
+
+/* PD-A2: CJK text — keep-all word-break for Korean agent names/descriptions */
+:lang(ko),
+[lang="ko"] {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+/* PD-D3: heading letter-spacing hurts CJK glyph spacing */
+:lang(ko) h1,
+:lang(ko) h2,
+:lang(ko) h3 {
+  letter-spacing: 0;
 }
 
 body::before,
@@ -366,12 +383,17 @@ h5 {
   }
 }
 
-/* G-4: Display font applied to headings and key stats */
-h1, h2, h3 {
+/* G-4: Display font applied to all headings for consistent visual hierarchy */
+/* PD-D6: h4/h5 also use display font to avoid sudden font switch mid-hierarchy */
+h1, h2, h3, h4, h5 {
   font-family: var(--font-display);
   font-weight: 700;
   letter-spacing: -0.02em;
 }
+
+/* PD-D2: more breathing room for large display text */
+h1, h2 { line-height: 1.1; padding-block: 0.04em; }
+h3, h4, h5 { line-height: 1.25; }
 
 .content-shell {
   animation: fade-in 0.45s ease-out;

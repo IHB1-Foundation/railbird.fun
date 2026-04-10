@@ -196,6 +196,33 @@
 | N-6 | KAIA 레거시 정리 | ✅ |
 | N-7 | Hole card 암호화 문서 | ✅ |
 | N-8 | CI/CD 파이프라인 | ✅ (typecheck job 추가) |
+| G-2 | 네온 카지노 팔레트 (6색 시스템) | ✅ |
+| G-3 | 카지노 앰비언스 배경 | ✅ (grain noise + glow shift) |
+| G-4 | 디스플레이 타이포그래피 (Space Grotesk) | ✅ |
+| G-5 | 히어로 카피 게임 포스터 톤 | ✅ |
+| G-6 | ChipStack 컴포넌트 | ✅ |
+| G-7 | 카드 3D 엠보싱 + 브랜드 뒷면 | ✅ |
+| G-8 | 카드 딜링 애니메이션 | ✅ |
+| G-14 | 레어리티 티어 시스템 (5단계) | ✅ |
+| G-15 | 닉네임 제너레이터 | ✅ |
+| G-16 | 칭호 & 업적 시스템 | ✅ |
+| G-18 | 리더보드 → 아케이드 포디움 | ✅ |
+| G-21 | 버튼 물리적 press 피드백 | ✅ |
+| G-22 | AnimatedNumber 컴포넌트 | ✅ |
+| G-23 | 승자 축하 오버레이 | ✅ |
+| G-24 | 사운드 훅 (useSound) | ✅ |
+| G-25 | 앰비언트 사운드 훅 | ✅ |
+| G-26 | Screen Shake 유틸리티 | ✅ |
+| G-27 | 시즌 시스템 | ✅ |
+| G-28 | 에이전트 XP & 레벨 | ✅ |
+| G-29 | 데일리 챌린지 | ✅ |
+| G-31 | 첫 방문 튜토리얼 | ✅ |
+| G-33 | 빈 리더보드 데모 모드 | ✅ |
+| G-34 | 커스텀 커서 (포커 칩) | ✅ |
+| G-35 | 404/Error 버스트 테마 | ✅ |
+| G-36 | 카드 셔플 로딩 애니메이션 | ✅ |
+| G-37 | Konami 코드 이스터 에그 | ✅ |
+| G-39 | God Mode 디버그 오버레이 | ✅ |
 | D-1 | 하드코딩 컬러 → CSS 변수 (토큰 추가) | ✅ (card-highlight, text-gold 토큰 추가) |
 | D-3 | 타이포그래피 토큰 | ✅ (font-weight, tracking, leading 토큰 추가) |
 | D-4 | 보더 컬러 토큰 | ✅ (border-subtle/default/strong) |
@@ -700,3 +727,458 @@
 - **현상**: `globals.css:694-725`에 일부 애니메이션만 비활성화
 - **작업**: 모든 `@keyframes` 애니메이션과 CSS transition을 감사하여, 장식적 애니메이션 전체를 `prefers-reduced-motion: reduce` 시 비활성화
 - **파일**: `globals.css`, 모든 `*.module.css`
+
+---
+
+## 🎮 게임피엘(Game-Feel) — 시니어 프로덕트 디자이너 2차 감사
+
+> **감사 시점**: 2026-04-10 — 모든 D-series 완료 후 재감사
+>
+> **현재 상태**: 디자인 시스템은 단단해졌지만, Railbird는 여전히 "다크모드 크립토 대시보드 + 포커 테이블"처럼 보인다. 토큰화, 접근성, 반응형은 이제 프로덕션 기본기 수준에 도달했다. 문제는 **정체성**이다.
+>
+> **핵심 문제**: Railbird는 "AI 에이전트들이 온체인 카지노에서 싸우는" 독보적 컨셉을 가지고 있음에도, 비주얼 언어가 SaaS-standard purple 대시보드에 머물러 있어 사용자가 "이건 데이터 화면"이라고 느낀다. 경쟁하는 다른 DeFi/analytics 제품과 구분되지 않는다.
+>
+> **이번 감사의 목표**: 사용자가 페이지를 열자마자 "이건 **게임**이다"라고 느끼게 만든다. 관람(watch)에서 참여(play)로 감각 이동.
+
+### 🎯 총평 (Executive Summary)
+
+1. **정체성 부재** — `#816cf9`(bootstrap purple) 단일톤에 의존. 카지노/게임 특유의 네온, 골드, 펠트그린 삼원색이 없다. 팔레트만 봐도 이게 포커 제품인지 알 수 없다.
+2. **평범한 타이포** — Roboto 단일 폰트. H1부터 본문까지 같은 얼굴을 가지고 있어 브랜드 톤이 단조롭다. 디스플레이 폰트가 없다.
+3. **피지컬리티 부재** — 팟, 베팅, 스택이 전부 숫자 텍스트. 포커의 본질인 "칩을 밀고 카드를 뒤집는" 감각이 없다. `PokerCard`는 납작한 CSS 박스이고 딜링/폴딩/올인 같은 순간에 시각 이벤트가 없다.
+4. **주이스(Juice) 부재** — `transform: translateY(-1px)`와 `filter: brightness(1.1)`뿐. 버튼이 "눌리는" 감각, 숫자가 "증가하는" 쾌감, 승리가 "터지는" 느낌이 전무하다. 포커는 감각 놀이인데 감각이 없다.
+5. **캐릭터 부재** — 에이전트가 지갑주소(`0x1a2b...f3d4`)와 이니셜 한 글자(`AgentAvatar.tsx:10`)로만 식별된다. 4가지 퍼스널리티가 시각적으로 동일하다. 게임에서는 "내 캐릭터"가 이름과 얼굴을 가져야 한다.
+6. **정보 계층 단조로움** — "표 + 카드"라는 2개 패턴만 반복. 게임은 대시보드·HUD·스코어보드·리플레이·로비를 각각 다르게 그려야 한다. 라이브 중계는 ESPN인데 리더보드는 재무제표 같은 식으로.
+7. **프로그레션 부재** — 시즌, 레벨, XP, 업적, 티어, 칭호가 전부 없다. 재방문 동기가 "핸드 수가 올라있겠지"밖에 없다.
+8. **사운드/햅틱 제로** — 음소거 게임이다. 칩이 떨어지는 소리, 카드 flip 소리가 없어 감각 인풋 채널이 하나 부족하다.
+
+**결론**: 지금의 Railbird는 "포커 분석 툴"이고, 이걸 **"포커 아레나"**로 바꿔야 한다. 아래 G-series는 그 전환을 위한 구체 티켓들이다.
+
+---
+
+### 🔴 GA. 비주얼 아이덴티티 리세팅
+
+#### G-1. 엠블럼 & 워드마크 리디자인
+- **현상**: 원형 보라 아바타 + 그라디언트 텍스트(`layout.module.css:33-50`). "테크 스타트업 v0" 느낌
+- **작업**:
+  - 엠블럼: 포커 칩과 기차 레일의 네거티브 스페이스 결합 (기차 바퀴 = 칩 테두리)
+  - 워드마크: 디스플레이 폰트로 교체. 제안: Monument Extended, Azeret Mono, 또는 커스텀 stencil
+  - 파비콘/apple-touch-icon/OG 이미지 전부 재작업
+  - 3가지 변형 확보: full color / mono / stacked
+- **파일**: `public/brand/`, `layout.module.css:25-50`
+
+#### G-2. 네온 카지노 팔레트 확장 (6색 시스템)
+- **현상**: `--accent: #816cf9` 단일톤. 거의 모든 상태/강조를 이 하나로 처리
+- **작업**: 역할이 분명한 네온 6색 + glow 변종 도입
+  ```
+  --neon-violet: #a78bfa     (primary)
+  --neon-magenta: #f472b6    (urgency / all-in)
+  --neon-cyan: #22d3ee       (info / VRF / verified)
+  --neon-lime: #a3e635       (reward / win / up)
+  --neon-gold: #facc15       (prestige / 승자 / 리더보드 1위)
+  --neon-crimson: #ef4444    (danger / fold / bust)
+  ```
+  각 컬러에 `-glow` 토큰(box-shadow용) 동반 정의
+  - 상태 컬러(success/warning/danger)를 위 팔레트에 매핑
+- **파일**: `globals.css:1-108`
+
+#### G-3. 카지노 플로어 앰비언스 (배경 리믹스)
+- **현상**: 배경이 고요한 다크 네이비 + dot grid. 포커 테이블만 펠트 그린, 나머지 페이지는 제품 설명서 느낌
+- **작업**:
+  - 배경에 SVG film grain / granular noise layer 추가 (현재 `::before` dot grid 대체)
+  - 네온 사인 반사광처럼 screen-blend 모드로 움직이는 컬러 글로우 레이어 (violet↔cyan slow shift)
+  - 페이지별 subtle tint: leaderboard는 golden trophy, evolution은 cyan lab, create-agent는 velvet red
+  - `body::before/::after`에 테이블 펠트 그린 미묘 반사
+- **파일**: `globals.css:122-155`, 페이지별 `*.module.css`
+
+#### G-4. 디스플레이 타이포그래피 도입
+- **현상**: Roboto 단일 폰트, H1도 숫자도 캡션도 같은 얼굴(`layout.tsx:13-17`)
+- **작업**:
+  - `--font-display`(디스플레이용), `--font-mono`(스탯/주소) 토큰 추가
+  - 디스플레이 폰트 후보: **Monument Extended**, **Azeret Mono**, **Bungee**, **Space Grotesk 800**
+  - 적용 대상: H1, 카드 타이틀, 스탯 숫자, 브랜드 워드마크, 섹션 타이틀
+  - 본문은 Roboto 유지, 숫자는 tabular-nums
+- **파일**: `layout.tsx`, `globals.css:25-26, 100-107`
+
+#### G-5. 히어로 카피 → 게임 포스터 톤
+- **현상**: "AI Agents Play On-Chain Poker."(`HeroSection.tsx:24`) — 설명문. 차가움
+- **작업**: 게임 포스터/영화 태그라인 풍으로 교체
+  - 예: "WHERE THE AI PLAYS FOR KEEPS." / "AUTONOMOUS. VERIFIABLE. RELENTLESS."
+  - eyebrow → "SEASON 1 · HASHKEY CHAIN" 식 시즌 메타포
+  - 부제: 현재 장황한 기술 설명 삭제, "Watch the bots burn through $X in chips. Place your rail bets."
+- **파일**: `apps/web/src/app/_components/HeroSection.tsx:22-36`
+
+---
+
+### 🔴 GB. 피지컬리티 (Physicality)
+
+#### G-6. `<ChipStack>` 컴포넌트
+- **현상**: 팟/베팅/스택 모두 숫자 텍스트(`page.tsx:131-133`, `TableViewer.module.css:100-105`). "칩을 밀었다"는 감각 없음
+- **작업**:
+  - 신규 `<ChipStack amount={} />`: 금액에 따라 `1/5/25/100/500` 단위 칩 개수/컬러 자동 구성 (실제 포커 칩 denomination)
+  - CSS 3D stack (multi box-shadow로 높이감)
+  - 팟, 시트별 베팅, 시트 스택에 텍스트와 병기
+- **파일**: 신규 `components/poker/ChipStack.tsx`, `TableViewer.tsx`, `SeatPanel.tsx`
+
+#### G-7. 카드 컴포넌트 3D 엠보싱 & 전용 뒷면
+- **현상**: `PokerCard.module.css` 납작한 흰 박스 + 대각선 줄 뒷면(`PokerCard.module.css:36-43`)
+- **작업**:
+  - 앞면: multi-layer box-shadow + 얇은 radial highlight로 embossed 3D
+  - 뒷면: Railbird 브랜드 패턴 (엠블럼 + 네온 문양). 현재 `repeating-linear-gradient` 제거
+  - hover 시 `transform: perspective(600px) rotateY(-4deg) translateY(-2px)` 살짝 기울임
+  - 카드 바디에 `--card-width`, `--card-height` 토큰 정의하고 크기 일관화
+- **파일**: `PokerCard.module.css`, `PokerCard.tsx`
+
+#### G-8. 카드 딜링 애니메이션
+- **현상**: 커뮤니티 카드/홀 카드 즉시 pop-in. 딜러가 뿌리는 감각 부재
+- **작업**:
+  - 새 카드 mount 시 deck 위치(테이블 상단 가상점)에서 목적지로 translate + `rotateY` flip
+  - 플롭 3장 stagger delay (60ms씩)
+  - 턴/리버 단일 카드 별도 keyframe
+  - `prefers-reduced-motion: reduce` 시 fade만
+- **파일**: `TableViewer.tsx`, `PokerCard.tsx`, `globals.css`
+
+#### G-9. 베팅/폴드/올인 액션 이펙트
+- **현상**: 액션은 로그 텍스트 + 숫자 변경이 전부. "칩을 내밀었다"는 모션 없음
+- **작업**:
+  - Bet/Raise: 해당 시트에서 팟 방향으로 chip ghost가 arc 궤도로 비행
+  - Fold: 홀 카드 2장이 덱으로 튕겨 돌아가는 애니메이션
+  - All-in: seatPanel에서 크림슨 flash + 화면 전체 subtle shake + "ALL IN" 네온 사인
+  - Check: subtle tap pulse
+- **파일**: `TableViewer.tsx`, `SeatPanel.tsx`, 신규 `components/effects/ChipFlight.tsx`
+
+#### G-10. 팟 수집 (Pot Collection) 이펙트
+- **현상**: 쇼다운 후 팟이 조용히 사라지고 스택이 숫자만 증가
+- **작업**:
+  - 승자 결정 후 팟 chip stack이 승자 시트로 arc 비행 (1초)
+  - 승자 자리에 gold particle burst
+  - 스택 숫자는 카운트업 애니메이션 (`AnimatedNumber` — G-22)
+- **파일**: `TableViewer.tsx`, 신규 `components/effects/ChipFlight.tsx`, `SeatPanel.tsx`
+
+#### G-11. 딜러 버튼 / 블라인드 마커 피지컬화
+- **현상**: D/SB/BB가 단순 CSS 원 또는 텍스트
+- **작업**:
+  - 실제 포커 딜러 버튼 일러스트 (3D bevel, 크림 화이트 칩)
+  - 핸드 시작 시 이전 시트 → 다음 시트로 slide 애니메이션
+  - SB/BB는 blue/red 칩 일러스트
+- **파일**: `SeatPanel.tsx`, `TableViewer.tsx`
+
+---
+
+### 🔴 GC. 캐릭터 & 페르소나 시스템
+
+#### G-12. 에이전트 아바타 일러스트 세트
+- **현상**: `AgentAvatar.tsx` 전체가 "이름 첫 글자 + 원형 배경"이 전부(`AgentAvatar.tsx:10, 14-37`). 4가지 퍼스널리티가 시각적으로 동일
+- **작업**:
+  - 퍼스널리티별 캐릭터 일러스트 세트 (최소 8~12종): aggressive=여우/coyote, tight=올빼미, loose=bear, GTO=robot, bluffer=trickster, calling station=mule, nit=turtle, maniac=monkey 등
+  - 원형 뱃지(프로필용) + 반신 일러스트(카드용) 2가지 variant
+  - `SeatPanel`, `LeaderboardTable`, `agent/[token]`, `create-agent/StepPersona`, `me/page`, `live/AgentCards` 전체 통일
+- **파일**: `components/AgentAvatar.tsx`, `public/brand/avatars/`
+
+#### G-13. 에이전트 = 트레이딩 카드 (Hearthstone/Pokemon 스타일)
+- **현상**: 에이전트 프로필 페이지가 일반 통계 대시보드
+- **작업**:
+  - 에이전트 프로필 헤더를 **트레이딩 카드** 형태로 재디자인
+    - 프레임: 티어 컬러 (G-14)
+    - 상단: 이름 + ELO (mana cost 위치)
+    - 중앙: 캐릭터 일러스트
+    - 하단 능력치 4~6개: aggression, tightness, bluff frequency, win rate, hands played, ROI
+    - 플레이버 텍스트 1줄 (페르소나 prompt에서 추출)
+  - 뒷면: 상세 통계 (클릭 flip, G-7 카드와 애니메이션 공유)
+  - 리더보드 hover 시 mini card preview popout
+- **파일**: 신규 `components/AgentCard.tsx`, `agent/[token]/page.tsx`
+
+#### G-14. 레어리티 티어 시스템 (5단계)
+- **현상**: 모든 에이전트 비주얼 동등
+- **작업**:
+  - ELO 또는 윈레이트 기반 5단계: Common(회색) → Rare(시안) → Epic(바이올렛) → Legendary(골드) → Mythic(홀로그래픽)
+  - 카드 프레임, 네임플레이트, 리더보드 행에 반영
+  - Mythic은 CSS hue-rotate + holographic sheen 애니메이션 (tilt 시 반사)
+  - 승격/강등 시 toast 이벤트 ("Promoted to Legendary")
+- **파일**: 신규 `lib/rarity.ts`, `components/AgentCard.tsx`, `LeaderboardTable.tsx`
+
+#### G-15. 닉네임 제너레이터
+- **현상**: 에이전트가 지갑주소로만 표현됨 (`0x1a2b...f3d4`). 인격 없음
+- **작업**:
+  - deterministic generator: address hash → `{adjective}{noun}#{3-digit}` (예: "Reckless Raven #724", "Cold Ember #401", "Iron Fang #088")
+  - 사용자 지정 가능하되 미지정 시 자동
+  - 주소는 작은 mono 서브텍스트로 강등
+  - adjective/noun 세트는 포커/위험/운 테마로 선별 (200×200)
+- **파일**: 신규 `lib/nicknames.ts`, `create-agent/_components/StepPersona.tsx`, 모든 에이전트 표시부
+
+#### G-16. 칭호 & 업적 시스템
+- **현상**: 에이전트 성과가 숫자 표로만 표현됨. 업적 개념 없음
+- **작업**:
+  - 업적 정의: "River Rat"(리버 역전승 5회), "Cooler"(상대 AA/KK 대상 승리 10회), "Ice Cold"(200핸드 no bluff), "Jackpot"(단일 핸드 1000 chip 이상 획득), "Nemesis"(특정 에이전트 상대 10전 승리)
+  - 리더보드 닉네임 옆 최대 3개 배지 표시
+  - 에이전트 프로필에 achievement grid (언락/락, 진행률 %)
+- **파일**: 신규 `lib/achievements.ts`, `LeaderboardTable.tsx`, `agent/[token]/page.tsx`
+
+---
+
+### 🔴 GD. HUD & 스코어보드
+
+#### G-17. Live 페이지 → ESPN/F1 중계 HUD
+- **현상**: `live.module.css:1`에 `/* ESPN Mode */` 주석이 있지만 실제는 평범한 2컬럼 대시보드. 중계 느낌 없음
+- **작업**:
+  - 상단 TICKER 바: 주식 시세 스타일 무한 스크롤 — "AGENT_X +230 · AGENT_Y folded AA · AGENT_Z ALL IN · SEASON #1"
+  - 메인 영역: 테이블 라이브 + **Win Probability 바** (두 생존자 맞대결 HP 바처럼)
+  - 우측 커멘터리: 하이라이트 이벤트마다 flash + 카테고리 아이콘 (bluff/hero call/suckout)
+  - 하단: 다음 이벤트 카운트다운, "Next blinds up in 3 hands" 등
+  - 풀스크린 모드 시 브랜드 워터마크 하단 우측
+- **파일**: `live/LiveDashboard.tsx`, `live/live.module.css`, `live/StatsTicker.tsx`
+
+#### G-18. 리더보드 → 아케이드 하이스코어 보드
+- **현상**: 리더보드 = 정통 데이터 테이블(`LeaderboardTable.tsx`). 데이터 그리드 그 자체
+- **작업**:
+  - 상위 3명을 **트로피 포디움**으로 별도 헤더 (금/은/동, 2위 좌측, 1위 중앙 높게, 3위 우측)
+  - 각 행에 순위 변동 화살표 + 변동폭 (`▲ 2`, `▼ 5`, `NEW`)
+  - 1위는 홀로그래픽 네임플레이트 (CSS hue shift)
+  - LED 세그먼트 폰트로 스코어 표시 (digital clock 스타일)
+  - 로그인한 사용자의 에이전트는 하이라이트 + "YOU" 네온 뱃지
+  - 상단 "HALL OF FAME" 헤더 + 시즌 번호 크게
+- **파일**: `LeaderboardTable.tsx`, `LeaderboardTable.module.css`, `leaderboard/page.tsx`
+
+#### G-19. 테이블 페이지 → 매치업 포스터 헤더
+- **현상**: 테이블 헤더가 "Table #0 · Waiting" 단순 텍스트(`page.tsx:114-121`)
+- **작업**:
+  - 매치업 "VS" 포스터 스타일: 좌우에 참여 에이전트 아바타 크게, 중앙 "VS" 네온, 하단 현재 블라인드/앤티
+  - 각 에이전트 아래 HP바처럼 스택 퍼센트 바 (시작 대비)
+  - 핸드 카운트 = "Round 42/∞" 격투 게임 라운드 메타포
+  - 스테이크 레벨에 따라 포스터 색상 (micro/small/high)
+- **파일**: `table/[id]/page.tsx`, `TableViewer.tsx`, `TableViewer.module.css`
+
+#### G-20. 액션 프롬프트 HUD
+- **현상**: 현재 턴 액터 표시가 subtle highlight뿐
+- **작업**:
+  - 현재 액터 시트 주변 circular ring timer (`TimerRing` 이미 존재) + pulsing neon glow
+  - 액션 버튼 컨테이너 상단에 "ACTION REQUIRED" 네온 사인 (작은 marquee 애니메이션)
+  - 타이머 < 5초 시 크림슨 pulse + vibrate (모바일)
+  - 오토 액션 시 "Agent auto-called" 등 자막
+- **파일**: `TableViewer.tsx`, `TimerRing.tsx`, `BettingPanel.tsx`
+
+---
+
+### 🟡 GE. 주이스 (Juice) & 피드백
+
+#### G-21. 버튼 피지컬 press 피드백
+- **현상**: `:hover`는 `translateY(-1px) + brightness(1.1)`뿐(`globals.css:329-333`). `:active` 상태 없음 — "눌리는" 느낌 부재
+- **작업**:
+  - `.btn:active`에 `translateY(1px) + inset box-shadow` press down
+  - 주요 CTA에 success flash + chip-drop 파티클 훅
+  - 터치 디바이스에서 tap → subtle haptic (G-24)
+- **파일**: `globals.css:313-338`
+
+#### G-22. `<AnimatedNumber>` — 카운트업/다운
+- **현상**: 팟/스택/ELO/NAV 모두 즉시 교체. "증가하는 쾌감" 부재
+- **작업**:
+  - `<AnimatedNumber from={prev} to={curr} duration={600} />` 컴포넌트 (requestAnimationFrame 기반, lib 불필요)
+  - 증가: lime flash, 감소: crimson flash (각 400ms fade out)
+  - 큰 delta (>20%)는 slight scale bounce
+  - 모든 핵심 수치 교체: 팟, 스택, ELO, NAV/Share, 칩 카운트, 블라인드
+  - `prefers-reduced-motion` 시 즉시 교체
+- **파일**: 신규 `components/AnimatedNumber.tsx`, 전역 적용
+
+#### G-23. 승자 축하 (Celebration Overlay)
+- **현상**: 쇼다운 "winner" 뱃지와 yellow border pulse가 전부(`globals.css:886-894, 960-963`)
+- **작업**:
+  - 승자 결정 시 전체 화면 overlay: 골드 confetti 파티클 (canvas 기반), "WINNER" zoom-in 대형 타이포
+  - camera shake (G-26)
+  - 연속 승리 streak: combo counter (2연승, 3연승…) + 색상 escalation
+  - Jackpot 조건 (big pot, all-in 승리) 시 특수 오버레이 + slot machine ding
+- **파일**: 신규 `components/effects/CelebrationOverlay.tsx`, `ShowdownResultsPanel.tsx`
+
+#### G-24. 사운드 디자인 & 햅틱
+- **현상**: 무음. 사운드 파일/훅 전무
+- **작업**:
+  - 사운드 세트 수집/제작 (CC0 Kenney.nl / freesound): chip-place, chip-stack, card-flip, card-deal-riffle, fold, raise, check, win-small, win-big, jackpot, lose, bell, notification, ui-hover, ui-click
+  - `useSound(name)` 훅 + 글로벌 음소거 토글 (로컬스토리지)
+  - 헤더에 🔊/🔇 아이콘 (설정 영역)
+  - 모바일 햅틱: `navigator.vibrate()` — fold=짧게, raise=중간, win=긴 패턴
+  - 사운드 기본 OFF (접근성), 사용자가 켜야 함
+- **파일**: 신규 `public/sounds/`, `hooks/useSound.ts`, `providers.tsx`, `layout.tsx`
+
+#### G-25. 앰비언트 카지노 사운드
+- **현상**: `/live`, `/table/[id]`가 완전히 고요
+- **작업**:
+  - Low-volume casino ambience loop (crowd murmur, distant chips, subtle jazz)
+  - 핸드 활성 시 chip clatter background
+  - 사용자 토글 (기본 off)
+  - 브라우저 탭 블러 시 자동 mute
+- **파일**: 신규 `hooks/useAmbientSound.ts`, `live/LiveDashboard.tsx`, `TableViewer.tsx`
+
+#### G-26. Screen Shake (임팩트 모멘트)
+- **현상**: Big pot, all-in, bust, 쇼다운 등 임팩트 순간 화면이 고요
+- **작업**:
+  - `.shake-sm`, `.shake-md`, `.shake-lg` CSS 유틸 (keyframes + CSS custom property로 강도 제어)
+  - Trigger: all-in → sm, winner reveal → md, jackpot → lg
+  - `prefers-reduced-motion: reduce` 존중 (해당 시 flash로 대체)
+- **파일**: `globals.css`, 관련 컴포넌트
+
+---
+
+### 🟡 GF. 프로그레션 & 시즌
+
+#### G-27. 시즌 시스템
+- **현상**: 모든 통계가 all-time 누적. "이번 시즌/이번 주" 개념 없음. 재방문 동기 약함
+- **작업**:
+  - Season 개념 도입 (2~4주 단위), season ID로 snapshot
+  - 리더보드 탭: All Time / Season N / This Week
+  - 홈에 "Season 1 · Day 12 / 28" 진행 바
+  - 시즌 종료 시 보상/리셋 이벤트
+- **파일**: 신규 `lib/season.ts`, `leaderboard/page.tsx`, `page.tsx`
+
+#### G-28. 에이전트 레벨 & XP
+- **현상**: ELO만 존재. 누적 활동에 대한 명시적 보상 없음
+- **작업**:
+  - XP 획득: 핸드 플레이 +1, 승리 +5, bluff 성공 +10, jackpot +50
+  - Level 1~50 커브 (exponential)
+  - 레벨업 시 toast + sound + confetti mini
+  - 프로필 카드에 level bar 표시
+- **파일**: 신규 `lib/xp.ts`, `components/AgentCard.tsx`, 에이전트 페이지
+
+#### G-29. 데일리 챌린지
+- **현상**: 매일 방문 유인 없음
+- **작업**:
+  - "TODAY'S OBJECTIVE" 홈 상단 dismissible 카드
+  - 예: "Watch an all-in showdown", "Bet on 3 rails", "Create your first agent"
+  - 완료 시 소형 보상 (XP, 배지)
+  - 24h rotation
+- **파일**: `page.tsx`, 신규 `lib/dailyChallenges.ts`
+
+#### G-30. Compendium (배지 도감)
+- **현상**: 업적이 리스트로만 존재하게 될 예정 (G-16)
+- **작업**:
+  - `/compendium` 신규 페이지: 모든 업적 그리드 (언락/락)
+  - 락된 배지는 실루엣 + 힌트 ("Win 10 hands with AA")
+  - 진행률 게이지 (23/100 · 23%)
+  - 공유용 OG 이미지 auto-generate
+- **파일**: 신규 `app/compendium/page.tsx`, 네비게이션 링크 추가
+
+---
+
+### 🟡 GG. 온보딩 & 튜토리얼
+
+#### G-31. 첫 방문 튜토리얼 오버레이
+- **현상**: 첫 방문자가 VRF, ECIES, NAV/Share, 에이전트 개념을 이해 못함. 이탈 리스크
+- **작업**:
+  - 첫 방문 감지 → 5-step skippable tour: (1) 여기서 AI가 경기함, (2) 실시간 보기, (3) 순위 보기, (4) 직접 만들기, (5) rail bet
+  - 각 스텝마다 관련 CTA에 spotlight + pointer
+  - localStorage에 `railbird:tour-completed` 플래그
+  - Settings에 "Replay tutorial" 토글
+- **파일**: 신규 `components/Tutorial.tsx`, `providers.tsx`
+
+#### G-32. 테이블 초심자 코치마크
+- **현상**: 처음 테이블 보는 유저가 "이게 뭐야" — 각 영역의 의미 불명
+- **작업**:
+  - 테이블 페이지 상단에 "Show me how" 버튼
+  - 클릭 시 coach mark 체인: 커뮤니티 카드 → 팟 → 시트 → 액션 로그
+  - 완료/스킵 상태 저장
+- **파일**: `TableViewer.tsx`
+
+#### G-33. 빈 리더보드 데모 모드
+- **현상**: 실제 데이터 없으면 빈 페이지
+- **작업**:
+  - 빈 상태에 샘플 에이전트 5~10개 고정 데이터 프리뷰 + "Sample data — actual agents appear once play begins" 뱃지
+  - 샘플 에이전트는 시각적으로 faded + locked icon
+- **파일**: `leaderboard/page.tsx`, `LeaderboardTable.tsx`
+
+---
+
+### 🟢 GH. 미세 디테일 & 이스터 에그
+
+#### G-34. 커스텀 커서 (포커 칩)
+- **현상**: 브라우저 기본 커서
+- **작업**:
+  - 전역 커서를 mini chip SVG로 교체 (desktop only, 모바일 불영향)
+  - hover 가능한 요소에서는 "card peek" 커서로 전환
+  - `@media (pointer: coarse)` 조건부 해제
+- **파일**: `globals.css`, 신규 `public/cursors/`
+
+#### G-35. 404 / Error 페이지 → "버스트" 테마
+- **현상**: `not-found.tsx`, `error.tsx`가 기본 메시지
+- **작업**:
+  - 404: "YOU BLUFFED INTO NOTHING" + 폴드된 카드 일러스트 + "Back to the table" CTA
+  - error: "THE DEALER FOLDED" + broken card 일러스트 + "Deal again" CTA (retry)
+  - 이 페이지들만의 디스플레이 폰트 사용
+- **파일**: `app/not-found.tsx`, `app/error.tsx`
+
+#### G-36. 로딩 스켈레톤 → 카드 셔플 애니메이션
+- **현상**: 일반 shimmer 스켈레톤
+- **작업**:
+  - 주요 페이지 루트 로딩에 SVG 카드 셔플 loop (deck riffle)
+  - 스켈레톤은 서브레벨 유지
+- **파일**: 각 `loading.tsx`, 신규 `components/ShuffleLoader.tsx`
+
+#### G-37. Konami 코드 이스터 에그
+- **현상**: 없음
+- **작업**:
+  - `↑↑↓↓←→←→BA` 입력 → 화면 전체 chip rain (30초) + 크레딧 롤
+  - 한 번 트리거 시 `/credits` 페이지 언락
+- **파일**: 신규 `hooks/useKonami.ts`, `providers.tsx`
+
+#### G-38. HandReplay → 아케이드 컨트롤
+- **현상**: `HandReplay.tsx` 기본 play/pause
+- **작업**:
+  - 재생 컨트롤을 아케이드 조이스틱/슬롯머신 스타일 (빨간 play, LED 카운터)
+  - 속도: 0.5x / 1x / 2x / 4x 배율 버튼
+  - 옵션: VHS 스캔라인 오버레이 토글
+- **파일**: `HandReplay.tsx`, `HandReplay.module.css`
+
+#### G-39. "God Mode" 디버그 오버레이
+- **현상**: VRF status, block height 등 기술 정보가 항상 노출 (`VrfStatusWidget`). 게임 느낌 저해
+- **작업**:
+  - 기본 숨김, `~` 키 조합 또는 설정 토글로 노출
+  - 토글 상태 localStorage 저장
+  - 개발자 모드 활성 시 body에 `.dev-mode` 클래스 → 디버그 요소 display
+- **파일**: `VrfStatusWidget.tsx`, `providers.tsx`, `globals.css`
+
+#### G-40. 홈페이지 "TODAY'S FEATURE" 카드
+- **현상**: 홈이 매번 동일. 방문 유인 없음
+- **작업**:
+  - 홈 상단에 오늘의 가장 핫한 테이블/에이전트 1장을 큰 포스터로 피처
+  - 일별 로테이션 (서버 deterministic), 크로스페이드 애니메이션
+- **파일**: `HeroSection.tsx`, 신규 `_components/FeaturedOfTheDay.tsx`
+
+---
+
+### 🟢 GI. 마이크로-게임 확장
+
+#### G-41. Rail Bets → 예측 미니게임
+- **현상**: `/betting` 페이지가 단순 풀 deposit UI
+- **작업**:
+  - "다음 핸드 승자 예측" 빠른 미니게임 (no deposit, 가상 Oracle 레이팅)
+  - 연속 맞추기 시 스트릭 카운터
+  - 별도 리더보드 섹션 "Oracles"
+  - 실제 베팅 UI와 탭으로 분리
+- **파일**: `betting/page.tsx` 리디자인
+
+#### G-42. 핸드 퀴즈 모드
+- **현상**: 교육/참여 요소 없음
+- **작업**:
+  - 과거 핸드 N개를 퀴즈로: "당신이라면 Check/Call/Raise?" → 에이전트 실제 액션과 비교, GTO deviation과도 비교
+  - 정답률 기반 "Sharkness Score"
+  - 공유 가능한 결과 카드
+- **파일**: 신규 `app/quiz/page.tsx`, 관련 API
+
+---
+
+## 🗓️ G-series 구현 순서 제안
+
+| 주차 | 테마 | 티켓 | 기대 효과 |
+|------|------|------|-----------|
+| W1 | Re-skin 기반 | G-1, G-2, G-4, G-5 | 첫인상이 "게임"으로 변환 |
+| W2 | 피지컬리티 | G-6, G-7, G-8, G-9, G-10, G-11 | 테이블이 "살아 움직임" |
+| W3 | 캐릭터 | G-12, G-13, G-14, G-15, G-16 | 에이전트 = "내 캐릭터" |
+| W4 | HUD | G-17, G-18, G-19, G-20 | 라이브 = "중계", 리더보드 = "스코어보드" |
+| W5 | 주이스 | G-21, G-22, G-23, G-24, G-25, G-26 | 모든 인터랙션이 "쾌감" |
+| W6 | 프로그레션 | G-27, G-28, G-29, G-30 | 재방문 동기 확보 |
+| W7 | 온보딩+폴리시 | G-31, G-32, G-33, G-34~G-40 | 첫 사용자 + 완성도 |
+| W8 | 확장 | G-41, G-42, G-3 (앰비언스) | 롱테일 피처 |
+
+**주의사항**:
+- G-series 전체가 `prefers-reduced-motion: reduce` 존중 필수
+- 모든 사운드는 기본 OFF, opt-in만 (접근성)
+- 모바일 퍼포먼스 보호: 파티클/shake는 `@media (hover: hover)` 또는 GPU 디바이스 체크
+- 캐릭터 일러스트는 외주/AI 생성 에셋 결정 필요 — 작업 시작 전 에셋 소스 픽스
+- 사운드 라이선스: CC0(Kenney, freesound.org filtering) 또는 자체 제작
+

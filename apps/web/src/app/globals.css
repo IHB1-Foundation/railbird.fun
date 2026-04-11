@@ -568,6 +568,15 @@ h3, h4, h5 { line-height: 1.25; }
   color: var(--muted);
 }
 
+/**
+ * PD-I3: CSS architecture policy.
+ * These are INTENTIONAL global utility classes used with className="card", className="btn", etc.
+ * - .card, .btn, .label, .muted, .empty, .status, .dot, .value-*, .text-mono → globals.css
+ * - Component-specific classes (spacing, layout, colors unique to one component) → *.module.css
+ * Mixing is OK when a component needs a global utility class alongside a module class:
+ *   className={`card ${styles.myComponent}`}  ← intentional pattern
+ * Do NOT define new component-specific colors, sizes, or layout in globals.css.
+ */
 .card {
   background: linear-gradient(160deg, var(--card-bg), var(--card-bg-strong));
   border: 1px solid var(--card-border);

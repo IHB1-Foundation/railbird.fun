@@ -1,0 +1,266 @@
+/* G-42: Hand Quiz Mode page styles */
+
+.header {
+  margin-bottom: var(--space-4);
+}
+
+.breadcrumb {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  margin-bottom: var(--space-2);
+}
+
+.breadcrumb a {
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.breadcrumb a:hover {
+  color: var(--foreground);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 3vw, 2.4rem);
+  margin-bottom: 0.5rem;
+}
+
+.subtitle {
+  color: var(--text-muted);
+  max-width: 56ch;
+  line-height: var(--leading-normal);
+}
+
+/* ── Sharkness card ── */
+.sharknessCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.sharknessHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.sharknessIcon {
+  font-size: 2.2rem;
+  line-height: 1;
+}
+
+.sharknessLabel {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  margin-bottom: 0.2rem;
+}
+
+.sharknessValue {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
+  color: var(--foreground);
+}
+
+.sharknessDesc {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  line-height: var(--leading-normal);
+}
+
+/* ── Preview card ── */
+.previewCard {
+  margin-bottom: var(--space-3);
+}
+
+.previewGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+@media (max-width: 640px) {
+  .previewGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.scenario {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.scenarioEyebrow {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+}
+
+.scenarioBoard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.boardCards {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.boardCard {
+  background: white;
+  color: #1a1a2e;
+  font-weight: 800;
+  font-size: var(--text-base);
+  padding: 0.5rem 0.6rem;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+  line-height: 1;
+}
+
+.scenarioInfo {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.infoItem {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.scenarioQuestion {
+  font-family: var(--font-display);
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+}
+
+.actionButtons {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.actionButtons button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ── Result locked ── */
+.resultLocked {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--border-subtle);
+  text-align: center;
+}
+
+.lockIcon {
+  font-size: 2rem;
+  opacity: 0.5;
+}
+
+.lockText {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  line-height: var(--leading-normal);
+}
+
+.resultStats {
+  display: flex;
+  gap: var(--space-4);
+}
+
+.resultStat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  align-items: center;
+}
+
+.resultStatLabel {
+  font-size: var(--text-2xs);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+}
+
+.resultStatValue {
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  font-weight: var(--font-bold);
+  color: var(--border-subtle);
+}
+
+/* ── How it works ── */
+.howItWorks {
+  margin-bottom: var(--space-3);
+}
+
+.howTitle {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  margin-bottom: var(--space-3);
+}
+
+.howList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-left: var(--space-4);
+}
+
+.howList li {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  line-height: var(--leading-normal);
+}
+
+.howList li strong {
+  color: var(--foreground);
+}
+
+/* ── Coming soon ── */
+.comingSoon {
+  text-align: center;
+  padding: var(--space-6) 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.comingSoonBadge {
+  display: inline-block;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  padding: 0.3rem 0.9rem;
+}
+
+.comingSoonDesc {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  max-width: 52ch;
+  line-height: var(--leading-relaxed);
+}
+
+.comingSoonActions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  justify-content: center;
+}

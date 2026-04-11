@@ -1,19 +1,43 @@
 // @playerco/shared - Common utility functions
 
+export interface RequireEnvOptions {
+  /** Minimum length the value must satisfy */
+  minLength?: number;
+  /** Regex the value must match */
+  pattern?: RegExp;
+}
+
 /**
- * Read a required environment variable. Throws on missing or placeholder values.
- * Recognises values starting with "replace-with-" as placeholder sentinels.
+ * Read a required environment variable. Fails the process on missing or invalid values.
+ * - Rejects placeholder sentinels ("replace-with-*")
+ * - Optionally enforces minLength and regex pattern
+ * - Logs a masked version of the value (last 4 chars) for audit visibility
  */
-export function requireEnv(name: string): string {
+export function requireEnv(name: string, opts: RequireEnvOptions = {}): string {
   const value = process.env[name];
   if (!value) {
-    throw new Error(`Missing required environment variable: ${name}`);
+    const msg = `[startup] FATAL: Missing required environment variable: ${name}`;
+    console.error(msg);
+    process.exit(1);
   }
   if (value.startsWith("replace-with-")) {
-    throw new Error(
-      `Environment variable ${name} still contains a placeholder value. Replace "${value}" with the actual secret before starting.`
-    );
+    const msg = `[startup] FATAL: ${name} still contains a placeholder value. Replace it with the actual secret.`;
+    console.error(msg);
+    process.exit(1);
   }
+  if (opts.minLength !== undefined && value.length < opts.minLength) {
+    const msg = `[startup] FATAL: ${name} is too short (got ${value.length}, need ≥ ${opts.minLength})`;
+    console.error(msg);
+    process.exit(1);
+  }
+  if (opts.pattern !== undefined && !opts.pattern.test(value)) {
+    const msg = `[startup] FATAL: ${name} does not match required pattern ${opts.pattern}`;
+    console.error(msg);
+    process.exit(1);
+  }
+  // Masked audit log: show only last 4 chars
+  const masked = value.length > 4 ? `***${value.slice(-4)}` : "***";
+  console.info(`[startup] ${name}=${masked}`);
   return value;
 }
 

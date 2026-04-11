@@ -1,6 +1,8 @@
 .walletButton {
   border: 1px solid transparent;
   border-radius: 999px;
+  /* PD-H11: use --ctrl-height for consistent topbar button heights */
+  min-height: var(--ctrl-height, 44px);
   padding: 0.54rem 0.95rem;
   font-size: 0.84rem;
   font-weight: 600;

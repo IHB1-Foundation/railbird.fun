@@ -46,11 +46,28 @@ export default async function RootLayout({
   const pathname = requestHeaders.get("x-pathname") || "";
   const isEmbedRoute = pathname.startsWith("/embed/");
 
+  // Live route: suppress global topbar — the live page has its own liveHeader
+  const isLiveRoute = pathname === "/live" || pathname.startsWith("/live/");
+
   if (isEmbedRoute) {
     return (
       <html lang="en">
         <body className={`${roboto.variable} ${spaceGrotesk.variable}`}>
           <Providers>
+            <main id="main-content">{children}</main>
+          </Providers>
+        </body>
+      </html>
+    );
+  }
+
+  if (isLiveRoute) {
+    return (
+      <html lang="en">
+        <body className={`${roboto.variable} ${spaceGrotesk.variable}`}>
+          <Providers>
+            <KeyboardShortcutsHelp />
+            <a href="#main-content" className="skip-to-content">Skip to main content</a>
             <main id="main-content">{children}</main>
           </Providers>
         </body>

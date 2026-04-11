@@ -136,6 +136,9 @@
   /* PD-F3: text-muted-soft for large/decorative text that can use lighter color */
   --text-muted-soft: #9ba3c1;
 
+  /* PD-H11: unified control height for topbar interactive elements */
+  --ctrl-height: 44px;
+
   /* Typography scale */
   --text-2xs: 0.65rem;
   --text-xs: 0.72rem;

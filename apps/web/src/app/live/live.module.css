@@ -17,7 +17,8 @@
   border-bottom: 1px solid var(--border-subtle);
   position: sticky;
   top: 0;
-  z-index: var(--z-topbar);
+  /* PD-H5: live page suppresses global topbar; own header uses z-overlay */
+  z-index: var(--z-overlay);
 }
 
 .liveBadge {

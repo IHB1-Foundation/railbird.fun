@@ -102,15 +102,18 @@ export class ChainClient {
     this.pokerTableAddress = config.pokerTableAddress;
     this.txTimeoutMs = config.txTimeoutMs ?? DEFAULT_TX_TIMEOUT_MS;
 
+    // T-1505: explicit 15s transport timeout; retry=0 (rpcRetry wrapper handles retries)
+    const rpcTransport = http(config.rpcUrl, { timeout: 15_000, retryCount: 0 });
+
     this.publicClient = createPublicClient({
       chain: this.chain,
-      transport: http(config.rpcUrl),
+      transport: rpcTransport,
     });
 
     this.walletClient = createWalletClient({
       account: this.account,
       chain: this.chain,
-      transport: http(config.rpcUrl),
+      transport: rpcTransport,
     });
 
     this.nonceManager = new NonceManager({

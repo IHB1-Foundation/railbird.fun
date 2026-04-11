@@ -34,7 +34,7 @@ export { CircuitBreaker, CircuitOpenError } from "./circuitBreaker.js";
 export type { CircuitState, CircuitBreakerOptions } from "./circuitBreaker.js";
 
 // Utilities
-export { hexToBytes, fetchWithTimeout, requireEnv } from "./utils.js";
+export { hexToBytes, requireEnv } from "./utils.js";
 
 // Nonce manager
 export { NonceManager } from "./nonceManager.js";
@@ -83,6 +83,8 @@ export type { Hex } from "./envUtils.js";
 // HTTP utilities
 export { parseAllowedOrigins, createCorsMiddleware } from "./http/cors.js";
 export { traceIdMiddleware } from "./http/traceId.js";
+export { fetchWithTimeout } from "./http/fetchWithTimeout.js";
+export type { FetchWithTimeoutOptions } from "./http/fetchWithTimeout.js";
 
 // Chain utilities
 export { withRpcRetry } from "./chain/rpcRetry.js";

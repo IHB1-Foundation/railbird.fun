@@ -56,6 +56,9 @@ export {
   indexerCursorLag,
   ownerviewJwtActive,
   indexerReorgTotal,
+  pgPoolTotalCount,
+  pgPoolIdleCount,
+  pgPoolWaitingCount,
   getMetricsText,
   metricsContentType,
 } from "./metrics.js";
@@ -89,6 +92,10 @@ export type { FetchWithTimeoutOptions } from "./http/fetchWithTimeout.js";
 // Chain utilities
 export { withRpcRetry } from "./chain/rpcRetry.js";
 export type { RpcRetryOptions } from "./chain/rpcRetry.js";
+
+// DB utilities
+export { buildPgPoolConfig, pgDeepHealthCheck } from "./db/pool.js";
+export type { PgPoolOptions } from "./db/pool.js";
 
 // Observability
 export { initSentry } from "./observability/sentry.js";

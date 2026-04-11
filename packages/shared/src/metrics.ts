@@ -111,6 +111,26 @@ export const indexerReorgTotal = new Counter({
   registers: [registry],
 });
 
+// ── PG pool metrics ────────────────────────────────────────────────────────
+
+export const pgPoolTotalCount = new Gauge({
+  name: "railbird_pg_pool_total_count",
+  help: "Total connections in PG pool",
+  registers: [registry],
+});
+
+export const pgPoolIdleCount = new Gauge({
+  name: "railbird_pg_pool_idle_count",
+  help: "Idle connections in PG pool",
+  registers: [registry],
+});
+
+export const pgPoolWaitingCount = new Gauge({
+  name: "railbird_pg_pool_waiting_count",
+  help: "Waiting clients in PG pool",
+  registers: [registry],
+});
+
 /**
  * Return Prometheus text format output for all registered metrics.
  */

@@ -52,6 +52,8 @@ export {
   botCircuitState,
   authAttemptsTotal,
   authRateLimitedTotal,
+  indexerBlockLag,
+  ownerviewJwtActive,
   getMetricsText,
   metricsContentType,
 } from "./metrics.js";

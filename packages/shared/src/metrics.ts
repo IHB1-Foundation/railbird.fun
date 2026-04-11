@@ -70,6 +70,26 @@ export const authRateLimitedTotal = new Counter({
 });
 
 /**
+ * Indexer block lag gauge.
+ * Labels: network (local|testnet|mainnet)
+ */
+export const indexerBlockLag = new Gauge({
+  name: "railbird_indexer_block_lag",
+  help: "Gap between chain head and last indexed block",
+  labelNames: ["network"],
+  registers: [registry],
+});
+
+/**
+ * Active JWT session count gauge.
+ */
+export const ownerviewJwtActive = new Gauge({
+  name: "railbird_ownerview_jwt_active",
+  help: "Estimated number of active JWT sessions (nonce store size)",
+  registers: [registry],
+});
+
+/**
  * Return Prometheus text format output for all registered metrics.
  */
 export async function getMetricsText(): Promise<string> {

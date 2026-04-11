@@ -1,0 +1,78 @@
+{
+  "__inputs": [],
+  "__requires": [
+    { "type": "grafana", "id": "grafana", "name": "Grafana", "version": "10.0.0" },
+    { "type": "datasource", "id": "prometheus", "name": "Prometheus", "version": "1.0.0" }
+  ],
+  "annotations": { "list": [] },
+  "editable": true,
+  "panels": [
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "id": 1,
+      "targets": [
+        {
+          "expr": "railbird_indexer_block_lag",
+          "legendFormat": "{{network}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Indexer Block Lag",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "id": 2,
+      "targets": [
+        {
+          "expr": "railbird_ws_clients_active",
+          "legendFormat": "Active WS clients",
+          "refId": "A"
+        }
+      ],
+      "title": "WebSocket Subscribers",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 9 },
+      "id": 3,
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, rate(railbird_http_request_duration_seconds_bucket{job=\"indexer\"}[$__rate_interval]))",
+          "legendFormat": "P95 latency",
+          "refId": "A"
+        }
+      ],
+      "title": "Indexer API P95 Latency",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "tags": ["railbird", "indexer"],
+  "templating": {
+    "list": [
+      {
+        "current": {},
+        "hide": 0,
+        "includeAll": false,
+        "name": "datasource",
+        "options": [],
+        "query": "prometheus",
+        "refresh": 1,
+        "type": "datasource"
+      }
+    ]
+  },
+  "time": { "from": "now-3h", "to": "now" },
+  "timezone": "browser",
+  "title": "Railbird — Indexer",
+  "uid": "railbird-indexer",
+  "version": 1
+}

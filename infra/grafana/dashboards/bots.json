@@ -1,0 +1,91 @@
+{
+  "__inputs": [],
+  "__requires": [
+    { "type": "grafana", "id": "grafana", "name": "Grafana", "version": "10.0.0" },
+    { "type": "datasource", "id": "prometheus", "name": "Prometheus", "version": "1.0.0" }
+  ],
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 1,
+      "title": "Bot Actions",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 1 },
+      "id": 2,
+      "options": { "legend": { "calcs": ["sum"], "displayMode": "table", "placement": "bottom" } },
+      "targets": [
+        {
+          "expr": "rate(railbird_bot_actions_total[$__rate_interval])",
+          "legendFormat": "{{service}} / {{action}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Bot Actions Rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 1 },
+      "id": 3,
+      "targets": [
+        {
+          "expr": "rate(railbird_bot_errors_total[$__rate_interval])",
+          "legendFormat": "{{service}} / {{type}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Bot Error Rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "max": 2 }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 9 },
+      "id": 4,
+      "targets": [
+        {
+          "expr": "railbird_bot_circuit_state",
+          "legendFormat": "{{service}} / {{circuit}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Circuit Breaker State (0=closed, 1=half-open, 2=open)",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "tags": ["railbird", "bots"],
+  "templating": {
+    "list": [
+      {
+        "current": {},
+        "hide": 0,
+        "includeAll": false,
+        "name": "datasource",
+        "options": [],
+        "query": "prometheus",
+        "refresh": 1,
+        "type": "datasource"
+      }
+    ]
+  },
+  "time": { "from": "now-3h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Railbird — Bots",
+  "uid": "railbird-bots",
+  "version": 1
+}

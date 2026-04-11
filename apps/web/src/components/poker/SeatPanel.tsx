@@ -26,6 +26,8 @@ interface SeatPanelProps {
   isWinner?: boolean;
   holeCards: HoleCardsResponse | null;
   turnTimeRemaining: string;
+  /** G-9: last action taken by this seat in the current hand ("CHECK", "FOLD", "BET", etc.) */
+  lastAction?: string;
 }
 
 export function SeatPanel({
@@ -37,6 +39,7 @@ export function SeatPanel({
   isWinner,
   holeCards,
   turnTimeRemaining,
+  lastAction,
 }: SeatPanelProps) {
   const [expanded, setExpanded] = useState(false);
 
@@ -51,6 +54,10 @@ export function SeatPanel({
 
   const profile = getAgentProfile(seat.operatorAddress ?? "") || getAgentProfile(seat.ownerAddress);
   const isFolded = isHandActive && !seat.isActive;
+  // G-9: All-in = stack exhausted but seat still active in this hand
+  const isAllIn = isHandActive && seat.isActive && seat.stack === "0";
+  // G-9: Check pulse = last action was CHECK (not currently acting)
+  const justChecked = !isActor && lastAction === "CHECK";
 
   return (
     <div
@@ -58,7 +65,9 @@ export function SeatPanel({
         styles.seatPanel,
         isActor && styles.active,
         isOwner && styles.owner,
-        isFolded && styles.folded
+        isFolded && styles.folded,
+        isAllIn && styles.allIn,
+        justChecked && styles.justChecked
       )}
       style={profile ? { borderColor: profile.accentColor } : undefined}
       data-winner={isWinner ? "true" : undefined}
@@ -119,6 +128,8 @@ export function SeatPanel({
           </div>
         )}
         {isFolded && <div className={styles.foldedBadge}>FOLDED</div>}
+        {/* G-9: All-in badge */}
+        {isAllIn && <div className={styles.allInBadgeLocal} aria-label="All in">ALL IN</div>}
         {isActor && <div className={styles.seatActionBadge}>ACTING</div>}
         {isActor && turnTimeRemaining !== "--" && (
           <div

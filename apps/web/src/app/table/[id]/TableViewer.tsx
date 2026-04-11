@@ -199,6 +199,17 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [actionsKey]);
 
+  // G-9: last action per seat (for check pulse, fold flash, etc.)
+  const lastActionBySeat = useMemo<Map<number, string>>(() => {
+    if (!currentHand || !actionsKey) return new Map();
+    const map = new Map<number, string>();
+    for (const action of currentHand.actions) {
+      map.set(action.seatIndex, action.actionType);
+    }
+    return map;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [actionsKey]);
+
   const handleJoinValidate = useCallback(async () => {
     setJoinStatus("");
     if (availableSeats.length === 0) { setJoinStatus("No empty seats available."); return; }
@@ -450,6 +461,7 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
                   isWinner={currentHand?.winnerSeat === seat.seatIndex}
                   holeCards={ownedSeatIndex === seat.seatIndex ? holeCards : null}
                   turnTimeRemaining={timeRemaining}
+                  lastAction={lastActionBySeat.get(seat.seatIndex)}
                 />
               </div>
             ))}

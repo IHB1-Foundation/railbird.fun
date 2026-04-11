@@ -388,12 +388,61 @@
   }
 }
 
+/* G-9: All-in flash effect */
+.seatPanel.allIn {
+  animation: allInFlash 0.5s ease-out;
+}
+
+@keyframes allInFlash {
+  0% { box-shadow: var(--neon-crimson-glow), var(--shadow-lg); border-color: var(--neon-crimson); }
+  60% { box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.5), var(--neon-crimson-glow), var(--shadow-lg); }
+  100% { box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255, 236, 197, 0.08); border-color: rgba(188, 161, 112, 0.42); }
+}
+
+/* G-9: All-in badge */
+.allInBadgeLocal {
+  display: inline-block;
+  font-family: var(--font-display);
+  font-size: var(--text-2xs);
+  font-weight: var(--font-bold);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--neon-crimson);
+  text-shadow: 0 0 8px rgba(239, 68, 68, 0.8);
+  animation: allInPulse 0.8s ease-in-out infinite;
+}
+
+@keyframes allInPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* G-9: Check tap pulse */
+.seatPanel.justChecked {
+  animation: checkPulse 0.4s ease-out;
+}
+
+@keyframes checkPulse {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.03); }
+  100% { transform: scale(1); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .dealerChip {
     animation: none;
   }
 
   .seatActionBadge {
+    animation: none;
+  }
+
+  .seatPanel.allIn {
+    animation: none;
+    border-color: var(--neon-crimson);
+  }
+
+  .seatPanel.justChecked {
     animation: none;
   }
 }

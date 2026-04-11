@@ -203,10 +203,14 @@
 | G-6 | ChipStack 컴포넌트 | ✅ |
 | G-7 | 카드 3D 엠보싱 + 브랜드 뒷면 | ✅ |
 | G-8 | 카드 딜링 애니메이션 | ✅ |
+| G-9 | 베팅/폴드/올인 액션 이펙트 | ✅ (all-in flash + badge + check pulse; chip-flight 스킵) |
 | G-14 | 레어리티 티어 시스템 (5단계) | ✅ |
 | G-15 | 닉네임 제너레이터 | ✅ |
 | G-16 | 칭호 & 업적 시스템 | ✅ |
+| G-17 | Live 페이지 ESPN/F1 HUD | ✅ |
 | G-18 | 리더보드 → 아케이드 포디움 | ✅ |
+| G-19 | 테이블 페이지 매치업 포스터 헤더 | ✅ |
+| G-20 | 액션 프롬프트 HUD | ✅ |
 | G-21 | 버튼 물리적 press 피드백 | ✅ |
 | G-22 | AnimatedNumber 컴포넌트 | ✅ |
 | G-23 | 승자 축하 오버레이 | ✅ |
@@ -221,7 +225,9 @@
 | G-34 | 커스텀 커서 (포커 칩) | ✅ |
 | G-35 | 404/Error 버스트 테마 | ✅ |
 | G-36 | 카드 셔플 로딩 애니메이션 | ✅ |
+| G-32 | 코치마크 온보딩 | ✅ |
 | G-37 | Konami 코드 이스터 에그 | ✅ |
+| G-38 | HandReplay 아케이드 컨트롤 | ✅ |
 | G-39 | God Mode 디버그 오버레이 | ✅ |
 | D-1 | 하드코딩 컬러 → CSS 변수 (토큰 추가) | ✅ (card-highlight, text-gold 토큰 추가) |
 | D-3 | 타이포그래피 토큰 | ✅ (font-weight, tracking, leading 토큰 추가) |
@@ -293,6 +299,15 @@
 | D-51 | 전문 용어 툴팁 | ✅ (GTO/NAV/Share Tooltip 컴포넌트로 agent 페이지에 적용) |
 | D-54 | 모호한 시간 표현 | ✅ (evolution: "in a few minutes once more hands played") |
 | D-62 | 모달 포커스 트래핑 | ✅ (ConfirmDialog Tab wrap + ESC, showdown autoFocus) |
+| PD-G1 | border-radius 토큰 외 값 → 토큰화 | ✅ (live.module.css) |
+| PD-G3 | border color → 토큰 강제 | ✅ (live.module.css) |
+| PD-G4 | 색상 hex → 토큰 (live.module.css) | ✅ |
+| PD-H5 | liveHeader z-index + live layout split | ✅ |
+| PD-H7 | KeyboardShortcutsHelp CSS module | ✅ |
+| PD-H11 | ShareButton/WalletButton --ctrl-height | ✅ |
+| PD-H13 | EmptyState 인라인 스타일 제거 | ✅ |
+| PD-H15 | agentToken 사이즈/대비 개선 | ✅ |
+| PD-I1 | CSS 변수 fallback 정비 | ✅ |
 
 ---
 

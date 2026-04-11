@@ -90,6 +90,17 @@ export const ownerviewJwtActive = new Gauge({
 });
 
 /**
+ * Indexer cursor lag gauge.
+ * Labels: contract (contract address)
+ */
+export const indexerCursorLag = new Gauge({
+  name: "railbird_indexer_cursor_lag",
+  help: "Gap between chain head and indexer cursor per contract",
+  labelNames: ["contract"],
+  registers: [registry],
+});
+
+/**
  * Chain reorg counter.
  * Labels: depth (number of blocks rolled back)
  */

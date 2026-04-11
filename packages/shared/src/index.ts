@@ -53,6 +53,7 @@ export {
   authAttemptsTotal,
   authRateLimitedTotal,
   indexerBlockLag,
+  indexerCursorLag,
   ownerviewJwtActive,
   indexerReorgTotal,
   getMetricsText,

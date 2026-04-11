@@ -159,6 +159,7 @@
   line-height: var(--leading-normal);
 }
 
+/* PD-E2: flex+gap on card so children don't need individual margin-top */
 .featuredLiveCard {
   margin-bottom: 1.2rem;
   border-color: rgba(143, 209, 255, 0.34);
@@ -166,6 +167,9 @@
     radial-gradient(1200px 340px at -8% -24%, rgba(56, 118, 255, 0.2), transparent 58%),
     radial-gradient(900px 360px at 115% -40%, rgba(58, 232, 178, 0.15), transparent 62%),
     linear-gradient(165deg, rgba(16, 21, 37, 0.92), rgba(10, 15, 30, 0.95));
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
 }
 
 .featuredLiveHeader {
@@ -173,7 +177,7 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: 0.95rem;
+  /* margin-bottom removed: parent uses gap (PD-E2) */
 }
 
 .featuredLiveTitle {
@@ -193,7 +197,7 @@
 }
 
 .featuredLiveSeats {
-  margin-top: var(--space-3);
+  /* margin-top removed: parent uses gap (PD-E2) */
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: var(--space-2);
@@ -213,7 +217,7 @@
 }
 
 .featuredLiveActions {
-  margin-top: 0.9rem;
+  /* margin-top removed: parent uses gap (PD-E2) */
 }
 
 .featuredLiveActionList {
@@ -236,7 +240,7 @@
 }
 
 .featuredLiveFooter {
-  margin-top: 0.85rem;
+  /* margin-top removed: parent uses gap (PD-E2) */
   display: flex;
   justify-content: flex-end;
 }

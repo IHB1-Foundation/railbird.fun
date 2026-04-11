@@ -299,15 +299,62 @@
 | D-51 | 전문 용어 툴팁 | ✅ (GTO/NAV/Share Tooltip 컴포넌트로 agent 페이지에 적용) |
 | D-54 | 모호한 시간 표현 | ✅ (evolution: "in a few minutes once more hands played") |
 | D-62 | 모달 포커스 트래핑 | ✅ (ConfirmDialog Tab wrap + ESC, showdown autoFocus) |
+| G-10 | 팟 수집 이펙트 (AnimatedNumber + potCollect) | ✅ |
+| G-11 | 딜러 버튼 물리화 + SB/BB 마커 | ✅ |
+| G-40 | 홈페이지 FeaturedOfTheDay | ✅ |
+| PD-A1 | min-width:0 + .truncate 유틸리티 | ✅ |
+| PD-A2 | 한국어 word-break:keep-all | ✅ |
+| PD-A3 | 모노스페이스 주소 break-all | ✅ |
+| PD-A4 | featuredLiveActionItem grid→flex | ✅ |
+| PD-A5 | featureStrip auto-fit orphan 제거 | ✅ |
+| PD-A6 | featureStrip 3-col breakpoint | ✅ (A5와 동일) |
+| PD-B1 | SeatPanel clamp(108px,24vw,170px) | ✅ |
+| PD-B2 | 리더보드 scroll fade JS 감지 | ✅ |
+| PD-B3 | topbar min-width 제거 | ✅ |
+| PD-B4 | hero visual 모바일 숨김 | ✅ |
+| PD-B5 | scroll-padding-top:84px | ✅ |
+| PD-B6 | leaderboard sticky th top:72px | ✅ |
+| PD-C1 | z-index 토큰 시스템 | ✅ |
+| PD-D1 | font-size 토큰 정비 (--text-2xs~3xl) | ✅ |
+| PD-D2 | 헤딩 line-height (h1-2:1.1, h3-5:1.25) | ✅ |
+| PD-D3 | CJK letter-spacing:0 | ✅ |
+| PD-D4 | body letter-spacing:normal | ✅ |
+| PD-D5 | font-family fallback 패턴 | ✅ |
+| PD-D6 | h1-h5 모두 display font | ✅ |
+| PD-D7 | uppercase letter-spacing ≥0.04em | ✅ |
+| PD-E1 | 스페이싱 토큰 8단계 | ✅ (9단계로 구현됨) |
+| PD-E2 | margin→gap (featuredLiveCard) | ✅ |
+| PD-E3 | card padding 토큰 (sm/md/lg) | ✅ |
+| PD-E4 | landingHero 명시적 padding | ✅ |
+| PD-F1 | 44px 터치 타깃 (min-height) | ✅ |
+| PD-F2 | focus-visible 전역 커버리지 | ✅ |
+| PD-F3 | 컬러 대비 (agentMeta → var) | ✅ |
+| PD-F5 | useScrollLock 훅 | ✅ |
 | PD-G1 | border-radius 토큰 외 값 → 토큰화 | ✅ (live.module.css) |
+| PD-G2 | shadow 토큰 확장 (card-hover/active) | ✅ |
 | PD-G3 | border color → 토큰 강제 | ✅ (live.module.css) |
 | PD-G4 | 색상 hex → 토큰 (live.module.css) | ✅ |
+| PD-G5 | monospace 폰트 var(--text-mono) 통일 | ✅ |
+| PD-H1 | PokerCard --card-w + aspect-ratio | ✅ |
+| PD-H2 | ChipStack 구조 정비 | ✅ |
+| PD-H3 | SeatPanel text-align:left | ✅ |
+| PD-H4 | cardChip min-width clamp | ✅ |
 | PD-H5 | liveHeader z-index + live layout split | ✅ |
+| PD-H6 | Toast portal + --z-toast | ✅ |
 | PD-H7 | KeyboardShortcutsHelp CSS module | ✅ |
+| PD-H8 | Compendium grid auto-fill | ✅ |
+| PD-H9 | FeaturedOfTheDay line-height:1.2 | ✅ |
+| PD-H10 | Tutorial max-width clamp | ✅ |
 | PD-H11 | ShareButton/WalletButton --ctrl-height | ✅ |
+| PD-H12 | EmptyState 이모지 인라인 스타일 제거 | ✅ |
 | PD-H13 | EmptyState 인라인 스타일 제거 | ✅ |
+| PD-H14 | agent profile word-break:break-all | ✅ |
 | PD-H15 | agentToken 사이즈/대비 개선 | ✅ |
 | PD-I1 | CSS 변수 fallback 정비 | ✅ |
+| PD-I2 | CSS module camelCase 통일 | ✅ |
+| PD-I4 | inline style→module 이동 | ✅ |
+| PD-I5 | 헤딩 계층 구조 점검 | ✅ |
+| PD-I9 | dark-mode only 문서화 (globals.css) | ✅ |
 
 ---
 

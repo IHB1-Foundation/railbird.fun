@@ -1,3 +1,9 @@
+/**
+ * PD-I9: Railbird is dark-mode ONLY.
+ * No light theme is planned. All design tokens assume a dark background.
+ * To add a light theme in the future: use data-theme="light" on <html>
+ * and prefix tokens with --light- in a separate block.
+ */
 :root {
   --background: #06070b;
   --background-soft: #0d1020;

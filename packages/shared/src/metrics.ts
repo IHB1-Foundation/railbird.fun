@@ -90,6 +90,17 @@ export const ownerviewJwtActive = new Gauge({
 });
 
 /**
+ * Chain reorg counter.
+ * Labels: depth (number of blocks rolled back)
+ */
+export const indexerReorgTotal = new Counter({
+  name: "railbird_indexer_reorg_total",
+  help: "Total chain reorgs detected by the indexer",
+  labelNames: ["depth"],
+  registers: [registry],
+});
+
+/**
  * Return Prometheus text format output for all registered metrics.
  */
 export async function getMetricsText(): Promise<string> {

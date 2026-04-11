@@ -54,6 +54,7 @@ export {
   authRateLimitedTotal,
   indexerBlockLag,
   ownerviewJwtActive,
+  indexerReorgTotal,
   getMetricsText,
   metricsContentType,
 } from "./metrics.js";

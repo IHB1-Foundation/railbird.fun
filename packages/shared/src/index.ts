@@ -78,3 +78,7 @@ export type { Hex } from "./envUtils.js";
 
 // HTTP utilities
 export { parseAllowedOrigins, createCorsMiddleware } from "./http/cors.js";
+
+// Observability
+export { initSentry } from "./observability/sentry.js";
+export type { SentryInitOptions } from "./observability/sentry.js";

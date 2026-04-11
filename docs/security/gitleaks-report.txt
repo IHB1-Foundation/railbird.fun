@@ -1,0 +1,676 @@
+Finding:     tokenAddress: "[1;3;m0x1234567890abcdef1234567890abcdef12345678[0m"
+Secret:      [1;3;m0x1234567890abcdef1234567890abcdef12345678[0m
+RuleID:      generic-api-key
+Entropy:     4.040080
+File:        apps/web/src/lib/__tests__/scenario-harness.test.tsx
+Line:        189
+Commit:      8bc3ce53ad4663dd8c21f0f2503a27ce28ae6e27
+Author:      0xYatha
+Email:       yatha@ihb1.xyz
+Date:        2026-04-10T14:22:16Z
+Fingerprint: 8bc3ce53ad4663dd8c21f0f2503a27ce28ae6e27:apps/web/src/lib/__tests__/scenario-harness.test.tsx:generic-api-key:189
+Link:        https://github.com/IHB1-Foundation/railbird.fun/blob/8bc3ce53ad4663dd8c21f0f2503a27ce28ae6e27/apps/web/src/lib/__tests__/scenario-harness.test.tsx#L189
+
+Finding:     privateKey: "[1;3;m0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d[0m"
+Secret:      [1;3;m0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d[0m
+RuleID:      generic-api-key
+Entropy:     3.798173
+File:        bots/agent/src/chain/client.test.ts
+Line:        8
+Commit:      b3b9bb9a45c20097b997b9688c060f6c390827ef
+Author:      0xYatha
+Email:       yatha@ihb1.xyz
+Date:        2026-04-10T14:21:42Z
+Fingerprint: b3b9bb9a45c20097b997b9688c060f6c390827ef:bots/agent/src/chain/client.test.ts:generic-api-key:8
+Link:        https://github.com/IHB1-Foundation/railbird.fun/blob/b3b9bb9a45c20097b997b9688c060f6c390827ef/bots/agent/src/chain/client.test.ts#L8
+
+Finding:     privateKey: "[1;3;m0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80[0m" as const,
+Secret:      [1;3;m0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80[0m
+RuleID:      generic-api-key
+Entropy:     3.852557
+File:        bots/keeper/src/chain/client.test.ts
+Line:        7
+Commit:      b3b9bb9a45c20097b997b9688c060f6c390827ef
+Author:      0xYatha
+Email:       yatha@ihb1.xyz
+Date:        2026-04-10T14:21:42Z
+Fingerprint: b3b9bb9a45c20097b997b9688c060f6c390827ef:bots/keeper/src/chain/client.test.ts:generic-api-key:7
+Link:        https://github.com/IHB1-Foundation/railbird.fun/blob/b3b9bb9a45c20097b997b9688c060f6c390827ef/bots/keeper/src/chain/client.test.ts#L7
+
+Finding:     CHIP_TOKEN_ADDRESS=[1;3;m0x2210b79EC6e40d96072a0c26FfB64731a60d7865[0m
+Secret:      [1;3;m0x2210b79EC6e40d96072a0c26FfB64731a60d7865[0m
+RuleID:      generic-api-key
+Entropy:     4.034709
+File:        .env.hashkey
+Line:        20
+Commit:      4416f7802ea0b74aeaa81e7ef0c410618980f800
+Author:      0xYatha
+Email:       yatha@ihb1.xyz
+Date:        2026-04-09T16:08:47Z
+Fingerprint: 4416f7802ea0b74aeaa81e7ef0c410618980f800:.env.hashkey:generic-api-key:20
+Link:        https://github.com/IHB1-Foundation/railbird.fun/blob/4416f7802ea0b74aeaa81e7ef0c410618980f800/.env.hashkey#L20
+
+Finding:     DEPLOYER_PRIVATE_KEY=[1;3;m0xfb7f6ed1bfda876c705f91d2087644f269c21b4e698eda76e45a9e54a41b7f9d[0m
+Secret:      [1;3;m0xfb7f6ed1bfda876c705f91d2087644f269c21b4e698eda76e45a9e54a41b7f9d[0m
+RuleID:      generic-api-key
+Entropy:     3.894583
+File:        .env.hashkey
+Line:        31
+Commit:      4416f7802ea0b74aeaa81e7ef0c410618980f800
+Author:      0xYatha
+Email:       yatha@ihb1.xyz
+Date:        2026-04-09T16:08:47Z
+Fingerprint: 4416f7802ea0b74aeaa81e7ef0c410618980f800:.env.hashkey:generic-api-key:31
+Link:        https://github.com/IHB1-Foundation/railbird.fun/blob/4416f7802ea0b74aeaa81e7ef0c410618980f800/.env.hashkey#L31
+
+Finding:     KEEPER_PRIVATE_KEY=[1;3;m0xfb7f6ed1bfda876c705f91d2087644f269c21b4e698eda76e45a9e54a41b7f9d[0m
+Secret:      [1;3;m0xfb7f6ed1bfda876c705f91d2087644f269c21b4e698eda76e45a9e54a41b7f9d[0m
+RuleID:      generic-api-key
+Entropy:     3.894583
+File:        .env.hashkey
+Line:        33
+Commit:      4416f7802ea0b74aeaa81e7ef0c410618980f800
+Author:      0xYatha
+Email:       yatha@ihb1.xyz
+Date:        2026-04-09T16:08:47Z
+Fingerprint: 4416f7802ea0b74aeaa81e7ef0c410618980f800:.env.hashkey:generic-api-key:33
+Link:        https://github.com/IHB1-Foundation/railbird.fun/blob/4416f7802ea0b74aeaa81e7ef0c410618980f800/.env.hashkey#L33
+
+Finding:     VRF_OPERATOR_PRIVATE_KEY=[1;3;m0xfb7f6ed1bfda876c705f91d2087644f269c21b4e698eda76e45a9e54a41b7f9d[0m
+Secret:      [1;3;m0xfb7f6ed1bfda876c705f91d2087644f269c21b4e698eda76e45a9e54a41b7f9d[0m
+RuleID:      generic-api-key
+Entropy:     3.894583
+File:        .env.hashkey
+Line:        34
+Commit:      4416f7802ea0b74aeaa81e7ef0c410618980f800
+Author:      0xYatha
+Email:       yatha@ihb1.xyz
+Date:        2026-04-09T16:08:47Z
+Fingerprint: 4416f7802ea0b74aeaa81e7ef0c410618980f800:.env.hashkey:generic-api-key:34
+Link:        https://github.com/IHB1-Foundation/railbird.fun/blob/4416f7802ea0b74aeaa81e7ef0c410618980f800/.env.hashkey#L34
+
+Finding:     DEALER_PRIVATE_KEY=[1;3;m0x90a9c83030f4a575f93612575b8dcb95fc9877618ccb7b10c2fdd2d03c9db433[0m
+Secret:      [1;3;m0x90a9c83030f4a575f93612575b8dcb95fc9877618ccb7b10c2fdd2d03c9db433[0m
+RuleID:      generic-api-key
+Entropy:     3.860619
+File:        .env.hashkey
+Line:        43
+Commit:      4416f7802ea0b74aeaa81e7ef0c410618980f800
+Author:      0xYatha
+Email:       yatha@ihb1.xyz
+Date:        2026-04-09T16:08:47Z
+Fingerprint: 4416f7802ea0b74aeaa81e7ef0c410618980f800:.env.hashkey:generic-api-key:43
+Link:        https://github.com/IHB1-Foundation/railbird.fun/blob/4416f7802ea0b74aeaa81e7ef0c410618980f800/.env.hashkey#L43
+
+Finding:     JWT_SECRET=[1;3;mad0ba526b2f26b27066eba47130461acd9d932d62cfed333eb02551b93bed031[0m
+Secret:      [1;3;mad0ba526b2f26b27066eba47130461acd9d932d62cfed333eb02551b93bed031[0m
+RuleID:      generic-api-key
+Entropy:     3.764165
+File:        .env.hashkey
+Line:        63
+Commit:      4416f7802ea0b74aeaa81e7ef0c410618980f800
+Author:      0xYatha
+Email:       yatha@ihb1.xyz
+Date:        2026-04-09T16:08:47Z
+Fingerprint: 4416f7802ea0b74aeaa81e7ef0c410618980f800:.env.hashkey:generic-api-key:63
+Link:        https://github.com/IHB1-Foundation/railbird.fun/blob/4416f7802ea0b74aeaa81e7ef0c410618980f800/.env.hashkey#L63
+
+Finding:     DEALER_API_KEY=[1;3;m0733a611f19ebbbe388f3c4aa316ed7d4788f6c022cf51f7[0m
+Secret:      [1;3;m0733a611f19ebbbe388f3c4aa316ed7d4788f6c022cf51f7[0m
+RuleID:      generic-api-key
+Entropy:     3.864059
+File:        .env.hashkey
+Line:        64
+Commit:      4416f7802ea0b74aeaa81e7ef0c410618980f800
+Author:      0xYatha
+Email:       yatha@ihb1.xyz
+Date:        2026-04-09T16:08:47Z
+Fingerprint: 4416f7802ea0b74aeaa81e7ef0c410618980f800:.env.hashkey:generic-api-key:64
+Link:        https://github.com/IHB1-Foundation/railbird.fun/blob/4416f7802ea0b74aeaa81e7ef0c410618980f800/.env.hashkey#L64
+
+Finding:     AGENT_1_OPERATOR_PRIVATE_KEY=[1;3;m0xdcdb90f8a233f4aa3d3c5dcd9e58ed2de0b67e161728f7db1f4f07eadb95f1bb[0m
+Secret:      [1;3;m0xdcdb90f8a233f4aa3d3c5dcd9e58ed2de0b67e161728f7db1f4f07eadb95f1bb[0m
+RuleID:      generic-api-key
+Entropy:     3.939349
+File:        .env.hashkey
+Line:        85
+Commit:      4416f7802ea0b74aeaa81e7ef0c410618980f800
+Author:      0xYatha
+Email:       yatha@ihb1.xyz
+Date:        2026-04-09T16:08:47Z
+Fingerprint: 4416f7802ea0b74aeaa81e7ef0c410618980f800:.env.hashkey:generic-api-key:85
+Link:        https://github.com/IHB1-Foundation/railbird.fun/blob/4416f7802ea0b74aeaa81e7ef0c410618980f800/.env.hashkey#L85
+
+Finding:     AGENT_2_OPERATOR_PRIVATE_KEY=[1;3;m0xa797351285dc2e9b012a3a5d21991399373a47107c105e6d6c7be000f15ee8dd[0m
+Secret:      [1;3;m0xa797351285dc2e9b012a3a5d21991399373a47107c105e6d6c7be000f15ee8dd[0m
+RuleID:      generic-api-key
+Entropy:     3.869910
+File:        .env.hashkey
+Line:        86
+Commit:      4416f7802ea0b74aeaa81e7ef0c410618980f800
+Author:      0xYatha
+Email:       yatha@ihb1.xyz
+Date:        2026-04-09T16:08:47Z
+Fingerprint: 4416f7802ea0b74aeaa81e7ef0c410618980f800:.env.hashkey:generic-api-key:86
+Link:        https://github.com/IHB1-Foundation/railbird.fun/blob/4416f7802ea0b74aeaa81e7ef0c410618980f800/.env.hashkey#L86
+
+Finding:     AGENT_3_OPERATOR_PRIVATE_KEY=[1;3;m0xef599b4aa69fc4ce80d3726018459a90efa7de85fedea99482407a342b4ff2e7[0m
+Secret:      [1;3;m0xef599b4aa69fc4ce80d3726018459a90efa7de85fedea99482407a342b4ff2e7[0m
+RuleID:      generic-api-key
+Entropy:     3.876312
+File:        .env.hashkey
+Line:        87
+Commit:      4416f7802ea0b74aeaa81e7ef0c410618980f800
+Author:      0xYatha
+Email:       yatha@ihb1.xyz
+Date:        2026-04-09T16:08:47Z
+Fingerprint: 4416f7802ea0b74aeaa81e7ef0c410618980f800:.env.hashkey:generic-api-key:87
+Link:        https://github.com/IHB1-Foundation/railbird.fun/blob/4416f7802ea0b74aeaa81e7ef0c410618980f800/.env.hashkey#L87
+
+Finding:     AGENT_4_OPERATOR_PRIVATE_KEY=[1;3;m0x03ee6a58aa48e8d7edaa29cd546b380ab91a7b97fa4a494859ccb8cff6ada794[0m
+Secret:      [1;3;m0x03ee6a58aa48e8d7edaa29cd546b380ab91a7b97fa4a494859ccb8cff6ada794[0m
+RuleID:      generic-api-key
+Entropy:     3.838294
+File:        .env.hashkey
+Line:        88
+Commit:      4416f7802ea0b74aeaa81e7ef0c410618980f800
+Author:      0xYatha
+Email:       yatha@ihb1.xyz
+Date:        2026-04-09T16:08:47Z
+Fingerprint: 4416f7802ea0b74aeaa81e7ef0c410618980f800:.env.hashkey:generic-api-key:88
+Link:        https://github.com/IHB1-Foundation/railbird.fun/blob/4416f7802ea0b74aeaa81e7ef0c410618980f800/.env.hashkey#L88
+
+Finding:     AGENT_5_OPERATOR_PRIVATE_KEY=[1;3;m0x7fe021fd4ab85f9ff304765de67a98816f7ed2d7340afaa6dbd386f6fc249933[0m
+Secret:      [1;3;m0x7fe021fd4ab85f9ff304765de67a98816f7ed2d7340afaa6dbd386f6fc249933[0m
+RuleID:      generic-api-key
+Entropy:     3.894583
+File:        .env.hashkey
+Line:        89
+Commit:      4416f7802ea0b74aeaa81e7ef0c410618980f800
+Author:      0xYatha
+Email:       yatha@ihb1.xyz
+Date:        2026-04-09T16:08:47Z
+Fingerprint: 4416f7802ea0b74aeaa81e7ef0c410618980f800:.env.hashkey:generic-api-key:89
+Link:        https://github.com/IHB1-Foundation/railbird.fun/blob/4416f7802ea0b74aeaa81e7ef0c410618980f800/.env.hashkey#L89
+
+Finding:     AGENT_6_OPERATOR_PRIVATE_KEY=[1;3;m0xd1e3060131d2a39e2d0883bac8afd18af8522e2d53ba41ef2c894b55f2069b15[0m
+Secret:      [1;3;m0xd1e3060131d2a39e2d0883bac8afd18af8522e2d53ba41ef2c894b55f2069b15[0m
+RuleID:      generic-api-key
+Entropy:     3.870544
+File:        .env.hashkey
+Line:        90
+Commit:      4416f7802ea0b74aeaa81e7ef0c410618980f800
+Author:      0xYatha
+Email:       yatha@ihb1.xyz
+Date:        2026-04-09T16:08:47Z
+Fingerprint: 4416f7802ea0b74aeaa81e7ef0c410618980f800:.env.hashkey:generic-api-key:90
+Link:        https://github.com/IHB1-Foundation/railbird.fun/blob/4416f7802ea0b74aeaa81e7ef0c410618980f800/.env.hashkey#L90
+
+Finding:     AGENT_7_OPERATOR_PRIVATE_KEY=[1;3;m0x51c030409cd8341dacc3d79eb7f529a86d28e6a7735bc760b5e1655a1d59cb9f[0m
+Secret:      [1;3;m0x51c030409cd8341dacc3d79eb7f529a86d28e6a7735bc760b5e1655a1d59cb9f[0m
+RuleID:      generic-api-key
+Entropy:     3.966976
+File:        .env.hashkey
+Line:        91
+Commit:      4416f7802ea0b74aeaa81e7ef0c410618980f800
+Author:      0xYatha
+Email:       yatha@ihb1.xyz
+Date:        2026-04-09T16:08:47Z
+Fingerprint: 4416f7802ea0b74aeaa81e7ef0c410618980f800:.env.hashkey:generic-api-key:91
+Link:        https://github.com/IHB1-Foundation/railbird.fun/blob/4416f7802ea0b74aeaa81e7ef0c410618980f800/.env.hashkey#L91
+
+Finding:     AGENT_8_OPERATOR_PRIVATE_KEY=[1;3;m0x26ae2501910c3845ab4b3691cafb5dfdcdce9c483b4cfcdfc835366735227b77[0m
+Secret:      [1;3;m0x26ae2501910c3845ab4b3691cafb5dfdcdce9c483b4cfcdfc835366735227b77[0m
+RuleID:      generic-api-key
+Entropy:     3.976159
+File:        .env.hashkey
+Line:        92
+Commit:      4416f7802ea0b74aeaa81e7ef0c410618980f800
+Author:      0xYatha
+Email:       yatha@ihb1.xyz
+Date:        2026-04-09T16:08:47Z
+Fingerprint: 4416f7802ea0b74aeaa81e7ef0c410618980f800:.env.hashkey:generic-api-key:92
+Link:        https://github.com/IHB1-Foundation/railbird.fun/blob/4416f7802ea0b74aeaa81e7ef0c410618980f800/.env.hashkey#L92
+
+Finding:     AGENT_9_OPERATOR_PRIVATE_KEY=[1;3;m0x8660504bd6df63bd01fc123f83368072fb51d61ab9a1e325b0b5e94b58dca6b5[0m
+Secret:      [1;3;m0x8660504bd6df63bd01fc123f83368072fb51d61ab9a1e325b0b5e94b58dca6b5[0m
+RuleID:      generic-api-key
+Entropy:     3.877580
+File:        .env.hashkey
+Line:        93
+Commit:      4416f7802ea0b74aeaa81e7ef0c410618980f800
+Author:      0xYatha
+Email:       yatha@ihb1.xyz
+Date:        2026-04-09T16:08:47Z
+Fingerprint: 4416f7802ea0b74aeaa81e7ef0c410618980f800:.env.hashkey:generic-api-key:93
+Link:        https://github.com/IHB1-Foundation/railbird.fun/blob/4416f7802ea0b74aeaa81e7ef0c410618980f800/.env.hashkey#L93
+
+Finding:     tokenAddress: "[1;3;m0x1234567890abcdef1234567890abcdef12345678[0m"
+Secret:      [1;3;m0x1234567890abcdef1234567890abcdef12345678[0m
+RuleID:      generic-api-key
+Entropy:     4.040080
+File:        apps/web/src/lib/__tests__/scenario-harness.test.tsx
+Line:        143
+Commit:      4416f7802ea0b74aeaa81e7ef0c410618980f800
+Author:      0xYatha
+Email:       yatha@ihb1.xyz
+Date:        2026-04-09T16:08:47Z
+Fingerprint: 4416f7802ea0b74aeaa81e7ef0c410618980f800:apps/web/src/lib/__tests__/scenario-harness.test.tsx:generic-api-key:143
+Link:        https://github.com/IHB1-Foundation/railbird.fun/blob/4416f7802ea0b74aeaa81e7ef0c410618980f800/apps/web/src/lib/__tests__/scenario-harness.test.tsx#L143
+
+Finding:     DEPLOYER_KEY=[1;3;m0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80[0m
+Secret:      [1;3;m0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80[0m
+RuleID:      generic-api-key
+Entropy:     3.852557
+File:        scripts/ci-e2e.sh
+Line:        18
+Commit:      b35ebd6ecd4d2e3f0d9092167ba1a47f0776eb43
+Author:      0xYatha
+Email:       yatha@ihb1.xyz
+Date:        2026-04-07T20:22:55Z
+Fingerprint: b35ebd6ecd4d2e3f0d9092167ba1a47f0776eb43:scripts/ci-e2e.sh:generic-api-key:18
+Link:        https://github.com/IHB1-Foundation/railbird.fun/blob/b35ebd6ecd4d2e3f0d9092167ba1a47f0776eb43/scripts/ci-e2e.sh#L18
+
+Finding:     AGENT0_KEY=[1;3;m0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80[0m
+Secret:      [1;3;m0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80[0m
+RuleID:      generic-api-key
+Entropy:     3.852557
+File:        scripts/ci-e2e.sh
+Line:        19
+Commit:      b35ebd6ecd4d2e3f0d9092167ba1a47f0776eb43
+Author:      0xYatha
+Email:       yatha@ihb1.xyz
+Date:        2026-04-07T20:22:55Z
+Fingerprint: b35ebd6ecd4d2e3f0d9092167ba1a47f0776eb43:scripts/ci-e2e.sh:generic-api-key:19
+Link:        https://github.com/IHB1-Foundation/railbird.fun/blob/b35ebd6ecd4d2e3f0d9092167ba1a47f0776eb43/scripts/ci-e2e.sh#L19
+
+Finding:     AGENT1_KEY=[1;3;m0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d[0m
+Secret:      [1;3;m0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d[0m
+RuleID:      generic-api-key
+Entropy:     3.798173
+File:        scripts/ci-e2e.sh
+Line:        20
+Commit:      b35ebd6ecd4d2e3f0d9092167ba1a47f0776eb43
+Author:      0xYatha
+Email:       yatha@ihb1.xyz
+Date:        2026-04-07T20:22:55Z
+Fingerprint: b35ebd6ecd4d2e3f0d9092167ba1a47f0776eb43:scripts/ci-e2e.sh:generic-api-key:20
+Link:        https://github.com/IHB1-Foundation/railbird.fun/blob/b35ebd6ecd4d2e3f0d9092167ba1a47f0776eb43/scripts/ci-e2e.sh#L20
+
+Finding:     KEEPER_KEY=[1;3;m0x47e179ec197488593b187f80a00eb0da91f1b9d0b13f8733639f19c30a34926a[0m
+Secret:      [1;3;m0x47e179ec197488593b187f80a00eb0da91f1b9d0b13f8733639f19c30a34926a[0m
+RuleID:      generic-api-key
+Entropy:     3.837068
+File:        scripts/ci-e2e.sh
+Line:        23
+Commit:      b35ebd6ecd4d2e3f0d9092167ba1a47f0776eb43
+Author:      0xYatha
+Email:       yatha@ihb1.xyz
+Date:        2026-04-07T20:22:55Z
+Fingerprint: b35ebd6ecd4d2e3f0d9092167ba1a47f0776eb43:scripts/ci-e2e.sh:generic-api-key:23
+Link:        https://github.com/IHB1-Foundation/railbird.fun/blob/b35ebd6ecd4d2e3f0d9092167ba1a47f0776eb43/scripts/ci-e2e.sh#L23
+
+Finding:     const VALID_KEY = "[1;3;mac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80[0m"
+Secret:      [1;3;mac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80[0m
+RuleID:      generic-api-key
+Entropy:     3.782714
+File:        packages/shared/src/envUtils.test.ts
+Line:        5
+Commit:      1ee3d67678271cd520b67ab3cad555922e4293ac
+Author:      0xYatha
+Email:       yatha@ihb1.xyz
+Date:        2026-04-07T19:32:44Z
+Fingerprint: 1ee3d67678271cd520b67ab3cad555922e4293ac:packages/shared/src/envUtils.test.ts:generic-api-key:5
+Link:        https://github.com/IHB1-Foundation/railbird.fun/blob/1ee3d67678271cd520b67ab3cad555922e4293ac/packages/shared/src/envUtils.test.ts#L5
+
+Finding:     KEEPER_PRIVATE_KEY: "[1;3;m0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80[0m"
+Secret:      [1;3;m0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80[0m
+RuleID:      generic-api-key
+Entropy:     3.852557
+File:        .github/workflows/ci.yml
+Line:        176
+Commit:      e889fb07e120a3b24813149cd271201383c5e2a5
+Author:      0xYatha
+Email:       yatha@ihb1.xyz
+Date:        2026-04-07T15:30:30Z
+Fingerprint: e889fb07e120a3b24813149cd271201383c5e2a5:.github/workflows/ci.yml:generic-api-key:176
+Link:        https://github.com/IHB1-Foundation/railbird.fun/blob/e889fb07e120a3b24813149cd271201383c5e2a5/.github/workflows/ci.yml#L176
+
+Finding:     AGENT_PRIVATE_KEY:  "[1;3;m0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d[0m"
+Secret:      [1;3;m0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d[0m
+RuleID:      generic-api-key
+Entropy:     3.798173
+File:        .github/workflows/ci.yml
+Line:        177
+Commit:      e889fb07e120a3b24813149cd271201383c5e2a5
+Author:      0xYatha
+Email:       yatha@ihb1.xyz
+Date:        2026-04-07T15:30:30Z
+Fingerprint: e889fb07e120a3b24813149cd271201383c5e2a5:.github/workflows/ci.yml:generic-api-key:177
+Link:        https://github.com/IHB1-Foundation/railbird.fun/blob/e889fb07e120a3b24813149cd271201383c5e2a5/.github/workflows/ci.yml#L177
+
+Finding:     VRF_OPERATOR_PRIVATE_KEY: "[1;3;m0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a[0m"
+Secret:      [1;3;m0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a[0m
+RuleID:      generic-api-key
+Entropy:     3.924601
+File:        .github/workflows/ci.yml
+Line:        178
+Commit:      e889fb07e120a3b24813149cd271201383c5e2a5
+Author:      0xYatha
+Email:       yatha@ihb1.xyz
+Date:        2026-04-07T15:30:30Z
+Fingerprint: e889fb07e120a3b24813149cd271201383c5e2a5:.github/workflows/ci.yml:generic-api-key:178
+Link:        https://github.com/IHB1-Foundation/railbird.fun/blob/e889fb07e120a3b24813149cd271201383c5e2a5/.github/workflows/ci.yml#L178
+
+Finding:     JWT_SECRET: "[1;3;mci-test-secret-must-be-32-chars-long-min[0m"
+Secret:      [1;3;mci-test-secret-must-be-32-chars-long-min[0m
+RuleID:      generic-api-key
+Entropy:     3.803056
+File:        .github/workflows/ci.yml
+Line:        179
+Commit:      e889fb07e120a3b24813149cd271201383c5e2a5
+Author:      0xYatha
+Email:       yatha@ihb1.xyz
+Date:        2026-04-07T15:30:30Z
+Fingerprint: e889fb07e120a3b24813149cd271201383c5e2a5:.github/workflows/ci.yml:generic-api-key:179
+Link:        https://github.com/IHB1-Foundation/railbird.fun/blob/e889fb07e120a3b24813149cd271201383c5e2a5/.github/workflows/ci.yml#L179
+
+Finding:     privateKey: "[1;3;m0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80[0m"
+Secret:      [1;3;m0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80[0m
+RuleID:      generic-api-key
+Entropy:     3.852557
+File:        bots/keeper/src/bot.tick.test.ts
+Line:        74
+Commit:      c33fa833594d08d139307fd3a487149b86458dd4
+Author:      0xYatha
+Email:       yatha@ihb1.xyz
+Date:        2026-04-06T12:49:29Z
+Fingerprint: c33fa833594d08d139307fd3a487149b86458dd4:bots/keeper/src/bot.tick.test.ts:generic-api-key:74
+Link:        https://github.com/IHB1-Foundation/railbird.fun/blob/c33fa833594d08d139307fd3a487149b86458dd4/bots/keeper/src/bot.tick.test.ts#L74
+
+Finding:     JWT_SECRET=[1;3;mreplace-with-at-least-32-characters[0m
+Secret:      [1;3;mreplace-with-at-least-32-characters[0m
+RuleID:      generic-api-key
+Entropy:     3.565596
+File:        .env.hashkey.example
+Line:        53
+Commit:      4007dbe8def7971e9bdd129b8a1405a5119d8e55
+Author:      0xYatha
+Email:       yatha@ihb1.xyz
+Date:        2026-04-05T14:30:49Z
+Fingerprint: 4007dbe8def7971e9bdd129b8a1405a5119d8e55:.env.hashkey.example:generic-api-key:53
+Link:        https://github.com/IHB1-Foundation/railbird.fun/blob/4007dbe8def7971e9bdd129b8a1405a5119d8e55/.env.hashkey.example#L53
+
+Finding:     JWT_SECRET=[1;3;mreplace-with-at-least-32-characters[0m
+Secret:      [1;3;mreplace-with-at-least-32-characters[0m
+RuleID:      generic-api-key
+Entropy:     3.565596
+File:        .env.hashkey
+Line:        53
+Commit:      662e0895bcfa1a05034cd0837a36141a3bdb61b4
+Author:      0xYatha
+Email:       yatha@ihb1.xyz
+Date:        2026-04-03T23:45:20Z
+Fingerprint: 662e0895bcfa1a05034cd0837a36141a3bdb61b4:.env.hashkey:generic-api-key:53
+Link:        https://github.com/IHB1-Foundation/railbird.fun/blob/662e0895bcfa1a05034cd0837a36141a3bdb61b4/.env.hashkey#L53
+
+Finding:     CHIP_TOKEN_ADDRESS=[1;3;m0x51745FeAB545eA4d0818E49629Ad1b0A808431F2[0m
+Secret:      [1;3;m0x51745FeAB545eA4d0818E49629Ad1b0A808431F2[0m
+RuleID:      generic-api-key
+Entropy:     3.925421
+File:        RAILWAY.md
+Line:        107
+Commit:      4a4287038cbfafb989aaf18abd3d0c0b4745547c
+Author:      0xYatha
+Email:       yatha@ihb1.xyz
+Date:        2026-03-20T01:22:01Z
+Fingerprint: 4a4287038cbfafb989aaf18abd3d0c0b4745547c:RAILWAY.md:generic-api-key:107
+Link:        https://github.com/IHB1-Foundation/railbird.fun/blob/4a4287038cbfafb989aaf18abd3d0c0b4745547c/RAILWAY.md?plain=1#L107
+
+Finding:     JWT_SECRET=[1;3;mreplace-with-at-least-32-characters[0m
+Secret:      [1;3;mreplace-with-at-least-32-characters[0m
+RuleID:      generic-api-key
+Entropy:     3.565596
+File:        .env.example
+Line:        59
+Commit:      c961abe5858f536a45551bd4e53767999e1c0c6d
+Author:      0xYatha
+Email:       yatha@ihb1.xyz
+Date:        2026-02-15T14:18:11Z
+Fingerprint: c961abe5858f536a45551bd4e53767999e1c0c6d:.env.example:generic-api-key:59
+Link:        https://github.com/IHB1-Foundation/railbird.fun/blob/c961abe5858f536a45551bd4e53767999e1c0c6d/.env.example#L59
+
+Finding:     OPERATOR_PRIVATE_KEY=[1;3;m0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a[0m \
+Secret:      [1;3;m0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a[0m
+RuleID:      generic-api-key
+Entropy:     3.924601
+File:        README.md
+Line:        220
+Commit:      38b8df091faac9852cb7e46ddaf611937a3f9aab
+Author:      0xYatha
+Email:       yatha@ihb1.xyz
+Date:        2026-02-15T13:03:47Z
+Fingerprint: 38b8df091faac9852cb7e46ddaf611937a3f9aab:README.md:generic-api-key:220
+Link:        https://github.com/IHB1-Foundation/railbird.fun/blob/38b8df091faac9852cb7e46ddaf611937a3f9aab/README.md?plain=1#L220
+
+Finding:     OPERATOR_PRIVATE_KEY=[1;3;m0x7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6[0m \
+Secret:      [1;3;m0x7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6[0m
+RuleID:      generic-api-key
+Entropy:     3.679305
+File:        README.md
+Line:        231
+Commit:      38b8df091faac9852cb7e46ddaf611937a3f9aab
+Author:      0xYatha
+Email:       yatha@ihb1.xyz
+Date:        2026-02-15T13:03:47Z
+Fingerprint: 38b8df091faac9852cb7e46ddaf611937a3f9aab:README.md:generic-api-key:231
+Link:        https://github.com/IHB1-Foundation/railbird.fun/blob/38b8df091faac9852cb7e46ddaf611937a3f9aab/README.md?plain=1#L231
+
+Finding:     KEEPER_PRIVATE_KEY=[1;3;m0x47e179ec197488593b187f80a00eb0da91f1b9d0b13f8733639f19c30a34926a[0m \
+Secret:      [1;3;m0x47e179ec197488593b187f80a00eb0da91f1b9d0b13f8733639f19c30a34926a[0m
+RuleID:      generic-api-key
+Entropy:     3.837068
+File:        README.md
+Line:        242
+Commit:      38b8df091faac9852cb7e46ddaf611937a3f9aab
+Author:      0xYatha
+Email:       yatha@ihb1.xyz
+Date:        2026-02-15T13:03:47Z
+Fingerprint: 38b8df091faac9852cb7e46ddaf611937a3f9aab:README.md:generic-api-key:242
+Link:        https://github.com/IHB1-Foundation/railbird.fun/blob/38b8df091faac9852cb7e46ddaf611937a3f9aab/README.md?plain=1#L242
+
+Finding:     AGENT_1_KEY=[1;3;m0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80[0m
+Secret:      [1;3;m0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80[0m
+RuleID:      generic-api-key
+Entropy:     3.852557
+File:        scripts/run-4agents.sh
+Line:        41
+Commit:      38b8df091faac9852cb7e46ddaf611937a3f9aab
+Author:      0xYatha
+Email:       yatha@ihb1.xyz
+Date:        2026-02-15T13:03:47Z
+Fingerprint: 38b8df091faac9852cb7e46ddaf611937a3f9aab:scripts/run-4agents.sh:generic-api-key:41
+Link:        https://github.com/IHB1-Foundation/railbird.fun/blob/38b8df091faac9852cb7e46ddaf611937a3f9aab/scripts/run-4agents.sh#L41
+
+Finding:     AGENT_2_KEY=[1;3;m0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d[0m
+Secret:      [1;3;m0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d[0m
+RuleID:      generic-api-key
+Entropy:     3.798173
+File:        scripts/run-4agents.sh
+Line:        44
+Commit:      38b8df091faac9852cb7e46ddaf611937a3f9aab
+Author:      0xYatha
+Email:       yatha@ihb1.xyz
+Date:        2026-02-15T13:03:47Z
+Fingerprint: 38b8df091faac9852cb7e46ddaf611937a3f9aab:scripts/run-4agents.sh:generic-api-key:44
+Link:        https://github.com/IHB1-Foundation/railbird.fun/blob/38b8df091faac9852cb7e46ddaf611937a3f9aab/scripts/run-4agents.sh#L44
+
+Finding:     AGENT_3_KEY=[1;3;m0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a[0m
+Secret:      [1;3;m0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a[0m
+RuleID:      generic-api-key
+Entropy:     3.924601
+File:        scripts/run-4agents.sh
+Line:        47
+Commit:      38b8df091faac9852cb7e46ddaf611937a3f9aab
+Author:      0xYatha
+Email:       yatha@ihb1.xyz
+Date:        2026-02-15T13:03:47Z
+Fingerprint: 38b8df091faac9852cb7e46ddaf611937a3f9aab:scripts/run-4agents.sh:generic-api-key:47
+Link:        https://github.com/IHB1-Foundation/railbird.fun/blob/38b8df091faac9852cb7e46ddaf611937a3f9aab/scripts/run-4agents.sh#L47
+
+Finding:     AGENT_4_KEY=[1;3;m0x7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6[0m
+Secret:      [1;3;m0x7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6[0m
+RuleID:      generic-api-key
+Entropy:     3.679305
+File:        scripts/run-4agents.sh
+Line:        50
+Commit:      38b8df091faac9852cb7e46ddaf611937a3f9aab
+Author:      0xYatha
+Email:       yatha@ihb1.xyz
+Date:        2026-02-15T13:03:47Z
+Fingerprint: 38b8df091faac9852cb7e46ddaf611937a3f9aab:scripts/run-4agents.sh:generic-api-key:50
+Link:        https://github.com/IHB1-Foundation/railbird.fun/blob/38b8df091faac9852cb7e46ddaf611937a3f9aab/scripts/run-4agents.sh#L50
+
+Finding:     KEEPER_KEY=[1;3;m0x47e179ec197488593b187f80a00eb0da91f1b9d0b13f8733639f19c30a34926a[0m
+Secret:      [1;3;m0x47e179ec197488593b187f80a00eb0da91f1b9d0b13f8733639f19c30a34926a[0m
+RuleID:      generic-api-key
+Entropy:     3.837068
+File:        scripts/run-4agents.sh
+Line:        53
+Commit:      38b8df091faac9852cb7e46ddaf611937a3f9aab
+Author:      0xYatha
+Email:       yatha@ihb1.xyz
+Date:        2026-02-15T13:03:47Z
+Fingerprint: 38b8df091faac9852cb7e46ddaf611937a3f9aab:scripts/run-4agents.sh:generic-api-key:53
+Link:        https://github.com/IHB1-Foundation/railbird.fun/blob/38b8df091faac9852cb7e46ddaf611937a3f9aab/scripts/run-4agents.sh#L53
+
+Finding:     DEPLOYER_KEY=[1;3;m0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80[0m
+Secret:      [1;3;m0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80[0m
+RuleID:      generic-api-key
+Entropy:     3.852557
+File:        scripts/e2e-smoke.sh
+Line:        32
+Commit:      38b8df091faac9852cb7e46ddaf611937a3f9aab
+Author:      0xYatha
+Email:       yatha@ihb1.xyz
+Date:        2026-02-15T13:03:47Z
+Fingerprint: 38b8df091faac9852cb7e46ddaf611937a3f9aab:scripts/e2e-smoke.sh:generic-api-key:32
+Link:        https://github.com/IHB1-Foundation/railbird.fun/blob/38b8df091faac9852cb7e46ddaf611937a3f9aab/scripts/e2e-smoke.sh#L32
+
+Finding:     KEEPER_KEY=[1;3;m0x47e179ec197488593b187f80a00eb0da91f1b9d0b13f8733639f19c30a34926a[0m
+Secret:      [1;3;m0x47e179ec197488593b187f80a00eb0da91f1b9d0b13f8733639f19c30a34926a[0m
+RuleID:      generic-api-key
+Entropy:     3.837068
+File:        scripts/e2e-smoke.sh
+Line:        45
+Commit:      38b8df091faac9852cb7e46ddaf611937a3f9aab
+Author:      0xYatha
+Email:       yatha@ihb1.xyz
+Date:        2026-02-15T13:03:47Z
+Fingerprint: 38b8df091faac9852cb7e46ddaf611937a3f9aab:scripts/e2e-smoke.sh:generic-api-key:45
+Link:        https://github.com/IHB1-Foundation/railbird.fun/blob/38b8df091faac9852cb7e46ddaf611937a3f9aab/scripts/e2e-smoke.sh#L45
+
+Finding:     # Private Key: [1;3;m0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80[0m
+Secret:      [1;3;m0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80[0m
+RuleID:      generic-api-key
+Entropy:     3.852557
+File:        README.md
+Line:        49
+Commit:      02ef6769128622e3ad1316ee46a453f8f414d47b
+Author:      0xYatha
+Email:       yatha@ihb1.xyz
+Date:        2026-02-04T16:07:50Z
+Fingerprint: 02ef6769128622e3ad1316ee46a453f8f414d47b:README.md:generic-api-key:49
+Link:        https://github.com/IHB1-Foundation/railbird.fun/blob/02ef6769128622e3ad1316ee46a453f8f414d47b/README.md?plain=1#L49
+
+Finding:     # Private Key: [1;3;m0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d[0m
+Secret:      [1;3;m0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d[0m
+RuleID:      generic-api-key
+Entropy:     3.798173
+File:        README.md
+Line:        51
+Commit:      02ef6769128622e3ad1316ee46a453f8f414d47b
+Author:      0xYatha
+Email:       yatha@ihb1.xyz
+Date:        2026-02-04T16:07:50Z
+Fingerprint: 02ef6769128622e3ad1316ee46a453f8f414d47b:README.md:generic-api-key:51
+Link:        https://github.com/IHB1-Foundation/railbird.fun/blob/02ef6769128622e3ad1316ee46a453f8f414d47b/README.md?plain=1#L51
+
+Finding:     OPERATOR_PRIVATE_KEY=[1;3;m0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80[0m \
+Secret:      [1;3;m0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80[0m
+RuleID:      generic-api-key
+Entropy:     3.852557
+File:        README.md
+Line:        172
+Commit:      02ef6769128622e3ad1316ee46a453f8f414d47b
+Author:      0xYatha
+Email:       yatha@ihb1.xyz
+Date:        2026-02-04T16:07:50Z
+Fingerprint: 02ef6769128622e3ad1316ee46a453f8f414d47b:README.md:generic-api-key:172
+Link:        https://github.com/IHB1-Foundation/railbird.fun/blob/02ef6769128622e3ad1316ee46a453f8f414d47b/README.md?plain=1#L172
+
+Finding:     OPERATOR_PRIVATE_KEY=[1;3;m0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d[0m \
+Secret:      [1;3;m0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d[0m
+RuleID:      generic-api-key
+Entropy:     3.798173
+File:        README.md
+Line:        183
+Commit:      02ef6769128622e3ad1316ee46a453f8f414d47b
+Author:      0xYatha
+Email:       yatha@ihb1.xyz
+Date:        2026-02-04T16:07:50Z
+Fingerprint: 02ef6769128622e3ad1316ee46a453f8f414d47b:README.md:generic-api-key:183
+Link:        https://github.com/IHB1-Foundation/railbird.fun/blob/02ef6769128622e3ad1316ee46a453f8f414d47b/README.md?plain=1#L183
+
+Finding:     KEEPER_PRIVATE_KEY=[1;3;m0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a[0m \
+Secret:      [1;3;m0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a[0m
+RuleID:      generic-api-key
+Entropy:     3.924601
+File:        README.md
+Line:        194
+Commit:      02ef6769128622e3ad1316ee46a453f8f414d47b
+Author:      0xYatha
+Email:       yatha@ihb1.xyz
+Date:        2026-02-04T16:07:50Z
+Fingerprint: 02ef6769128622e3ad1316ee46a453f8f414d47b:README.md:generic-api-key:194
+Link:        https://github.com/IHB1-Foundation/railbird.fun/blob/02ef6769128622e3ad1316ee46a453f8f414d47b/README.md?plain=1#L194
+
+Finding:     const jwtSecret = "[1;3;mtest-secret-key-that-is-at-least-32-chars-long[0m"
+Secret:      [1;3;mtest-secret-key-that-is-at-least-32-chars-long[0m
+RuleID:      generic-api-key
+Entropy:     3.623560
+File:        services/ownerview/src/middleware/auth.test.ts
+Line:        25
+Commit:      9c545df8958a84814482864088518e6a4237194a
+Author:      0xYatha
+Email:       yatha@ihb1.xyz
+Date:        2026-02-03T23:11:57Z
+Fingerprint: 9c545df8958a84814482864088518e6a4237194a:services/ownerview/src/middleware/auth.test.ts:generic-api-key:25
+Link:        https://github.com/IHB1-Foundation/railbird.fun/blob/9c545df8958a84814482864088518e6a4237194a/services/ownerview/src/middleware/auth.test.ts#L25
+
+Finding:     const TEST_JWT_SECRET = "[1;3;mtest-secret-key-that-is-at-least-32-characters-long[0m"
+Secret:      [1;3;mtest-secret-key-that-is-at-least-32-characters-long[0m
+RuleID:      generic-api-key
+Entropy:     3.618148
+File:        services/ownerview/src/routes/auth.test.ts
+Line:        6
+Commit:      853e8e7b3c0b26d41793d4c5b6d79f0b047ceee8
+Author:      0xYatha
+Email:       yatha@ihb1.xyz
+Date:        2026-02-03T22:27:29Z
+Fingerprint: 853e8e7b3c0b26d41793d4c5b6d79f0b047ceee8:services/ownerview/src/routes/auth.test.ts:generic-api-key:6
+Link:        https://github.com/IHB1-Foundation/railbird.fun/blob/853e8e7b3c0b26d41793d4c5b6d79f0b047ceee8/services/ownerview/src/routes/auth.test.ts#L6
+
+Finding:     const TEST_JWT_SECRET = "[1;3;mtest-secret-key-that-is-at-least-32-characters-long[0m"
+Secret:      [1;3;mtest-secret-key-that-is-at-least-32-characters-long[0m
+RuleID:      generic-api-key
+Entropy:     3.618148
+File:        services/ownerview/src/auth/auth.test.ts
+Line:        9
+Commit:      853e8e7b3c0b26d41793d4c5b6d79f0b047ceee8
+Author:      0xYatha
+Email:       yatha@ihb1.xyz
+Date:        2026-02-03T22:27:29Z
+Fingerprint: 853e8e7b3c0b26d41793d4c5b6d79f0b047ceee8:services/ownerview/src/auth/auth.test.ts:generic-api-key:9
+Link:        https://github.com/IHB1-Foundation/railbird.fun/blob/853e8e7b3c0b26d41793d4c5b6d79f0b047ceee8/services/ownerview/src/auth/auth.test.ts#L9
+

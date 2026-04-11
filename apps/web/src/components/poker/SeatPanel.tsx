@@ -21,6 +21,10 @@ interface SeatPanelProps {
   seat: SeatShape;
   isActor: boolean;
   isButton: boolean;
+  /** G-11: small blind marker */
+  isSB?: boolean;
+  /** G-11: big blind marker */
+  isBB?: boolean;
   isOwner: boolean;
   isHandActive: boolean;
   isWinner?: boolean;
@@ -34,6 +38,8 @@ export function SeatPanel({
   seat,
   isActor,
   isButton,
+  isSB,
+  isBB,
   isOwner,
   isHandActive,
   isWinner,
@@ -75,6 +81,9 @@ export function SeatPanel({
       <div className={styles.seatLabel}>
         <span>Seat {seat.seatIndex}</span>
         {isButton && <span className={styles.dealerChip}>D</span>}
+        {/* G-11: SB/BB blind markers */}
+        {!isButton && isSB && <span className={styles.sbChip} aria-label="Small Blind">SB</span>}
+        {!isButton && isBB && <span className={styles.bbChip} aria-label="Big Blind">BB</span>}
         {isOwner && <span className={styles.youPill}>YOU</span>}
       </div>
 

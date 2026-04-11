@@ -6,6 +6,7 @@ import { GAME_STATES } from "@/lib/types";
 import styles from "./page.module.css";
 import { HeroSection } from "./_components/HeroSection";
 import { LiveTablesGrid } from "./_components/LiveTablesGrid";
+import { FeaturedOfTheDay } from "./_components/FeaturedOfTheDay";
 
 export const dynamic = "force-dynamic";
 
@@ -91,6 +92,16 @@ export default async function LobbyPage() {
       <HeroSection
         stats={{ liveTablesCount: liveTables.length, occupiedSeats, totalHands, livePot }}
         hasFeaturedTable={!!featuredCandidate}
+      />
+
+      {/* G-40: Daily featured section — season label, daily challenge, hottest table */}
+      <FeaturedOfTheDay
+        featuredTable={featuredTable ? {
+          tableAddress: String(featuredTable.tableId),
+          handCount: parseHandId(featuredTable.currentHandId),
+          activePlayers: featuredTable.seats.filter((s) => s.ownerAddress.toLowerCase() !== ZERO_ADDRESS).length,
+          potSize: `${formatChips(featuredTable.currentHand?.pot || "0")} ${CHIP_SYMBOL}`,
+        } : null}
       />
 
       {safeTables.length === 0 && (

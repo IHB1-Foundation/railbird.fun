@@ -177,6 +177,17 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
   const actorSeat = currentHand?.actorSeat ?? null;
   const actorSeatData = actorSeat !== null ? seatByIndex.get(actorSeat) : null;
 
+  // G-11: derive SB/BB seat indices from button position + occupied seats
+  const { sbSeat, bbSeat } = useMemo(() => {
+    const buttonSeat = table.buttonSeat;
+    const occupied = occupiedSeats.map((s) => s.seatIndex).sort((a, b) => a - b);
+    if (occupied.length < 2) return { sbSeat: null, bbSeat: null };
+    const btnPos = occupied.indexOf(buttonSeat);
+    const sbPos = btnPos === -1 ? 0 : (btnPos + 1) % occupied.length;
+    const bbPos = (sbPos + 1) % occupied.length;
+    return { sbSeat: occupied[sbPos], bbSeat: occupied[bbPos] };
+  }, [table.buttonSeat, occupiedSeats]);
+
   const actionsKey = currentHand ? JSON.stringify(currentHand.actions) : null;
   const streetSections = useMemo(() => {
     if (!currentHand || !actionsKey || currentHand.actions.length === 0) {
@@ -456,6 +467,8 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
                   seat={seat}
                   isActor={currentHand?.actorSeat === seat.seatIndex}
                   isButton={table.buttonSeat === seat.seatIndex}
+                  isSB={sbSeat === seat.seatIndex}
+                  isBB={bbSeat === seat.seatIndex}
                   isOwner={ownedSeatIndex === seat.seatIndex}
                   isHandActive={isActive && !!currentHand}
                   isWinner={currentHand?.winnerSeat === seat.seatIndex}

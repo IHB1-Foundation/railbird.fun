@@ -50,6 +50,8 @@ export {
   botActionsTotal,
   botErrorsTotal,
   botCircuitState,
+  authAttemptsTotal,
+  authRateLimitedTotal,
   getMetricsText,
   metricsContentType,
 } from "./metrics.js";

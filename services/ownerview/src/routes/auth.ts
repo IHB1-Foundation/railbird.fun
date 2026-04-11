@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import { randomBytes } from "crypto";
 import { AuthService, AuthError } from "../auth/index.js";
+import { authRateLimiter } from "../middleware/rateLimit.js";
 
 /** Cookie names used by the double-submit CSRF pattern. */
 export const COOKIE_JWT = "jwt";
@@ -21,7 +22,7 @@ export function createAuthRoutes(
    * GET /auth/nonce?address=0x...
    * Generate a nonce for wallet authentication
    */
-  router.get("/nonce", (req: Request, res: Response) => {
+  router.get("/nonce", authRateLimiter, (req: Request, res: Response) => {
     const address = req.query.address as string;
 
     if (!address) {
@@ -56,7 +57,7 @@ export function createAuthRoutes(
    * In cookie mode: sets httpOnly JWT cookie + readable CSRF cookie.
    * In bearer mode: returns { token, address, expiresAt } in JSON.
    */
-  router.post("/verify", async (req: Request, res: Response) => {
+  router.post("/verify", authRateLimiter, async (req: Request, res: Response) => {
     const { address, nonce, signature } = req.body;
 
     if (!address || !nonce || !signature) {

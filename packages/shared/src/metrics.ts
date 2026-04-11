@@ -48,6 +48,28 @@ export const botCircuitState = new Gauge({
 });
 
 /**
+ * Auth attempt counter.
+ * Labels: outcome (success|failure|blocked), path (/auth/nonce|/auth/verify|etc.)
+ */
+export const authAttemptsTotal = new Counter({
+  name: "railbird_auth_attempts_total",
+  help: "Total auth attempts",
+  labelNames: ["outcome", "path"],
+  registers: [registry],
+});
+
+/**
+ * Auth rate-limited request counter.
+ * Labels: path
+ */
+export const authRateLimitedTotal = new Counter({
+  name: "railbird_auth_rate_limited_total",
+  help: "Total auth requests blocked by rate limiter",
+  labelNames: ["path"],
+  registers: [registry],
+});
+
+/**
  * Return Prometheus text format output for all registered metrics.
  */
 export async function getMetricsText(): Promise<string> {

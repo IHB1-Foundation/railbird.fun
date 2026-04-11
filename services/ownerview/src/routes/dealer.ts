@@ -3,6 +3,7 @@ import { Router, type Request, type Response, type NextFunction } from "express"
 import type { Address } from "@playerco/shared";
 import { DealerService, DealerError } from "../dealer/index.js";
 import { EncryptionKeyStore } from "../encryptionKeyStore.js";
+import { dealerRateLimiter } from "../middleware/rateLimit.js";
 
 /**
  * Middleware that validates DEALER_API_KEY on privileged dealer endpoints.
@@ -50,7 +51,8 @@ export function createDealerRoutes(
 ): Router {
   const router = Router();
 
-  // Apply auth middleware to all dealer routes if API key is configured
+  // Apply rate limit and auth middleware to all dealer routes
+  router.use(dealerRateLimiter);
   if (dealerApiKey) {
     router.use(createDealerAuthMiddleware(dealerApiKey));
   }

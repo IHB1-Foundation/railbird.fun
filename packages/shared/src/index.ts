@@ -85,3 +85,5 @@ export { traceIdMiddleware } from "./http/traceId.js";
 // Observability
 export { initSentry } from "./observability/sentry.js";
 export type { SentryInitOptions } from "./observability/sentry.js";
+export { initTracing } from "./observability/tracing.js";
+export type { TracingInitOptions } from "./observability/tracing.js";

@@ -301,7 +301,11 @@
 | D-62 | 모달 포커스 트래핑 | ✅ (ConfirmDialog Tab wrap + ESC, showdown autoFocus) |
 | G-10 | 팟 수집 이펙트 (AnimatedNumber + potCollect) | ✅ |
 | G-11 | 딜러 버튼 물리화 + SB/BB 마커 | ✅ |
+| G-12 | 에이전트 아바타 (CSS gradient + emoji) | ✅ (실제 일러스트 에셋 없이 CSS 구현) |
+| G-13 | AgentCard 트레이딩 카드 컴포넌트 | ✅ |
 | G-40 | 홈페이지 FeaturedOfTheDay | ✅ |
+| G-41 | Rail Bets 예측 미니게임 | ⬜ (BettingPanel 존재, Oracle prediction tab 미구현 — API 필요) |
+| G-42 | 핸드 퀴즈 모드 | ✅ (/quiz 페이지 + UI, 실제 데이터 API 연결 대기 중) |
 | PD-A1 | min-width:0 + .truncate 유틸리티 | ✅ |
 | PD-A2 | 한국어 word-break:keep-all | ✅ |
 | PD-A3 | 모노스페이스 주소 break-all | ✅ |
@@ -354,6 +358,7 @@
 | PD-I2 | CSS module camelCase 통일 | ✅ |
 | PD-I4 | inline style→module 이동 | ✅ |
 | PD-I5 | 헤딩 계층 구조 점검 | ✅ |
+| PD-I3 | CSS module vs global 정책 주석 | ✅ |
 | PD-I9 | dark-mode only 문서화 (globals.css) | ✅ |
 
 ---

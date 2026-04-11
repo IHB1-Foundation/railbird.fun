@@ -402,6 +402,30 @@ export function LiveDashboard({
                 )}
               </div>
 
+              {/* G-17: Win Probability HP bar — stack-based estimate */}
+              {(() => {
+                const occupied = (activeTable.seats ?? []).filter((s) => s.ownerAddress !== "0x0000000000000000000000000000000000000000");
+                if (occupied.length < 2) return null;
+                const [s0, s1] = occupied.slice(0, 2);
+                const v0 = BigInt(s0.stack ?? "0");
+                const v1 = BigInt(s1.stack ?? "0");
+                const total = v0 + v1;
+                const pct0 = total > 0n ? Math.round(Number(v0 * 100n / total)) : 50;
+                return (
+                  <div className={styles.winProbBar} aria-label="Win probability estimate based on stack sizes">
+                    <div className={styles.winProbLabel}>
+                      <span className={styles.winProbLabelLeft}>Seat {s0.seatIndex} {pct0}%</span>
+                      <span style={{ fontSize: "var(--text-2xs)", color: "var(--text-muted)", textTransform: "none", letterSpacing: "normal" }}>WIN PROB</span>
+                      <span className={styles.winProbLabelRight}>{100 - pct0}% Seat {s1.seatIndex}</span>
+                    </div>
+                    <div className={styles.winProbTrack}>
+                      <div className={styles.winProbLeft} style={{ width: `${pct0}%` }} />
+                      <div className={styles.winProbRight} />
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* Seat panels (minimal) */}
               <div className={styles.seatGrid}>
                 {(activeTable.seats ?? []).map((seat) => (

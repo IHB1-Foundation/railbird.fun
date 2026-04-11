@@ -243,6 +243,55 @@
   to   { transform: scale(1); }
 }
 
+/* G-17: Win Probability bar — ESPN-style HP bar */
+.winProbBar {
+  margin: 0.75rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.winProbLabel {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--text-2xs);
+  font-weight: var(--font-semibold);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  font-family: var(--text-mono);
+}
+
+.winProbLabelLeft {
+  color: var(--neon-violet);
+}
+
+.winProbLabelRight {
+  color: var(--neon-crimson);
+}
+
+.winProbTrack {
+  height: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  display: flex;
+  position: relative;
+}
+
+.winProbLeft {
+  background: linear-gradient(90deg, var(--neon-violet), var(--neon-cyan));
+  box-shadow: 2px 0 12px rgba(167, 139, 250, 0.4);
+  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: var(--radius-full) 0 0 var(--radius-full);
+}
+
+.winProbRight {
+  flex: 1;
+  background: linear-gradient(270deg, var(--neon-crimson), var(--neon-magenta));
+  box-shadow: -2px 0 12px rgba(239, 68, 68, 0.4);
+  border-radius: 0 var(--radius-full) var(--radius-full) 0;
+}
+
 /* Showdown overlay */
 .showdownOverlay {
   position: fixed;

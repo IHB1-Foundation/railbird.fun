@@ -26,6 +26,8 @@ import { useTableState } from "./useTableState";
 import { useHoleCards } from "./useHoleCards";
 import { ActionLog } from "./ActionLog";
 import { PlayersPanel } from "./PlayersPanel";
+import { MatchupPoster } from "./MatchupPoster";
+import { TableCoachmarks } from "./TableCoachmarks";
 import Link from "next/link";
 import { Breadcrumb } from "@/components/Breadcrumb";
 import { ShareButton } from "@/components/ShareButton";
@@ -332,6 +334,12 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
         { label: `Table #${tableId}` },
       ]} />
 
+      {/* G-32: Coachmarks — "Show me how" guided tour */}
+      <TableCoachmarks />
+
+      {/* G-19: Matchup poster — shows when 2+ seats occupied */}
+      <MatchupPoster table={table} handId={currentHand?.handId ?? null} />
+
       {/* Header */}
       <div className={styles.tableHeader}>
         <div className={styles.tableHeading}>
@@ -361,6 +369,15 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
           <ShareButton />
         </div>
       </div>
+
+      {/* G-20: ACTION REQUIRED neon banner — shown when a seat is acting */}
+      {actorSeat !== null && actorSeatData && (
+        <div className={styles.actionRequiredBanner} role="status" aria-live="polite">
+          <span className={styles.actionRequiredDot} aria-hidden="true" />
+          <span className={styles.actionRequiredText}>Action Required</span>
+          <span className={styles.actionRequiredDot} aria-hidden="true" />
+        </div>
+      )}
 
       {/* Now Acting bar — outside orbital area for readability */}
       {actorSeat !== null && actorSeatData && (

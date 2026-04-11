@@ -10,6 +10,8 @@ import { WalletButton } from "@/components/WalletButton";
 import { MobileNav } from "@/components/MobileNav";
 import { KeyboardShortcutsHelp } from "@/components/KeyboardShortcutsHelp";
 import { SearchTrigger } from "@/components/SearchTrigger";
+import { LegalFooter } from "@/components/LegalFooter";
+import { ConsentBanner } from "@/components/ConsentBanner";
 
 const roboto = Roboto({
   subsets: ["latin"],
@@ -118,6 +120,8 @@ export default async function RootLayout({
                 Built for HashKey Chain Hackathon · Powered by HashKey Chain
               </p>
             </footer>
+            <LegalFooter />
+            <ConsentBanner />
           </div>
         </Providers>
       </body>

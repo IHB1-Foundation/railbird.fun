@@ -151,29 +151,6 @@ jobs:
           # Run solhint; advisory only until rules are tuned
           solhint 'src/**/*.sol' --ignore-path .solhintignore || true
 
-  # ── Security audit ────────────────────────────────────────────────────────
-  audit:
-    name: Dependency Audit
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v3
-        with:
-          version: 9
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Audit dependencies
-        # Advisory only — known false positives in dev deps shouldn't block PRs
-        run: pnpm audit --audit-level high || true
-
   # ── Docker image builds ───────────────────────────────────────────────────
   docker-builds:
     name: Docker Image Builds

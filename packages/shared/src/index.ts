@@ -26,7 +26,7 @@ export {
 } from "./chainConfig.js";
 
 // Logger
-export { createLogger } from "./logger.js";
+export { createLogger, getTraceId, withTraceId, traceStorage } from "./logger.js";
 export type { LoggerOptions, LogLevel } from "./logger.js";
 
 // Circuit breaker
@@ -78,6 +78,7 @@ export type { Hex } from "./envUtils.js";
 
 // HTTP utilities
 export { parseAllowedOrigins, createCorsMiddleware } from "./http/cors.js";
+export { traceIdMiddleware } from "./http/traceId.js";
 
 // Observability
 export { initSentry } from "./observability/sentry.js";

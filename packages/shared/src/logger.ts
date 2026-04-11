@@ -2,7 +2,27 @@
 // Pretty transport is enabled only in explicit development mode so missing
 // optional local tooling never crashes tests or default CLI runs.
 
+import { AsyncLocalStorage } from "node:async_hooks";
 import pino from "pino";
+
+// ── Trace ID propagation via AsyncLocalStorage ─────────────────────────────
+
+interface TraceContext {
+  traceId: string;
+}
+
+/** Storage for the current trace context (per async chain) */
+export const traceStorage = new AsyncLocalStorage<TraceContext>();
+
+/** Get the trace ID for the current async context, if any */
+export function getTraceId(): string | undefined {
+  return traceStorage.getStore()?.traceId;
+}
+
+/** Run a callback in a new trace context */
+export function withTraceId<T>(traceId: string, fn: () => T): T {
+  return traceStorage.run({ traceId }, fn);
+}
 
 export type LogLevel = "error" | "warn" | "info" | "debug";
 
@@ -46,6 +66,11 @@ export function createLogger({ service, level }: LoggerOptions): pino.Logger {
     serializers: {
       err: pino.stdSerializers.err,
       error: pino.stdSerializers.err,
+    },
+    // Automatically inject traceId from AsyncLocalStorage if present
+    mixin() {
+      const traceId = getTraceId();
+      return traceId ? { traceId } : {};
     },
   });
 }

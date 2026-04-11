@@ -75,3 +75,6 @@ export {
   optionalEnv,
 } from "./envUtils.js";
 export type { Hex } from "./envUtils.js";
+
+// HTTP utilities
+export { parseAllowedOrigins, createCorsMiddleware } from "./http/cors.js";

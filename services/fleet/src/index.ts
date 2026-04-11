@@ -2,7 +2,7 @@
 // Manages pools of operator wallets and spawns agent bot processes on demand.
 
 import express from "express";
-import { createLogger } from "@playerco/shared";
+import { createLogger, parseAllowedOrigins, createCorsMiddleware } from "@playerco/shared";
 import { WalletPool, parseOperatorKeys } from "./pool.js";
 import { ProcessManager } from "./spawner.js";
 import { createFleetRouter } from "./api.js";
@@ -25,15 +25,12 @@ async function main() {
   const app = express();
   app.use(express.json());
 
-  // CORS for web app
-  app.use((_req, res, next) => {
-    res.header("Access-Control-Allow-Origin", process.env.CORS_ORIGIN ?? "*");
-    res.header("Access-Control-Allow-Methods", "GET,POST,DELETE,OPTIONS");
-    res.header("Access-Control-Allow-Headers", "Content-Type");
-    next();
-  });
-
-  app.options("*", (_req, res) => res.sendStatus(204));
+  // CORS — deny-by-default; explicitly allow origins via CORS_ALLOWED_ORIGINS env
+  app.use(createCorsMiddleware(
+    parseAllowedOrigins(process.env.CORS_ALLOWED_ORIGINS),
+    "GET, POST, DELETE, OPTIONS",
+    "Content-Type, Authorization"
+  ));
 
   app.get("/health", (_req, res) => {
     res.json({

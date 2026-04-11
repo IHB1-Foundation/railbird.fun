@@ -3,27 +3,12 @@
 import crypto from "node:crypto";
 import express from "express";
 import { router } from "./routes.js";
-import { createLogger, registry, metricsContentType } from "@playerco/shared";
+import { createLogger, registry, metricsContentType, parseAllowedOrigins, createCorsMiddleware } from "@playerco/shared";
 import { apiLatencyHistogram, wsConnectionsGauge, wsTablesGauge } from "../metrics.js";
 import { getWsManager } from "../ws/index.js";
 import { rateLimiterMiddleware } from "../middleware/rateLimiter.js";
 
 const logger = createLogger({ service: "indexer" });
-
-const DEFAULT_ALLOWED_ORIGINS = [
-  "http://localhost:3000",
-  "http://127.0.0.1:3000",
-  "https://railbird.fun",
-  "https://www.railbird.fun",
-];
-
-function getAllowedOrigins(): Set<string> {
-  const configured = (process.env.CORS_ALLOWED_ORIGINS || "")
-    .split(",")
-    .map((value) => value.trim())
-    .filter(Boolean);
-  return new Set([...DEFAULT_ALLOWED_ORIGINS, ...configured]);
-}
 
 // Normalise route path for metric labels (replace dynamic segments with placeholders)
 function normaliseRoute(path: string): string {
@@ -38,27 +23,16 @@ export function createApp(): express.Application {
   // Setting to `true` trusts any proxy, which can allow IP spoofing via X-Forwarded-For.
   const proxyCount = parseInt(process.env.TRUST_PROXY_HOPS || "1", 10);
   app.set("trust proxy", Number.isNaN(proxyCount) ? 1 : proxyCount);
-  const allowedOrigins = getAllowedOrigins();
 
   // Middleware
   app.use(express.json());
 
-  // CORS
-  app.use((req, res, next) => {
-    const origin = req.headers.origin;
-    if (origin && allowedOrigins.has(origin)) {
-      res.header("Access-Control-Allow-Origin", origin);
-      res.header("Vary", "Origin");
-    }
-    res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Request-ID");
-    res.header("Access-Control-Expose-Headers", "X-Request-ID");
-    if (req.method === "OPTIONS") {
-      res.status(204).end();
-      return;
-    }
-    next();
-  });
+  // CORS — deny-by-default; set CORS_ALLOWED_ORIGINS env in production
+  app.use(createCorsMiddleware(
+    parseAllowedOrigins(process.env.CORS_ALLOWED_ORIGINS),
+    "GET, POST, OPTIONS",
+    "Content-Type, Authorization, X-Request-ID"
+  ));
 
   // X-Request-ID correlation tracing
   app.use((req, res, next) => {

@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import express, { type Express, type Request, type Response, type NextFunction } from "express";
-import { type Address, createLogger } from "@playerco/shared";
+import { type Address, createLogger, parseAllowedOrigins, createCorsMiddleware } from "@playerco/shared";
 
 const logger = createLogger({ service: "ownerview" });
 import { AuthService } from "./auth/index.js";
@@ -13,20 +13,6 @@ import { createAuthMiddleware } from "./middleware/index.js";
 import { createAuthRoutes, createOwnerRoutes, createDealerRoutes, createReasoningRoutes, createTreasuryReasoningRouter, createCommentaryRoutes } from "./routes/index.js";
 import { logMemoryWarning } from "./routes/reasoning.js";
 
-const DEFAULT_ALLOWED_ORIGINS = [
-  "http://localhost:3000",
-  "http://127.0.0.1:3000",
-  "https://railbird.fun",
-  "https://www.railbird.fun",
-];
-
-function getAllowedOrigins(): Set<string> {
-  const configured = (process.env.CORS_ALLOWED_ORIGINS || "")
-    .split(",")
-    .map((value) => value.trim())
-    .filter(Boolean);
-  return new Set([...DEFAULT_ALLOWED_ORIGINS, ...configured]);
-}
 
 export interface AppConfig {
   jwtSecret: string;
@@ -81,26 +67,14 @@ export async function createApp(config: AppConfig): Promise<AppContext> {
   // Use a numeric hop count, not boolean true, to avoid trusting all proxies.
   // Matches the indexer's TRUST_PROXY_HOPS pattern. Default: 1 (single reverse proxy).
   app.set("trust proxy", parseInt(process.env.TRUST_PROXY_HOPS || "1", 10));
-  const allowedOrigins = getAllowedOrigins();
-
   // Middleware
   app.use(express.json());
-  app.use((req: Request, res: Response, next: NextFunction) => {
-    const origin = req.headers.origin;
-    if (origin && allowedOrigins.has(origin)) {
-      res.header("Access-Control-Allow-Origin", origin);
-      res.header("Vary", "Origin");
-      res.header("Access-Control-Allow-Credentials", "true");
-    }
-    res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-CSRF-Token, X-Request-ID");
-    res.header("Access-Control-Expose-Headers", "X-Request-ID");
-    if (req.method === "OPTIONS") {
-      res.status(204).end();
-      return;
-    }
-    next();
-  });
+  // CORS — deny-by-default. Set CORS_ALLOWED_ORIGINS=https://railbird.fun,... in production.
+  app.use(createCorsMiddleware(
+    parseAllowedOrigins(process.env.CORS_ALLOWED_ORIGINS),
+    "GET, POST, OPTIONS",
+    "Content-Type, Authorization, X-CSRF-Token, X-Request-ID"
+  ));
 
   // X-Request-ID correlation tracing
   app.use((req: Request, res: Response, next: NextFunction) => {

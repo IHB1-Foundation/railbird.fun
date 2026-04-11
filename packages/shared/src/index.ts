@@ -82,6 +82,10 @@ export type { Hex } from "./envUtils.js";
 export { parseAllowedOrigins, createCorsMiddleware } from "./http/cors.js";
 export { traceIdMiddleware } from "./http/traceId.js";
 
+// Chain utilities
+export { withRpcRetry } from "./chain/rpcRetry.js";
+export type { RpcRetryOptions } from "./chain/rpcRetry.js";
+
 // Observability
 export { initSentry } from "./observability/sentry.js";
 export type { SentryInitOptions } from "./observability/sentry.js";

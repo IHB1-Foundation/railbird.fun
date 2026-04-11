@@ -5,6 +5,7 @@ import { cn, formatChips, shortenAddress, CHIP_SYMBOL, ZERO_ADDRESS } from "@/li
 import { getAgentProfile } from "@/lib/agentProfiles";
 import type { HoleCardsResponse } from "@/lib/auth";
 import { PokerCard } from "./PokerCard";
+import { AnimatedNumber } from "@/components/AnimatedNumber";
 import styles from "./SeatPanel.module.css";
 
 /** Minimal seat shape required by SeatPanel — allows placeholder seats without tokenAddress. */
@@ -92,7 +93,9 @@ export function SeatPanel({
         <span className={styles.mobileName}>
           {profile ? profile.name : shortenAddress(seat.ownerAddress)}
         </span>
-        <span className={styles.mobileStack}>{formatChips(seat.stack)} {CHIP_SYMBOL}</span>
+        <span className={styles.mobileStack}>
+          <AnimatedNumber value={Number(BigInt(seat.stack) / 10n ** 18n)} suffix={` ${CHIP_SYMBOL}`} duration={600} />
+        </span>
         {isActor && (
           <span className={styles.mobileActingBadge}>ACTING</span>
         )}
@@ -127,8 +130,13 @@ export function SeatPanel({
             {profile.aggressionLabel}
           </div>
         )}
+        {/* G-10: AnimatedNumber counts stack up/down (win/loss) */}
         <div className={styles.seatStack}>
-          {formatChips(seat.stack)} {CHIP_SYMBOL}
+          <AnimatedNumber
+            value={Number(BigInt(seat.stack) / 10n ** 18n)}
+            suffix={` ${CHIP_SYMBOL}`}
+            duration={600}
+          />
         </div>
         {seat.currentBet !== "0" && (
           <div className={styles.seatBet}>

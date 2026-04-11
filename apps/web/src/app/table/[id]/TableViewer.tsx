@@ -22,6 +22,7 @@ import { VrfStatusWidget } from "@/components/poker/VrfStatusWidget";
 import { TimerRing } from "@/components/poker/TimerRing";
 import { SeatPanel } from "@/components/poker/SeatPanel";
 import { ShowdownResultsPanel } from "@/components/poker/ShowdownResultsPanel";
+import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { useTableState } from "./useTableState";
 import { useHoleCards } from "./useHoleCards";
 import { ActionLog } from "./ActionLog";
@@ -447,8 +448,17 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
             </div>
             <div className={styles.tablePotBlock}>
               {currentHand && (
-                <div className={styles.potValue}>
-                  Pot: {formatChips(currentHand.pot)} {CHIP_SYMBOL}
+                <div className={cn(
+                  styles.potValue,
+                  currentHand.winnerSeat !== null && currentHand.winnerSeat !== undefined && styles.potCollect
+                )}>
+                  Pot:{" "}
+                  {/* G-10: AnimatedNumber counts up/down with flash */}
+                  <AnimatedNumber
+                    value={Number(BigInt(currentHand.pot) / 10n ** 18n)}
+                    suffix={` ${CHIP_SYMBOL}`}
+                    duration={800}
+                  />
                 </div>
               )}
               <TimerRing deadline={table.actionDeadline} />

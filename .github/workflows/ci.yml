@@ -294,6 +294,44 @@ jobs:
           echo "=== Agent 0 ===" && cat /tmp/ci-agent0.log 2>/dev/null || true
           echo "=== Agent 1 ===" && cat /tmp/ci-agent1.log 2>/dev/null || true
 
+  # ── Frontend Playwright + a11y tests (T-1603) ────────────────────────────
+  web-e2e:
+    name: Web E2E & Accessibility (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: pnpm --filter @playerco/web exec playwright install chromium --with-deps
+
+      - name: Build shared package
+        run: pnpm --filter @playerco/shared build
+
+      - name: Run Playwright tests
+        run: pnpm --filter @playerco/web test:e2e
+        env:
+          CI: "true"
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report/
+          retention-days: 7
+
   # ── E2E Full Suite (T-1602) — main branch only ────────────────────────────
   # Runs all E2E scenarios: happy-path, 4-seat, timeout, crash-recovery, (reorg skipped).
   # Only runs on pushes to main to avoid slowing down PRs.

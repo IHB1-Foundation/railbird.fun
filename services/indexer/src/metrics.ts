@@ -71,3 +71,15 @@ export const cacheErrorTotal = new Counter({
   labelNames: ["op"],
   registers: [registry],
 });
+
+/**
+ * Total RPC calls emitted to the chain node.
+ * Labels: op (getLogs|getBlockNumber|readContract|batch)
+ * A "batch" op represents a group of readContract calls sent in one HTTP request.
+ */
+export const rpcCallsTotal = new Counter({
+  name: "railbird_rpc_calls_total",
+  help: "Total RPC calls sent to the chain node",
+  labelNames: ["op"],
+  registers: [registry],
+});

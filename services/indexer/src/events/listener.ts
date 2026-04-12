@@ -2,7 +2,7 @@
 
 import { createPublicClient, http, type Log, decodeEventLog, type Address } from "viem";
 import { createLogger, getChainConfig } from "@playerco/shared";
-import { eventsProcessedTotal } from "../metrics.js";
+import { eventsProcessedTotal, rpcCallsTotal } from "../metrics.js";
 
 const logger = createLogger({ service: "indexer" });
 import { pokerTableAbi, playerRegistryAbi, playerVaultAbi, gameStateToString } from "./abis.js";
@@ -65,8 +65,11 @@ export class EventListener {
 
   constructor(config: ListenerConfig) {
     const chainConfig = getChainConfig();
+    // Use HTTP batch transport: multiple readContract calls in the same Promise.all
+    // are automatically combined into a single JSON-RPC batch request, reducing
+    // round trips vs sequential or even concurrent individual calls.
     this.client = createPublicClient({
-      transport: http(chainConfig.rpcUrl),
+      transport: http(chainConfig.rpcUrl, { batch: true }),
     });
     this.config = {
       ...config,
@@ -98,7 +101,13 @@ export class EventListener {
     if (this.running) return;
     this.running = true;
 
-    logger.info({ logBlockRange: this.config.logBlockRange, tableCount: this.config.pokerTableAddresses.length }, "Starting event listener...");
+    logger.info(
+      {
+        logBlockRange: this.config.logBlockRange,
+        tableCount: this.config.pokerTableAddresses.length,
+      },
+      "Starting event listener...",
+    );
     for (const addr of this.config.pokerTableAddresses) {
       await this.seedTableStateFromChain(addr);
     }
@@ -114,7 +123,10 @@ export class EventListener {
       const stateBlock = BigInt(state.last_processed_block);
       if (this.config.replayOnStart) {
         fromBlock = configuredStartBlock;
-        logger.info({ configuredStartBlock: configuredStartBlock.toString(), cursor: stateBlock.toString() }, "Replay mode enabled: starting from configured START_BLOCK");
+        logger.info(
+          { configuredStartBlock: configuredStartBlock.toString(), cursor: stateBlock.toString() },
+          "Replay mode enabled: starting from configured START_BLOCK",
+        );
       } else if (stateBlock > fromBlock) {
         fromBlock = stateBlock;
       }
@@ -130,6 +142,7 @@ export class EventListener {
 
     while (this.running) {
       try {
+        rpcCallsTotal.inc({ op: "getBlockNumber" });
         const latestBlock = await this.client.getBlockNumber();
         let processedAny = false;
 
@@ -155,15 +168,12 @@ export class EventListener {
         }
       } catch (error) {
         consecutiveErrors++;
-        logger.error(
-          { consecutiveErrors, backoffMs, err: error },
-          "Error in event listener"
-        );
+        logger.error({ consecutiveErrors, backoffMs, err: error }, "Error in event listener");
 
         if (consecutiveErrors >= CIRCUIT_BREAKER_THRESHOLD) {
           logger.error(
             { consecutiveErrors, maxBackoffMs: BACKOFF_MAX_MS },
-            "CIRCUIT BREAKER: event listener exceeded consecutive error threshold — manual investigation required"
+            "CIRCUIT BREAKER: event listener exceeded consecutive error threshold — manual investigation required",
           );
         }
 
@@ -179,7 +189,10 @@ export class EventListener {
   }
 
   private async processBlockRange(fromBlock: bigint, toBlock: bigint): Promise<void> {
-    logger.debug({ fromBlock: fromBlock.toString(), toBlock: toBlock.toString() }, "Processing block range");
+    logger.debug(
+      { fromBlock: fromBlock.toString(), toBlock: toBlock.toString() },
+      "Processing block range",
+    );
 
     // Fetch table/registry first, then derive any new vault addresses before vault log query.
     const [tableLogs, registryLogs] = await Promise.all([
@@ -204,6 +217,7 @@ export class EventListener {
 
   private async fetchPokerTableLogs(fromBlock: bigint, toBlock: bigint): Promise<Log[]> {
     const addrs = this.config.pokerTableAddresses;
+    rpcCallsTotal.inc({ op: "getLogs" });
     return this.client.getLogs({
       address: addrs.length === 1 ? addrs[0] : addrs,
       fromBlock,
@@ -212,6 +226,7 @@ export class EventListener {
   }
 
   private async fetchRegistryLogs(fromBlock: bigint, toBlock: bigint): Promise<Log[]> {
+    rpcCallsTotal.inc({ op: "getLogs" });
     return this.client.getLogs({
       address: this.config.playerRegistryAddress,
       fromBlock,
@@ -222,6 +237,7 @@ export class EventListener {
   private async fetchVaultLogs(fromBlock: bigint, toBlock: bigint): Promise<Log[]> {
     const vaultAddresses = Array.from(this.trackedVaultAddresses);
     if (vaultAddresses.length === 0) return [];
+    rpcCallsTotal.inc({ op: "getLogs" });
     return this.client.getLogs({
       address: vaultAddresses.length === 1 ? vaultAddresses[0] : vaultAddresses,
       fromBlock,
@@ -258,109 +274,112 @@ export class EventListener {
           await handlers.handleSeatUpdated(
             log,
             decoded.args as unknown as SeatUpdatedArgs,
-            tableContext
+            tableContext,
           );
           break;
         case "HandStarted":
           await handlers.handleHandStarted(
             log,
             decoded.args as unknown as HandStartedArgs,
-            tableContext
+            tableContext,
           );
           break;
         case "ActionTaken":
           await handlers.handleActionTaken(
             log,
             decoded.args as unknown as ActionTakenArgs,
-            tableContext
+            tableContext,
           );
           break;
         case "PotUpdated":
           await handlers.handlePotUpdated(
             log,
             decoded.args as unknown as PotUpdatedArgs,
-            tableContext
+            tableContext,
           );
           break;
         case "BettingRoundComplete":
           await handlers.handleBettingRoundComplete(
             log,
             decoded.args as unknown as BettingRoundCompleteArgs,
-            tableContext
+            tableContext,
           );
           break;
         case "VRFRequested":
           await handlers.handleVRFRequested(
             log,
             decoded.args as unknown as VRFRequestedArgs,
-            tableContext
+            tableContext,
           );
           break;
         case "CommunityCardsDealt":
           await handlers.handleCommunityCardsDealt(
             log,
             decoded.args as unknown as CommunityCardsDealtArgs,
-            tableContext
+            tableContext,
           );
           break;
         case "HandSettled":
           await handlers.handleHandSettled(
             log,
             decoded.args as unknown as HandSettledArgs,
-            tableContext
+            tableContext,
           );
           break;
         case "ShowdownTimedOut":
           await handlers.handleShowdownTimedOut(
             log,
-            decoded.args as unknown as ShowdownTimedOutArgs
+            decoded.args as unknown as ShowdownTimedOutArgs,
           );
           break;
         case "ForceTimeout":
           await handlers.handleForceTimeout(
             log,
             decoded.args as unknown as ForceTimeoutArgs,
-            tableContext
+            tableContext,
           );
           break;
         case "TournamentWinner":
           await handlers.handleTournamentWinner(
             log,
             decoded.args as unknown as TournamentWinnerArgs,
-            tableContext
+            tableContext,
           );
           break;
         case "CardIntegrityViolation":
           await handlers.handleCardIntegrityViolation(
             log,
             decoded.args as unknown as CardIntegrityViolationArgs,
-            tableContext
+            tableContext,
           );
           break;
         case "HoleCardsRevealed":
           await handlers.handleHoleCardsRevealed(
             log,
             decoded.args as unknown as HoleCardsRevealedArgs,
-            tableContext
+            tableContext,
           );
           break;
         case "DecisionRevealed":
           await handlers.handleDecisionRevealed(
             log,
             decoded.args as unknown as DecisionRevealedArgs,
-            tableContext
+            tableContext,
           );
           break;
         case "DecisionCommitted":
           await handlers.handleDecisionCommitted(
             log,
             decoded.args as unknown as DecisionCommittedArgs,
-            tableContext
+            tableContext,
           );
           break;
       }
     } catch (error) {
-      logger.error({ err: error, blockNumber: log.blockNumber?.toString() }, "Error decoding poker table log");
+      logger.error(
+        { err: error, blockNumber: log.blockNumber?.toString() },
+        "Error decoding poker table log",
+      );
     }
   }
 
@@ -403,7 +422,10 @@ export class EventListener {
           break;
       }
     } catch (error) {
-      logger.error({ err: error, blockNumber: log.blockNumber?.toString() }, "Error decoding registry log");
+      logger.error(
+        { err: error, blockNumber: log.blockNumber?.toString() },
+        "Error decoding registry log",
+      );
     }
   }
 
@@ -421,26 +443,29 @@ export class EventListener {
           await handlers.handleVaultSnapshot(
             log,
             decoded.args as unknown as VaultSnapshotArgs,
-            log.address
+            log.address,
           );
           break;
         case "RebalanceBuy":
           await handlers.handleRebalanceBuy(
             log,
             decoded.args as unknown as RebalanceBuyArgs,
-            log.address
+            log.address,
           );
           break;
         case "RebalanceSell":
           await handlers.handleRebalanceSell(
             log,
             decoded.args as unknown as RebalanceSellArgs,
-            log.address
+            log.address,
           );
           break;
       }
     } catch (error) {
-      logger.error({ err: error, blockNumber: log.blockNumber?.toString() }, "Error decoding vault log");
+      logger.error(
+        { err: error, blockNumber: log.blockNumber?.toString() },
+        "Error decoding vault log",
+      );
     }
   }
 
@@ -583,6 +608,8 @@ export class EventListener {
     const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
     try {
+      // 10 readContract calls batched into one HTTP request via batch transport
+      rpcCallsTotal.inc({ op: "batch" });
       const [
         tableId,
         smallBlind,
@@ -655,26 +682,22 @@ export class EventListener {
       };
       this.tableContextMap.set(tableAddress.toLowerCase(), ctx);
 
-      await upsertTable(
-        ctx.tableId,
-        ctx.contractAddress,
-        ctx.smallBlind,
-        ctx.bigBlind
-      );
+      await upsertTable(ctx.tableId, ctx.contractAddress, ctx.smallBlind, ctx.bigBlind);
 
       const gameState = Number(gameStateRaw);
       const currentHandIdValue = currentHandId as bigint;
       const buttonSeat = Number(buttonSeatRaw);
       const actionDeadline = actionDeadlineRaw as bigint;
       const gameStateString = gameStateToString(gameState);
-      const actionDeadlineDate = actionDeadline > 0n ? new Date(Number(actionDeadline) * 1000) : null;
+      const actionDeadlineDate =
+        actionDeadline > 0n ? new Date(Number(actionDeadline) * 1000) : null;
 
       await updateTableState(
         ctx.tableId,
         gameStateString,
         currentHandIdValue,
         buttonSeat,
-        actionDeadlineDate
+        actionDeadlineDate,
       );
 
       const handInfo = handInfoRaw as readonly [bigint, bigint, bigint, number, number];
@@ -683,7 +706,9 @@ export class EventListener {
       const currentBet = handInfo[2];
       const actorSeat = Number(handInfo[3]);
       const handStateString = gameStateToString(Number(handInfo[4]));
-      const communityCards = (communityCardsRaw as readonly number[]).filter((card) => card !== 255);
+      const communityCards = (communityCardsRaw as readonly number[]).filter(
+        (card) => card !== 255,
+      );
 
       if (handId > 0n || currentHandIdValue > 0n) {
         const effectiveHandId = currentHandIdValue > 0n ? currentHandIdValue : handId;
@@ -694,7 +719,7 @@ export class EventListener {
           buttonSeat,
           ctx.smallBlind,
           ctx.bigBlind,
-          handStateString
+          handStateString,
         );
         await updateHand(ctx.tableId, effectiveHandId, {
           pot,
@@ -713,8 +738,8 @@ export class EventListener {
             abi: tableReadAbi,
             functionName: "getSeat",
             args: [seatIndex],
-          })
-        )
+          }),
+        ),
       );
 
       let occupiedSeats = 0;
@@ -733,17 +758,26 @@ export class EventListener {
           seat.operator,
           seat.stack,
           seat.isActive,
-          seat.currentBet
+          seat.currentBet,
         );
         if (seat.owner.toLowerCase() !== ZERO_ADDRESS) occupiedSeats += 1;
       }
 
       logger.info(
-        { tableId: ctx.tableId.toString(), state: gameStateString, hand: currentHandIdValue.toString(), occupiedSeats, maxSeats },
-        "Seeded table snapshot from chain"
+        {
+          tableId: ctx.tableId.toString(),
+          state: gameStateString,
+          hand: currentHandIdValue.toString(),
+          occupiedSeats,
+          maxSeats,
+        },
+        "Seeded table snapshot from chain",
       );
     } catch (error) {
-      logger.warn({ err: error }, "Failed to seed table snapshot from chain (continuing with log replay)");
+      logger.warn(
+        { err: error },
+        "Failed to seed table snapshot from chain (continuing with log replay)",
+      );
     }
   }
 }

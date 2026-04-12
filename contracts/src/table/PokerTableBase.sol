@@ -107,6 +107,26 @@ abstract contract PokerTableBase {
     event DealerUpdated(address indexed oldDealer, address indexed newDealer);
     event TablePaused(address indexed by);
     event TableUnpaused(address indexed by);
+    /// @notice Emitted at settlement when the dealer committed a seed but never revealed it.
+    event ShuffleUnverified(uint256 indexed handId);
+    /// @notice Emitted when the shuffle is verified successfully.
+    event ShuffleVerified(uint256 indexed handId, bytes32 dealerSeed);
+    /// @notice Emitted when shuffle verification reveals a card integrity violation.
+    event ShuffleIntegrityViolation(uint256 indexed handId, bytes32 dealerSeed);
+    /// @notice Emitted when a seat registers its ECIES public key.
+    event EncryptionKeyRegistered(uint8 indexed seatIndex, bytes pubKey);
+    /// @notice Emitted when a dealer seed is committed to chain.
+    event DealerSeedCommitted(uint256 indexed handId, bytes32 commitment);
+    /// @notice Emitted when a dealer seed is revealed.
+    event DealerSeedRevealed(uint256 indexed handId, bytes32 seed);
+    /// @notice Emitted when an AI agent commits their decision hash before acting.
+    event DecisionCommitted(uint256 indexed handId, uint8 indexed seatIndex, bytes32 commitHash, bytes32 reasoningHash);
+    /// @notice Emitted when an AI agent reveals their decision after the hand is settled.
+    event DecisionRevealed(uint256 indexed handId, uint8 indexed seatIndex, string action, string reasoning);
+    /// @notice Emitted when a seat owner requests an emergency withdrawal.
+    event EmergencyWithdrawRequested(uint8 indexed seatIndex, uint256 unlockTime);
+    /// @notice Emitted when an emergency withdrawal is executed.
+    event EmergencyWithdrawExecuted(uint8 indexed seatIndex, address indexed recipient, uint256 amount);
 
     // ============ Custom Errors ============
     error OneActionPerBlock();
@@ -159,8 +179,36 @@ abstract contract PokerTableBase {
     /// @notice True once a hand has been settled.
     mapping(uint256 => bool) public handSettledFlag;
 
+    // ============ Shuffle Verification ============
+    /// @notice Optional dealer seed commitment per hand (0 = not committed).
+    /// @dev Exposed as both `dealerSeedCommitments` and `dealerSeedCommits` for API compatibility.
+    mapping(uint256 => bytes32) public dealerSeedCommitments;
+    /// @notice True if the dealer revealed their seed before settlement.
+    mapping(uint256 => bool) public dealerSeedRevealed;
+    /// @notice Actual dealer seed revealed per hand (0 = not revealed).
+    mapping(uint256 => bytes32) public dealerSeedReveals;
+
+    // ============ Encryption Key Registry ============
+    /// @notice ECIES public keys per seat for hole card encryption.
+    mapping(uint8 => bytes) public encryptionKeys;
+
+    // ============ AI Decision Transparency ============
+    /// @notice Commit hash per (handId, seatIndex) for AI decision transparency.
+    mapping(uint256 => mapping(uint8 => bytes32)) public decisionCommits;
+    /// @notice Reasoning hash per (handId, seatIndex) for storing reasoning JSON hash.
+    mapping(uint256 => mapping(uint8 => bytes32)) public decisionReasoningHashes;
+
+    // ============ Emergency Withdrawal ============
+    uint256 public constant EMERGENCY_TIMELOCK = 7 days;
+    /// @notice Timestamp when the emergency withdraw was requested for each seat (0 = not requested).
+    mapping(uint8 => uint256) public emergencyWithdrawRequestedAt;
+
     address public admin;
     address public dealer;
+    /// @notice Optional KYC Soul-Bound Token gate address (address(0) = disabled).
+    address public kycSBT;
+    /// @notice Optional PlayerRegistry gate (address(0) = no gate).
+    address public playerRegistry;
 
     // ============ Pause State ============
     bool public paused;
@@ -202,6 +250,76 @@ abstract contract PokerTableBase {
     modifier onlyDealer() { require(msg.sender == dealer, "DL2"); _; }
     modifier whenNotPaused() { require(!paused, "PA"); _; }
 
+    // ============ Convenience View Helpers ============
+
+    /// @notice Alias for `dealerSeedCommitments` (API compatibility).
+    function dealerSeedCommits(uint256 handId) external view returns (bytes32) {
+        return dealerSeedCommitments[handId];
+    }
+
+    /// @notice Returns a seat's full state. Convenience wrapper over the public `seats` array getter.
+    function getSeat(uint8 i) external view returns (Seat memory) {
+        return seats[i];
+    }
+
+    /// @notice Returns the five most-queried fields from the current hand + current game state.
+    function getHandInfo() external view returns (
+        uint256   handId,
+        uint256   pot,
+        uint256   currentBet,
+        uint8     actorSeat,
+        GameState state
+    ) {
+        Hand storage h = currentHand;
+        return (h.handId, h.pot, h.currentBet, h.actorSeat, gameState);
+    }
+
+    /// @notice Returns true if seat `i` could legally check right now.
+    function canCheck(uint8 i) external view returns (bool) {
+        return seats[i].isActive && seats[i].currentBet == currentHand.currentBet;
+    }
+
+    /// @notice Returns how many chips seat `i` still needs to put in to call the current bet.
+    ///         0 if the seat is already at the current bet or is all-in.
+    function getAmountToCall(uint8 i) external view returns (uint256) {
+        if (seats[i].isAllIn || !seats[i].isActive) return 0;
+        uint256 owed = currentHand.currentBet;
+        uint256 already = seats[i].currentBet;
+        return owed > already ? owed - already : 0;
+    }
+
+    /// @notice Returns a copy of the five community cards (UNDEALT = 255 for undealt positions).
+    function getCommunityCards() external view returns (uint8[5] memory) {
+        return communityCards;
+    }
+
+    /// @notice Returns the two revealed hole cards for a seat in a given hand.
+    function getRevealedHoleCards(uint256 handId, uint8 seatIndex)
+        external view returns (uint8 card1, uint8 card2)
+    {
+        uint8[2] storage cards = _revealedHoleCards[handId][seatIndex];
+        return (cards[0], cards[1]);
+    }
+
+    /// @notice Returns true when every seat slot (0 .. numSeats-1) is occupied.
+    function allSeatsFilled() external view returns (bool) {
+        for (uint8 i = 0; i < numSeats; i++) {
+            if (seats[i].owner == address(0)) return false;
+        }
+        return true;
+    }
+
+    /// @notice Returns the number of currently active side pots.
+    function getSidePotCount() external view returns (uint8) {
+        return currentHand.sidePotCount;
+    }
+
+    /// @notice Returns the amount and eligibility array for a specific side pot.
+    function getSidePot(uint8 index) external view returns (uint256 amount, bool[MAX_SEATS] memory eligible) {
+        SidePot storage sp = sidePots[index];
+        return (sp.amount, sp.eligible);
+    }
+
     // ============ Abstract cross-module declarations ============
     // Declared here so sibling abstract contracts can call each other's implementations.
     function _settleHand(uint8 winnerSeat) internal virtual;
@@ -232,7 +350,7 @@ abstract contract PokerTableBase {
         require(_showdownTimeout >= 1 minutes && _showdownTimeout <= 60 minutes, "P8");
         require(_numSeats >= 2 && _numSeats <= MAX_SEATS, "P9");
         require(_dealer != address(0), "P10");
-        (_kycSBT);
+        kycSBT = _kycSBT;
         tableId = _tableId;
         smallBlind = _smallBlind;
         bigBlind = _bigBlind;

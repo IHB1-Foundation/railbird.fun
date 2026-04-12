@@ -71,6 +71,23 @@ jobs:
           fi
           echo "ABIs are up to date."
 
+  # ── Foundry Invariant Tests (T-1601) ─────────────────────────────────────
+  contracts-invariant:
+    name: Contracts (Invariant Tests)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Run invariant tests (runs=256, depth=15)
+        run: cd contracts && forge test --match-path "test/invariant/*.t.sol" -vv
+
   # ── TypeScript type checking ──────────────────────────────────────────────
   typecheck:
     name: TypeScript Type Check

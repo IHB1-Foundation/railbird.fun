@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import "./PokerTableBase.sol";
 import "../HandEvaluator.sol";
+import "../ShuffleVerifier.sol";
 
 /**
  * @title SettlementEngine
@@ -12,7 +13,119 @@ import "../HandEvaluator.sol";
  */
 abstract contract SettlementEngine is PokerTableBase {
 
+    // ============ AI Decision Transparency ============
+
+    /**
+     * @notice AI agent commits their decision hash before acting.
+     *         Allows post-hand verification that the agent acted as committed.
+     * @param seatIndex   Seat the agent controls.
+     * @param commitHash  keccak256(abi.encode(handId, seatIndex, action, reasoning, salt))
+     * @param reasoningHash Optional hash of the full reasoning JSON (0 = not provided).
+     */
+    function commitDecision(uint8 seatIndex, bytes32 commitHash, bytes32 reasoningHash) external {
+        require(seatIndex < numSeats, "S1");
+        require(
+            msg.sender == seats[seatIndex].operator || msg.sender == seats[seatIndex].owner,
+            "Not operator"
+        );
+        require(commitHash != bytes32(0), "Empty commitment");
+        uint256 handId = currentHandId;
+        decisionCommits[handId][seatIndex] = commitHash;
+        if (reasoningHash != bytes32(0)) {
+            decisionReasoningHashes[handId][seatIndex] = reasoningHash;
+        }
+        emit DecisionCommitted(handId, seatIndex, commitHash, reasoningHash);
+    }
+
+    /**
+     * @notice Reveal decision after hand is settled for transparency verification.
+     */
+    function revealDecision(
+        uint256 handId,
+        uint8 seatIndex,
+        string calldata action,
+        string calldata reasoning,
+        bytes32 salt
+    ) external {
+        require(handSettledFlag[handId], "Hand not settled");
+        require(seatIndex < numSeats, "S1");
+        bytes32 stored = decisionCommits[handId][seatIndex];
+        require(stored != bytes32(0), "No commitment found");
+        bytes32 expected = keccak256(abi.encode(handId, seatIndex, action, reasoning, salt));
+        require(expected == stored, "Commitment mismatch");
+        emit DecisionRevealed(handId, seatIndex, action, reasoning);
+    }
+
+    /// @notice Returns the stored reasoning hash for a given hand/seat.
+    function getReasoningHash(uint256 handId, uint8 seatIndex) external view returns (bytes32) {
+        return decisionReasoningHashes[handId][seatIndex];
+    }
+
+    // ============ Dealer Seed Commit/Reveal ============
+
+    /**
+     * @notice Dealer reveals their shuffle seed, allowing anyone to verify the shuffle.
+     *         Must be called before settlement to avoid ShuffleUnverified.
+     */
+    function revealDealerSeed(uint256 handId, bytes32 seed) external onlyDealer {
+        require(dealerSeedCommitments[handId] != bytes32(0), "No commitment");
+        require(
+            keccak256(abi.encodePacked(seed)) == dealerSeedCommitments[handId],
+            "Seed mismatch"
+        );
+        dealerSeedRevealed[handId] = true;
+        dealerSeedReveals[handId] = seed;
+        emit DealerSeedRevealed(handId, seed);
+    }
+
+    /**
+     * @notice Verify the shuffle at showdown using the dealer seed and VRF randomness.
+     *         Emits ShuffleVerified or ShuffleIntegrityViolation.
+     */
+    function verifyShuffleAtShowdown(
+        uint256 handId,
+        uint8 seatCount,
+        SeatReveal[] calldata reveals,
+        uint256 vrfRandomness
+    ) external {
+        require(dealerSeedReveals[handId] != bytes32(0), "Seed not revealed");
+        bytes32 seed = dealerSeedReveals[handId];
+
+        bool verified = ShuffleVerifier.verifyShuffleAndHoleCards(
+            vrfRandomness,
+            seed,
+            seatCount,
+            handId,
+            reveals
+        );
+
+        if (verified) {
+            emit ShuffleVerified(handId, seed);
+        } else {
+            emit ShuffleIntegrityViolation(handId, seed);
+        }
+    }
+
+    /**
+     * @notice Dealer optionally commits a seed hash before a hand starts.
+     *         If committed but not revealed before settlement, the table is auto-paused
+     *         and `ShuffleUnverified` is emitted as a hard-enforcement signal.
+     */
+    function submitDealerSeedCommit(uint256 handId, bytes32 commitment) external onlyDealer {
+        require(handId == currentHandId, "H1");
+        require(commitment != bytes32(0), "H3");
+        dealerSeedCommitments[handId] = commitment;
+        emit DealerSeedCommitted(handId, commitment);
+    }
+
     function _postSettlementCleanup(uint256 handId, uint8 winner, uint256 potAmount) internal {
+        // Shuffle verification enforcement: if the dealer committed a seed but never
+        // revealed it, emit a warning event and pause the table.
+        if (dealerSeedCommitments[handId] != bytes32(0) && !dealerSeedRevealed[handId]) {
+            emit ShuffleUnverified(handId);
+            paused = true;
+        }
+
         emit HandSettled(handId, winner, potAmount);
         handWinner[handId] = winner;
         handSettledFlag[handId] = true;

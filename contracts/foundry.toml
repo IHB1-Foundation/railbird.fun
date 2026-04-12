@@ -4,6 +4,7 @@ out = "out"
 libs = ["lib"]
 solc = "0.8.24"
 via_ir = true
+skip = ["script/deprecated/**"]
 
 # Deploy profile: optimizer on (OP Stack 24KB limit, via_ir helps)
 [profile.deploy]
@@ -38,6 +39,11 @@ hashkey-testnet = { key = "placeholder", url = "https://testnet-explorer.hsk.xyz
 hashkey-mainnet = { key = "placeholder", url = "https://explorer.hsk.xyz/api" }
 # Kaiascan verification (legacy — set KAIASCAN_API_KEY in env when verifying)
 kaia-testnet = { key = "${KAIASCAN_API_KEY}", url = "https://api-kairos.kaiascan.io" }
+
+[invariant]
+runs  = 256
+depth = 15
+fail_on_revert = false
 
 [fmt]
 line_length = 120

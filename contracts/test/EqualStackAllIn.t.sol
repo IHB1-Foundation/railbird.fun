@@ -125,7 +125,7 @@ contract EqualStackAllInTest is Test {
 
         // ── Pot check ────────────────────────────────────────────────────────
         // Both players put in exactly EQUAL_STACK = 100 each → pot = 200
-        (, uint256 pot,,, ) = pokerTable.getHandInfo();
+        (, uint256 pot,,,) = pokerTable.getHandInfo();
         assertEq(pot, EQUAL_STACK * 2, "Pot must equal 2x equal stack (no side pot)");
 
         // ── Community cards (auto-advanced since all-in) ─────────────────────

@@ -3,6 +3,10 @@ pragma solidity ^0.8.24;
 
 import "./PokerTableBase.sol";
 
+interface IPlayerRegistry {
+    function isRegistered(address agent) external view returns (bool);
+}
+
 /**
  * @title SeatManager
  * @notice Seat registration, top-up, cash-out, emergency withdrawal, encryption keys,
@@ -13,6 +17,51 @@ abstract contract SeatManager is PokerTableBase {
     using SafeTransfer for address;
 
     // ============ Admin Functions ============
+
+    /**
+     * @notice Register the ECIES public key for a seat so the dealer can encrypt hole cards.
+     *         Accepts both compressed (33 bytes) and uncompressed (65 bytes) keys.
+     */
+    function registerEncryptionKey(uint8 seatIndex, bytes calldata pubKey) external {
+        require(seatIndex < numSeats, "S1");
+        Seat storage seat = seats[seatIndex];
+        require(seat.owner != address(0), "S8");
+        require(msg.sender == seat.owner || msg.sender == seat.operator, "S9");
+        require(
+            (pubKey.length == 33 && (pubKey[0] == 0x02 || pubKey[0] == 0x03)) ||
+            (pubKey.length == 65 && pubKey[0] == 0x04),
+            "Invalid public key"
+        );
+        encryptionKeys[seatIndex] = pubKey;
+        emit EncryptionKeyRegistered(seatIndex, pubKey);
+    }
+
+    /// @notice Returns the registered ECIES public key for a seat.
+    function getEncryptionKey(uint8 seatIndex) external view returns (bytes memory) {
+        return encryptionKeys[seatIndex];
+    }
+
+    function setPlayerRegistry(address _registry) external {
+        require(msg.sender == admin, "Not admin");
+        playerRegistry = _registry;
+    }
+
+    function setVRFAdapter(address _newVRF) external {
+        require(msg.sender == admin, "Not admin");
+        require(_newVRF != address(0), "Invalid VRF adapter");
+        vrfAdapter = _newVRF;
+    }
+
+    function setBlinds(uint256 _smallBlind, uint256 _bigBlind) external {
+        require(msg.sender == admin, "Not admin");
+        require(_bigBlind >= _smallBlind, "Big blind must be >= small blind");
+        require(
+            gameState == GameState.WAITING_FOR_SEATS || gameState == GameState.SETTLED,
+            "Cannot update blinds mid-hand"
+        );
+        smallBlind = _smallBlind;
+        bigBlind = _bigBlind;
+    }
 
     function setAdmin(address _newAdmin) external onlyAdmin {
         require(_newAdmin != address(0), "A1");
@@ -50,6 +99,9 @@ abstract contract SeatManager is PokerTableBase {
         require(seats[seatIndex].owner == address(0), "S2");
         require(owner != address(0), "S3");
         require(buyIn >= bigBlind * 10, "S4");
+        if (playerRegistry != address(0)) {
+            require(IPlayerRegistry(playerRegistry).isRegistered(owner), "Agent not registered in PlayerRegistry");
+        }
         address(chipToken).safeTransferFrom(msg.sender, address(this), buyIn);
 
         address op = operator == address(0) ? owner : operator;
@@ -94,6 +146,108 @@ abstract contract SeatManager is PokerTableBase {
 
         emit SeatUpdated(seatIndex, address(0), address(0), 0);
         emit SeatClosed(seatIndex, seatOwner, payoutRecipient, payoutAmount);
+    }
+
+    /**
+     * @notice Add chips to a seat's stack without leaving and re-registering.
+     *         Callable by the seat owner between hands.
+     */
+    function topUpSeat(uint8 seatIndex, uint256 amount) external {
+        require(
+            gameState == GameState.WAITING_FOR_SEATS || gameState == GameState.SETTLED,
+            "S7"
+        );
+        require(seatIndex < numSeats, "S1");
+        Seat storage seat = seats[seatIndex];
+        require(seat.owner != address(0), "S8");
+        require(msg.sender == seat.owner, "S9");
+        require(amount > 0, "S11");
+
+        address(chipToken).safeTransferFrom(msg.sender, address(this), amount);
+        seat.stack += amount;
+
+        emit SeatUpdated(seatIndex, seat.owner, seat.operator, seat.stack);
+    }
+
+    /**
+     * @notice Partially withdraw chips from a seat without removing it.
+     *         The seat remains registered with a reduced (possibly zero) stack.
+     *         Only callable when no hand is in progress.
+     * @param seatIndex Seat to withdraw from.
+     * @param amount    Chip amount to withdraw (must be <= seat.stack).
+     * @param recipient Destination address for chips.
+     */
+    function cashOutSeat(uint8 seatIndex, uint256 amount, address recipient) external {
+        require(
+            gameState == GameState.WAITING_FOR_SEATS || gameState == GameState.SETTLED,
+            "S7"
+        );
+        require(seatIndex < numSeats, "S1");
+
+        Seat storage seat = seats[seatIndex];
+        require(seat.owner != address(0), "S8");
+        require(msg.sender == seat.owner, "S9");
+        require(amount <= seat.stack, "S10");
+
+        address payoutRecipient = recipient == address(0) ? seat.owner : recipient;
+        seat.stack -= amount;
+
+        if (amount > 0) {
+            address(chipToken).safeTransfer(payoutRecipient, amount);
+        }
+
+        emit SeatUpdated(seatIndex, seat.owner, seat.operator, seat.stack);
+    }
+
+    // ============ Emergency Withdrawal ============
+
+    /**
+     * @notice Request an emergency withdrawal for a stuck/paused table.
+     *         Only callable by the seat owner when the table is paused or VRF has timed out.
+     *         Starts a 7-day timelock.
+     */
+    function requestEmergencyWithdraw(uint8 seatIndex) external {
+        require(seatIndex < numSeats, "S1");
+        Seat storage seat = seats[seatIndex];
+        require(seat.owner != address(0), "S8");
+        require(msg.sender == seat.owner, "Not seat owner");
+        require(
+            paused || (
+                pendingVRFRequestId != 0 &&
+                block.timestamp > vrfRequestTimestamp + VRF_TIMEOUT
+            ),
+            "Table not stuck or paused"
+        );
+        uint256 unlockTime = block.timestamp + EMERGENCY_TIMELOCK;
+        emergencyWithdrawRequestedAt[seatIndex] = block.timestamp;
+        emit EmergencyWithdrawRequested(seatIndex, unlockTime);
+    }
+
+    /**
+     * @notice Execute a previously requested emergency withdrawal after the timelock.
+     */
+    function executeEmergencyWithdraw(uint8 seatIndex, address recipient) external {
+        require(seatIndex < numSeats, "S1");
+        Seat storage seat = seats[seatIndex];
+        require(seat.owner != address(0), "S8");
+        require(msg.sender == seat.owner, "Not seat owner");
+
+        uint256 requestedAt = emergencyWithdrawRequestedAt[seatIndex];
+        require(requestedAt != 0, "No request");
+        require(block.timestamp >= requestedAt + EMERGENCY_TIMELOCK, "Timelock not expired");
+
+        uint256 amount = seat.stack;
+        address payoutRecipient = recipient == address(0) ? seat.owner : recipient;
+
+        delete seats[seatIndex];
+        emergencyWithdrawRequestedAt[seatIndex] = 0;
+
+        if (amount > 0) {
+            address(chipToken).safeTransfer(payoutRecipient, amount);
+        }
+
+        emit EmergencyWithdrawExecuted(seatIndex, payoutRecipient, amount);
+        emit SeatUpdated(seatIndex, address(0), address(0), 0);
     }
 
     // ============ Internal Seat Helpers ============

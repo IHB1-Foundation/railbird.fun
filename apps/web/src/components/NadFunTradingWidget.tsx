@@ -14,13 +14,25 @@
  */
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { createPublicClient, createWalletClient, custom, http, isAddress, parseUnits, formatUnits, type Address } from "viem";
+import {
+  createPublicClient,
+  createWalletClient,
+  custom,
+  http,
+  isAddress,
+  parseUnits,
+  formatUnits,
+  type Address,
+} from "viem";
 import { useAuth } from "@/lib/auth";
 import styles from "./NadFunTradingWidget.module.css";
 
 // ─── Error mapping ──────────────────────────────────────────────────────────
 const ERROR_MAP: Array<[RegExp, string]> = [
-  [/slippage|INSUFFICIENT_OUTPUT/i, "Slippage exceeded — try increasing slippage tolerance or reducing amount."],
+  [
+    /slippage|INSUFFICIENT_OUTPUT/i,
+    "Slippage exceeded — try increasing slippage tolerance or reducing amount.",
+  ],
   [/locked|LOCKED/i, "This token is currently locked and cannot be traded."],
   [/deadline|EXPIRED/i, "Transaction deadline passed — try again."],
   [/insufficient.*balance|INSUFFICIENT_BALANCE/i, "Insufficient token balance for this trade."],
@@ -200,7 +212,7 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
   const [txLoading, setTxLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
-  const [txStatus, setTxStatus] = useState<"submitted" | "confirming" | null>(null);
+  const [_txStatus, setTxStatus] = useState<"submitted" | "confirming" | null>(null);
 
   const lensAddressRaw = getLensAddress();
   const bondingRouterRaw = getBondingRouterAddress();
@@ -209,9 +221,12 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
 
   // Detect any malformed (set but invalid) address env vars.
   const configErrors: string[] = [];
-  if (lensAddressRaw === "INVALID") configErrors.push("NEXT_PUBLIC_NADFUN_LENS_ADDRESS is malformed");
-  if (bondingRouterRaw === "INVALID") configErrors.push("NEXT_PUBLIC_NADFUN_BONDING_ROUTER_ADDRESS is malformed");
-  if (dexRouterRaw === "INVALID") configErrors.push("NEXT_PUBLIC_NADFUN_DEX_ROUTER_ADDRESS is malformed");
+  if (lensAddressRaw === "INVALID")
+    configErrors.push("NEXT_PUBLIC_NADFUN_LENS_ADDRESS is malformed");
+  if (bondingRouterRaw === "INVALID")
+    configErrors.push("NEXT_PUBLIC_NADFUN_BONDING_ROUTER_ADDRESS is malformed");
+  if (dexRouterRaw === "INVALID")
+    configErrors.push("NEXT_PUBLIC_NADFUN_DEX_ROUTER_ADDRESS is malformed");
   if (wmonAddressRaw === "INVALID") configErrors.push("NEXT_PUBLIC_WMON_ADDRESS is malformed");
 
   // After validation, treat "INVALID" as null so the rest of the component is typed correctly.
@@ -223,16 +238,19 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
   const slippageWarning = useMemo(() => {
     const pct = slippageBps / 100;
     if (pct > 49) return { level: "error" as const, msg: "Maximum slippage is 49%" };
-    if (pct > 10) return { level: "warn" as const, msg: "High slippage increases risk of unfavorable execution" };
-    if (pct < 0.5) return { level: "warn" as const, msg: "Low slippage may cause transaction to fail" };
+    if (pct > 10)
+      return {
+        level: "warn" as const,
+        msg: "High slippage increases risk of unfavorable execution",
+      };
+    if (pct < 0.5)
+      return { level: "warn" as const, msg: "Low slippage may cause transaction to fail" };
     return null;
   }, [slippageBps]);
 
   const isConfigured = !!lensAddress && configErrors.length === 0;
   // Graduated stage also requires WMON_ADDRESS for the swap path
-  const isTradeable =
-    stage === "bonding_curve" ||
-    (stage === "graduated" && !!wmonAddress);
+  const isTradeable = stage === "bonding_curve" || (stage === "graduated" && !!wmonAddress);
   const routerAddress = stage === "graduated" ? dexRouter : bondingRouter;
 
   // ── Fetch token stage ────────────────────────────────────────────────────
@@ -270,7 +288,11 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
     const id = setInterval(() => {
       const left = Math.max(0, Math.ceil((quoteExpiresAt - Date.now()) / 1000));
       setQuoteSecondsLeft(left);
-      if (left === 0) { setQuote(null); setQuoteExpiresAt(null); setQuoteExpired(true); }
+      if (left === 0) {
+        setQuote(null);
+        setQuoteExpiresAt(null);
+        setQuoteExpired(true);
+      }
     }, 500);
     return () => clearInterval(id);
   }, [quoteExpiresAt]);
@@ -429,7 +451,13 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
             address: routerAddress,
             abi: DEX_ROUTER_ABI,
             functionName: "swapExactTokensForETH",
-            args: [amountWei, minOut, [tokenAddress as Address, wmonAddress], address as Address, deadline],
+            args: [
+              amountWei,
+              minOut,
+              [tokenAddress as Address, wmonAddress],
+              address as Address,
+              deadline,
+            ],
           });
         }
       }
@@ -440,11 +468,26 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
       const raw = err instanceof Error ? err.message : "Transaction failed";
       const mapped = mapContractError(raw);
       // If not specifically mapped, use a generic catch-all
-      setError(mapped !== raw ? mapped : "Transaction failed. Please try again or adjust your slippage.");
+      setError(
+        mapped !== raw ? mapped : "Transaction failed. Please try again or adjust your slippage.",
+      );
     } finally {
       setTxLoading(false);
     }
-  }, [isConnected, address, routerAddress, isTradeable, amountInput, deadlineMinutes, direction, slippageBps, stage, tokenAddress, lensAddress, wmonAddress]);
+  }, [
+    isConnected,
+    address,
+    routerAddress,
+    isTradeable,
+    amountInput,
+    deadlineMinutes,
+    direction,
+    slippageBps,
+    stage,
+    tokenAddress,
+    lensAddress,
+    wmonAddress,
+  ]);
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -552,9 +595,14 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
               type="text"
               inputMode="decimal"
               value={amountInput}
-              onChange={(e) => { setAmountInput(e.target.value); setQuote(null); }}
+              onChange={(e) => {
+                setAmountInput(e.target.value);
+                setQuote(null);
+              }}
               placeholder={direction === "buy" ? "e.g. 0.1" : "e.g. 100"}
-              aria-label={direction === "buy" ? "Amount of MON to spend" : "Amount of tokens to sell"}
+              aria-label={
+                direction === "buy" ? "Amount of MON to spend" : "Amount of tokens to sell"
+              }
             />
           </div>
 
@@ -563,7 +611,13 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
             <div className={`${styles.nadfunField} ${styles.nadfunFieldSm}`}>
               <label className={styles.nadfunLabel} htmlFor="nadfun-slippage">
                 Slippage (%)
-                <span className={styles.nadfunSlippageTip} title="Maximum price difference allowed. 1% is standard."> ⓘ</span>
+                <span
+                  className={styles.nadfunSlippageTip}
+                  title="Maximum price difference allowed. 1% is standard."
+                >
+                  {" "}
+                  ⓘ
+                </span>
               </label>
               <input
                 id="nadfun-slippage"
@@ -581,7 +635,11 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
               {slippageWarning && (
                 <span
                   id="slippage-warning"
-                  className={slippageWarning.level === "error" ? styles.nadfunSlippageError : styles.nadfunSlippageWarn}
+                  className={
+                    slippageWarning.level === "error"
+                      ? styles.nadfunSlippageError
+                      : styles.nadfunSlippageWarn
+                  }
                   role={slippageWarning.level === "error" ? "alert" : "status"}
                 >
                   {slippageWarning.msg}
@@ -589,7 +647,9 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
               )}
             </div>
             <div className={`${styles.nadfunField} ${styles.nadfunFieldSm}`}>
-              <label className={styles.nadfunLabel} htmlFor="nadfun-deadline">Deadline (min)</label>
+              <label className={styles.nadfunLabel} htmlFor="nadfun-deadline">
+                Deadline (min)
+              </label>
               <input
                 id="nadfun-deadline"
                 className={styles.nadfunInput}
@@ -632,9 +692,13 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
 
           {quote && (
             <div className={styles.nadfunQuoteResult} role="status" aria-live="polite">
-              <span>{quote}{` (slippage ${(slippageBps / 100).toFixed(1)}%)`}</span>
+              <span>
+                {quote}
+                {` (slippage ${(slippageBps / 100).toFixed(1)}%)`}
+              </span>
               {quoteSecondsLeft > 0 && (
-                <span className={`${styles.nadfunCountdownBadge} ${quoteSecondsLeft <= 5 ? styles.nadfunCountdownUrgent : ""}`}
+                <span
+                  className={`${styles.nadfunCountdownBadge} ${quoteSecondsLeft <= 5 ? styles.nadfunCountdownUrgent : ""}`}
                   aria-label={`Quote valid for ${quoteSecondsLeft} seconds`}
                 >
                   ⏱ {quoteSecondsLeft}s
@@ -660,11 +724,19 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
               type="button"
               className={styles.nadfunExecuteBtn}
               onClick={executeTrade}
-              disabled={txLoading || !routerAddress}
+              disabled={txLoading || !routerAddress || (quoteExpired && !quote)}
               aria-busy={txLoading}
-              aria-label={`Execute ${direction} trade`}
+              aria-label={
+                quoteExpired && !quote
+                  ? "Get a new quote before executing"
+                  : `Execute ${direction} trade`
+              }
             >
-              {txLoading ? "Confirming…" : `${direction === "buy" ? "Buy" : "Sell"} now`}
+              {txLoading
+                ? "Confirming…"
+                : quoteExpired && !quote
+                  ? "Get new quote first"
+                  : `${direction === "buy" ? "Buy" : "Sell"} now`}
             </button>
           ) : (
             <div className={styles.nadfunConnectNotice} role="note">

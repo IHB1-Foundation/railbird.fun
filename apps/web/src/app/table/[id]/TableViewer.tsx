@@ -409,13 +409,7 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
       )}
 
       {/* Breadcrumb */}
-      <Breadcrumb
-        crumbs={[
-          { label: "Home", href: "/" },
-          { label: "Tables", href: "/" },
-          { label: `Table #${tableId}` },
-        ]}
-      />
+      <Breadcrumb crumbs={[{ label: "Home", href: "/" }, { label: `Table #${tableId}` }]} />
 
       {/* G-32: Coachmarks — "Show me how" guided tour */}
       <TableCoachmarks />

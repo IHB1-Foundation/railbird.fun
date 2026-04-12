@@ -536,20 +536,22 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
       </div>
 
       {/* Stage explainer */}
-      <p
-        style={{
-          fontSize: "0.75rem",
-          color: "var(--muted)",
-          marginBottom: "0.5rem",
-          lineHeight: 1.4,
-        }}
-      >
-        {stage === "bonding"
-          ? "Trading on bonding curve — price rises as more tokens are bought. No external liquidity needed."
-          : stage === "graduated"
-            ? "Token has graduated to a decentralized exchange (DEX). Price is set by open-market trading."
-            : "Token is temporarily locked and cannot be traded right now. Check back soon."}
-      </p>
+      {stage !== "unknown" && (
+        <p
+          style={{
+            fontSize: "0.75rem",
+            color: "var(--muted)",
+            marginBottom: "0.5rem",
+            lineHeight: 1.4,
+          }}
+        >
+          {stage === "bonding_curve"
+            ? "Trading on bonding curve — price rises as more tokens are bought. No external liquidity needed."
+            : stage === "graduated"
+              ? "Token has graduated to a decentralized exchange (DEX). Price is set by open-market trading."
+              : "Token is temporarily locked and cannot be traded right now. Check back soon."}
+        </p>
+      )}
 
       {stage === "locked" && (
         <div className={styles.nadfunLockedNotice} role="status">

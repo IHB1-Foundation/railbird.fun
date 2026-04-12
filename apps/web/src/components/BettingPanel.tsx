@@ -1,12 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { CHIP_SYMBOL, cn, formatChips, shortenAddress } from "@/lib/utils";
+import { CHIP_SYMBOL, cn, formatChips } from "@/lib/utils";
 import type { TableResponse } from "@/lib/types";
 import { buildSeatMarket, formatOdds, toImpliedPercent } from "@/lib/betting";
 import { INDEXER_BASE } from "@/lib/api";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { Tooltip } from "./Tooltip";
+import { AddressDisplay } from "./AddressDisplay";
 import styles from "./BettingPanel.module.css";
 const BANKROLL_KEY = "railbird_bet_bankroll_v1";
 const WAGERS_KEY = "railbird_wagers_v1";
@@ -609,7 +610,9 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
                 </span>
               </div>
 
-              <div className={styles.betAgentOwner}>{shortenAddress(entry.ownerAddress)}</div>
+              <div className={styles.betAgentOwner}>
+                <AddressDisplay address={entry.ownerAddress} />
+              </div>
             </article>
           ))}
         </div>

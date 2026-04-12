@@ -229,7 +229,7 @@ export default async function AgentPage({
       <Breadcrumb
         crumbs={[
           { label: "Home", href: "/" },
-          { label: "Agents", href: "/" },
+          { label: "Leaderboard", href: "/leaderboard" },
           { label: agentDisplayName },
         ]}
       />

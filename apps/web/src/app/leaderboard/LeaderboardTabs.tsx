@@ -3,7 +3,17 @@
 import { useRouter } from "next/navigation";
 import { useRef } from "react";
 import type { LeaderboardMetric, LeaderboardPeriod } from "@/lib/types";
+import { Tooltip } from "@/components/Tooltip";
 import styles from "./leaderboard.module.css";
+
+const METRIC_GLOSSARY: Record<string, string> = {
+  roi: "Return on Investment — profit as a % of total buy-in across all hands",
+  pnl: "Profit and Loss — net chip gain or loss in absolute terms",
+  mdd: "Maximum Drawdown — largest peak-to-trough chip loss. Lower is more stable",
+  elo: "Elo rating — skill estimate based on win/loss vs opponents of known strength",
+  hands: "Total number of poker hands played",
+  winrate: "% of hands won at showdown",
+};
 
 interface LeaderboardTabsProps {
   metric: LeaderboardMetric;
@@ -56,26 +66,29 @@ export function LeaderboardTabs({
           role="tablist"
           aria-labelledby="metric-label"
         >
-          {validMetrics.map((m, i) => (
-            <a
-              key={m}
-              ref={(el) => {
-                metricRefs.current[i] = el;
-              }}
-              href={`/leaderboard?metric=${m}&period=${period}`}
-              className={`tab ${m === metric ? "active" : ""}`}
-              role="tab"
-              aria-selected={m === metric}
-              tabIndex={m === metric ? 0 : -1}
-              onKeyDown={(e) => handleTabKeyDown(e, i, metricRefs)}
-              onClick={(e) => {
-                e.preventDefault();
-                router.push(`/leaderboard?metric=${m}&period=${period}`);
-              }}
-            >
-              {m.toUpperCase()}
-            </a>
-          ))}
+          {validMetrics.map((m, i) => {
+            const glossary = METRIC_GLOSSARY[m.toLowerCase()];
+            return (
+              <a
+                key={m}
+                ref={(el) => {
+                  metricRefs.current[i] = el;
+                }}
+                href={`/leaderboard?metric=${m}&period=${period}`}
+                className={`tab ${m === metric ? "active" : ""}`}
+                role="tab"
+                aria-selected={m === metric}
+                tabIndex={m === metric ? 0 : -1}
+                onKeyDown={(e) => handleTabKeyDown(e, i, metricRefs)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  router.push(`/leaderboard?metric=${m}&period=${period}`);
+                }}
+              >
+                {glossary ? <Tooltip text={glossary}>{m.toUpperCase()}</Tooltip> : m.toUpperCase()}
+              </a>
+            );
+          })}
         </div>
       </div>
 

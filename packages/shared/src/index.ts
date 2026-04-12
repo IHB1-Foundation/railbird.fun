@@ -59,6 +59,7 @@ export {
   pgPoolTotalCount,
   pgPoolIdleCount,
   pgPoolWaitingCount,
+  fleetAgentRestartsTotal,
   getMetricsText,
   metricsContentType,
 } from "./metrics.js";

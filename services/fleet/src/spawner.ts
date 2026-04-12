@@ -3,7 +3,7 @@
 
 import { fork } from "node:child_process";
 import type { ChildProcess } from "node:child_process";
-import { createLogger } from "@playerco/shared";
+import { createLogger, fleetAgentRestartsTotal } from "@playerco/shared";
 import type { AgentProcess } from "./types.js";
 import type { FleetAgentConfig } from "./types.js";
 
@@ -15,7 +15,10 @@ const RESTART_DELAY_MS = 3_000;
 
 /** Path to the compiled agent bot entry point. */
 function agentEntryPoint(): string {
-  return process.env.AGENT_ENTRY_POINT ?? new URL("../../../../bots/agent/dist/index.js", import.meta.url).pathname;
+  return (
+    process.env.AGENT_ENTRY_POINT ??
+    new URL("../../../../bots/agent/dist/index.js", import.meta.url).pathname
+  );
 }
 
 export class ProcessManager {
@@ -30,7 +33,7 @@ export class ProcessManager {
     agentId: string,
     config: FleetAgentConfig,
     operatorPrivateKey: string,
-    operatorAddress: string
+    operatorAddress: string,
   ): AgentProcess {
     const persona = config.personaConfig;
     const personaJson = JSON.stringify({
@@ -46,7 +49,7 @@ export class ProcessManager {
 
     const env: Record<string, string> = {
       ...Object.fromEntries(
-        Object.entries(process.env).filter(([, v]) => v !== undefined) as [string, string][]
+        Object.entries(process.env).filter(([, v]) => v !== undefined) as [string, string][],
       ),
       OPERATOR_PRIVATE_KEY: operatorPrivateKey,
       POKER_TABLE_ADDRESS: config.tableAddress,
@@ -55,7 +58,10 @@ export class ProcessManager {
     };
 
     const entry = agentEntryPoint();
-    logger.info({ agentId, entry, table: config.tableAddress, persona: persona.name }, "Spawning agent process");
+    logger.info(
+      { agentId, entry, table: config.tableAddress, persona: persona.name },
+      "Spawning agent process",
+    );
 
     const agentProc: AgentProcess = {
       agentId,
@@ -98,6 +104,7 @@ export class ProcessManager {
 
       if (current.restarts < MAX_RESTARTS) {
         current.restarts++;
+        fleetAgentRestartsTotal.inc({ agentId });
         current.status = "starting";
         logger.info({ agentId, attempt: current.restarts }, "Restarting agent in 3s");
         setTimeout(() => this._launchProcess(agentId, entry, env), RESTART_DELAY_MS);

@@ -111,6 +111,19 @@ export const indexerReorgTotal = new Counter({
   registers: [registry],
 });
 
+// ── Fleet metrics ──────────────────────────────────────────────────────────
+
+/**
+ * Total agent process restarts by the fleet spawner.
+ * Labels: agentId
+ */
+export const fleetAgentRestartsTotal = new Counter({
+  name: "railbird_fleet_agent_restarts_total",
+  help: "Total number of agent process restarts",
+  labelNames: ["agentId"],
+  registers: [registry],
+});
+
 // ── PG pool metrics ────────────────────────────────────────────────────────
 
 export const pgPoolTotalCount = new Gauge({
@@ -141,4 +154,5 @@ export async function getMetricsText(): Promise<string> {
 /**
  * Content-type header value for Prometheus exposition format.
  */
-export const metricsContentType: string = (client as any).contentType ?? "text/plain; version=0.0.4; charset=utf-8";
+export const metricsContentType: string =
+  (client as { contentType?: string }).contentType ?? "text/plain; version=0.0.4; charset=utf-8";

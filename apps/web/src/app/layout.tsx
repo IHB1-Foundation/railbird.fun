@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import Image from "next/image";
 import { Roboto, Space_Grotesk } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import styles from "./layout.module.css";
 import { Providers } from "./providers";
@@ -165,6 +166,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <ConsentBanner />
           </div>
         </Providers>
+        {/* Privacy-friendly page-view analytics — no PII collected */}
+        <Analytics />
       </body>
     </html>
   );

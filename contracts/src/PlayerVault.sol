@@ -3,12 +3,11 @@ pragma solidity ^0.8.24;
 
 import "./interfaces/IPlayerVault.sol";
 import "./interfaces/IERC20.sol";
-import "./interfaces/INadfunRouter.sol";
 
 /**
  * @title PlayerVault
- * @notice Vault that holds native MON for a poker agent and executes per-hand
- *         NAV-accretive rebalancing via the nad.fun bonding-curve router.
+ * @notice Vault that holds native token for a poker agent and executes per-hand
+ *         NAV-accretive rebalancing via a DEX router.
  *
  * Treasury accounting (PROJECT.md §7.1):
  *   A = external assets  = address(this).balance - totalEscrow
@@ -22,6 +21,12 @@ import "./interfaces/INadfunRouter.sol";
  *   Sell: q_sell = monOut / tokenIn  ≥ P  →  monOut × N ≥ A × tokenIn
  *   If either condition is violated the transaction reverts.
  */
+
+interface IDexRouter {
+    function buyTokens(address token, uint256 minTokensOut, uint256 deadline) external payable;
+    function sellTokens(address token, uint256 tokenAmount, uint256 minOut, uint256 deadline) external;
+}
+
 contract PlayerVault is IPlayerVault {
     // ─── Constants ────────────────────────────────────────────────────────────
 
@@ -42,7 +47,7 @@ contract PlayerVault is IPlayerVault {
 
     // Rebalancing config
     address public agentToken;
-    address public nadfunRouter;
+    address public dexRouter;
     /// @notice Max basis points of external assets that may be spent in a single buy.
     uint256 public rebalanceMaxMonBps;
     /// @notice Max basis points of treasury-owned tokens that may be sold in a single sell.
@@ -157,9 +162,9 @@ contract PlayerVault is IPlayerVault {
     // ─── Rebalancing ──────────────────────────────────────────────────────────
 
     /**
-     * @notice Configure the agent token and nad.fun router for rebalancing.
+     * @notice Configure the agent token and DEX router for rebalancing.
      * @param _agentToken       ERC-20 agent token address.
-     * @param _router           nad.fun bonding-curve router address.
+     * @param _router           DEX router address.
      * @param _maxMonBps        Max buy size in basis points of external assets (0–10000).
      * @param _maxTokenBps      Max sell size in basis points of vault-owned tokens (0–10000).
      */
@@ -173,9 +178,9 @@ contract PlayerVault is IPlayerVault {
         require(_router != address(0), "Invalid router");
         require(_maxMonBps <= MAX_BPS, "maxMonBps > 100%");
         require(_maxTokenBps <= MAX_BPS, "maxTokenBps > 100%");
-        address oldRouter = nadfunRouter;
+        address oldRouter = dexRouter;
         agentToken = _agentToken;
-        nadfunRouter = _router;
+        dexRouter = _router;
         rebalanceMaxMonBps = _maxMonBps;
         rebalanceMaxTokenBps = _maxTokenBps;
         if (oldRouter != _router) {
@@ -190,7 +195,7 @@ contract PlayerVault is IPlayerVault {
      *   monIn × N ≤ A × tokenOut   (equivalent to q_buy ≤ P)
      *
      * @param handId      Must equal the most recently settled hand (per-hand policy).
-     * @param monIn       Native MON to spend (must satisfy size limit).
+     * @param monIn       Native token to spend (must satisfy size limit).
      * @param minTokenOut Minimum tokens to accept (slippage guard passed to router).
      */
     function rebalanceBuy(
@@ -202,7 +207,7 @@ contract PlayerVault is IPlayerVault {
         require(monIn > 0, "Zero monIn");
 
         address token = agentToken;
-        address router = nadfunRouter;
+        address router = dexRouter;
         require(token != address(0), "Agent token not set");
         require(router != address(0), "Router not set");
 
@@ -218,9 +223,9 @@ contract PlayerVault is IPlayerVault {
         require(monIn <= (A * rebalanceMaxMonBps) / MAX_BPS, "Buy exceeds size limit");
         require(monIn <= A, "monIn exceeds available assets");
 
-        // Execute the buy via nad.fun router.
+        // Execute the buy via DEX router.
         uint256 tokensBefore = B;
-        INadfunBondingRouter(router).buyTokens{value: monIn}(
+        IDexRouter(router).buyTokens{value: monIn}(
             token,
             minTokenOut,
             block.timestamp + REBALANCE_DEADLINE_BUFFER
@@ -251,7 +256,7 @@ contract PlayerVault is IPlayerVault {
      *
      * @param handId     Must equal the most recently settled hand (per-hand policy).
      * @param tokenIn    Amount of agent tokens to sell (must satisfy size limit).
-     * @param minMonOut  Minimum MON to accept (slippage guard passed to router).
+     * @param minMonOut  Minimum native token to accept (slippage guard passed to router).
      */
     function rebalanceSell(
         uint256 handId,
@@ -262,7 +267,7 @@ contract PlayerVault is IPlayerVault {
         require(tokenIn > 0, "Zero tokenIn");
 
         address token = agentToken;
-        address router = nadfunRouter;
+        address router = dexRouter;
         require(token != address(0), "Agent token not set");
         require(router != address(0), "Router not set");
 
@@ -282,16 +287,16 @@ contract PlayerVault is IPlayerVault {
         IERC20(token).approve(router, 0);
         IERC20(token).approve(router, tokenIn);
 
-        // Execute the sell via nad.fun router.
+        // Execute the sell via DEX router.
         uint256 monBefore = address(this).balance;
-        INadfunBondingRouter(router).sellTokens(
+        IDexRouter(router).sellTokens(
             token,
             tokenIn,
             minMonOut,
             block.timestamp + REBALANCE_DEADLINE_BUFFER
         );
         uint256 monAfter = address(this).balance;
-        require(monAfter > monBefore, "No MON received");
+        require(monAfter > monBefore, "No native token received");
         uint256 monOut = monAfter - monBefore;
 
         // Accretive-only check: monOut × N ≥ A × tokenIn  ↔  q_sell ≥ P.

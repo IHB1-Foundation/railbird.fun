@@ -20,8 +20,8 @@ interface State {
  * boundary does not propagate to sibling trees.
  *
  * Usage (server or client parent):
- *   <ErrorBoundary label="Trading Widget">
- *     <NadFunTradingWidget ... />
+ *   <ErrorBoundary label="Component">
+ *     <SomeComponent ... />
  *   </ErrorBoundary>
  */
 export class ErrorBoundary extends Component<Props, State> {

@@ -57,6 +57,9 @@ importers:
       react-dom:
         specifier: 18.2.0
         version: 18.2.0(react@18.2.0)
+      solhint:
+        specifier: ^6.2.1
+        version: 6.2.1(typescript@5.9.3)
       turbo:
         specifier: ^2.9.6
         version: 2.9.6

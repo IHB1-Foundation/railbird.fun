@@ -63,9 +63,7 @@ async function fetchAgentHealth(url: string): Promise<AgentHealthRag | null> {
     return null;
   }
 }
-import { NadFunTradingWidget } from "@/components/NadFunTradingWidget";
 import { NavSparkline } from "@/components/NavSparkline";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { RecentHandsWithReplay } from "./RecentHandsWithReplay";
 import { getAgentProfile, getPersonaSummary } from "@/lib/agentProfiles";
 import { PersonaRadar } from "@/components/PersonaRadar";
@@ -1155,7 +1153,7 @@ export default async function AgentPage({
       <div className={styles.statsGrid}>
         <div className={styles.statCard}>
           <div className={styles.statLabel}>
-            <Tooltip text="Total Assets — the value of all non-token holdings in this agent's vault (MON/WMON/AUSD)">
+            <Tooltip text="Total Assets — the value of all non-token holdings in this agent's vault">
               Total Value
             </Tooltip>
           </div>
@@ -1568,14 +1566,6 @@ export default async function AgentPage({
         ) : (
           <div className="chart-placeholder">No rebalancing events yet</div>
         )}
-      </div>
-
-      {/* Token Trading — widget falls back to "Open on nad.fun" when not configured */}
-      <div className="card section-card">
-        <h3 className="section-title-sm">Token Trading</h3>
-        <ErrorBoundary label="Trading Widget">
-          <NadFunTradingWidget tokenAddress={token} />
-        </ErrorBoundary>
       </div>
     </section>
   );

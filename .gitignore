@@ -42,7 +42,7 @@ contracts/broadcast/
 
 # Deployment manifests (generated, not committed)
 deployments/*.json
-scripts/nadfun-agents.generated.env
+scripts/*.generated.env
 
 # Persistent data (hole cards, etc.)
 data/

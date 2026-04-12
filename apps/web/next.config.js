@@ -89,12 +89,6 @@ const nextConfig = {
     NEXT_PUBLIC_CHAIN_ID: process.env.NEXT_PUBLIC_CHAIN_ID || "133",
     NEXT_PUBLIC_BLOCK_EXPLORER:
       process.env.NEXT_PUBLIC_BLOCK_EXPLORER || "https://testnet-explorer.hsk.xyz",
-    // nad.fun contract addresses — leave empty when DEX is not available (disables widget)
-    NEXT_PUBLIC_NADFUN_LENS_ADDRESS: process.env.NEXT_PUBLIC_NADFUN_LENS_ADDRESS || "",
-    NEXT_PUBLIC_NADFUN_BONDING_ROUTER_ADDRESS:
-      process.env.NEXT_PUBLIC_NADFUN_BONDING_ROUTER_ADDRESS || "",
-    NEXT_PUBLIC_NADFUN_DEX_ROUTER_ADDRESS: process.env.NEXT_PUBLIC_NADFUN_DEX_ROUTER_ADDRESS || "",
-    NEXT_PUBLIC_WMON_ADDRESS: process.env.NEXT_PUBLIC_WMON_ADDRESS || "",
   },
 
   async headers() {

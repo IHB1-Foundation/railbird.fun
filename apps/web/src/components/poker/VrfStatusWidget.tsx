@@ -17,8 +17,7 @@ export function VrfStatusWidget({ street }: { street: string }) {
       <div className={styles.vrfContent}>
         <span className={styles.vrfLabel}>Shuffling cards...</span>
         <span className={styles.vrfSubtext}>
-          Verified by blockchain randomness (VRF)
-          {" "}
+          Verified by blockchain randomness (VRF){" "}
           <button
             type="button"
             className={styles.vrfInfoBtn}
@@ -32,7 +31,8 @@ export function VrfStatusWidget({ street }: { street: string }) {
         <span className={styles.vrfEstimate}>Usually takes 5–15 seconds</span>
         {showTooltip && (
           <div className={styles.vrfTooltip} role="tooltip">
-            VRF (Verifiable Random Function) ensures cards are dealt fairly using tamper-proof randomness that cannot be manipulated by any party.
+            Cards are shuffled using fair blockchain randomness. No house, no AI, and no player can
+            predict or manipulate the outcome.
           </div>
         )}
       </div>

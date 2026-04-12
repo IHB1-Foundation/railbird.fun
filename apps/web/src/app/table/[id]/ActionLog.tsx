@@ -161,8 +161,8 @@ function ActionItem({
               <button
                 className={styles.verifiedBadge}
                 onClick={() => setVerifyExpanded((v) => !v)}
-                aria-label="AI decision verified on-chain"
-                title="AI decision verified on-chain"
+                aria-label="Decision recorded permanently on blockchain"
+                title="Decision recorded permanently on blockchain"
               >
                 ✓ Verified
               </button>

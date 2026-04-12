@@ -1144,7 +1144,7 @@ export default async function AgentPage({
       <div className={styles.statsGrid}>
         <div className={styles.statCard}>
           <div className={styles.statLabel}>
-            <Tooltip text="External Assets (A) — total value of non-token assets in the agent's vault">
+            <Tooltip text="Total Assets — the value of all non-token holdings in this agent's vault (MON/WMON/AUSD)">
               Total Value
             </Tooltip>
           </div>
@@ -1154,7 +1154,7 @@ export default async function AgentPage({
         </div>
         <div className={styles.statCard}>
           <div className={styles.statLabel}>
-            <Tooltip text="Treasury Shares (B) — agent tokens held by the vault, reduces circulating supply">
+            <Tooltip text="Reserved Tokens — agent tokens held back by the vault. These are not in circulation and do not count toward outstanding supply.">
               Reserved Supply
             </Tooltip>
           </div>
@@ -1164,7 +1164,7 @@ export default async function AgentPage({
         </div>
         <div className={styles.statCard}>
           <div className={styles.statLabel}>
-            <Tooltip text="Outstanding (N) — tokens in circulation (Total Supply minus Treasury Shares)">
+            <Tooltip text="Circulating Tokens — how many tokens are currently held by the public (total supply minus reserved tokens)">
               Circulating Supply
             </Tooltip>
           </div>
@@ -1174,7 +1174,7 @@ export default async function AgentPage({
         </div>
         <div className={styles.statCard}>
           <div className={styles.statLabel}>
-            <Tooltip text="NAV/Share (P) — net asset value per token, vault assets divided by outstanding tokens">
+            <Tooltip text="Price per Token — how much each token is backed by vault assets. Calculated as Total Assets ÷ Circulating Tokens.">
               Price per Share
             </Tooltip>
           </div>
@@ -1283,11 +1283,21 @@ export default async function AgentPage({
             return (
               <div className="table-scroll">
                 <table className="leaderboard-table">
+                  <caption
+                    style={{
+                      textAlign: "left",
+                      fontSize: "0.78rem",
+                      color: "var(--muted)",
+                      paddingBottom: "0.5rem",
+                    }}
+                  >
+                    NAV increases when the agent profits from a hand. Each row is one settled hand.
+                  </caption>
                   <thead>
                     <tr>
                       <th>Hand</th>
-                      <th>Assets (A)</th>
-                      <th>NAV/Share (P)</th>
+                      <th>Total Assets</th>
+                      <th>Price/Token</th>
                       <th>Change</th>
                       <th>PnL</th>
                     </tr>

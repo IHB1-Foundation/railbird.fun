@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { isAddress, type Address } from "viem";
 import { useAuth } from "@/lib/auth";
 import { registerSeat } from "@/lib/pokerTableClient";
@@ -71,8 +71,12 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
     refreshTable,
     commentaries,
   } = useTableState(tableId, initialData);
-  const [commentaryOpen, setCommentaryOpen] =
-    useState(false); /* D-R3.2: default closed to reduce info density */
+  // Auto-expand commentary on first visit so users discover the AI transparency feature
+  const [commentaryOpen, setCommentaryOpen] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return !localStorage.getItem("railbird:commentary-seen");
+  });
+  const [hasNewCommentary, setHasNewCommentary] = useState(false);
 
   const [revealedHolecards, setRevealedHolecards] = useState<RevealedHolecardResponse[]>([]);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number>(() => Date.now());
@@ -82,6 +86,15 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
   useEffect(() => {
     setLastUpdatedAt(Date.now());
   }, [table]);
+
+  // Show "New" badge on commentary panel when new messages arrive while collapsed
+  const prevCommentaryLen = useRef(0);
+  useEffect(() => {
+    if (commentaries.length > prevCommentaryLen.current) {
+      if (!commentaryOpen) setHasNewCommentary(true);
+      prevCommentaryLen.current = commentaries.length;
+    }
+  }, [commentaries, commentaryOpen]);
 
   // Update "X seconds ago" counter
   useEffect(() => {
@@ -430,10 +443,17 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
               href={explorerAddressUrl(table.contractAddress)}
               target="_blank"
               rel="noopener noreferrer"
-              title={table.contractAddress}
+              title="View this poker table's smart contract on the blockchain explorer"
+              aria-label={`View smart contract ${table.contractAddress} on blockchain explorer`}
             >
               {shortenAddress(table.contractAddress)} <span aria-hidden="true">↗</span>
-            </a>
+            </a>{" "}
+            <span
+              style={{ fontSize: "0.7rem", color: "var(--muted)", cursor: "help" }}
+              title="This is the on-chain smart contract that runs this poker table. All game rules are enforced by code, not by Railbird."
+            >
+              (What&apos;s this?)
+            </span>
           </div>
         </div>
         <div className={styles.tableHeadingRight}>
@@ -458,7 +478,12 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
 
       {/* G-20: ACTION REQUIRED neon banner — shown when a seat is acting */}
       {actorSeat !== null && actorSeatData && (
-        <div className={styles.actionRequiredBanner} role="status" aria-live="polite">
+        <div
+          className={styles.actionRequiredBanner}
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+        >
           <span className={styles.actionRequiredDot} aria-hidden="true" />
           <span className={styles.actionRequiredText}>Action Required</span>
           <span className={styles.actionRequiredDot} aria-hidden="true" />
@@ -568,9 +593,37 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
       {/* AI Commentary Panel */}
       <div className={`card ${styles.commentaryPanel}`}>
         <div className={styles.commentaryHeader}>
-          <h3 className="section-title-sm">🎙 AI Commentary</h3>
+          <h3 className="section-title-sm">
+            🎙 AI Commentary
+            {!commentaryOpen && hasNewCommentary && (
+              <span
+                style={{
+                  marginLeft: "0.45rem",
+                  fontSize: "0.65rem",
+                  fontWeight: 700,
+                  color: "#fff",
+                  background: "var(--accent)",
+                  borderRadius: "999px",
+                  padding: "0.1rem 0.45rem",
+                  verticalAlign: "middle",
+                }}
+                aria-label="New commentary available"
+              >
+                New
+              </span>
+            )}
+          </h3>
           <button
-            onClick={() => setCommentaryOpen((v) => !v)}
+            onClick={() => {
+              setCommentaryOpen((v) => {
+                const next = !v;
+                if (next) {
+                  setHasNewCommentary(false);
+                  localStorage.setItem("railbird:commentary-seen", "1");
+                }
+                return next;
+              });
+            }}
             className={styles.commentaryToggleBtn}
             aria-label={commentaryOpen ? "Collapse AI commentary" : "Expand AI commentary"}
           >

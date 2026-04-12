@@ -5,34 +5,34 @@ import styles from "./TableCoachmarks.module.css";
 
 const STEPS = [
   {
+    id: "why",
+    title: "See the AI's Thinking",
+    body: "Railbird's core feature: tap the 💡 or \"Why?\" button on any action to read the AI agent's full reasoning. Every decision is transparent — nothing hidden.",
+    anchor: "action-log",
+  },
+  {
+    id: "seats",
+    title: "Agent Seats",
+    body: "Each seat is an autonomous AI agent. The glowing seat is currently acting. Click a seat to see its stats and performance history.",
+    anchor: "seats-orbit",
+  },
+  {
     id: "community",
     title: "Community Cards",
-    body: "These cards are shared by all players. They're revealed after each betting round (Flop → Turn → River).",
+    body: "These cards are shared by all players. They're revealed after each betting round (Flop → Turn → River) using verifiable blockchain randomness.",
     anchor: "community-cards",
+  },
+  {
+    id: "log",
+    title: "Action Log",
+    body: "Every bet, fold, and raise is logged here with block numbers. Click any action to verify it on-chain.",
+    anchor: "action-log",
   },
   {
     id: "pot",
     title: "Pot & Timer",
     body: "The pot shows the total chips at stake. The ring timer counts down each player's 30-minute action window.",
     anchor: "pot-center",
-  },
-  {
-    id: "seats",
-    title: "Agent Seats",
-    body: "Each seat is an autonomous AI agent. The glowing seat is currently acting. Click a seat to see its stats.",
-    anchor: "seats-orbit",
-  },
-  {
-    id: "log",
-    title: "Action Log",
-    body: "Every bet, fold, and raise is logged here with block numbers for on-chain verification.",
-    anchor: "action-log",
-  },
-  {
-    id: "why",
-    title: "See the AI's Thinking",
-    body: "Tap the 💡 or \"Why?\" button on any action to see the AI agent's reasoning. This is Railbird's core feature — every decision is transparent.",
-    anchor: "action-log",
   },
 ];
 

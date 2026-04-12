@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  createContext,
-  useContext,
-  useState,
-  useCallback,
-  useEffect,
-  type ReactNode,
-} from "react";
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
 import type { AuthContextValue, AuthState, HoleCardsResponse } from "./types";
 import { DEFAULT_OWNERVIEW_BASE } from "../api";
 import * as ownerviewApi from "./ownerviewApi";
@@ -40,13 +33,6 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 function getProvider(): EthereumProvider | null {
   if (typeof window === "undefined") return null;
   return window.ethereum ?? null;
-}
-
-/**
- * Check if a wallet provider is available
- */
-function hasWallet(): boolean {
-  return getProvider() !== null;
 }
 
 /**
@@ -115,7 +101,9 @@ async function getAccounts(): Promise<string[]> {
 async function requestAccounts(): Promise<string[]> {
   const provider = getProvider();
   if (!provider) {
-    throw new Error("Wallet not detected. Please install MetaMask.");
+    throw new Error(
+      "No wallet found. Please install MetaMask (or another Web3 wallet) and make sure it is enabled for this site.",
+    );
   }
   await ensureHashKeyChain();
   const accounts = await provider.request({
@@ -148,9 +136,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (COOKIE_SESSION_ENABLED) {
         // Cookie mode: session is in httpOnly cookie — presence of csrf_token cookie
         // indicates a live session. We can't read the JWT itself.
-        const hasCsrf = document.cookie
-          .split(";")
-          .some((c) => c.trim().startsWith("csrf_token="));
+        const hasCsrf = document.cookie.split(";").some((c) => c.trim().startsWith("csrf_token="));
 
         const accounts = await getAccounts();
         if (hasCsrf && accounts.length > 0) {
@@ -185,10 +171,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (expiresAt > new Date()) {
           // Check if wallet is still connected with same address
           const accounts = await getAccounts();
-          if (
-            accounts.length > 0 &&
-            accounts[0].toLowerCase() === storedAddress.toLowerCase()
-          ) {
+          if (accounts.length > 0 && accounts[0].toLowerCase() === storedAddress.toLowerCase()) {
             setState({
               isConnected: true,
               isAuthenticated: true,
@@ -200,10 +183,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return;
           }
         }
-        // Clear expired or mismatched session
+        // Clear expired or mismatched session and notify user
         sessionStorage.removeItem(STORAGE_KEY_TOKEN);
         sessionStorage.removeItem(STORAGE_KEY_ADDRESS);
         sessionStorage.removeItem(STORAGE_KEY_EXPIRES);
+        setState((prev) => ({
+          ...prev,
+          isAuthenticated: false,
+          token: null,
+          error: "Your session expired — please sign in again.",
+        }));
       }
 
       // Check if wallet is connected (without auth)
@@ -285,7 +274,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const accounts = await Promise.race<string[]>([
         requestAccounts(),
         new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error("Connection timed out — please try again.")), 10_000)
+          setTimeout(() => reject(new Error("Connection timed out — please try again.")), 10_000),
         ),
       ]);
 
@@ -364,9 +353,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let capturedChainId: number | null = null;
     if (provider) {
       try {
-        const hexId = await provider.request({ method: "eth_chainId" }) as string;
+        const hexId = (await provider.request({ method: "eth_chainId" })) as string;
         capturedChainId = parseInt(hexId, 16);
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
 
     // Listen for account/chain changes during sign flow
@@ -404,11 +395,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       // 3. Verify signature and get token
-      const verifyResult = await ownerviewApi.verifySignature(
-        state.address,
-        nonce,
-        signature
-      );
+      const verifyResult = await ownerviewApi.verifySignature(state.address, nonce, signature);
 
       if (COOKIE_SESSION_ENABLED) {
         // Cookie mode: token is in httpOnly cookie — don't touch sessionStorage
@@ -455,10 +442,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * and decrypts the server's encrypted response client-side.
    */
   const getHoleCards = useCallback(
-    async (
-      tableId: string,
-      handId: string
-    ): Promise<HoleCardsResponse | null> => {
+    async (tableId: string, handId: string): Promise<HoleCardsResponse | null> => {
       // In cookie mode, token is null but session is in httpOnly cookie
       if ((!COOKIE_SESSION_ENABLED && !state.token) || !state.address) {
         return null;
@@ -467,9 +451,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       try {
         // Derive (or retrieve cached) encryption key pair
-        const { privKey } = await deriveEncryptionKeyPair(
-          state.address,
-          (message, address) => signMessage(address, message)
+        const { privKey } = await deriveEncryptionKeyPair(state.address, (message, address) =>
+          signMessage(address, message),
         );
 
         return await ownerviewApi.getHoleCards(state.token ?? undefined, tableId, handId, privKey);
@@ -478,7 +461,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return null;
       }
     },
-    [state.token, state.address]
+    [state.token, state.address, state.isAuthenticated],
   );
 
   const value: AuthContextValue = {

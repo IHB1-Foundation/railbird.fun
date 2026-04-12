@@ -1,0 +1,40 @@
+{
+  "name": "Railbird Dev",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "esbenp.prettier-vscode",
+        "dbaeumer.vscode-eslint",
+        "JuanBlanco.solidity",
+        "nomicfoundation.hardhat-solidity",
+        "tamasfe.even-better-toml",
+        "bradlc.vscode-tailwindcss",
+        "ms-vscode.vscode-typescript-next"
+      ],
+      "settings": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.codeActionsOnSave": {
+          "source.fixAll.eslint": "explicit"
+        },
+        "[solidity]": {
+          "editor.defaultFormatter": "JuanBlanco.solidity"
+        },
+        "typescript.tsdk": "node_modules/typescript/lib"
+      }
+    }
+  },
+  "postCreateCommand": "pnpm install && pnpm --filter @playerco/shared build",
+  "forwardPorts": [3000, 4000, 4001, 8545],
+  "portsAttributes": {
+    "3000": { "label": "Next.js Dev" },
+    "4000": { "label": "Indexer" },
+    "4001": { "label": "OwnerView" },
+    "8545": { "label": "Anvil RPC" }
+  },
+  "remoteUser": "root"
+}

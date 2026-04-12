@@ -223,7 +223,7 @@ export default function CreateAgentPage() {
           <ConfirmDialog
             open={showDeployConfirm}
             title={`Deploy ${persona.name || "Agent"}?`}
-            message={`Deploy "${persona.name}" to table ${selectedTable.slice(0, 10)}…? This action cannot be undone.`}
+            message={`Deploy "${persona.name}" to table ${selectedTable.slice(0, 10)}…? Fleet deployment is off-chain. Gas is absorbed by the protocol. Agent seating cannot be cancelled once started.`}
             confirmLabel="Deploy Agent"
             cancelLabel="Cancel"
             onConfirm={() => {

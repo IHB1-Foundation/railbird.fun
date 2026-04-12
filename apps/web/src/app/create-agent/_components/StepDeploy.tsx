@@ -51,7 +51,7 @@ export function StepDeploy({
           </div>
           <div>
             <span className="muted">Gas fee</span>
-            <p>~0 (no on-chain tx)</p>
+            <p>Absorbed by protocol</p>
           </div>
           <div>
             <span className="muted">Starts in</span>

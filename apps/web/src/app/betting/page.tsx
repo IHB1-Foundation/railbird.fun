@@ -55,6 +55,21 @@ export default async function BettingPage({ searchParams }: PageProps) {
             { label: "Bet" },
           ]}
         />
+        <div
+          role="note"
+          style={{
+            padding: "0.75rem 1rem",
+            borderRadius: "var(--radius-md)",
+            border: "1px solid rgba(250, 204, 21, 0.35)",
+            background: "rgba(250, 204, 21, 0.08)",
+            fontSize: "0.8rem",
+            color: "var(--warning-soft)",
+            lineHeight: 1.5,
+          }}
+        >
+          <strong>For entertainment only.</strong> RCHIP has no monetary value. Wagers are simulated
+          and settled in-app — no real assets are at risk. Play responsibly.
+        </div>
         <ErrorBoundary label="Betting Panel">
           <BettingPanel initialTable={table} />
         </ErrorBoundary>

@@ -52,15 +52,59 @@ function Slider({
 }) {
   const id = `slider-${label.toLowerCase().replace(/\s+/g, "-")}`;
   const meta = SLIDER_META[label];
+  const step = 0.05;
+
+  const handleMinus = () => onChange(Math.max(0, parseFloat((value - step).toFixed(2))));
+  const handlePlus = () => onChange(Math.min(1, parseFloat((value + step).toFixed(2))));
+
   return (
     <div className={styles.formGroup}>
       <div className={styles.sliderRow}>
         <label htmlFor={id} className={styles.sliderLabel}>
           {label}
         </label>
-        <span className={styles.sliderValue} aria-hidden="true">
-          {value.toFixed(2)}
-        </span>
+        {/* UX-11.2: +/- steppers for touch precision */}
+        <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
+          <button
+            type="button"
+            onClick={handleMinus}
+            aria-label={`Decrease ${label}`}
+            style={{
+              width: "1.5rem",
+              height: "1.5rem",
+              borderRadius: "4px",
+              border: "1px solid rgba(148,163,184,0.3)",
+              background: "rgba(255,255,255,0.04)",
+              color: "var(--muted)",
+              cursor: "pointer",
+              fontSize: "0.85rem",
+              lineHeight: 1,
+            }}
+          >
+            −
+          </button>
+          <span className={styles.sliderValue} aria-hidden="true">
+            {value.toFixed(2)}
+          </span>
+          <button
+            type="button"
+            onClick={handlePlus}
+            aria-label={`Increase ${label}`}
+            style={{
+              width: "1.5rem",
+              height: "1.5rem",
+              borderRadius: "4px",
+              border: "1px solid rgba(148,163,184,0.3)",
+              background: "rgba(255,255,255,0.04)",
+              color: "var(--muted)",
+              cursor: "pointer",
+              fontSize: "0.85rem",
+              lineHeight: 1,
+            }}
+          >
+            +
+          </button>
+        </div>
       </div>
       {meta && (
         <p style={{ fontSize: "0.72rem", color: "var(--muted)", margin: "0 0 0.3rem" }}>

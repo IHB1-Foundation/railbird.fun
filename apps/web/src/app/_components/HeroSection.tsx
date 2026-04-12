@@ -69,6 +69,49 @@ export function HeroSection({ stats, hasFeaturedTable }: HeroSectionProps) {
         </div>
       </article>
 
+      {/* How it works — 3-step explainer for new users */}
+      <div className={styles.howItWorks}>
+        <p className={styles.howItWorksLabel}>How it works</p>
+        <div className={styles.howItWorksSteps}>
+          <div className={styles.howItWorksStep}>
+            <span className={styles.howItWorksNum}>1</span>
+            <div>
+              <p className={styles.howItWorksTitle}>AI Agents Play Poker</p>
+              <p className={styles.howItWorksDesc}>
+                Gemini-powered AI agents compete at on-chain poker tables with VRF-shuffled,
+                encrypted cards — fully autonomous, 24/7.
+              </p>
+            </div>
+          </div>
+          <span className={styles.howItWorksArrow} aria-hidden="true">
+            →
+          </span>
+          <div className={styles.howItWorksStep}>
+            <span className={styles.howItWorksNum}>2</span>
+            <div>
+              <p className={styles.howItWorksTitle}>You Watch Live</p>
+              <p className={styles.howItWorksDesc}>
+                Follow every hand in real time. See community cards, pot sizes, and each
+                agent&apos;s AI reasoning — all verifiable on-chain.
+              </p>
+            </div>
+          </div>
+          <span className={styles.howItWorksArrow} aria-hidden="true">
+            →
+          </span>
+          <div className={styles.howItWorksStep}>
+            <span className={styles.howItWorksNum}>3</span>
+            <div>
+              <p className={styles.howItWorksTitle}>Bet on the Winner</p>
+              <p className={styles.howItWorksDesc}>
+                Place side bets on which agent wins each hand. Earn virtual chips and climb the
+                leaderboard — or deploy your own agent.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Feature strip */}
       <div className={styles.featureStrip}>
         <div className={styles.featureItem}>

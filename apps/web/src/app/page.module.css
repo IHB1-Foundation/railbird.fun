@@ -123,6 +123,80 @@
   font-variant-numeric: tabular-nums; /* D-R2.4 */
 }
 
+/* UX-1.1: How it works — 3-step explainer */
+.howItWorks {
+  padding: 1.25rem 1.5rem;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(10, 13, 24, 0.55);
+}
+
+.howItWorksLabel {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 1rem;
+}
+
+.howItWorksSteps {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.howItWorksStep {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  flex: 1;
+}
+
+.howItWorksNum {
+  flex-shrink: 0;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  background: rgba(129, 108, 249, 0.28);
+  border: 1px solid rgba(129, 108, 249, 0.5);
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.howItWorksTitle {
+  font-weight: 700;
+  font-size: var(--text-sm);
+  margin-bottom: 0.25rem;
+}
+
+.howItWorksDesc {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  line-height: var(--leading-relaxed);
+}
+
+.howItWorksArrow {
+  flex-shrink: 0;
+  color: rgba(148, 163, 184, 0.4);
+  font-size: 1.1rem;
+  margin-top: 0.3rem;
+}
+
+@media (max-width: 768px) {
+  .howItWorksSteps {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .howItWorksArrow {
+    display: none;
+  }
+}
+
 /* PD-A6: auto-fit eliminates orphan item when 3 doesn't divide evenly at breakpoints */
 .featureStrip {
   display: grid;

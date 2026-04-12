@@ -332,6 +332,47 @@ jobs:
           path: apps/web/playwright-report/
           retention-days: 7
 
+  # ── Bot integration tests (T-1604) ───────────────────────────────────────
+  bot-integration:
+    name: Bot Integration Tests (agent + keeper)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared package
+        run: pnpm --filter @playerco/shared build
+
+      - name: Build contracts
+        run: cd contracts && forge build --sizes
+
+      - name: Run agent integration tests
+        run: pnpm --filter @playerco/agent-bot test:integration
+        timeout-minutes: 5
+
+      - name: Run keeper integration tests
+        run: pnpm --filter @playerco/keeper-bot test:integration
+        timeout-minutes: 5
+
   # ── E2E Full Suite (T-1602) — main branch only ────────────────────────────
   # Runs all E2E scenarios: happy-path, 4-seat, timeout, crash-recovery, (reorg skipped).
   # Only runs on pushes to main to avoid slowing down PRs.

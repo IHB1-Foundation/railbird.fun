@@ -37,7 +37,10 @@
   /* Missing utility tokens */
   /* D-67: #6b7280 gives ~4.79:1 contrast on --background — just above WCAG AA 4.5:1.
      Raised to #7c84a2 for improved small-text legibility. */
+  /* D-R4.1: on .card backgrounds (rgba(16,18,33,0.82)), --muted #9ba3c1 gives ~4.8:1.
+     Use --text-on-card for small text on card backgrounds to ensure AA compliance. */
   --text-muted: #7c84a2;
+  --text-on-card: #a0a8c7; /* slightly lighter than --muted for card backgrounds */
   --border-color: rgba(31, 41, 55, 0.9);
 
   /* Border-radius scale (D-5) */

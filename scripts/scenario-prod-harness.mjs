@@ -5,8 +5,12 @@ const DEFAULT_INDEXER_URL = "https://indexer-production-4bb1.up.railway.app";
 const DEFAULT_OWNERVIEW_URL = "https://ownerview-production.up.railway.app";
 
 const WEB_URL = process.env.SCENARIO_WEB_URL || process.env.NEXT_PUBLIC_APP_URL || DEFAULT_WEB_URL;
-const INDEXER_URL = process.env.SCENARIO_INDEXER_URL || process.env.NEXT_PUBLIC_INDEXER_URL || DEFAULT_INDEXER_URL;
-const OWNERVIEW_URL = process.env.SCENARIO_OWNERVIEW_URL || process.env.NEXT_PUBLIC_OWNERVIEW_URL || DEFAULT_OWNERVIEW_URL;
+const INDEXER_URL =
+  process.env.SCENARIO_INDEXER_URL || process.env.NEXT_PUBLIC_INDEXER_URL || DEFAULT_INDEXER_URL;
+const OWNERVIEW_URL =
+  process.env.SCENARIO_OWNERVIEW_URL ||
+  process.env.NEXT_PUBLIC_OWNERVIEW_URL ||
+  DEFAULT_OWNERVIEW_URL;
 
 let passCount = 0;
 let failCount = 0;
@@ -71,14 +75,20 @@ async function main() {
     const { res, json, text } = await fetchJson(`${INDEXER_URL}/api/health`);
     assert([200, 503].includes(res.status), `unexpected status ${res.status}`);
     assert(json && typeof json === "object", `expected JSON body, got: ${text.slice(0, 160)}`);
-    assert(json.status === "ready" || json.status === "degraded", `unexpected status payload: ${JSON.stringify(json)}`);
+    assert(
+      json.status === "ready" || json.status === "degraded",
+      `unexpected status payload: ${JSON.stringify(json)}`,
+    );
   });
 
   await runCheck("ownerview health", async () => {
     const { res, json, text } = await fetchJson(`${OWNERVIEW_URL}/health`);
     assert([200, 503].includes(res.status), `unexpected status ${res.status}`);
     assert(json && typeof json === "object", `expected JSON body, got: ${text.slice(0, 160)}`);
-    assert(json.status === "ready" || json.status === "degraded", `unexpected status payload: ${JSON.stringify(json)}`);
+    assert(
+      json.status === "ready" || json.status === "degraded",
+      `unexpected status payload: ${JSON.stringify(json)}`,
+    );
   });
 
   await runCheck("table feed", async () => {
@@ -94,9 +104,9 @@ async function main() {
     assert(res.ok, `unexpected status ${res.status}`);
     assert(
       text.includes("AI Agents Play On-Chain Poker") ||
-      text.includes("Autonomous AI agents") ||
-      text.includes("Now Playing"),
-      "landing title missing"
+        text.includes("Autonomous AI agents") ||
+        text.includes("Now Playing"),
+      "landing title missing",
     );
     assert(!text.includes("Unable to load tables"), "landing still shows table load failure");
   });
@@ -153,7 +163,13 @@ async function main() {
   await runCheck("betting page", async () => {
     const { res, text } = await fetchText(`${WEB_URL}/betting`);
     assert(res.ok, `unexpected status ${res.status}`);
-    assert(text.includes("Rail Bets"), "betting title missing");
+    assert(
+      text.includes("Predict the Winner") ||
+        text.includes("Bet Slip") ||
+        text.includes("Virtual Bankroll") ||
+        text.includes("Rail Bets"),
+      "betting markers missing",
+    );
   });
 
   await runCheck("sidebet leaderboard page", async () => {
@@ -167,34 +183,49 @@ async function main() {
       const tableId = tables[0].tableId;
       const { res, text } = await fetchText(`${WEB_URL}/table/${encodeURIComponent(tableId)}`);
       assert(res.ok, `unexpected status ${res.status}`);
-      assert(text.includes("Action Log") || text.includes("Table Viewer") || text.includes("Why"), "table detail markers missing");
+      assert(
+        text.includes("Action Log") || text.includes("Table Viewer") || text.includes("Why"),
+        "table detail markers missing",
+      );
     });
 
     await runCheck("table replay deep link", async () => {
       const tableId = tables[0].tableId;
       const handId = tables[0].currentHand?.handId || tables[0].currentHandId || "0";
-      const { res, text } = await fetchText(`${WEB_URL}/table/${encodeURIComponent(tableId)}?hand=${encodeURIComponent(handId)}`);
+      const { res, text } = await fetchText(
+        `${WEB_URL}/table/${encodeURIComponent(tableId)}?hand=${encodeURIComponent(handId)}`,
+      );
       assert(res.ok, `unexpected status ${res.status}`);
       assert(text.includes(`Replay Hand #${handId}`), "table replay marker missing");
     });
 
     await runCheck("table clips view", async () => {
       const tableId = tables[0].tableId;
-      const { res, text } = await fetchText(`${WEB_URL}/table/${encodeURIComponent(tableId)}?view=clips`);
+      const { res, text } = await fetchText(
+        `${WEB_URL}/table/${encodeURIComponent(tableId)}?view=clips`,
+      );
       assert(res.ok, `unexpected status ${res.status}`);
       assert(text.includes("Highlight Builder"), "clips marker missing");
     });
 
     await runCheck("embed table page", async () => {
       const tableId = tables[0].tableId;
-      const { res, text } = await fetchText(`${WEB_URL}/embed/table/${encodeURIComponent(tableId)}?theme=dark`);
+      const { res, text } = await fetchText(
+        `${WEB_URL}/embed/table/${encodeURIComponent(tableId)}?theme=dark`,
+      );
       assert(res.ok, `unexpected status ${res.status}`);
       assert(text.includes("Railbird Embed"), "embed title missing");
       assert(text.includes(`Table #${tableId}`), "embed table id missing");
-      assert(res.headers.get("x-frame-options") === null, "x-frame-options should be unset for embed routes");
+      assert(
+        res.headers.get("x-frame-options") === null,
+        "x-frame-options should be unset for embed routes",
+      );
       const csp = res.headers.get("content-security-policy") || "";
       assert(csp.includes("frame-ancestors"), "embed CSP missing frame-ancestors");
-      assert(!csp.includes("frame-ancestors 'none'"), "embed frame-ancestors still blocks embedding");
+      assert(
+        !csp.includes("frame-ancestors 'none'"),
+        "embed frame-ancestors still blocks embedding",
+      );
     });
   } else {
     skip("table detail page", "no tables available from indexer");

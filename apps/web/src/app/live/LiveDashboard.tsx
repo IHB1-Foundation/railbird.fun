@@ -284,8 +284,12 @@ export function LiveDashboard({ mode = "spotlight", streamMode = false }: LiveDa
           </span>
         )}
         {isBigPot && <span className={styles.bigPotBadge}>BIG POT</span>}
+        {/* D-R10.1: mini nav so users can jump to other sections without going back first */}
         <Link href="/" className={styles.headerBack}>
-          <span aria-hidden="true">←</span> Back
+          Home
+        </Link>
+        <Link href="/leaderboard" className={styles.headerBack}>
+          Leaderboard
         </Link>
         <button className={styles.fullscreenBtn} onClick={toggleFullscreen}>
           {isFullscreen ? "⛶ Exit" : "⛶ Fullscreen"}

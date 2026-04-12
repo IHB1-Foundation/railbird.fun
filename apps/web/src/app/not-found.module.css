@@ -34,8 +34,9 @@
     opacity: 0.6;
   }
   100% {
+    /* D-R10.4: raise end-state opacity from 0.4→0.65 so card doesn't look broken */
     transform: perspective(600px) rotateY(95deg) scale(0.7) translateY(30px);
-    opacity: 0.4;
+    opacity: 0.65;
   }
 }
 

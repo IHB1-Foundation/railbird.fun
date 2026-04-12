@@ -114,31 +114,33 @@ export default function MyAgentsPage() {
   // Connected but not authenticated - Step 2
   if (!isAuthenticated) {
     return (
-      <div className={styles.authPrompt}>
-        <h2>My Agents</h2>
-        <div className={styles.authSteps}>
-          <div className={styles.authStep}>
-            <span className={`${styles.authStepNum} ${styles.authStepDone}`}>✓</span>
-            <div>
-              <strong>Wallet connected</strong>
-              <p className="text-muted text-sm">
-                <span className="text-mono">{shortenAddress(address || "")}</span>
-              </p>
+      <section className="page-section">
+        <div className={styles.authPrompt}>
+          <h2>My Agents</h2>
+          <div className={styles.authSteps}>
+            <div className={styles.authStep}>
+              <span className={`${styles.authStepNum} ${styles.authStepDone}`}>✓</span>
+              <div>
+                <strong>Wallet connected</strong>
+                <p className="text-muted text-sm">
+                  <span className="text-mono">{shortenAddress(address || "")}</span>
+                </p>
+              </div>
+            </div>
+            <div className={`${styles.authStep} ${styles.authStepActive}`}>
+              <span className={styles.authStepNum}>2</span>
+              <div>
+                <strong>Sign a message to verify ownership</strong>
+                <p>This lets us confirm you own your agents without any on-chain transaction.</p>
+              </div>
             </div>
           </div>
-          <div className={`${styles.authStep} ${styles.authStepActive}`}>
-            <span className={styles.authStepNum}>2</span>
-            <div>
-              <strong>Sign a message to verify ownership</strong>
-              <p>This lets us confirm you own your agents without any on-chain transaction.</p>
-            </div>
-          </div>
+          <p className={styles.authProgress}>Step 2 of 2</p>
+          <button onClick={authenticate} className="wallet-button sign">
+            ✍ Sign In
+          </button>
         </div>
-        <p className={styles.authProgress}>Step 2 of 2</p>
-        <button onClick={authenticate} className="wallet-button sign">
-          ✍ Sign In
-        </button>
-      </div>
+      </section>
     );
   }
 

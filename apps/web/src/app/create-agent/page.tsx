@@ -7,6 +7,7 @@ import { PERSONA_PRESETS } from "@/lib/agentProfiles";
 import { getTables } from "@/lib/api";
 import { ZERO_ADDRESS } from "@/lib/utils";
 import { Breadcrumb } from "@/components/Breadcrumb";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import styles from "./page.module.css";
 import { StepPersona } from "./_components/StepPersona";
 import { StepTable } from "./_components/StepTable";
@@ -29,6 +30,7 @@ export default function CreateAgentPage() {
   const [deployedAgentId, setDeployedAgentId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [nameError, setNameError] = useState<string | null>(null);
+  const [showDeployConfirm, setShowDeployConfirm] = useState(false);
 
   // Fetch tables when entering step 3
   useEffect(() => {
@@ -37,7 +39,7 @@ export default function CreateAgentPage() {
       .then((data) => {
         const tableList = data.map((table) => {
           const activePlayers = table.seats.filter(
-            (seat) => seat.ownerAddress.toLowerCase() !== ZERO_ADDRESS
+            (seat) => seat.ownerAddress.toLowerCase() !== ZERO_ADDRESS,
           ).length;
           const emptySeats = Math.max(TABLE_MAX_SEATS - activePlayers, 0);
           return {
@@ -83,7 +85,9 @@ export default function CreateAgentPage() {
 
     const fleetUrl = process.env.NEXT_PUBLIC_FLEET_URL;
     if (!fleetUrl) {
-      setError("Fleet service URL is not configured (NEXT_PUBLIC_FLEET_URL). Contact the operator.");
+      setError(
+        "Fleet service URL is not configured (NEXT_PUBLIC_FLEET_URL). Contact the operator.",
+      );
       setDeployStatus("error");
       return;
     }
@@ -110,10 +114,10 @@ export default function CreateAgentPage() {
         }),
       });
       if (!res.ok) {
-        const body = await res.json() as { error?: string };
+        const body = (await res.json()) as { error?: string };
         throw new Error(body.error ?? `HTTP ${res.status}`);
       }
-      const data = await res.json() as { agentId: string };
+      const data = (await res.json()) as { agentId: string };
       setDeployedAgentId(data.agentId);
       setDeployStatus("live");
       setStep(5);
@@ -161,7 +165,8 @@ export default function CreateAgentPage() {
           <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>🔗</div>
           <h2 className={styles.stepTitle}>Connect Your Wallet</h2>
           <p className={`muted ${styles.stepSubtitle}`}>
-            Your wallet identifies you as the agent owner. You control which table the agent plays on.
+            Your wallet identifies you as the agent owner. You control which table the agent plays
+            on.
           </p>
           {isConnected ? (
             <div>
@@ -204,20 +209,33 @@ export default function CreateAgentPage() {
 
       {/* Step 4: Deploy */}
       {step === 4 && (
-        <StepDeploy
-          persona={persona}
-          selectedTable={selectedTable}
-          deployStatus={deployStatus}
-          error={error}
-          onDeploy={handleDeploy}
-          onBack={() => setStep(3)}
-        />
+        <>
+          <StepDeploy
+            persona={persona}
+            selectedTable={selectedTable}
+            deployStatus={deployStatus}
+            error={error}
+            onDeploy={() => setShowDeployConfirm(true)}
+            onBack={() => setStep(3)}
+          />
+          {/* D-R10.2: confirm dialog before irreversible deploy */}
+          <ConfirmDialog
+            open={showDeployConfirm}
+            title={`Deploy ${persona.name || "Agent"}?`}
+            message={`Deploy "${persona.name}" to table ${selectedTable.slice(0, 10)}…? This action cannot be undone.`}
+            confirmLabel="Deploy Agent"
+            cancelLabel="Cancel"
+            onConfirm={() => {
+              setShowDeployConfirm(false);
+              handleDeploy();
+            }}
+            onCancel={() => setShowDeployConfirm(false)}
+          />
+        </>
       )}
 
       {/* Step 5: Success */}
-      {step === 5 && (
-        <StepSuccess persona={persona} deployedAgentId={deployedAgentId} />
-      )}
+      {step === 5 && <StepSuccess persona={persona} deployedAgentId={deployedAgentId} />}
     </div>
   );
 }

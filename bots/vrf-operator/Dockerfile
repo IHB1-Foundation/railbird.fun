@@ -18,7 +18,7 @@ RUN pnpm --filter @playerco/shared build
 RUN pnpm --filter @playerco/vrf-operator build
 
 # ── Runtime stage ─────────────────────────────────────────────────────────────
-FROM node:20-slim AS runtime
+FROM node:20-alpine AS runtime
 
 WORKDIR /app
 

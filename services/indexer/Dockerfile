@@ -22,7 +22,7 @@ RUN pnpm --filter @playerco/shared build
 RUN pnpm --filter @playerco/indexer build
 
 # ── Runtime stage ─────────────────────────────────────────────────────────────
-FROM node:20-slim AS runtime
+FROM node:20-alpine AS runtime
 
 WORKDIR /app
 

@@ -7,7 +7,6 @@
   align-items: stretch;
   gap: 1rem;
   padding: clamp(1rem, 3vw, 1.75rem);
-  margin-bottom: 1.15rem;
   border: 1px solid rgba(252, 211, 77, 0.25);
   background:
     radial-gradient(700px 320px at -5% -15%, rgba(129, 108, 249, 0.28), transparent 60%),
@@ -128,7 +127,6 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 0.75rem;
-  margin-bottom: 1.2rem;
 }
 
 .featureItem {
@@ -161,7 +159,6 @@
 
 /* PD-E2: flex+gap on card so children don't need individual margin-top */
 .featuredLiveCard {
-  margin-bottom: 1.2rem;
   border-color: rgba(143, 209, 255, 0.34);
   background:
     radial-gradient(1200px 340px at -8% -24%, rgba(56, 118, 255, 0.2), transparent 58%),
@@ -399,6 +396,17 @@
 
   .featureItem {
     padding: 0.75rem;
+  }
+
+  .landingCtaRow {
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .landingCtaRow .btn,
+  .landingCtaRow .btn-ghost {
+    width: 100%;
+    justify-content: center;
   }
 }
 

@@ -39,7 +39,10 @@ const TABLE_MAX_SEATS = Number(process.env.NEXT_PUBLIC_TABLE_MAX_SEATS || "9");
 
 const STREET_LABELS = ["Pre-flop", "Flop", "Turn", "River", "Showdown"] as const;
 
-function getSeatOrbitPosition(seatIndex: number, totalSeats: number): { left: string; top: string } {
+function getSeatOrbitPosition(
+  seatIndex: number,
+  totalSeats: number,
+): { left: string; top: string } {
   if (totalSeats <= 1) return { left: "50%", top: "14%" };
   const angleDeg = -90 + (360 / totalSeats) * seatIndex;
   const angleRad = (angleDeg * Math.PI) / 180;
@@ -58,8 +61,16 @@ interface TableViewerProps {
 type TableAction = NonNullable<TableResponse["currentHand"]>["actions"][number];
 
 export function TableViewer({ initialData, tableId }: TableViewerProps) {
-  const { table, maxSeats, timeRemaining, wsStatus, reconnectAttempts, nextRetryIn, refreshError, refreshRetryCount, refreshTable, commentaries } =
-    useTableState(tableId, initialData);
+  const {
+    table,
+    maxSeats,
+    timeRemaining,
+    wsStatus,
+    refreshError,
+    refreshRetryCount,
+    refreshTable,
+    commentaries,
+  } = useTableState(tableId, initialData);
   const [commentaryOpen, setCommentaryOpen] = useState(true);
 
   const [revealedHolecards, setRevealedHolecards] = useState<RevealedHolecardResponse[]>([]);
@@ -95,7 +106,12 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
   const [showJoinConfirm, setShowJoinConfirm] = useState<boolean>(false);
 
   const { isConnected, isAuthenticated, address, connect, getHoleCards } = useAuth();
-  const { holeCards } = useHoleCards(isAuthenticated, tableId, table.currentHand?.handId, getHoleCards);
+  const { holeCards } = useHoleCards(
+    isAuthenticated,
+    tableId,
+    table.currentHand?.handId,
+    getHoleCards,
+  );
 
   // Stringify seats for stable memo key
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -104,38 +120,47 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
     const parsed = JSON.parse(seatsKey) as typeof table.seats;
     const byIndex = new Map(parsed.map((seat) => [seat.seatIndex, seat]));
     return Array.from({ length: maxSeats }, (_, seatIndex) => {
-      return byIndex.get(seatIndex) ?? {
-        seatIndex,
-        ownerAddress: ZERO_ADDRESS,
-        operatorAddress: ZERO_ADDRESS,
-        stack: "0",
-        isActive: false,
-        currentBet: "0",
-        tokenAddress: null,
-      };
+      return (
+        byIndex.get(seatIndex) ?? {
+          seatIndex,
+          ownerAddress: ZERO_ADDRESS,
+          operatorAddress: ZERO_ADDRESS,
+          stack: "0",
+          isActive: false,
+          currentBet: "0",
+          tokenAddress: null,
+        }
+      );
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [maxSeats, seatsKey]);
 
   const seatByIndex = useMemo(
     () => new Map(normalizedSeats.map((seat) => [seat.seatIndex, seat])),
-    [normalizedSeats]
+    [normalizedSeats],
   );
   const occupiedSeats = useMemo(
     () => normalizedSeats.filter((seat) => seat.ownerAddress.toLowerCase() !== ZERO_ADDRESS),
-    [normalizedSeats]
+    [normalizedSeats],
   );
 
   // Fetch revealed holecards at showdown/settled
   useEffect(() => {
     let cancelled = false;
     const fetchRevealed = async () => {
-      if (!table.currentHand) { setRevealedHolecards([]); return; }
+      if (!table.currentHand) {
+        setRevealedHolecards([]);
+        return;
+      }
       const state = table.gameState;
       const isRevealState =
         state === GameState[GameState.SHOWDOWN] ||
         state === GameState[GameState.SETTLED] ||
         state === GameState[GameState.TOURNAMENT_OVER];
-      if (!isRevealState) { setRevealedHolecards([]); return; }
+      if (!isRevealState) {
+        setRevealedHolecards([]);
+        return;
+      }
       try {
         const cards = await getRevealedHolecards(tableId, table.currentHand.handId);
         if (!cancelled) setRevealedHolecards(cards);
@@ -144,26 +169,29 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
       }
     };
     fetchRevealed();
-    return () => { cancelled = true; };
-  }, [tableId, table.currentHand?.handId, table.gameState]);
+    return () => {
+      cancelled = true;
+    };
+  }, [tableId, table.currentHand, table.currentHand?.handId, table.gameState]);
 
-  const ownedSeatIndex =
-    address
-      ? (normalizedSeats.find(
-          (s) => s.ownerAddress.toLowerCase() !== ZERO_ADDRESS && s.ownerAddress.toLowerCase() === address.toLowerCase()
-        )?.seatIndex ?? null)
-      : null;
+  const ownedSeatIndex = address
+    ? (normalizedSeats.find(
+        (s) =>
+          s.ownerAddress.toLowerCase() !== ZERO_ADDRESS &&
+          s.ownerAddress.toLowerCase() === address.toLowerCase(),
+      )?.seatIndex ?? null)
+    : null;
 
   const availableSeats = useMemo(
     () => normalizedSeats.filter((seat) => seat.ownerAddress.toLowerCase() === ZERO_ADDRESS),
-    [normalizedSeats]
+    [normalizedSeats],
   );
 
   useEffect(() => {
     if (availableSeats.length > 0) {
-      setJoinSeatIndex((prev) => (
-        availableSeats.some((seat) => seat.seatIndex === prev) ? prev : availableSeats[0].seatIndex
-      ));
+      setJoinSeatIndex((prev) =>
+        availableSeats.some((seat) => seat.seatIndex === prev) ? prev : availableSeats[0].seatIndex,
+      );
     }
   }, [availableSeats]);
 
@@ -171,10 +199,13 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
   const currentHand = table.currentHand;
   const isActive = gameState !== "Waiting for Players" && gameState !== "Settled";
   const vrfStreet: string | null =
-    table.gameState === GameState[GameState.WAITING_VRF_FLOP] ? "Flop"
-    : table.gameState === GameState[GameState.WAITING_VRF_TURN] ? "Turn"
-    : table.gameState === GameState[GameState.WAITING_VRF_RIVER] ? "River"
-    : null;
+    table.gameState === GameState[GameState.WAITING_VRF_FLOP]
+      ? "Flop"
+      : table.gameState === GameState[GameState.WAITING_VRF_TURN]
+        ? "Turn"
+        : table.gameState === GameState[GameState.WAITING_VRF_RIVER]
+          ? "River"
+          : null;
   const actorSeat = currentHand?.actorSeat ?? null;
   const actorSeatData = actorSeat !== null ? seatByIndex.get(actorSeat) : null;
 
@@ -224,7 +255,10 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
 
   const handleJoinValidate = useCallback(async () => {
     setJoinStatus("");
-    if (availableSeats.length === 0) { setJoinStatus("No empty seats available."); return; }
+    if (availableSeats.length === 0) {
+      setJoinStatus("No empty seats available.");
+      return;
+    }
 
     if (!isConnected) {
       await connect();
@@ -263,7 +297,15 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
 
     // Validation passed — show confirm dialog (D-42)
     setShowJoinConfirm(true);
-  }, [availableSeats, connect, isConnected, joinBuyIn, joinOperator, joinSeatIndex, normalizedSeats]);
+  }, [
+    availableSeats,
+    connect,
+    isConnected,
+    joinBuyIn,
+    joinOperator,
+    joinSeatIndex,
+    normalizedSeats,
+  ]);
 
   const handleJoinSeat = useCallback(async () => {
     setShowJoinConfirm(false);
@@ -296,10 +338,16 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
       )}
 
       {/* Connection Status */}
-      <div className={cn(
-        styles.connectionStatus,
-        wsStatus === "connected" ? styles.connected : wsStatus === "polling" ? styles.polling : styles.disconnected
-      )}>
+      <div
+        className={cn(
+          styles.connectionStatus,
+          wsStatus === "connected"
+            ? styles.connected
+            : wsStatus === "polling"
+              ? styles.polling
+              : styles.disconnected,
+        )}
+      >
         {wsStatus === "connected" && "Live"}
         {wsStatus === "connecting" && "Connecting\u2026"}
         {wsStatus === "reconnecting" && "Reconnecting\u2026"}
@@ -309,7 +357,15 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
             {" · "}
             <button
               onClick={() => window.location.reload()}
-              style={{ background: "none", border: "none", color: "inherit", cursor: "pointer", fontSize: "inherit", textDecoration: "underline", padding: 0 }}
+              style={{
+                background: "none",
+                border: "none",
+                color: "inherit",
+                cursor: "pointer",
+                fontSize: "inherit",
+                textDecoration: "underline",
+                padding: 0,
+              }}
             >
               Reconnect
             </button>
@@ -333,7 +389,7 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
         )}
       </div>
       {wsStatus === "polling" && pollingToastShown && (
-        <div role="alert" style={{ background: "rgba(255,191,77,0.12)", color: "#ffd7a1", padding: "0.4rem 0.8rem", borderRadius: "8px", fontSize: "0.8rem", marginBottom: "0.5rem", border: "1px solid rgba(255,191,77,0.35)" }}>
+        <div role="alert" className={styles.pollingToast}>
           Live connection unavailable — refreshing every 3 seconds
         </div>
       )}
@@ -342,7 +398,8 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
       {isAuthenticated && ownedSeatIndex !== null && (
         <div className={styles.ownerBanner}>
           <span>
-            <strong className={styles.ownerBannerTitle}>Owner Mode</strong> - You own Seat {ownedSeatIndex}
+            <strong className={styles.ownerBannerTitle}>Owner Mode</strong> - You own Seat{" "}
+            {ownedSeatIndex}
           </span>
           {holeCards && (
             <span className={styles.ownerBannerCards}>Cards visible on your seat below</span>
@@ -351,11 +408,13 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
       )}
 
       {/* Breadcrumb */}
-      <Breadcrumb crumbs={[
-        { label: "Home", href: "/" },
-        { label: "Tables", href: "/" },
-        { label: `Table #${tableId}` },
-      ]} />
+      <Breadcrumb
+        crumbs={[
+          { label: "Home", href: "/" },
+          { label: "Tables", href: "/" },
+          { label: `Table #${tableId}` },
+        ]}
+      />
 
       {/* G-32: Coachmarks — "Show me how" guided tour */}
       <TableCoachmarks />
@@ -372,7 +431,12 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
           </div>
           <div className={`${styles.tableHeadingMeta} ${styles.tableHeadingMetaMono}`}>
             Contract:{" "}
-            <a href={explorerAddressUrl(table.contractAddress)} target="_blank" rel="noopener noreferrer" title={table.contractAddress}>
+            <a
+              href={explorerAddressUrl(table.contractAddress)}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={table.contractAddress}
+            >
               {shortenAddress(table.contractAddress)} <span aria-hidden="true">↗</span>
             </a>
           </div>
@@ -386,7 +450,11 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
           {currentHand && Number(currentHand.handId) > 0 && (
             <div className={styles.tableHandId}>Hand #{currentHand.handId}</div>
           )}
-          <Link href="/betting" className="btn btn-ghost" style={{ fontSize: "0.78rem", padding: "0.3rem 0.75rem", minHeight: 0 }}>
+          <Link
+            href="/betting"
+            className="btn btn-ghost"
+            style={{ fontSize: "0.78rem", padding: "0.3rem 0.75rem", minHeight: 0 }}
+          >
             🎲 Place Rail Bet
           </Link>
           <ShareButton />
@@ -405,11 +473,18 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
       {/* Now Acting bar — outside orbital area for readability */}
       {actorSeat !== null && actorSeatData && (
         <div className={styles.nowActingBar}>
-          Now Acting: {(() => {
-            const actorProfile = getAgentProfile(actorSeatData.operatorAddress) || getAgentProfile(actorSeatData.ownerAddress);
-            return actorProfile ? actorProfile.name : `Seat ${actorSeat} (${shortenAddress(actorSeatData.ownerAddress)})`;
+          Now Acting:{" "}
+          {(() => {
+            const actorProfile =
+              getAgentProfile(actorSeatData.operatorAddress) ||
+              getAgentProfile(actorSeatData.ownerAddress);
+            return actorProfile
+              ? actorProfile.name
+              : `Seat ${actorSeat} (${shortenAddress(actorSeatData.ownerAddress)})`;
           })()}
-          {timeRemaining !== "--" && <span className={styles.nowActingTimer}> — {timeRemaining}</span>}
+          {timeRemaining !== "--" && (
+            <span className={styles.nowActingTimer}> — {timeRemaining}</span>
+          )}
         </div>
       )}
 
@@ -448,12 +523,15 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
             </div>
             <div className={styles.tablePotBlock}>
               {currentHand && (
-                <div className={cn(
-                  styles.potValue,
-                  currentHand.winnerSeat !== null && currentHand.winnerSeat !== undefined && styles.potCollect
-                )}>
-                  Pot:{" "}
-                  {/* G-10: AnimatedNumber counts up/down with flash */}
+                <div
+                  className={cn(
+                    styles.potValue,
+                    currentHand.winnerSeat !== null &&
+                      currentHand.winnerSeat !== undefined &&
+                      styles.potCollect,
+                  )}
+                >
+                  Pot: {/* G-10: AnimatedNumber counts up/down with flash */}
                   <AnimatedNumber
                     value={Number(BigInt(currentHand.pot) / 10n ** 18n)}
                     suffix={` ${CHIP_SYMBOL}`}
@@ -493,28 +571,28 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
       </div>
 
       {/* AI Commentary Panel */}
-      <div className="card" style={{ marginBottom: "1rem" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: commentaryOpen ? "0.75rem" : 0 }}>
-          <h3 className="section-title-sm" style={{ margin: 0 }}>🎙 AI Commentary</h3>
+      <div className={`card ${styles.commentaryPanel}`}>
+        <div className={styles.commentaryHeader}>
+          <h3 className="section-title-sm">🎙 AI Commentary</h3>
           <button
             onClick={() => setCommentaryOpen((v) => !v)}
-            style={{ background: "none", border: "none", color: "var(--muted)", cursor: "pointer", fontSize: "0.82rem", padding: "0.1rem 0.4rem" }}
+            className={styles.commentaryToggleBtn}
             aria-label={commentaryOpen ? "Collapse AI commentary" : "Expand AI commentary"}
           >
             {commentaryOpen ? "▲ Collapse" : "▼ Expand"}
           </button>
         </div>
         {commentaryOpen && (
-          <div style={{ maxHeight: "180px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+          <div className={styles.commentaryBody}>
             {commentaries.length === 0 ? (
-              <p className="text-muted" style={{ fontSize: "0.82rem", margin: 0 }}>Waiting for commentary...</p>
+              <p className="text-muted">Waiting for commentary...</p>
             ) : (
               [...commentaries].reverse().map((c, i) => (
-                <div key={i} style={{ display: "flex", gap: "0.6rem", alignItems: "flex-start" }}>
-                  <span style={{ fontSize: "0.72rem", color: "var(--muted)", whiteSpace: "nowrap", paddingTop: "0.1rem" }}>
+                <div key={i} className={styles.commentaryItem}>
+                  <span className={styles.commentaryStreet}>
                     {c.street.charAt(0).toUpperCase() + c.street.slice(1)}
                   </span>
-                  <span style={{ fontSize: "0.85rem", lineHeight: 1.45 }}>{c.commentary}</span>
+                  <span className={styles.commentaryText}>{c.commentary}</span>
                 </div>
               ))
             )}
@@ -611,8 +689,18 @@ function JoinSeatForm({
   if (isActive && !expanded) {
     return (
       <div className={`card ${styles.sectionCard}`}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5rem", flexWrap: "wrap" }}>
-          <span className="text-muted" style={{ fontSize: "0.82rem" }}>Join available between hands</span>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "0.5rem",
+            flexWrap: "wrap",
+          }}
+        >
+          <span className="text-muted" style={{ fontSize: "0.82rem" }}>
+            Join available between hands
+          </span>
           <button className={styles.joinToggleBtn} onClick={() => setExpanded(true)}>
             + Join Table
           </button>
@@ -641,7 +729,9 @@ function JoinSeatForm({
             disabled={joinLoading || availableSeats.length === 0}
           >
             {availableSeats.map((seat) => (
-              <option key={seat.seatIndex} value={seat.seatIndex}>Seat {seat.seatIndex}</option>
+              <option key={seat.seatIndex} value={seat.seatIndex}>
+                Seat {seat.seatIndex}
+              </option>
             ))}
           </select>
         </label>
@@ -665,7 +755,14 @@ function JoinSeatForm({
             aria-invalid={!!buyInError}
             aria-describedby={buyInError ? "buyin-error" : undefined}
           />
-          {buyInError && <span id="buyin-error" style={{ color: "var(--danger)", fontSize: "0.72rem", marginTop: "0.15rem" }}>{buyInError}</span>}
+          {buyInError && (
+            <span
+              id="buyin-error"
+              style={{ color: "var(--danger)", fontSize: "0.72rem", marginTop: "0.15rem" }}
+            >
+              {buyInError}
+            </span>
+          )}
         </label>
         <label className={styles.joinField}>
           <span className={styles.joinFieldLabel}>Operator (optional)</span>
@@ -685,15 +782,45 @@ function JoinSeatForm({
             aria-invalid={!!operatorError}
             aria-describedby="operator-help operator-error"
           />
-          <span id="operator-help" style={{ color: "var(--muted)", fontSize: "0.72rem", marginTop: "0.15rem", lineHeight: 1.4 }}>
-            The wallet address that will submit poker actions for this seat (usually your bot&apos;s address)
+          <span
+            id="operator-help"
+            style={{
+              color: "var(--muted)",
+              fontSize: "0.72rem",
+              marginTop: "0.15rem",
+              lineHeight: 1.4,
+            }}
+          >
+            The wallet address that will submit poker actions for this seat (usually your bot&apos;s
+            address)
           </span>
-          {operatorError && <span id="operator-error" style={{ color: "var(--danger)", fontSize: "0.72rem", marginTop: "0.15rem" }}>{operatorError}</span>}
+          {operatorError && (
+            <span
+              id="operator-error"
+              style={{ color: "var(--danger)", fontSize: "0.72rem", marginTop: "0.15rem" }}
+            >
+              {operatorError}
+            </span>
+          )}
         </label>
         {!isConnected && (
-          <div style={{ marginBottom: "0.5rem", display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
-            <span className="text-muted" style={{ fontSize: "0.82rem" }}>Connect wallet to join</span>
-            <button className="wallet-button" onClick={onConnect} style={{ padding: "0.35rem 0.75rem", fontSize: "0.8rem" }}>
+          <div
+            style={{
+              marginBottom: "0.5rem",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
+              flexWrap: "wrap",
+            }}
+          >
+            <span className="text-muted" style={{ fontSize: "0.82rem" }}>
+              Connect wallet to join
+            </span>
+            <button
+              className="wallet-button"
+              onClick={onConnect}
+              style={{ padding: "0.35rem 0.75rem", fontSize: "0.8rem" }}
+            >
               Connect Wallet
             </button>
           </div>
@@ -710,4 +837,3 @@ function JoinSeatForm({
     </div>
   );
 }
-

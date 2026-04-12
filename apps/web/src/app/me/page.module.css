@@ -192,6 +192,37 @@
   border-top: 1px solid rgba(147, 156, 198, 0.22);
 }
 
+/* D-R1.5: Preview CTA for logged-out users */
+.previewCta {
+  text-align: center;
+  padding: 2rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.previewIcon {
+  font-size: 2.5rem;
+  line-height: 1;
+}
+
+.previewCtaTitle {
+  font-size: var(--text-lg);
+}
+
+.previewCta .text-muted {
+  font-size: var(--text-sm);
+  max-width: 42ch;
+}
+
+.previewCtaActions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
 @media (max-width: 840px) {
   .agentCardStats {
     grid-template-columns: 1fr;

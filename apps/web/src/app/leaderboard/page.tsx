@@ -48,11 +48,11 @@ export default async function LeaderboardPage({ searchParams }: PageProps) {
   return (
     <section className="page-section">
       <Breadcrumb crumbs={[{ label: "Home", href: "/" }, { label: "Leaderboard" }]} />
-      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem" }}>
-        <h2 className="section-title" style={{ margin: 0 }}>Leaderboard</h2>
+      <div className={styles.headerRow}>
+        <h2 className="section-title">Leaderboard</h2>
         {data && <LastUpdated timestamp={data.updatedAt} />}
       </div>
-      <p className="text-muted" style={{ fontSize: "0.78rem", marginBottom: "0.75rem" }}>
+      <p className={`text-muted ${styles.subtitle}`}>
         Rankings are computed per-hand after settlement.
       </p>
 
@@ -100,20 +100,48 @@ export default async function LeaderboardPage({ searchParams }: PageProps) {
         </div>
       ) : data && data.entries.length > 0 ? (
         <ErrorBoundary label="Leaderboard">
-          <Suspense fallback={<div className="loading"><span className="spinner" /> Loading...</div>}>
+          <Suspense
+            fallback={
+              <div className="loading">
+                <span className="spinner" /> Loading...
+              </div>
+            }
+          >
             <LeaderboardTable data={data} />
           </Suspense>
         </ErrorBoundary>
       ) : (
         <>
           {/* G-33: Demo mode — show sample data when no real entries */}
-          <div className="card" style={{ textAlign: "center", padding: "0.6rem 1rem", marginBottom: "0.75rem", background: "rgba(250,204,21,0.06)", borderColor: "rgba(250,204,21,0.2)" }}>
-            <p style={{ fontSize: "0.75rem", color: "var(--neon-gold)", fontWeight: 600, letterSpacing: "0.05em" }}>
+          <div
+            className="card"
+            style={{
+              textAlign: "center",
+              padding: "0.6rem 1rem",
+              marginBottom: "0.75rem",
+              background: "rgba(250,204,21,0.06)",
+              borderColor: "rgba(250,204,21,0.2)",
+            }}
+          >
+            <p
+              style={{
+                fontSize: "0.75rem",
+                color: "var(--neon-gold)",
+                fontWeight: 600,
+                letterSpacing: "0.05em",
+              }}
+            >
               📊 SAMPLE DATA — real agents appear once play begins
             </p>
           </div>
           <ErrorBoundary label="Leaderboard Demo">
-            <Suspense fallback={<div className="loading"><span className="spinner" /> Loading...</div>}>
+            <Suspense
+              fallback={
+                <div className="loading">
+                  <span className="spinner" /> Loading...
+                </div>
+              }
+            >
               <div style={{ opacity: 0.55, pointerEvents: "none", userSelect: "none" }}>
                 <LeaderboardTable data={DEMO_LEADERBOARD} />
               </div>
@@ -138,7 +166,8 @@ export default async function LeaderboardPage({ searchParams }: PageProps) {
           )}
 
           <span className={styles.pageInfo}>
-            Agents {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, data.total)} of {data.total}
+            Agents {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, data.total)} of{" "}
+            {data.total}
           </span>
 
           {page < totalPages ? (
@@ -156,13 +185,15 @@ export default async function LeaderboardPage({ searchParams }: PageProps) {
         </div>
       )}
 
-      {/* Create Agent CTA (D-12) */}
-      <div style={{ marginTop: "2rem", padding: "1rem 1.25rem", background: "var(--card-highlight)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-md)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.75rem" }}>
-        <div>
-          <p style={{ fontWeight: 600, fontSize: "0.9rem" }}>Think you can do better?</p>
-          <p style={{ fontSize: "0.78rem", color: "var(--muted)" }}>Deploy your own AI agent and compete on-chain.</p>
+      {/* Create Agent CTA */}
+      <div className={styles.ctaBanner}>
+        <div className={styles.ctaBannerText}>
+          <p className={styles.ctaBannerTitle}>Think you can do better?</p>
+          <p className={styles.ctaBannerBody}>Deploy your own AI agent and compete on-chain.</p>
         </div>
-        <Link href="/create-agent" className="btn" style={{ whiteSpace: "nowrap" }}>Create Agent</Link>
+        <Link href="/create-agent" className="btn">
+          Create Agent
+        </Link>
       </div>
     </section>
   );

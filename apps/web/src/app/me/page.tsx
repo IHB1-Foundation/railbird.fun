@@ -11,8 +11,7 @@ import { Breadcrumb } from "@/components/Breadcrumb";
 import styles from "./page.module.css";
 
 export default function MyAgentsPage() {
-  const { isConnected, isAuthenticated, address, connect, authenticate } =
-    useAuth();
+  const { isConnected, isAuthenticated, address, connect, authenticate } = useAuth();
   const [agents, setAgents] = useState<AgentResponse[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,8 +44,14 @@ export default function MyAgentsPage() {
   const portfolioStats = useMemo(() => {
     if (!agents.length) return null;
     const agentsWithSnap = agents.filter((a) => a.latestSnapshot);
-    const totalNav = agentsWithSnap.reduce((sum, a) => sum + BigInt(a.latestSnapshot!.externalAssets), 0n);
-    const totalPnl = agentsWithSnap.reduce((sum, a) => sum + BigInt(a.latestSnapshot!.cumulativePnl), 0n);
+    const totalNav = agentsWithSnap.reduce(
+      (sum, a) => sum + BigInt(a.latestSnapshot!.externalAssets),
+      0n,
+    );
+    const totalPnl = agentsWithSnap.reduce(
+      (sum, a) => sum + BigInt(a.latestSnapshot!.cumulativePnl),
+      0n,
+    );
     const activeAgents = agents.filter((a) => a.isRegistered).length;
     return { totalNav, totalPnl, activeAgents };
   }, [agents]);
@@ -83,16 +88,23 @@ export default function MyAgentsPage() {
           </button>
         </div>
 
-        {/* Preview CTA for logged-out users (D-15) */}
-        <div className="card" style={{ marginTop: "2rem", textAlign: "center", padding: "2rem 1.5rem" }}>
-          <div style={{ fontSize: "2.5rem", marginBottom: "0.75rem" }}>🤖</div>
-          <h3 style={{ marginBottom: "0.5rem", fontSize: "1.1rem" }}>Build your own AI poker agent</h3>
-          <p className="text-muted" style={{ fontSize: "0.85rem", maxWidth: "42ch", margin: "0 auto 1.25rem" }}>
-            Design an agent persona, deploy it on HashKey Chain, and watch it compete autonomously with Gemini-powered decisions.
+        {/* Preview CTA for logged-out users */}
+        <div className={`card ${styles.previewCta}`}>
+          <span className={styles.previewIcon} aria-hidden="true">
+            🤖
+          </span>
+          <h3 className={styles.previewCtaTitle}>Build your own AI poker agent</h3>
+          <p className="text-muted">
+            Design an agent persona, deploy it on HashKey Chain, and watch it compete autonomously
+            with Gemini-powered decisions.
           </p>
-          <div style={{ display: "flex", gap: "0.75rem", justifyContent: "center", flexWrap: "wrap" }}>
-            <Link href="/create-agent" className="btn">Create Agent</Link>
-            <Link href="/leaderboard" className="btn btn-ghost">View Leaderboard</Link>
+          <div className={styles.previewCtaActions}>
+            <Link href="/create-agent" className="btn">
+              Create Agent
+            </Link>
+            <Link href="/leaderboard" className="btn btn-ghost">
+              View Leaderboard
+            </Link>
           </div>
         </div>
       </section>
@@ -109,7 +121,9 @@ export default function MyAgentsPage() {
             <span className={`${styles.authStepNum} ${styles.authStepDone}`}>✓</span>
             <div>
               <strong>Wallet connected</strong>
-              <p className="text-muted text-sm"><span className="text-mono">{shortenAddress(address || "")}</span></p>
+              <p className="text-muted text-sm">
+                <span className="text-mono">{shortenAddress(address || "")}</span>
+              </p>
             </div>
           </div>
           <div className={`${styles.authStep} ${styles.authStepActive}`}>
@@ -134,8 +148,7 @@ export default function MyAgentsPage() {
       <div className={styles.pageHeadingRow}>
         <h2>My Agents</h2>
         <span className={styles.ownerPill}>
-          Owner:{" "}
-          <span className="text-mono">{shortenAddress(address || "")}</span>
+          Owner: <span className="text-mono">{shortenAddress(address || "")}</span>
         </span>
       </div>
 
@@ -143,12 +156,17 @@ export default function MyAgentsPage() {
         <div className={styles.portfolioSummary}>
           <div className={styles.portfolioStat}>
             <div className="label">Total NAV</div>
-            <div className={styles.portfolioStatValue}>{formatMon(portfolioStats.totalNav.toString())}</div>
+            <div className={styles.portfolioStatValue}>
+              {formatMon(portfolioStats.totalNav.toString())}
+            </div>
           </div>
           <div className={styles.portfolioStat}>
             <div className="label">Cumulative PnL</div>
-            <div className={`${styles.portfolioStatValue} ${portfolioStats.totalPnl >= 0n ? "value-positive" : "value-negative"}`}>
-              {portfolioStats.totalPnl >= 0n ? "+" : ""}{formatMon(portfolioStats.totalPnl.toString())}
+            <div
+              className={`${styles.portfolioStatValue} ${portfolioStats.totalPnl >= 0n ? "value-positive" : "value-negative"}`}
+            >
+              {portfolioStats.totalPnl >= 0n ? "+" : ""}
+              {formatMon(portfolioStats.totalPnl.toString())}
             </div>
           </div>
           <div className={styles.portfolioStat}>
@@ -169,24 +187,31 @@ export default function MyAgentsPage() {
         </div>
       )}
 
-      {error && (
-        <div className="card error-card">{error}</div>
-      )}
+      {error && <div className="card error-card">{error}</div>}
 
       {!isLoading && !error && agents.length === 0 && (
         <div className={`card ${styles.emptyState}`}>
           <p className={styles.emptyTitle}>No agents registered to this wallet</p>
           <p className="text-muted">Register your first agent to get started.</p>
           <div className={styles.registrationGuide}>
-            <p className="label" style={{ marginBottom: "0.4rem" }}>How to register an agent:</p>
+            <p className="label" style={{ marginBottom: "0.4rem" }}>
+              How to register an agent:
+            </p>
             <ol className={styles.registrationSteps}>
               <li>Deploy a PlayerVault contract for your agent</li>
-              <li>Call <code>PlayerRegistry.register()</code> with your token, vault, and operator addresses</li>
+              <li>
+                Call <code>PlayerRegistry.register()</code> with your token, vault, and operator
+                addresses
+              </li>
               <li>Join an active table and start playing</li>
             </ol>
           </div>
-          <div style={{ display: "flex", gap: "0.5rem", justifyContent: "center", flexWrap: "wrap" }}>
-            <Link href="/" className="btn btn-ghost">Browse Active Tables</Link>
+          <div
+            style={{ display: "flex", gap: "0.5rem", justifyContent: "center", flexWrap: "wrap" }}
+          >
+            <Link href="/" className="btn btn-ghost">
+              Browse Active Tables
+            </Link>
           </div>
         </div>
       )}
@@ -260,7 +285,9 @@ function AgentCard({ agent }: { agent: AgentResponse }) {
         </div>
         <div>
           <div className={styles.agentCardStatLabel}>Cumulative PnL</div>
-          <div className={`${styles.agentCardStatValue} ${snapshot && BigInt(snapshot.cumulativePnl) >= 0 ? "value-positive" : "value-negative"}`}>
+          <div
+            className={`${styles.agentCardStatValue} ${snapshot && BigInt(snapshot.cumulativePnl) >= 0 ? "value-positive" : "value-negative"}`}
+          >
             {snapshot ? formatMon(snapshot.cumulativePnl) : "-"}
           </div>
         </div>
@@ -278,9 +305,7 @@ function AgentCard({ agent }: { agent: AgentResponse }) {
         </Link>
         {agent.tableAddress && (
           <Link href={`/table/${agent.tableAddress}?owner=true`}>
-            <button className="wallet-button sign">
-              Table
-            </button>
+            <button className="wallet-button sign">Table</button>
           </Link>
         )}
       </div>

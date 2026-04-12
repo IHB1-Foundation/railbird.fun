@@ -687,6 +687,69 @@
   margin-top: 1.5rem;
 }
 
+/* D-R1.3: Polling fallback toast */
+.pollingToast {
+  background: rgba(255, 191, 77, 0.12);
+  color: #ffd7a1;
+  padding: 0.4rem 0.8rem;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  border: 1px solid rgba(255, 191, 77, 0.35);
+}
+
+/* D-R1.2: AI Commentary panel */
+.commentaryPanel {
+  /* no margin-bottom — page-section gap handles spacing */
+}
+
+.commentaryHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.commentaryHeader .section-title-sm {
+  margin: 0;
+}
+
+.commentaryToggleBtn {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  padding: 0.1rem 0.4rem;
+  min-height: 0;
+  min-width: 0;
+}
+
+.commentaryBody {
+  max-height: 180px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.commentaryItem {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+}
+
+.commentaryStreet {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  white-space: nowrap;
+  padding-top: 0.1rem;
+}
+
+.commentaryText {
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+}
+
 .refreshErrorBanner {
   position: sticky;
   top: 72px;
@@ -720,6 +783,15 @@
 @media (max-width: 640px) {
   .connectionStatusUpdatedAt {
     display: none;
+  }
+
+  .connectionStatus {
+    /* Switch from fixed to inline within table header */
+    position: static;
+    right: unset;
+    bottom: unset;
+    font-size: 0.68rem;
+    padding: 0.25rem 0.55rem;
   }
 }
 
@@ -831,13 +903,3 @@
   }
 }
 
-@media (max-width: 640px) {
-  .connectionStatus {
-    /* Switch from fixed to inline within table header */
-    position: static;
-    right: unset;
-    bottom: unset;
-    font-size: 0.68rem;
-    padding: 0.25rem 0.55rem;
-  }
-}

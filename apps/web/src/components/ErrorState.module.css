@@ -16,6 +16,12 @@
   color: var(--danger);
 }
 
+.title {
+  font-weight: 600;
+  font-size: var(--text-base);
+  color: var(--danger);
+}
+
 .message {
   color: var(--danger-soft);
   font-size: 0.875rem;

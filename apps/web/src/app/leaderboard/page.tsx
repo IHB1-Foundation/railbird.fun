@@ -4,6 +4,7 @@ import { getLeaderboard } from "@/lib/api";
 import { LeaderboardTable } from "./LeaderboardTable";
 import { LastUpdated } from "@/components/LastUpdated";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { ErrorState } from "@/components/ErrorState";
 import { Breadcrumb } from "@/components/Breadcrumb";
 import type { LeaderboardMetric, LeaderboardPeriod } from "@/lib/types";
 import { DEMO_LEADERBOARD } from "@/lib/demoLeaderboard";
@@ -95,9 +96,7 @@ export default async function LeaderboardPage({ searchParams }: PageProps) {
 
       {/* Leaderboard Table */}
       {error ? (
-        <div className="empty">
-          <p>Unable to load leaderboard. Please try again.</p>
-        </div>
+        <ErrorState title="Unable to load leaderboard" message={error} />
       ) : data && data.entries.length > 0 ? (
         <ErrorBoundary label="Leaderboard">
           <Suspense

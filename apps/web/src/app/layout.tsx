@@ -25,9 +25,42 @@ const spaceGrotesk = Space_Grotesk({
   variable: "--font-display",
 });
 
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://railbird.xyz";
+const OG_IMAGE = `${APP_URL}/og-image.png`;
+
 export const metadata: Metadata = {
-  title: "Railbird - AI Poker Agents on HashKey Chain",
-  description: "Autonomous AI agents play on-chain poker with VRF-verified shuffles and ECIES-encrypted hole cards. Watch Gemini-powered agents compete live on HashKey Chain.",
+  metadataBase: new URL(APP_URL),
+  title: {
+    default: "Railbird — AI Poker Agents on HashKey Chain",
+    template: "%s | Railbird",
+  },
+  description:
+    "Autonomous AI agents play on-chain poker with VRF-verified shuffles and ECIES-encrypted hole cards. Watch Gemini-powered agents compete live on HashKey Chain.",
+  keywords: [
+    "on-chain poker",
+    "AI agents",
+    "HashKey Chain",
+    "blockchain poker",
+    "Gemini AI",
+    "DeFi gaming",
+  ],
+  authors: [{ name: "Railbird" }],
+  openGraph: {
+    type: "website",
+    siteName: "Railbird",
+    url: APP_URL,
+    title: "Railbird — AI Poker Agents on HashKey Chain",
+    description:
+      "Watch Gemini-powered AI agents compete in verifiable on-chain poker on HashKey Chain.",
+    images: [{ url: OG_IMAGE, width: 1200, height: 630, alt: "Railbird — AI Poker Arena" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Railbird — AI Poker Agents on HashKey Chain",
+    description:
+      "Watch Gemini-powered AI agents compete in verifiable on-chain poker on HashKey Chain.",
+    images: [OG_IMAGE],
+  },
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "any" },
@@ -39,11 +72,7 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const requestHeaders = await headers();
   const pathname = requestHeaders.get("x-pathname") || "";
   const isEmbedRoute = pathname.startsWith("/embed/");
@@ -69,7 +98,9 @@ export default async function RootLayout({
         <body className={`${roboto.variable} ${spaceGrotesk.variable}`}>
           <Providers>
             <KeyboardShortcutsHelp />
-            <a href="#main-content" className="skip-to-content">Skip to main content</a>
+            <a href="#main-content" className="skip-to-content">
+              Skip to main content
+            </a>
             <main id="main-content">{children}</main>
           </Providers>
         </body>
@@ -82,7 +113,9 @@ export default async function RootLayout({
       <body className={`${roboto.variable} ${spaceGrotesk.variable}`}>
         <Providers>
           <KeyboardShortcutsHelp />
-          <a href="#main-content" className="skip-to-content">Skip to main content</a>
+          <a href="#main-content" className="skip-to-content">
+            Skip to main content
+          </a>
           <div className="app-shell">
             <header className={styles.topbar}>
               <div className={styles.topbarInner}>
@@ -104,7 +137,9 @@ export default async function RootLayout({
                 </div>
               </div>
             </header>
-            <main id="main-content" className="content-shell">{children}</main>
+            <main id="main-content" className="content-shell">
+              {children}
+            </main>
             <footer className="app-footer">
               <nav className="footer-nav" aria-label="Footer navigation">
                 <a href="/">Home</a>
@@ -114,7 +149,13 @@ export default async function RootLayout({
                 <a href="/leaderboard">Leaderboard</a>
                 <a href="/docs">Docs</a>
                 <a href="/betting">Rail Bets</a>
-                <a href="https://github.com/0xYatha/railbird" target="_blank" rel="noopener noreferrer">GitHub</a>
+                <a
+                  href="https://github.com/0xYatha/railbird"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  GitHub
+                </a>
               </nav>
               <p className="footer-credit">
                 Built for HashKey Chain Hackathon · Powered by HashKey Chain

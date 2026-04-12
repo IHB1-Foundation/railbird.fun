@@ -172,15 +172,17 @@ export function useWebSocket({
 
     ws.onmessage = (event) => {
       try {
-        const msg = JSON.parse(event.data as string) as WsMessage;
+        // Server sends a JSON array of WsMessage (batched) for bandwidth efficiency.
+        // Handle both array (batch) and legacy single-object payloads.
+        const parsed = JSON.parse(event.data as string) as WsMessage | WsMessage[];
+        const messages = Array.isArray(parsed) ? parsed : [parsed];
         parseFailureCountRef.current = 0; // reset on success
-        onMessageRef.current(msg);
+        for (const msg of messages) {
+          onMessageRef.current(msg);
+        }
       } catch {
         // Log malformed messages so production issues are debuggable.
-        const preview =
-          typeof event.data === "string"
-            ? event.data.slice(0, 120)
-            : "(non-string)";
+        const preview = typeof event.data === "string" ? event.data.slice(0, 120) : "(non-string)";
         console.warn(`[useWebSocket] Malformed WS message for table ${tableId}:`, preview);
         parseFailureCountRef.current++;
         if (parseFailureCountRef.current >= 3) {
@@ -196,7 +198,10 @@ export function useWebSocket({
         startPolling();
         return;
       }
-      const delay = Math.min(baseReconnectDelayMs * Math.pow(2, reconnectCountRef.current), MAX_BACKOFF_MS);
+      const delay = Math.min(
+        baseReconnectDelayMs * Math.pow(2, reconnectCountRef.current),
+        MAX_BACKOFF_MS,
+      );
       reconnectCountRef.current++;
       setReconnectAttempts(reconnectCountRef.current);
       setNextRetryIn(Math.ceil(delay / 1000));
@@ -219,14 +224,7 @@ export function useWebSocket({
     ws.onerror = () => {
       // onclose will handle reconnect/fallback
     };
-  }, [
-    tableId,
-    disconnect,
-    startPolling,
-    maxReconnectAttempts,
-    baseReconnectDelayMs,
-    clearPoll,
-  ]);
+  }, [tableId, disconnect, startPolling, maxReconnectAttempts, baseReconnectDelayMs, clearPoll]);
 
   // Connect on mount, disconnect on unmount
   useEffect(() => {
@@ -257,8 +255,7 @@ export function useWebSocket({
     };
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () =>
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, [connect, clearPoll, clearReconnectTimer]);
 
   return { status, reconnectAttempts, nextRetryIn };

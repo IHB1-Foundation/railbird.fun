@@ -41,13 +41,30 @@ export function createWsServer(config: WsServerConfig): WebSocketServer {
   const msgRateLimitPerSec = config.msgRateLimitPerSec ?? MSG_RATE_LIMIT_PER_SEC;
   const msgRateBurst = config.msgRateBurst ?? MSG_RATE_BURST;
   const allowedOrigins = config.allowedOrigins
-    ? new Set(config.allowedOrigins.split(",").map(s => s.trim()).filter(Boolean))
+    ? new Set(
+        config.allowedOrigins
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean),
+      )
     : null;
 
   const wss = new WebSocketServer({
     server: config.httpServer,
     path: config.path ?? "/ws",
+    // Compress frames > 1 KB — reduces WS bandwidth significantly for JSON payloads
+    perMessageDeflate: {
+      zlibDeflateOptions: { level: 6 },
+      threshold: 1024,
+      concurrencyLimit: 10,
+      serverNoContextTakeover: false,
+      clientNoContextTakeover: false,
+    },
   });
+
+  // Start 50 ms batch flush window
+  const manager = getWsManager();
+  manager.startBatching(50);
 
   // Track active connections per IP
   const connsByIp = new Map<string, Set<WebSocket>>();
@@ -114,12 +131,14 @@ export function createWsServer(config: WsServerConfig): WebSocketServer {
       ws.ping();
     }, heartbeatMs);
 
-    ws.on("pong", () => { missedPongs = 0; });
+    ws.on("pong", () => {
+      missedPongs = 0;
+    });
 
     // Handle client messages (ping/pong, etc.)
     ws.on("message", (data) => {
       if (!rateLimiter.consume()) {
-        logger.warn({ ip, tableId }, 'WS rate limit exceeded, closing connection');
+        logger.warn({ ip, tableId }, "WS rate limit exceeded, closing connection");
         sendError(ws, "RATE_LIMIT_EXCEEDED", "Message rate limit exceeded");
         ws.close(1008, "Policy Violation");
         return;
@@ -127,7 +146,7 @@ export function createWsServer(config: WsServerConfig): WebSocketServer {
       try {
         const message = JSON.parse(data.toString());
         handleClientMessage(ws, tableId, message);
-      } catch (error) {
+      } catch {
         // Ignore invalid JSON
       }
     });
@@ -142,7 +161,7 @@ export function createWsServer(config: WsServerConfig): WebSocketServer {
 
     // Handle errors
     ws.on("error", (error) => {
-      logger.error({ ip, tableId, err: error }, 'WS client error');
+      logger.error({ ip, tableId, err: error }, "WS client error");
       clearInterval(heartbeat);
       ipConns.delete(ws);
       if (ipConns.size === 0) connsByIp.delete(ip);
@@ -150,7 +169,7 @@ export function createWsServer(config: WsServerConfig): WebSocketServer {
     });
   });
 
-  logger.info({ path: config.path ?? "/ws" }, 'WebSocket server initialized');
+  logger.info({ path: config.path ?? "/ws" }, "WebSocket server initialized");
   return wss;
 }
 
@@ -176,22 +195,26 @@ function sendConnected(ws: WebSocket, tableId: string): void {
   const data: WsConnectedData = {
     message: `Subscribed to table ${tableId}`,
   };
-  ws.send(JSON.stringify({
-    type: "connected",
-    tableId,
-    timestamp: new Date().toISOString(),
-    data,
-  }));
+  ws.send(
+    JSON.stringify({
+      type: "connected",
+      tableId,
+      timestamp: new Date().toISOString(),
+      data,
+    }),
+  );
 }
 
 function sendError(ws: WebSocket, code: string, message: string): void {
   const data: WsErrorData = { code, message };
-  ws.send(JSON.stringify({
-    type: "error",
-    tableId: "",
-    timestamp: new Date().toISOString(),
-    data,
-  }));
+  ws.send(
+    JSON.stringify({
+      type: "error",
+      tableId: "",
+      timestamp: new Date().toISOString(),
+      data,
+    }),
+  );
 }
 
 function handleClientMessage(ws: WebSocket, tableId: string, message: unknown): void {
@@ -199,12 +222,14 @@ function handleClientMessage(ws: WebSocket, tableId: string, message: unknown): 
   if (typeof message === "object" && message !== null) {
     const msg = message as Record<string, unknown>;
     if (msg.type === "ping") {
-      ws.send(JSON.stringify({
-        type: "pong",
-        tableId,
-        timestamp: new Date().toISOString(),
-        data: {},
-      }));
+      ws.send(
+        JSON.stringify({
+          type: "pong",
+          tableId,
+          timestamp: new Date().toISOString(),
+          data: {},
+        }),
+      );
     }
   }
 }

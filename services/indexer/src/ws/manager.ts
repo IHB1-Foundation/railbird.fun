@@ -13,6 +13,10 @@ export class WsManager {
   // Map of tableId -> Set of connected WebSocket clients
   private connections: Map<string, Set<WebSocket>> = new Map();
 
+  // Batch buffer: tableId -> queued messages waiting for the flush window
+  private batchBuffer: Map<string, WsMessage[]> = new Map();
+  private batchTimer: ReturnType<typeof setInterval> | null = null;
+
   // Subscribe a client to a table
   subscribe(tableId: string, ws: WebSocket): void {
     if (!this.connections.has(tableId)) {
@@ -30,7 +34,10 @@ export class WsManager {
       if (clients.size === 0) {
         this.connections.delete(tableId);
       }
-      logger.info({ tableId, remaining: this.getSubscriberCount(tableId) }, "WS client unsubscribed");
+      logger.info(
+        { tableId, remaining: this.getSubscriberCount(tableId) },
+        "WS client unsubscribed",
+      );
     }
   }
 
@@ -42,7 +49,10 @@ export class WsManager {
         if (clients.size === 0) {
           this.connections.delete(tableId);
         }
-        logger.info({ tableId, remaining: this.getSubscriberCount(tableId) }, "WS client disconnected from all tables");
+        logger.info(
+          { tableId, remaining: this.getSubscriberCount(tableId) },
+          "WS client disconnected from all tables",
+        );
       }
     }
   }
@@ -53,7 +63,41 @@ export class WsManager {
   }
 
   /**
+   * Start a periodic flush window (batching mode).
+   * Messages queued via broadcast() are held and sent together every windowMs.
+   * Call once when the WS server is initialised.
+   */
+  startBatching(windowMs = 50): void {
+    if (this.batchTimer) return; // already running
+    this.batchTimer = setInterval(() => this.flush(), windowMs);
+  }
+
+  /** Stop the batch flush timer (useful for clean shutdown / testing). */
+  stopBatching(): void {
+    if (this.batchTimer) {
+      clearInterval(this.batchTimer);
+      this.batchTimer = null;
+    }
+  }
+
+  /**
+   * Flush all buffered messages: send one combined payload per table.
+   * The payload is a JSON array so the client can process each event in order.
+   */
+  private flush(): void {
+    for (const [tableId, messages] of this.batchBuffer.entries()) {
+      if (messages.length === 0) continue;
+      this.batchBuffer.set(tableId, []); // reset before send to avoid race
+      this._sendToTable(tableId, JSON.stringify(messages));
+    }
+  }
+
+  /**
    * Broadcast a message to all clients subscribed to a table.
+   *
+   * When batching is active (startBatching() called) the message is queued
+   * and sent on the next flush window. Otherwise it is sent immediately as a
+   * single-element JSON array for protocol compatibility.
    *
    * Backpressure: if a client's bufferedAmount exceeds MAX_BUFFERED_BYTES,
    * the client is forcefully terminated and removed (slow client protection).
@@ -71,7 +115,22 @@ export class WsManager {
       data,
     };
 
-    const payload = JSON.stringify(message);
+    if (this.batchTimer) {
+      // Batching mode: accumulate and send on next flush tick
+      if (!this.batchBuffer.has(tableId)) {
+        this.batchBuffer.set(tableId, []);
+      }
+      this.batchBuffer.get(tableId)!.push(message);
+    } else {
+      // Immediate mode: wrap in array for protocol compatibility
+      this._sendToTable(tableId, JSON.stringify([message]));
+    }
+  }
+
+  /** Internal: send a pre-serialised payload to all open clients on a table. */
+  private _sendToTable(tableId: string, payload: string): void {
+    const clients = this.connections.get(tableId);
+    if (!clients || clients.size === 0) return;
 
     let sent = 0;
     let failed = 0;
@@ -80,14 +139,15 @@ export class WsManager {
     for (const ws of clients) {
       try {
         if (ws.readyState !== ws.OPEN) {
-          // Clean up closed connections
           clients.delete(ws);
           failed++;
           continue;
         }
 
         // Backpressure check: drop slow clients exceeding buffer threshold
-        if ((ws as unknown as { bufferedAmount?: number }).bufferedAmount ?? 0 > MAX_BUFFERED_BYTES) {
+        if (
+          ((ws as unknown as { bufferedAmount?: number }).bufferedAmount ?? 0) > MAX_BUFFERED_BYTES
+        ) {
           logger.warn({ tableId }, "WS client backpressure exceeded — terminating slow client");
           ws.terminate();
           clients.delete(ws);
@@ -105,7 +165,7 @@ export class WsManager {
     }
 
     if (sent > 0) {
-      logger.debug({ tableId, type, sent }, "WS broadcast sent");
+      logger.debug({ tableId, sent }, "WS batch flushed");
     }
     if (failed > 0) {
       logger.warn({ tableId, failed }, "WS removed stale connections");

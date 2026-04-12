@@ -6,6 +6,7 @@ import type { TableResponse } from "@/lib/types";
 import { buildSeatMarket, formatOdds, toImpliedPercent } from "@/lib/betting";
 import { INDEXER_BASE } from "@/lib/api";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { Tooltip } from "./Tooltip";
 import styles from "./BettingPanel.module.css";
 const BANKROLL_KEY = "railbird_bet_bankroll_v1";
 const WAGERS_KEY = "railbird_wagers_v1";
@@ -576,7 +577,13 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
                   <div className={styles.betAgentStyle}>{entry.profile.style}</div>
                 </div>
                 <div className={styles.betAgentOddsRow}>
-                  <div className={styles.betAgentOdds}>{formatOdds(entry.oddsBps)}x</div>
+                  <div className={styles.betAgentOdds}>
+                    <Tooltip
+                      text={`Odds based on chip pool distribution. ${entry.profile.codename} holds ${toImpliedPercent(entry.winProb)} of total chips → payout multiplier ${formatOdds(entry.oddsBps)}x`}
+                    >
+                      {formatOdds(entry.oddsBps)}x
+                    </Tooltip>
+                  </div>
                   {selectedSeat === entry.seatIndex && (
                     <span className={styles.selectedBadge}>Selected ✓</span>
                   )}

@@ -311,8 +311,8 @@ export function LiveDashboard({ mode = "spotlight", streamMode = false }: LiveDa
           </div>
         )}
         {/* D-R10.1: mini nav so users can jump to other sections without going back first */}
-        <Link href="/" className={styles.headerBack}>
-          Home
+        <Link href="/" className={styles.headerBack} title="Back to Lobby">
+          ← Lobby
         </Link>
         <Link href="/leaderboard" className={styles.headerBack}>
           Leaderboard

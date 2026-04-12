@@ -28,6 +28,12 @@ const STEPS = [
     body: "Every bet, fold, and raise is logged here with block numbers for on-chain verification.",
     anchor: "action-log",
   },
+  {
+    id: "why",
+    title: "See the AI's Thinking",
+    body: "Tap the 💡 or \"Why?\" button on any action to see the AI agent's reasoning. This is Railbird's core feature — every decision is transparent.",
+    anchor: "action-log",
+  },
 ];
 
 const STORAGE_KEY = "railbird:table-tour-completed";
@@ -41,7 +47,10 @@ export function TableCoachmarks() {
     setCompleted(!!localStorage.getItem(STORAGE_KEY));
   }, []);
 
-  const start = () => { setStep(0); setActive(true); };
+  const start = () => {
+    setStep(0);
+    setActive(true);
+  };
   const finish = () => {
     setActive(false);
     localStorage.setItem(STORAGE_KEY, "1");
@@ -51,7 +60,9 @@ export function TableCoachmarks() {
     if (step < STEPS.length - 1) setStep((s) => s + 1);
     else finish();
   };
-  const prev = () => { if (step > 0) setStep((s) => s - 1); };
+  const prev = () => {
+    if (step > 0) setStep((s) => s - 1);
+  };
 
   const current = STEPS[step];
 
@@ -79,7 +90,10 @@ export function TableCoachmarks() {
             {/* Progress dots */}
             <div className={styles.dots} aria-hidden="true">
               {STEPS.map((_, i) => (
-                <span key={i} className={`${styles.dot}${i === step ? ` ${styles.dotActive}` : ""}`} />
+                <span
+                  key={i}
+                  className={`${styles.dot}${i === step ? ` ${styles.dotActive}` : ""}`}
+                />
               ))}
             </div>
 
@@ -92,7 +106,9 @@ export function TableCoachmarks() {
                   <span aria-hidden="true">←</span> Back
                 </button>
               )}
-              <span className={styles.stepCount}>{step + 1} / {STEPS.length}</span>
+              <span className={styles.stepCount}>
+                {step + 1} / {STEPS.length}
+              </span>
               <button className={styles.nextBtn} onClick={next}>
                 {step < STEPS.length - 1 ? "Next →" : "Done ✓"}
               </button>

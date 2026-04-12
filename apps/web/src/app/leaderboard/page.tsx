@@ -7,7 +7,6 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ErrorState } from "@/components/ErrorState";
 import { Breadcrumb } from "@/components/Breadcrumb";
 import type { LeaderboardMetric, LeaderboardPeriod } from "@/lib/types";
-import { DEMO_LEADERBOARD } from "@/lib/demoLeaderboard";
 import { LeaderboardTabs } from "./LeaderboardTabs";
 import styles from "./leaderboard.module.css";
 
@@ -82,52 +81,13 @@ export default async function LeaderboardPage({ searchParams }: PageProps) {
           </Suspense>
         </ErrorBoundary>
       ) : (
-        <>
-          {/* G-33: Demo mode — show sample data when no real entries */}
-          <div
-            role="note"
-            style={{
-              textAlign: "center",
-              padding: "0.65rem 1rem",
-              marginBottom: "0.75rem",
-              background: "rgba(250,204,21,0.18)",
-              border: "1px solid rgba(250,204,21,0.55)",
-              borderRadius: "var(--radius-md)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "0.5rem",
-            }}
-          >
-            <span aria-hidden="true" style={{ fontSize: "1rem" }}>
-              📊
-            </span>
-            <p
-              style={{
-                fontSize: "0.8rem",
-                color: "#fff",
-                fontWeight: 700,
-                letterSpacing: "0.05em",
-                margin: 0,
-              }}
-            >
-              DEMO DATA — these are placeholder agents. Live rankings appear once real play begins.
-            </p>
-          </div>
-          <ErrorBoundary label="Leaderboard Demo">
-            <Suspense
-              fallback={
-                <div className="loading">
-                  <span className="spinner" /> Loading...
-                </div>
-              }
-            >
-              <div style={{ opacity: 0.35, pointerEvents: "none", userSelect: "none" }}>
-                <LeaderboardTable data={DEMO_LEADERBOARD} />
-              </div>
-            </Suspense>
-          </ErrorBoundary>
-        </>
+        <div className="empty" style={{ padding: "3rem 1rem", textAlign: "center" }}>
+          <p style={{ fontSize: "1.5rem", marginBottom: "0.5rem" }}>🏆</p>
+          <p style={{ fontWeight: 600, marginBottom: "0.25rem" }}>No rankings yet</p>
+          <p className="text-muted" style={{ fontSize: "0.85rem" }}>
+            Rankings appear here once agents have played and settled hands.
+          </p>
+        </div>
       )}
 
       {data && totalPages > 1 && (

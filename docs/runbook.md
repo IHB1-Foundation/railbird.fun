@@ -1,5 +1,13 @@
 # Operational Runbook
 
+> **Moved.** New canonical runbook lives in [`docs/operations/`](./operations/):
+>
+> - Incidents: [`04-runbook-incidents.md`](./operations/04-runbook-incidents.md)
+> - Routine ops: [`05-runbook-routine.md`](./operations/05-runbook-routine.md)
+> - SLOs: [`06-slo.md`](./operations/06-slo.md)
+>
+> This file is preserved for link compatibility — content below may be stale.
+
 This runbook covers common operational scenarios for PlayerCo. Keep it next to the deployment for on-call reference.
 
 ---
@@ -7,9 +15,11 @@ This runbook covers common operational scenarios for PlayerCo. Keep it next to t
 ## 1. Stuck Hand Recovery
 
 ### Symptom
+
 Game state is `WAITING_VRF_*` for more than 5 minutes, or `WAITING_FOR_HOLECARDS` for more than 2 minutes.
 
 ### Cause — VRF delayed / not fulfilled
+
 ```bash
 # Check current game state
 cast call $POKER_TABLE_ADDRESS "gameState()(uint8)" --rpc-url $RPC_URL
@@ -19,9 +29,11 @@ cast send $POKER_TABLE_ADDRESS "reRequestVRF()" \
   --rpc-url $RPC_URL \
   --private-key $KEEPER_PRIVATE_KEY
 ```
+
 KeeperBot should call `reRequestVRF()` automatically. If it isn't running, trigger manually.
 
 ### Cause — Dealer not responding (WAITING_FOR_HOLECARDS)
+
 ```bash
 # Check OwnerView health
 curl http://ownerview:3001/health
@@ -34,6 +46,7 @@ curl -X POST http://ownerview:3001/dealer/deal \
 ```
 
 ### Cause — Action timeout exceeded
+
 ```bash
 # Force timeout for the stuck actor (anyone can call if ACTION_TIMEOUT elapsed)
 cast send $POKER_TABLE_ADDRESS "forceTimeout()" \
@@ -46,11 +59,13 @@ cast send $POKER_TABLE_ADDRESS "forceTimeout()" \
 ## 2. VRF Failure Handling
 
 ### VRF operator is down
+
 1. Restart `vrf-operator` service (Docker: `docker compose restart vrf-operator`)
 2. On restart the bot rescans recent blocks for unfulfilled requests
 3. If rescan window was exceeded: set `VRF_OPERATOR_RESCAN_FROM_REQUEST_ID` env var to the missing request ID and restart
 
 ### VRF callback never received
+
 ```bash
 # Check pending VRF requests
 cast call $VRF_ADAPTER_ADDRESS "pendingRequests()(uint256[])" --rpc-url $RPC_URL
@@ -67,17 +82,20 @@ If a request is confirmed pending but unresponsive, call `reRequestVRF()` from t
 ## 3. Key Rotation
 
 ### JWT Secret rotation (OwnerView)
+
 1. Generate a new secret: `openssl rand -hex 32`
 2. All existing JWT tokens will be immediately invalidated — users must re-authenticate
 3. Update `JWT_SECRET` env var
 4. Rolling restart OwnerView service (brief downtime for authenticated users only)
 
 ### Dealer API Key rotation (OwnerView ↔ Keeper)
+
 1. Generate a new key: `openssl rand -hex 32`
 2. Update `DEALER_API_KEY` in OwnerView **and** Keeper bot configs simultaneously
 3. Rolling restart both services
 
 ### Operator private key rotation (Agent / Keeper / VRF)
+
 1. Generate new wallet: `cast wallet new`
 2. Fund new address with gas
 3. For PokerTable seats: call `updateSeatOperator(seatIndex, newOperator)` as seat owner
@@ -90,11 +108,13 @@ If a request is confirmed pending but unresponsive, call `reRequestVRF()` from t
 ## 4. Database Backup and Restore (Indexer)
 
 ### Backup
+
 ```bash
 pg_dump -h $DB_HOST -U $DB_USER -d $DB_NAME -F c -f backup-$(date +%Y%m%d-%H%M%S).dump
 ```
 
 ### Restore
+
 ```bash
 # Stop indexer first to avoid write conflicts
 docker compose stop indexer
@@ -106,6 +126,7 @@ INDEXER_FLUSH_ON_START=false docker compose start indexer
 ```
 
 ### Re-index from scratch
+
 ```bash
 # WARNING: destroys all indexed data — resync from chain
 INDEXER_FLUSH_ON_START=true START_BLOCK=0 docker compose restart indexer
@@ -116,6 +137,7 @@ INDEXER_FLUSH_ON_START=true START_BLOCK=0 docker compose restart indexer
 ## 5. Monitoring Setup
 
 ### Key metrics to watch
+
 - `vrf-operator` health: `GET http://vrf-operator:9102/health`
 - `keeper-bot` health: `GET http://keeper:9101/health`
 - `agent-bot` health: `GET http://agent:9100/health`
@@ -123,15 +145,18 @@ INDEXER_FLUSH_ON_START=true START_BLOCK=0 docker compose restart indexer
 - `indexer` health: `GET http://indexer:3002/health`
 
 ### Alerting thresholds
-| Service | Alert when |
-|---------|-----------|
-| VRF operator | Health returns non-200 for > 60s |
-| Keeper bot | Health returns non-200 for > 60s |
-| Indexer | Health returns non-200 for > 60s, or DB pool exhausted |
-| OwnerView | Health returns non-200 for > 30s (player auth blocked) |
+
+| Service      | Alert when                                             |
+| ------------ | ------------------------------------------------------ |
+| VRF operator | Health returns non-200 for > 60s                       |
+| Keeper bot   | Health returns non-200 for > 60s                       |
+| Indexer      | Health returns non-200 for > 60s, or DB pool exhausted |
+| OwnerView    | Health returns non-200 for > 30s (player auth blocked) |
 
 ### Structured log fields to monitor
+
 All services emit pino-format JSON logs. Key fields:
+
 - `level: "error"` — any error log warrants investigation
 - `consecutiveErrors` — circuit breaker tracking (indexer listener)
 - `circuitOpen: true` — indexer has stopped processing; manual intervention needed
@@ -141,6 +166,7 @@ All services emit pino-format JSON logs. Key fields:
 ## 6. Emergency Pause
 
 ### Pause the table (stops new hands, allows settlements)
+
 ```bash
 cast send $POKER_TABLE_ADDRESS "pause()" \
   --rpc-url $RPC_URL \
@@ -148,6 +174,7 @@ cast send $POKER_TABLE_ADDRESS "pause()" \
 ```
 
 ### Unpause
+
 ```bash
 cast send $POKER_TABLE_ADDRESS "unpause()" \
   --rpc-url $RPC_URL \
@@ -157,6 +184,7 @@ cast send $POKER_TABLE_ADDRESS "unpause()" \
 ### Emergency withdrawal (after 7-day timelock)
 
 Step 1 — Request (seat owner calls):
+
 ```bash
 cast send $POKER_TABLE_ADDRESS "requestEmergencyWithdraw(uint8)" $SEAT_INDEX \
   --rpc-url $RPC_URL \
@@ -164,6 +192,7 @@ cast send $POKER_TABLE_ADDRESS "requestEmergencyWithdraw(uint8)" $SEAT_INDEX \
 ```
 
 Step 2 — Execute after 7 days:
+
 ```bash
 cast send $POKER_TABLE_ADDRESS "executeEmergencyWithdraw(uint8,address)" \
   $SEAT_INDEX $RECIPIENT_ADDRESS \
@@ -175,11 +204,11 @@ cast send $POKER_TABLE_ADDRESS "executeEmergencyWithdraw(uint8,address)" \
 
 ## 7. Common Errors and Fixes
 
-| Error | Likely Cause | Fix |
-|-------|-------------|-----|
-| `Table paused` | Admin paused the table | Call `unpause()` as admin |
-| `VRF timeout` | VRF operator down | Restart vrf-operator, then call `reRequestVRF()` |
-| `Cannot submit commit now` | Wrong game state for hole commits | Check `gameState()` — must be `WAITING_FOR_HOLECARDS` |
-| `Not dealer` | Dealer address mismatch | Verify `dealer()` on-chain matches OwnerView's signing key |
-| `JWT expired` | Auth token too old | User re-authenticates (GET /auth/nonce → POST /auth/verify) |
-| `circuit breaker open` in indexer logs | Persistent RPC error | Check RPC endpoint health; backoff will auto-retry |
+| Error                                  | Likely Cause                      | Fix                                                         |
+| -------------------------------------- | --------------------------------- | ----------------------------------------------------------- |
+| `Table paused`                         | Admin paused the table            | Call `unpause()` as admin                                   |
+| `VRF timeout`                          | VRF operator down                 | Restart vrf-operator, then call `reRequestVRF()`            |
+| `Cannot submit commit now`             | Wrong game state for hole commits | Check `gameState()` — must be `WAITING_FOR_HOLECARDS`       |
+| `Not dealer`                           | Dealer address mismatch           | Verify `dealer()` on-chain matches OwnerView's signing key  |
+| `JWT expired`                          | Auth token too old                | User re-authenticates (GET /auth/nonce → POST /auth/verify) |
+| `circuit breaker open` in indexer logs | Persistent RPC error              | Check RPC endpoint health; backoff will auto-retry          |

@@ -371,8 +371,25 @@ export function LiveDashboard({ mode = "spotlight", streamMode = false }: LiveDa
                 <div aria-hidden="true" style={{ fontSize: "3rem" }}>
                   ♠
                 </div>
-                <p style={{ fontSize: "1.1rem", fontWeight: 600 }}>Waiting for tables…</p>
-                <p>The grid fills in automatically as the indexer publishes live tables.</p>
+                <p style={{ fontSize: "1.1rem", fontWeight: 600 }}>No live tables yet</p>
+                <p style={{ color: "var(--muted)", marginBottom: "1rem" }}>
+                  Tables appear here automatically when agents are seated and a hand begins.
+                </p>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "0.75rem",
+                    justifyContent: "center",
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <a href="/create-agent" className="btn">
+                    Deploy an Agent
+                  </a>
+                  <a href="/leaderboard" className="btn-ghost">
+                    Browse Agents
+                  </a>
+                </div>
               </div>
             ) : (
               <div className={styles.tableGrid}>

@@ -85,24 +85,33 @@ export default async function LeaderboardPage({ searchParams }: PageProps) {
         <>
           {/* G-33: Demo mode — show sample data when no real entries */}
           <div
-            className="card"
+            role="note"
             style={{
               textAlign: "center",
-              padding: "0.6rem 1rem",
+              padding: "0.65rem 1rem",
               marginBottom: "0.75rem",
-              background: "rgba(250,204,21,0.06)",
-              borderColor: "rgba(250,204,21,0.2)",
+              background: "rgba(250,204,21,0.18)",
+              border: "1px solid rgba(250,204,21,0.55)",
+              borderRadius: "var(--radius-md)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "0.5rem",
             }}
           >
+            <span aria-hidden="true" style={{ fontSize: "1rem" }}>
+              📊
+            </span>
             <p
               style={{
-                fontSize: "0.75rem",
-                color: "var(--neon-gold)",
-                fontWeight: 600,
+                fontSize: "0.8rem",
+                color: "#fff",
+                fontWeight: 700,
                 letterSpacing: "0.05em",
+                margin: 0,
               }}
             >
-              📊 SAMPLE DATA — real agents appear once play begins
+              DEMO DATA — these are placeholder agents. Live rankings appear once real play begins.
             </p>
           </div>
           <ErrorBoundary label="Leaderboard Demo">

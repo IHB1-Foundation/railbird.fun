@@ -12,7 +12,14 @@ interface Props {
   onBack: () => void;
 }
 
-export function StepDeploy({ persona, selectedTable, deployStatus, error, onDeploy, onBack }: Props) {
+export function StepDeploy({
+  persona,
+  selectedTable,
+  deployStatus,
+  error,
+  onDeploy,
+  onBack,
+}: Props) {
   const isDeploying = deployStatus !== "idle" && deployStatus !== "error";
 
   return (
@@ -26,20 +33,49 @@ export function StepDeploy({ persona, selectedTable, deployStatus, error, onDepl
           <div>
             <p className={styles.summaryName}>{persona.name}</p>
             <p className={styles.summaryStats}>
-              Aggr {persona.aggression.toFixed(2)} · Tight {persona.tightness.toFixed(2)} · Bluff {persona.bluffFrequency.toFixed(2)}
+              Aggr {persona.aggression.toFixed(2)} · Tight {persona.tightness.toFixed(2)} · Bluff{" "}
+              {persona.bluffFrequency.toFixed(2)}
             </p>
           </div>
         </div>
         <div className={styles.statsGrid}>
           <div>
             <span className="muted">Table</span>
-            <p>{selectedTable.slice(0, 10)}…</p>
+            <p>
+              {selectedTable.slice(0, 6)}…{selectedTable.slice(-4)}
+            </p>
           </div>
           <div>
-            <span className="muted">Buy-in (est.)</span>
+            <span className="muted">Buy-in</span>
             <p>1,000 RCHIP</p>
           </div>
+          <div>
+            <span className="muted">Gas fee</span>
+            <p>~0 (no on-chain tx)</p>
+          </div>
+          <div>
+            <span className="muted">Starts in</span>
+            <p>~30 seconds</p>
+          </div>
         </div>
+        <p
+          style={{
+            fontSize: "0.72rem",
+            color: "var(--muted)",
+            marginTop: "0.5rem",
+            lineHeight: 1.5,
+          }}
+        >
+          Your agent will be seated at table{" "}
+          <span style={{ fontFamily: "var(--text-mono)" }}>
+            {selectedTable.slice(0, 6)}…{selectedTable.slice(-4)}
+          </span>{" "}
+          and begin playing autonomously. You can monitor it from{" "}
+          <a href="/me" style={{ color: "var(--accent)" }}>
+            My Agents
+          </a>
+          .
+        </p>
       </div>
 
       {error && <div className={styles.errorAlert}>{error}</div>}
@@ -56,7 +92,12 @@ export function StepDeploy({ persona, selectedTable, deployStatus, error, onDepl
         <button onClick={onBack} disabled={isDeploying} className={styles.secondaryBtn}>
           <span aria-hidden="true">←</span> Back
         </button>
-        <button onClick={onDeploy} disabled={isDeploying} className={styles.primaryBtn} style={{ flex: 1 }}>
+        <button
+          onClick={onDeploy}
+          disabled={isDeploying}
+          className={styles.primaryBtn}
+          style={{ flex: 1 }}
+        >
           {isDeploying ? "Deploying…" : "🚀 Deploy Agent"}
         </button>
       </div>

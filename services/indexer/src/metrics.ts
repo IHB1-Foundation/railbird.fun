@@ -47,3 +47,27 @@ export const wsTablesGauge = new Gauge({
   help: "Current number of tables with at least one WebSocket subscriber",
   registers: [registry],
 });
+
+/** Cache hit counter (T-1901). Label: key prefix (e.g. "leaderboard"). */
+export const cacheHitTotal = new Counter({
+  name: "railbird_cache_hit_total",
+  help: "Indexer Redis cache hits",
+  labelNames: ["key"],
+  registers: [registry],
+});
+
+/** Cache miss counter (T-1901). */
+export const cacheMissTotal = new Counter({
+  name: "railbird_cache_miss_total",
+  help: "Indexer Redis cache misses",
+  labelNames: ["key"],
+  registers: [registry],
+});
+
+/** Cache I/O error counter (T-1901). */
+export const cacheErrorTotal = new Counter({
+  name: "railbird_cache_error_total",
+  help: "Indexer Redis cache errors",
+  labelNames: ["op"],
+  registers: [registry],
+});

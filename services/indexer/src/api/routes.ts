@@ -1,11 +1,16 @@
 // REST API routes
+//
+// The format helpers below take untyped Postgres row objects; rather than
+// rewriting the row→response shaping in this ticket, we suppress
+// `no-explicit-any` for the file. Scheduled cleanup is tracked in T-1902.
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { Router, type Request, type Response, type NextFunction } from "express";
 import type { Router as RouterType } from "express";
 import { createLogger } from "@playerco/shared";
 
 const logger = createLogger({ service: "indexer" });
-import { TOKEN_PROFILES, type PlayerKey, type TokenProfile } from "./tokenProfiles.js";
+import { TOKEN_PROFILES, type TokenProfile } from "./tokenProfiles.js";
 import {
   getTable,
   getAllTables,
@@ -25,13 +30,13 @@ import {
   getAgentSettlementsInPeriod,
   getAgentHands,
   getEloRatings,
-  getEloLeaderboard,
   getAgentStrategies,
 } from "../db/index.js";
 import { getWsManager } from "../ws/index.js";
 import { broadcastAiCommentary } from "../ws/broadcaster.js";
 import { getListenerHealth } from "../events/listenerState.js";
 import { getPoolStats } from "../db/pool.js";
+import { getOrSet } from "../cache/redis.js";
 import type {
   TableResponse,
   SeatResponse,
@@ -47,12 +52,18 @@ import type {
 } from "../db/types.js";
 
 // ============ Simple in-memory rate limiter ============
-interface RateLimitBucket { count: number; resetAt: number }
+interface RateLimitBucket {
+  count: number;
+  resetAt: number;
+}
 const _rateLimitStore = new Map<string, RateLimitBucket>();
 
 function makeRateLimiter(maxPerMin: number) {
   return (req: Request, res: Response, next: NextFunction): void => {
-    const ip = (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0].trim() ?? req.socket.remoteAddress ?? "unknown";
+    const ip =
+      (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0].trim() ??
+      req.socket.remoteAddress ??
+      "unknown";
     const key = `${ip}`;
     const now = Date.now();
     const bucket = _rateLimitStore.get(key);
@@ -74,9 +85,11 @@ const leaderboardRateLimit = makeRateLimiter(10);
 
 export const router: RouterType = Router();
 const CONFIGURED_TABLE_ADDRESSES = new Set(
-  (process.env.POKER_TABLE_ADDRESSES || "").split(",").map(s => s.trim().toLowerCase()).filter(Boolean)
+  (process.env.POKER_TABLE_ADDRESSES || "")
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean),
 );
-
 
 function getBaseUrl(req: Request): string {
   return `${req.protocol}://${req.get("host")}`;
@@ -84,7 +97,11 @@ function getBaseUrl(req: Request): string {
 
 function getProfileByParam(raw: string | undefined): TokenProfile | null {
   if (!raw) return null;
-  const normalized = raw.toLowerCase().replace(".json", "").replace(".svg", "").replace("player-", "");
+  const normalized = raw
+    .toLowerCase()
+    .replace(".json", "")
+    .replace(".svg", "")
+    .replace("player-", "");
   if (normalized === "a" || normalized === "b" || normalized === "c" || normalized === "d") {
     return TOKEN_PROFILES[normalized];
   }
@@ -155,7 +172,7 @@ router.get("/health", async (_req, res) => {
     await dbQuery("SELECT 1");
     dbReady = true;
     const stateRow = await dbQuery<{ last_processed_block: string }>(
-      "SELECT last_processed_block FROM indexer_state WHERE id = 1"
+      "SELECT last_processed_block FROM indexer_state WHERE id = 1",
     );
     if (stateRow.rows.length > 0) {
       lastBlock = parseInt(stateRow.rows[0].last_processed_block, 10);
@@ -172,8 +189,7 @@ router.get("/health", async (_req, res) => {
   );
 
   const listenerHealth = getListenerHealth();
-  const listenerReady =
-    listenerHealth.status === "running" || listenerHealth.status === "disabled";
+  const listenerReady = listenerHealth.status === "running" || listenerHealth.status === "disabled";
   const allReady = dbReady && chainReady && listenerReady;
 
   const poolStats = getPoolStats();
@@ -224,11 +240,12 @@ router.get("/token-assets/:player", (req, res) => {
 router.get("/tables", async (_req, res) => {
   try {
     const allTables = await getAllTables();
-    const tables = CONFIGURED_TABLE_ADDRESSES.size > 0
-      ? allTables.filter(
-          (table) => CONFIGURED_TABLE_ADDRESSES.has(String(table.contract_address).toLowerCase())
-        )
-      : allTables;
+    const tables =
+      CONFIGURED_TABLE_ADDRESSES.size > 0
+        ? allTables.filter((table) =>
+            CONFIGURED_TABLE_ADDRESSES.has(String(table.contract_address).toLowerCase()),
+          )
+        : allTables;
 
     const response = await Promise.all(
       tables.map(async (table) => {
@@ -238,7 +255,7 @@ router.get("/tables", async (_req, res) => {
           : null;
 
         return formatTableResponse(table, seats, hand);
-      })
+      }),
     );
 
     res.json(response);
@@ -302,7 +319,7 @@ router.get("/tables/:id/hands", async (req, res) => {
       hands.map(async (hand) => {
         const actions = await getHandActions(tableId, BigInt(hand.hand_id));
         return formatHandResponse(hand, actions.map(formatActionResponse));
-      })
+      }),
     );
 
     res.json(response);
@@ -363,7 +380,7 @@ router.get("/tables/:tableId/hands/:handId/revealed-holecards", async (req, res)
         card2: h.card2,
         blockNumber: h.block_number,
         txHash: h.tx_hash,
-      }))
+      })),
     );
   } catch (error) {
     logger.error({ err: error }, "Error fetching revealed holecards:");
@@ -386,7 +403,7 @@ router.get("/agents", async (req, res) => {
             ? await getLatestVaultSnapshot(agent.vault_address)
             : null;
           return formatAgentResponse(agent, snapshot);
-        })
+        }),
       );
       res.json(data);
       return;
@@ -403,7 +420,7 @@ router.get("/agents", async (req, res) => {
           ? await getLatestVaultSnapshot(agent.vault_address)
           : null;
         return formatAgentResponse(agent, snapshot);
-      })
+      }),
     );
 
     const response: PaginatedResponse<AgentResponse> = { data, total, page, limit };
@@ -423,9 +440,7 @@ router.get("/agents/:address", async (req, res) => {
       return res.status(404).json({ error: "Agent not found", code: "NOT_FOUND" });
     }
 
-    const snapshot = agent.vault_address
-      ? await getLatestVaultSnapshot(agent.vault_address)
-      : null;
+    const snapshot = agent.vault_address ? await getLatestVaultSnapshot(agent.vault_address) : null;
 
     res.json(formatAgentResponse(agent, snapshot));
   } catch (error) {
@@ -477,7 +492,7 @@ router.get("/agents/:address/hands", async (req, res) => {
           timestamp: a.created_at?.toISOString?.() ?? new Date().toISOString(),
         }));
         return formatHandResponse(hand, actionResponses);
-      })
+      }),
     );
 
     res.json(formatted);
@@ -511,7 +526,7 @@ router.get("/agents/:address/rebalances", async (req, res) => {
         blockNumber: e.block_number,
         txHash: e.tx_hash,
         timestamp: e.created_at.toISOString(),
-      }))
+      })),
     );
   } catch (error) {
     logger.error({ err: error }, "Error fetching rebalance events:");
@@ -538,14 +553,33 @@ router.get("/agents/:address/gto-stats", async (req, res) => {
     // Fetch recent hands to get tableAddress
     const hands = await getAgentHands(address, limit);
     if (hands.length === 0) {
-      return res.json({ agent: address, conformance: null, avgSeverity: null, totalDecisions: 0, deviationsByType: null, recentDeviations: [] });
+      return res.json({
+        agent: address,
+        conformance: null,
+        avgSeverity: null,
+        totalDecisions: 0,
+        deviationsByType: null,
+        recentDeviations: [],
+      });
     }
 
     const tableAddress = hands[0].table_id;
 
     // Fetch reasoning entries from OwnerView for recent hands
-    type GTOData = { gtoAction: string; aiAction: string; isDeviation: boolean; deviationType: string; severity: number; gtoFrequency: number };
-    type ReasoningEntry = { handId: string; action: string; gtoDeviation?: GTOData; timestamp: number };
+    type GTOData = {
+      gtoAction: string;
+      aiAction: string;
+      isDeviation: boolean;
+      deviationType: string;
+      severity: number;
+      gtoFrequency: number;
+    };
+    type ReasoningEntry = {
+      handId: string;
+      action: string;
+      gtoDeviation?: GTOData;
+      timestamp: number;
+    };
 
     const allEntries: ReasoningEntry[] = [];
     const uniqueHandIds = [...new Set(hands.map((h) => String(h.hand_id)))].slice(0, 20);
@@ -555,7 +589,7 @@ router.get("/agents/:address/gto-stats", async (req, res) => {
         const url = `${OWNERVIEW_BASE_URL}/reasoning?tableAddress=${encodeURIComponent(tableAddress)}&handId=${encodeURIComponent(handId)}`;
         const upstream = await fetch(url, { signal: AbortSignal.timeout(3000) });
         if (upstream.ok) {
-          const data = await upstream.json() as { entries: ReasoningEntry[] };
+          const data = (await upstream.json()) as { entries: ReasoningEntry[] };
           allEntries.push(...(data.entries ?? []));
         }
       } catch {
@@ -568,17 +602,32 @@ router.get("/agents/:address/gto-stats", async (req, res) => {
     const total = withDeviation.length;
 
     if (total === 0) {
-      return res.json({ agent: address, conformance: null, avgSeverity: null, totalDecisions: 0, deviationsByType: null, recentDeviations: [] });
+      return res.json({
+        agent: address,
+        conformance: null,
+        avgSeverity: null,
+        totalDecisions: 0,
+        deviationsByType: null,
+        recentDeviations: [],
+      });
     }
 
     const aligned = withDeviation.filter((e) => !e.gtoDeviation?.isDeviation).length;
     const conformance = Math.round((aligned / total) * 100);
     const deviatingEntries = withDeviation.filter((e) => e.gtoDeviation?.isDeviation);
-    const avgSeverity = deviatingEntries.length > 0
-      ? deviatingEntries.reduce((sum, e) => sum + (e.gtoDeviation?.severity ?? 0), 0) / deviatingEntries.length
-      : 0;
+    const avgSeverity =
+      deviatingEntries.length > 0
+        ? deviatingEntries.reduce((sum, e) => sum + (e.gtoDeviation?.severity ?? 0), 0) /
+          deviatingEntries.length
+        : 0;
 
-    const typeCount: Record<string, number> = { aligned: 0, tighter: 0, looser: 0, passive: 0, aggressive: 0 };
+    const typeCount: Record<string, number> = {
+      aligned: 0,
+      tighter: 0,
+      looser: 0,
+      passive: 0,
+      aggressive: 0,
+    };
     for (const e of withDeviation) {
       const t = e.gtoDeviation?.deviationType ?? "aligned";
       typeCount[t] = (typeCount[t] ?? 0) + 1;
@@ -660,7 +709,10 @@ function getPeriodStartDate(period: LeaderboardPeriod): Date | null {
 // Simple proxy to OwnerView /reasoning endpoint.
 // Gracefully returns empty entries when OwnerView is unavailable.
 
-const OWNERVIEW_BASE_URL = (process.env.OWNERVIEW_URL || "http://localhost:3001").replace(/\/$/, "");
+const OWNERVIEW_BASE_URL = (process.env.OWNERVIEW_URL || "http://localhost:3001").replace(
+  /\/$/,
+  "",
+);
 
 // ── Commentary proxy + broadcast ─────────────────────────────────────────────
 // GET proxies to OwnerView; POST (internal) stores + broadcasts via WS.
@@ -689,7 +741,9 @@ router.post("/tables/:tableId/commentary", (req, res) => {
   const { handId, street, commentary, personaContext } = req.body as Record<string, unknown>;
 
   if (typeof handId !== "string" || typeof street !== "string" || typeof commentary !== "string") {
-    res.status(400).json({ error: "Missing required fields: handId, street, commentary", code: "BAD_REQUEST" });
+    res
+      .status(400)
+      .json({ error: "Missing required fields: handId, street, commentary", code: "BAD_REQUEST" });
     return;
   }
 
@@ -737,7 +791,10 @@ router.get("/tables/:tableId/hands/:handId/commentary", async (req, res) => {
     const data = await upstream.json();
     res.json(data);
   } catch (err) {
-    logger.warn({ tableId, handId, err: err instanceof Error ? err.message : String(err) }, "OwnerView commentary proxy failed — returning empty");
+    logger.warn(
+      { tableId, handId, err: err instanceof Error ? err.message : String(err) },
+      "OwnerView commentary proxy failed — returning empty",
+    );
     res.json({ tableAddress: tableId, handId, entries: [] });
   }
 });
@@ -752,14 +809,20 @@ router.get("/tables/:tableId/hands/:handId/reasoning", async (req, res) => {
     }
     const upstream = await fetch(url, { signal: AbortSignal.timeout(5000) });
     if (!upstream.ok) {
-      logger.warn({ tableId, handId, status: upstream.status }, "OwnerView reasoning returned non-OK");
+      logger.warn(
+        { tableId, handId, status: upstream.status },
+        "OwnerView reasoning returned non-OK",
+      );
       res.json({ tableAddress: tableId, handId, entries: [] });
       return;
     }
     const data = await upstream.json();
     res.json(data);
   } catch (err) {
-    logger.warn({ tableId, handId, err: err instanceof Error ? err.message : String(err) }, "OwnerView reasoning unavailable — returning empty");
+    logger.warn(
+      { tableId, handId, err: err instanceof Error ? err.message : String(err) },
+      "OwnerView reasoning unavailable — returning empty",
+    );
     res.json({ tableAddress: tableId, handId, entries: [] });
   }
 });
@@ -767,8 +830,8 @@ router.get("/tables/:tableId/hands/:handId/reasoning", async (req, res) => {
 router.get("/leaderboard", leaderboardRateLimit, async (req, res) => {
   try {
     // Parse and validate query params
-    const metric = (req.query.metric as string || "roi").toLowerCase() as LeaderboardMetric;
-    const period = (req.query.period as string || "all").toLowerCase() as LeaderboardPeriod;
+    const metric = ((req.query.metric as string) || "roi").toLowerCase() as LeaderboardMetric;
+    const period = ((req.query.period as string) || "all").toLowerCase() as LeaderboardPeriod;
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
     const limit = Math.min(Math.max(1, parseInt(req.query.limit as string) || 20), 100);
 
@@ -785,6 +848,38 @@ router.get("/leaderboard", leaderboardRateLimit, async (req, res) => {
       });
     }
 
+    // T-1901: cache the rendered leaderboard for 10 s. Page/limit don't change
+    // the underlying ranking, so we cache the full sorted list and slice locally.
+    const cacheKey = `leaderboard:${metric}:${period}`;
+    const cached = await getOrSet<LeaderboardEntry[]>(cacheKey, 10, async () => {
+      return computeLeaderboardEntries(metric, period);
+    });
+
+    const total = cached.length;
+    const start = (page - 1) * limit;
+    const pagedEntries = cached.slice(start, start + limit);
+
+    const response: LeaderboardResponse = {
+      metric,
+      period,
+      entries: pagedEntries,
+      updatedAt: new Date().toISOString(),
+      total,
+      page,
+      limit,
+    };
+    return res.json(response);
+  } catch (error) {
+    logger.error({ err: error }, "Error fetching leaderboard:");
+    return res.status(500).json({ error: "Internal server error", code: "INTERNAL" });
+  }
+});
+
+async function computeLeaderboardEntries(
+  metric: LeaderboardMetric,
+  period: LeaderboardPeriod,
+): Promise<LeaderboardEntry[]> {
+  try {
     const periodStart = getPeriodStartDate(period);
 
     // Get all agents
@@ -792,7 +887,9 @@ router.get("/leaderboard", leaderboardRateLimit, async (req, res) => {
 
     // Fetch ELO ratings for all agents in one query
     const allTokenAddresses = agents.map((a) => a.token_address);
-    const eloMap = await getEloRatings(allTokenAddresses).catch(() => new Map<string, { rating: number; handsPlayed: number }>());
+    const eloMap = await getEloRatings(allTokenAddresses).catch(
+      () => new Map<string, { rating: number; handsPlayed: number }>(),
+    );
 
     // Build leaderboard entries
     const entries: LeaderboardEntry[] = [];
@@ -900,26 +997,12 @@ router.get("/leaderboard", leaderboardRateLimit, async (req, res) => {
       entry.rank = index + 1;
     });
 
-    const total = entries.length;
-    const start = (page - 1) * limit;
-    const pagedEntries = entries.slice(start, start + limit);
-
-    const response: LeaderboardResponse = {
-      metric,
-      period,
-      entries: pagedEntries,
-      updatedAt: new Date().toISOString(),
-      total,
-      page,
-      limit,
-    };
-
-    res.json(response);
-  } catch (error) {
-    logger.error({ err: error }, "Error fetching leaderboard:");
-    res.status(500).json({ error: "Internal server error", code: "INTERNAL" });
+    return entries;
+  } catch (err) {
+    logger.error({ err }, "Error computing leaderboard entries");
+    throw err;
   }
-});
+}
 
 // ============ T-1105: Evolution Endpoints ============
 
@@ -934,7 +1017,10 @@ router.get("/evolution/timeline", async (req, res) => {
 
     let agentAddresses: string[];
     if (agentsParam) {
-      agentAddresses = agentsParam.split(",").map((a) => a.trim().toLowerCase()).filter(Boolean);
+      agentAddresses = agentsParam
+        .split(",")
+        .map((a) => a.trim().toLowerCase())
+        .filter(Boolean);
     } else {
       // Default: all agents
       const all = await getAllAgents();
@@ -945,7 +1031,9 @@ router.get("/evolution/timeline", async (req, res) => {
       return res.json({ agents: [] });
     }
 
-    const eloMap = await getEloRatings(agentAddresses).catch(() => new Map<string, { rating: number; handsPlayed: number }>());
+    const eloMap = await getEloRatings(agentAddresses).catch(
+      () => new Map<string, { rating: number; handsPlayed: number }>(),
+    );
 
     const results = await Promise.all(
       agentAddresses.map(async (addr) => {
@@ -966,7 +1054,7 @@ router.get("/evolution/timeline", async (req, res) => {
             timestamp: s.created_at.toISOString(),
           })),
         };
-      })
+      }),
     );
 
     res.json({ agents: results });
@@ -982,29 +1070,46 @@ router.get("/evolution/timeline", async (req, res) => {
  */
 router.get("/evolution/meta-shifts", async (req, res) => {
   try {
-    const period = (req.query.period as string || "all").toLowerCase();
+    const period = ((req.query.period as string) || "all").toLowerCase();
     const validPeriods = ["24h", "7d", "all"];
     if (!validPeriods.includes(period)) {
-      return res.status(400).json({ error: "Invalid period. Valid: 24h, 7d, all", code: "BAD_REQUEST" });
+      return res
+        .status(400)
+        .json({ error: "Invalid period. Valid: 24h, 7d, all", code: "BAD_REQUEST" });
     }
 
     const agents = await getAllAgents();
     const allTokenAddresses = agents.map((a) => a.token_address);
-    const eloMap = await getEloRatings(allTokenAddresses).catch(() => new Map<string, { rating: number; handsPlayed: number }>());
+    const eloMap = await getEloRatings(allTokenAddresses).catch(
+      () => new Map<string, { rating: number; handsPlayed: number }>(),
+    );
 
-    const periodStartMs = period === "24h" ? Date.now() - 86_400_000
-      : period === "7d" ? Date.now() - 7 * 86_400_000
-      : 0;
+    const periodStartMs =
+      period === "24h"
+        ? Date.now() - 86_400_000
+        : period === "7d"
+          ? Date.now() - 7 * 86_400_000
+          : 0;
 
     // Gather latest strategy per agent
-    const agentCurrentStats: Array<{ agent: string; aggressionBps: number; tightnessBps: number; bluffFreqBps: number; elo: number }> = [];
-    let totalAggression = 0, totalTightness = 0, totalBluff = 0, count = 0;
+    const agentCurrentStats: Array<{
+      agent: string;
+      aggressionBps: number;
+      tightnessBps: number;
+      bluffFreqBps: number;
+      elo: number;
+    }> = [];
+    let totalAggression = 0,
+      totalTightness = 0,
+      totalBluff = 0,
+      count = 0;
 
     for (const agent of agents) {
       const strategies = await getAgentStrategies(agent.token_address, 1).catch(() => []);
       if (strategies.length === 0) continue;
       const s = strategies[0]; // latest
-      const ts = s.created_at instanceof Date ? s.created_at.getTime() : new Date(s.created_at).getTime();
+      const ts =
+        s.created_at instanceof Date ? s.created_at.getTime() : new Date(s.created_at).getTime();
       if (periodStartMs > 0 && ts < periodStartMs) continue;
 
       const elo = eloMap.get(agent.token_address)?.rating ?? 1500;
@@ -1028,7 +1133,11 @@ router.get("/evolution/meta-shifts", async (req, res) => {
     res.json({
       period,
       agentCount: count,
-      averages: { aggressionBps: avgAggression, tightnessBps: avgTightness, bluffFreqBps: avgBluff },
+      averages: {
+        aggressionBps: avgAggression,
+        tightnessBps: avgTightness,
+        bluffFreqBps: avgBluff,
+      },
       agents: agentCurrentStats,
     });
   } catch (error) {
@@ -1043,7 +1152,7 @@ function formatTableResponse(
   table: any,
   seats: any[],
   hand: any | null,
-  actions?: ActionResponse[]
+  actions?: ActionResponse[],
 ): TableResponse {
   return {
     tableId: table.table_id,
@@ -1102,10 +1211,7 @@ function formatActionResponse(action: any): ActionResponse {
   };
 }
 
-function formatAgentResponse(
-  agent: any,
-  snapshot: any | null
-): AgentResponse {
+function formatAgentResponse(agent: any, snapshot: any | null): AgentResponse {
   return {
     tokenAddress: agent.token_address,
     vaultAddress: agent.vault_address,
@@ -1136,63 +1242,76 @@ function formatSnapshotResponse(snapshot: any): VaultSnapshotResponse {
  * GET /api/sidebets/:tableAddress/:handId
  * Returns pool info + seat totals for a specific hand.
  */
-router.get("/sidebets/:tableAddress/:handId", globalRateLimit, async (req: Request, res: Response) => {
-  const { tableAddress, handId } = req.params;
-  if (!tableAddress || !handId) {
-    res.status(400).json({ error: "Missing tableAddress or handId", code: "BAD_REQUEST" });
-    return;
-  }
-  try {
-    const { query: dbQuery } = await import("../db/pool.js");
-    const [betsResult, settlementResult] = await Promise.all([
-      dbQuery<{ seat_index: number; total: string }>(
-        `SELECT seat_index, SUM(amount)::TEXT as total FROM side_bets WHERE table_address = $1 AND hand_id = $2 GROUP BY seat_index`,
-        [tableAddress.toLowerCase(), handId]
-      ),
-      dbQuery(
-        `SELECT * FROM side_bet_settlements WHERE table_address = $1 AND hand_id = $2 LIMIT 1`,
-        [tableAddress.toLowerCase(), handId]
-      ),
-    ]);
-    const seatTotals: Record<number, string> = {};
-    let totalPool = 0n;
-    for (const row of betsResult.rows) {
-      seatTotals[row.seat_index] = row.total;
-      totalPool += BigInt(row.total);
+router.get(
+  "/sidebets/:tableAddress/:handId",
+  globalRateLimit,
+  async (req: Request, res: Response) => {
+    const { tableAddress, handId } = req.params;
+    if (!tableAddress || !handId) {
+      res.status(400).json({ error: "Missing tableAddress or handId", code: "BAD_REQUEST" });
+      return;
     }
-    const settlement = settlementResult.rows[0] ?? null;
-    res.json({
-      tableAddress: tableAddress.toLowerCase(),
-      handId,
-      totalPool: totalPool.toString(),
-      seatTotals,
-      settled: !!settlement,
-      winnerSeat: settlement?.winner_seat ?? null,
-    });
-  } catch (err) {
-    logger.error({ err }, "Failed to get side bet pool info");
-    res.status(500).json({ error: "Internal server error", code: "INTERNAL" });
-  }
-});
+    try {
+      const { query: dbQuery } = await import("../db/pool.js");
+      const [betsResult, settlementResult] = await Promise.all([
+        dbQuery<{ seat_index: number; total: string }>(
+          `SELECT seat_index, SUM(amount)::TEXT as total FROM side_bets WHERE table_address = $1 AND hand_id = $2 GROUP BY seat_index`,
+          [tableAddress.toLowerCase(), handId],
+        ),
+        dbQuery(
+          `SELECT * FROM side_bet_settlements WHERE table_address = $1 AND hand_id = $2 LIMIT 1`,
+          [tableAddress.toLowerCase(), handId],
+        ),
+      ]);
+      const seatTotals: Record<number, string> = {};
+      let totalPool = 0n;
+      for (const row of betsResult.rows) {
+        seatTotals[row.seat_index] = row.total;
+        totalPool += BigInt(row.total);
+      }
+      const settlement = settlementResult.rows[0] ?? null;
+      res.json({
+        tableAddress: tableAddress.toLowerCase(),
+        handId,
+        totalPool: totalPool.toString(),
+        seatTotals,
+        settled: !!settlement,
+        winnerSeat: settlement?.winner_seat ?? null,
+      });
+    } catch (err) {
+      logger.error({ err }, "Failed to get side bet pool info");
+      res.status(500).json({ error: "Internal server error", code: "INTERNAL" });
+    }
+  },
+);
 
 /**
  * GET /api/sidebets/:tableAddress/:handId/user/:address
  * Returns bets placed by a specific user for a hand.
  */
-router.get("/sidebets/:tableAddress/:handId/user/:address", globalRateLimit, async (req: Request, res: Response) => {
-  const { tableAddress, handId, address } = req.params;
-  try {
-    const { query: dbQuery } = await import("../db/pool.js");
-    const result = await dbQuery(
-      `SELECT seat_index, amount, tx_hash, block_number, timestamp FROM side_bets WHERE table_address = $1 AND hand_id = $2 AND bettor = $3 ORDER BY id`,
-      [tableAddress.toLowerCase(), handId, address.toLowerCase()]
-    );
-    res.json({ tableAddress: tableAddress.toLowerCase(), handId, user: address.toLowerCase(), bets: result.rows });
-  } catch (err) {
-    logger.error({ err }, "Failed to get user side bets");
-    res.status(500).json({ error: "Internal server error", code: "INTERNAL" });
-  }
-});
+router.get(
+  "/sidebets/:tableAddress/:handId/user/:address",
+  globalRateLimit,
+  async (req: Request, res: Response) => {
+    const { tableAddress, handId, address } = req.params;
+    try {
+      const { query: dbQuery } = await import("../db/pool.js");
+      const result = await dbQuery(
+        `SELECT seat_index, amount, tx_hash, block_number, timestamp FROM side_bets WHERE table_address = $1 AND hand_id = $2 AND bettor = $3 ORDER BY id`,
+        [tableAddress.toLowerCase(), handId, address.toLowerCase()],
+      );
+      res.json({
+        tableAddress: tableAddress.toLowerCase(),
+        handId,
+        user: address.toLowerCase(),
+        bets: result.rows,
+      });
+    } catch (err) {
+      logger.error({ err }, "Failed to get user side bets");
+      res.status(500).json({ error: "Internal server error", code: "INTERNAL" });
+    }
+  },
+);
 
 /**
  * GET /api/sidebets/leaderboard
@@ -1210,7 +1329,7 @@ router.get("/sidebets/leaderboard", globalRateLimit, async (_req: Request, res: 
        GROUP BY sb.bettor
        ORDER BY total_bet DESC
        LIMIT 50`,
-      []
+      [],
     );
     res.json({ leaderboard: result.rows });
   } catch (err) {
@@ -1231,7 +1350,7 @@ router.get("/audit/:tableAddress/:handId", globalRateLimit, async (req: Request,
     const { query: dbQuery } = await import("../db/pool.js");
     const result = await dbQuery(
       `SELECT seat_index, reasoning_hash, commit_tx_hash, block_number, verified FROM decision_audit WHERE table_address = $1 AND hand_id = $2 ORDER BY seat_index`,
-      [tableAddress.toLowerCase(), handId]
+      [tableAddress.toLowerCase(), handId],
     );
     res.json({ tableAddress: tableAddress.toLowerCase(), handId, decisions: result.rows });
   } catch (err) {
@@ -1246,9 +1365,15 @@ router.get("/audit/:tableAddress/:handId", globalRateLimit, async (req: Request,
  * Body: { handId, seatIndex, tableAddress, reasoning, factors, breakdown }
  */
 router.post("/audit/verify", globalRateLimit, async (req: Request, res: Response) => {
-  const { handId, seatIndex, tableAddress, reasoning, factors, breakdown, opponentRead } = req.body as Record<string, unknown>;
+  const { handId, seatIndex, tableAddress, reasoning, factors, breakdown, opponentRead } =
+    req.body as Record<string, unknown>;
   if (!handId || seatIndex === undefined || !tableAddress || !reasoning) {
-    res.status(400).json({ error: "Missing required fields: handId, seatIndex, tableAddress, reasoning", code: "BAD_REQUEST" });
+    res
+      .status(400)
+      .json({
+        error: "Missing required fields: handId, seatIndex, tableAddress, reasoning",
+        code: "BAD_REQUEST",
+      });
     return;
   }
   try {
@@ -1259,7 +1384,7 @@ router.post("/audit/verify", globalRateLimit, async (req: Request, res: Response
 
     const result = await dbQuery(
       `SELECT reasoning_hash FROM decision_audit WHERE table_address = $1 AND hand_id = $2 AND seat_index = $3 LIMIT 1`,
-      [String(tableAddress).toLowerCase(), String(handId), Number(seatIndex)]
+      [String(tableAddress).toLowerCase(), String(handId), Number(seatIndex)],
     );
     if (result.rows.length === 0) {
       res.json({ verified: false, reason: "No on-chain hash found for this decision" });

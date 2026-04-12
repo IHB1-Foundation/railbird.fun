@@ -7,6 +7,7 @@ import { setListenerStatus } from "./events/listenerState.js";
 import { getPool, closePool } from "./db/index.js";
 import { createWsServer } from "./ws/index.js";
 import { initRateLimiter } from "./middleware/rateLimiter.js";
+import { initCache, shutdownCache } from "./cache/redis.js";
 import type { Address } from "viem";
 import { createServer } from "http";
 
@@ -38,7 +39,10 @@ async function main(): Promise<void> {
     const requiredDbVars = ["DB_HOST", "DB_NAME", "DB_USER", "DB_PASSWORD"];
     const missingDb = requiredDbVars.filter((v) => !process.env[v]);
     if (missingDb.length > 0) {
-      logger.error({ missing: missingDb, env: CHAIN_ENV }, "Database configuration required but missing");
+      logger.error(
+        { missing: missingDb, env: CHAIN_ENV },
+        "Database configuration required but missing",
+      );
       process.exit(1);
     }
   }
@@ -55,14 +59,12 @@ async function main(): Promise<void> {
 
   // Chain configuration: require in non-local environments
   const hasChainConfig =
-    process.env.POKER_TABLE_ADDRESSES &&
-    process.env.PLAYER_REGISTRY_ADDRESS &&
-    process.env.RPC_URL;
+    process.env.POKER_TABLE_ADDRESSES && process.env.PLAYER_REGISTRY_ADDRESS && process.env.RPC_URL;
 
   if (!isLocal && !hasChainConfig) {
     logger.error(
       { env: CHAIN_ENV },
-      "Chain configuration required but missing (POKER_TABLE_ADDRESSES, PLAYER_REGISTRY_ADDRESS, RPC_URL)"
+      "Chain configuration required but missing (POKER_TABLE_ADDRESSES, PLAYER_REGISTRY_ADDRESS, RPC_URL)",
     );
     process.exit(1);
   }
@@ -73,7 +75,10 @@ async function main(): Promise<void> {
     const expectedChainId = EXPECTED_CHAIN_IDS[CHAIN_ENV];
     if (expectedChainId !== undefined) {
       await validateChainIdWithRpc(process.env.RPC_URL, expectedChainId).catch((err: unknown) => {
-        logger.error({ err }, "Chain ID mismatch — RPC_URL and CHAIN_ENV disagree. Refusing to start.");
+        logger.error(
+          { err },
+          "Chain ID mismatch — RPC_URL and CHAIN_ENV disagree. Refusing to start.",
+        );
         process.exit(1);
       });
     }
@@ -81,6 +86,9 @@ async function main(): Promise<void> {
 
   // Initialize rate limiter (Redis if REDIS_URL set, otherwise in-memory)
   await initRateLimiter();
+
+  // Initialize Redis cache for hot read paths (T-1901)
+  await initCache();
 
   // Start REST API with HTTP server
   const app = createApp();
@@ -95,7 +103,7 @@ async function main(): Promise<void> {
   httpServer.listen(PORT, () => {
     logger.info(
       { port: PORT, env: CHAIN_ENV, healthUrl: `http://localhost:${PORT}/api/health` },
-      "REST API listening"
+      "REST API listening",
     );
   });
 
@@ -103,7 +111,10 @@ async function main(): Promise<void> {
 
   // Start event listener
   if (hasChainConfig) {
-    const tableAddrs = (process.env.POKER_TABLE_ADDRESSES || "").split(",").map(s => s.trim()).filter(Boolean) as Address[];
+    const tableAddrs = (process.env.POKER_TABLE_ADDRESSES || "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean) as Address[];
     const listener = new EventListener({
       pokerTableAddresses: tableAddrs,
       playerRegistryAddress: process.env.PLAYER_REGISTRY_ADDRESS as Address,
@@ -124,6 +135,7 @@ async function main(): Promise<void> {
       listener.stop();
       wss.close();
       server.close();
+      await shutdownCache();
       await closePool();
       process.exit(exitCode);
     };
@@ -133,7 +145,8 @@ async function main(): Promise<void> {
 
     // Start event listener — on fatal error, perform graceful cleanup before exit
     setListenerStatus("starting");
-    listener.start()
+    listener
+      .start()
       .then(() => {
         setListenerStatus("running");
       })
@@ -154,6 +167,7 @@ async function main(): Promise<void> {
       logger.info("Shutting down...");
       wss.close();
       server.close();
+      await shutdownCache();
       await closePool();
       process.exit(0);
     };

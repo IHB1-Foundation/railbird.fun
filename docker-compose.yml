@@ -46,6 +46,30 @@ services:
       timeout: 5s
       retries: 10
 
+  # ── Redis cache (T-1901) ────────────────────────────────────────────────────
+  # Optional. The indexer degrades gracefully when REDIS_URL is unset.
+  redis:
+    image: redis:7-alpine
+    command:
+      [
+        "redis-server",
+        "--save",
+        "",
+        "--appendonly",
+        "no",
+        "--maxmemory",
+        "256mb",
+        "--maxmemory-policy",
+        "allkeys-lru",
+      ]
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
   # ── OwnerView service ───────────────────────────────────────────────────────
   ownerview:
     build:
@@ -68,7 +92,13 @@ services:
       anvil:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://localhost:3001/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -96,6 +126,7 @@ services:
       INDEXER_FLUSH_ON_START: "false"
       CORS_ALLOWED_ORIGINS: "http://localhost:3000"
       TRUST_PROXY_HOPS: "0"
+      REDIS_URL: "redis://redis:6379"
     ports:
       - "3002:3002"
     depends_on:
@@ -104,7 +135,13 @@ services:
       anvil:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3002/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://localhost:3002/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5

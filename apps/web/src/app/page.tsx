@@ -164,11 +164,22 @@ export default async function LobbyPage() {
               </p>
             </div>
             <div>
-              <p className="label">Actor</p>
+              <p className="label">Acting</p>
               <p className={styles.featuredLiveValue}>
                 {featuredTable.currentHand?.actorSeat !== null &&
                 featuredTable.currentHand?.actorSeat !== undefined
-                  ? `Seat ${featuredTable.currentHand.actorSeat}`
+                  ? (() => {
+                      const actorSeat = featuredTable.seats.find(
+                        (s) => s.seatIndex === featuredTable.currentHand?.actorSeat,
+                      );
+                      const actorProfile = actorSeat
+                        ? getAgentProfile(actorSeat.operatorAddress) ||
+                          getAgentProfile(actorSeat.ownerAddress)
+                        : null;
+                      return actorProfile
+                        ? `${actorProfile.name}`
+                        : `Seat ${featuredTable.currentHand.actorSeat}`;
+                    })()
                   : "-"}
               </p>
             </div>
@@ -230,7 +241,17 @@ export default async function LobbyPage() {
                   .reverse()
                   .map((action, idx) => (
                     <div key={`${action.txHash}-${idx}`} className={styles.featuredLiveActionItem}>
-                      <span>Seat {action.seatIndex}</span>
+                      <span>
+                        {(() => {
+                          const s = featuredTable.seats.find(
+                            (seat) => seat.seatIndex === action.seatIndex,
+                          );
+                          const p = s
+                            ? getAgentProfile(s.operatorAddress) || getAgentProfile(s.ownerAddress)
+                            : null;
+                          return p ? p.name : `Seat ${action.seatIndex}`;
+                        })()}
+                      </span>
                       <span>{action.actionType}</span>
                       <span>
                         {action.amount !== "0"

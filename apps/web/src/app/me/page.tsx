@@ -41,7 +41,8 @@ export default function MyAgentsPage() {
         const owned = await getAgentsByOwner(address);
         setAgents(owned);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load agents");
+        const detail = err instanceof Error ? err.message : String(err);
+        setError(`Couldn't load your agents — try refreshing. (${detail})`);
       } finally {
         setIsLoading(false);
       }
@@ -207,7 +208,19 @@ export default function MyAgentsPage() {
         </div>
       )}
 
-      {error && <div className="card error-card">{error}</div>}
+      {error && (
+        <div className="card error-card">
+          <p>Something went wrong loading your agents. Try refreshing the page.</p>
+          <details style={{ marginTop: "0.4rem" }}>
+            <summary style={{ cursor: "pointer", fontSize: "0.75rem", color: "var(--muted)" }}>
+              Technical details
+            </summary>
+            <p style={{ fontSize: "0.72rem", marginTop: "0.25rem", color: "var(--muted)" }}>
+              {error}
+            </p>
+          </details>
+        </div>
+      )}
 
       {!isLoading && !error && agents.length === 0 && (
         <div className={`card ${styles.emptyState}`}>

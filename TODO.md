@@ -1,1254 +1,333 @@
-# TODO.md — Production Hardening Roadmap
+# Design Review & Improvement TODO
 
-> **Goal**: 현재 해커톤 수준의 Railbird/PlayerCo를 **메인넷 런칭 가능한 프로덕션 레벨**로 끌어올리기 위한 전체 할 일 목록.
->
-> **형식**: `TICKET.md` 와 동일한 구조. 티켓 러너가 마일스톤 순서대로 자동 실행 가능.
->
-> **우선순위**: P0(런칭 블로커) → P1(프로덕션 필수) → P2(런칭 후 스프린트)
->
-> **실행 규칙**: `CLAUDE.md`의 NegRisk Ticket Runner 룰을 따른다. 한 티켓 = 한 커밋. 실패 시 즉시 중단.
-
-## Status legend
-
-- [ ] TODO
-- [~] IN PROGRESS
-- [x] DONE
-
-## Milestone summary
-
-| Milestone | Theme                          | Priority | Tickets         |
-| --------- | ------------------------------ | -------- | --------------- |
-| **M13**   | Security & Legal Compliance    | P0       | T-1301 ~ T-1306 |
-| **M14**   | Observability & Error Tracking | P1       | T-1401 ~ T-1405 |
-| **M15**   | Reliability & Resilience       | P1       | T-1501 ~ T-1507 |
-| **M16**   | Testing & QA Expansion         | P1       | T-1601 ~ T-1606 |
-| **M17**   | Developer Experience & CI/CD   | P1       | T-1701 ~ T-1706 |
-| **M18**   | Documentation & API Contracts  | P1       | T-1801 ~ T-1804 |
-| **M19**   | Performance & Scale            | P2       | T-1901 ~ T-1906 |
-| **M20**   | Deployment & Infrastructure    | P2       | T-2001 ~ T-2005 |
-| **M21**   | Frontend Production Polish     | P2       | T-2101 ~ T-2106 |
+> Senior Product Designer review — 2026-04-12
+> Scope: `apps/web` 전체 UI/UX, globals.css, layout, 모든 page/component
 
 ---
 
-# M13 — Security & Legal Compliance (P0 Blockers)
+## D-R1: Layout & Spacing (줄바꿈/레이아웃)
 
-> **Goal**: 메인넷/공개 런칭 전에 반드시 해결되어야 하는 보안·법적 블로커를 제거한다.
-> 이 마일스톤이 완료되지 않으면 프로덕션 런칭은 **불가**.
+### D-R1.1: `page.tsx` (Lobby) — 섹션 간 간격 불일치
 
----
+- **문제**: HeroSection, FeaturedOfTheDay, featuredLiveCard, LiveTablesGrid 사이 간격이 제각각. `margin-bottom: 1.15rem`, `1.2rem`, `1.2rem` 등 비일관적.
+- **개선**: 섹션 간 spacing을 `--space-6` (1.5rem) 또는 `--space-8` (2rem)으로 통일. `.page-section`에 `display: flex; flex-direction: column; gap: var(--space-6)` 적용하고 개별 margin-bottom 제거.
 
-## T-1301 Git history secret audit & `.env.hashkey` 제거 (P0)
+### D-R1.2: `TableViewer.tsx` — inline style 남발로 레이아웃 불예측
 
-- Status: [x] DONE
-- Depends on: —
-- Goal: `.gitignore`에 등록되어 있음에도 실제로는 추적되고 있는 `.env.hashkey` 파일을 히스토리에서 제거하고, 전체 git 히스토리에서 노출된 시크릿이 없는지 검증한다.
-- Scope:
-  - **audit**: `gitleaks` / `trufflehog` 로 전체 히스토리 스캔
-  - **remediation**: 노출된 키는 모두 로테이션
-  - **cleanup**: `.env.hashkey`를 index에서 제거 (파일 자체는 로컬 보존)
-- Tasks:
-  1. `git ls-files | grep -E "^\.env"` 로 추적 중인 env 파일 전수 확인
-  2. `gitleaks detect --source . --verbose` (없으면 설치) 실행 → 리포트 저장 `docs/security/gitleaks-report.txt`
-  3. `git rm --cached .env.hashkey` 로 index에서 제거 (파일은 로컬 유지)
-  4. 만약 `gitleaks`가 실제 시크릿(private key, API key) 을 히스토리에서 발견하면:
-     - 해당 키는 **즉시 로테이션** (Gemini, Dealer, Operator wallets 등)
-     - `git filter-repo` 또는 `bfg-repo-cleaner`로 히스토리 rewrite는 **사용자 승인 후에만** 실행
-     - 승인이 없으면 티켓 러너를 중단하고 사용자에게 보고
-  5. `.gitignore`에 이미 있는 `.env.hashkey` 라인이 정상 작동하는지 재확인
-  6. `docs/security/secret-audit.md` 신규:
-     - 발견된 시크릿 목록 (마스킹)
-     - 로테이션 상태
-     - 남아 있는 히스토리 리스크
-- Acceptance:
-  - `git ls-files | grep -E "^\.env"` 결과에 `.env.example`, `.env.hashkey.example` 만 남음
-  - `gitleaks detect` 결과 0 findings (또는 모두 false-positive로 문서화)
-  - `docs/security/secret-audit.md` 커밋
-- Commit: `chore(security): audit git history for secrets and untrack .env.hashkey`
+- **문제**: AI Commentary 패널 (line 496-523)에 `style={{ ... }}` 8개 이상. 줄바꿈/간격이 CSS가 아니라 inline에서 결정됨.
+- **개선**: `TableViewer.module.css`에 `.commentaryPanel`, `.commentaryHeader`, `.commentaryBody` 클래스 추출. margin/padding은 CSS로 관리.
 
----
+### D-R1.3: `TableViewer.tsx` — Polling toast inline 스타일 (line 336)
 
-## T-1302 Secrets manager 도입 (P0)
+- **문제**: polling fallback 배너가 완전히 inline style로 작성됨. border-radius, padding, fontSize 전부 인라인.
+- **개선**: `.pollingToast` 클래스를 module.css에 추가.
 
-- Status: [x] DONE
-- Depends on: T-1301
-- Goal: 평문 env 변수 기반 시크릿 관리에서 Vercel/Railway 네이티브 시크릿 또는 외부 vault(1Password/Doppler/AWS Secrets Manager)로 전환. 로컬 개발은 `.env.local` 유지.
-- Scope:
-  - **선정**: Railway Secrets(현재 인프라)+Vercel Env Vars(web)로 결정 후 문서화
-  - **마이그레이션**: 각 서비스의 필수 시크릿 목록 → 배포 환경 시크릿에 등록 완료
-  - **검증**: 런타임 startup에서 모든 필수 시크릿이 주입되는지 validation
-- Tasks:
-  1. `docs/security/secrets-inventory.md` 작성:
-     - 서비스별 필수 시크릿 목록 (name, owner, rotation SLA)
-     - 현재 저장 위치 (로컬 .env vs Railway vs Vercel)
-     - Target 저장 위치 (마이그레이션 후)
-  2. `packages/shared/src/env.ts` 신규:
-     - `requireEnv(name, { minLength?, pattern? })` 헬퍼
-     - 부팅 시 누락된 필수 시크릿이 있으면 즉시 fail-close (프로세스 종료)
-     - masked 로깅 (`API_KEY=***abc` 형태)
-  3. 각 서비스 entrypoint(`services/*/src/index.ts`, `bots/*/src/bot.ts`)에서 `requireEnv` 사용으로 전환
-  4. `DEPLOY.md` 섹션 "Secrets Setup" 추가: Railway/Vercel 시크릿 등록 수동 단계 기술
-  5. 기존 `process.env.FOO || "default"` 패턴은 모두 제거 — 필수 시크릿에 디폴트 금지
-- Acceptance:
-  - 필수 env가 누락되면 모든 서비스가 startup에서 fail-close (exit code != 0)
-  - `docs/security/secrets-inventory.md` 가 실제 배포 환경 시크릿과 1:1 매칭
-  - 로그에 시크릿이 평문으로 찍히지 않음 (grep 테스트)
-- Commit: `feat(shared,infra): add fail-close env validation and secrets inventory`
+### D-R1.4: `leaderboard/page.tsx` — Create Agent CTA 전부 inline (line 160)
+
+- **문제**: CTA 박스 (`marginTop: "2rem", padding: "1rem 1.25rem"...`) 전부 inline. 미디어쿼리 대응 불가.
+- **개선**: `leaderboard.module.css`에 `.ctaBanner` 클래스로 이동. 모바일에서 flex-direction: column 대응 추가.
+
+### D-R1.5: `me/page.tsx` — 로그아웃 상태 preview CTA inline 과다 (line 87-98)
+
+- **문제**: `style={{ fontSize: "2.5rem", marginBottom: "0.75rem" }}` 등 6개 이상 inline style.
+- **개선**: `me/page.module.css`에 `.previewCta`, `.previewIcon`, `.previewCtaActions` 추출.
+
+### D-R1.6: Footer 내비게이션 — 줄바꿈 시 중앙정렬 어색
+
+- **문제**: `layout.tsx` footer의 `.footer-nav`가 `flex-wrap: wrap; justify-content: center`인데, 7개 링크가 줄바꿈되면 마지막 줄 1-2개만 덩그러니 중앙에 위치.
+- **개선**: `justify-content: center` 유지하되, 모바일(480px)에서 `grid-template-columns: repeat(2, 1fr)` 2열 그리드로 전환. 현재 480px 이하에서 1열 column으로 가는데, 7개 링크에 1열은 너무 길어짐.
+
+### D-R1.7: `globals.css` — `.app-shell` max-width 후 양옆 여백
+
+- **문제**: `max-width: 1320px`에 `padding: 0 var(--space-4)`만 있어서, 1320px 이하 화면에서는 좌우 16px만. 넓은 화면에서는 충분하지만, 태블릿(~900px)에서 카드 콘텐츠가 양쪽 벽에 너무 가까움.
+- **개선**: 태블릿 breakpoint에서 `padding: 0 var(--space-6)` 이상으로 증가.
+
+### D-R1.8: `HeroSection` — landingCtaRow 버튼 줄바꿈 시 간격
+
+- **문제**: 좁은 화면에서 "Watch Live" + "Deploy Agent" 버튼이 wrap되면 `gap: 0.75rem`만. 버튼이 세로로 쌓일 때 gap이 부족해 보임.
+- **개선**: 모바일에서 `flex-direction: column; gap: var(--space-3)` 추가, 버튼을 `width: 100%`로.
 
 ---
 
-## T-1303 Legal pages: ToS, Privacy, Disclaimer (P0)
+## D-R2: Typography & Text
 
-- Status: [x] DONE
-- Depends on: —
-- Goal: 공개 런칭 시 법적으로 요구되는 최소 수준의 ToS / Privacy Policy / Risk Disclaimer 페이지를 웹앱에 추가한다.
-- Scope:
-  - **웹**: `/terms`, `/privacy`, `/disclaimer` 세 라우트
-  - **푸터**: 모든 페이지 푸터에 링크
-  - **동의 배너**: 최초 방문 시 ToS/Privacy 동의 배너 (localStorage로 한 번만)
-- Tasks:
-  1. `apps/web/src/app/terms/page.tsx` 신규:
-     - Markdown 렌더링 (MDX) 또는 정적 JSX
-     - 조항: service description, wallet-based identity, no KYC, no guaranteed yield, experimental software, arbitration clause (해커톤 수준)
-  2. `apps/web/src/app/privacy/page.tsx` 신규:
-     - 수집 데이터: wallet address, hand/action history, IP (rate limiting 목적), cookie
-     - 제3자 공유: Gemini API (decision reasoning), blockchain (public)
-     - 데이터 보존 기간: 무기한 (on-chain) / off-chain은 90일 rolling
-     - 사용자 권리: opt-out, 데이터 삭제 요청 경로
-  3. `apps/web/src/app/disclaimer/page.tsx` 신규:
-     - "Not financial advice"
-     - "Experimental software, use at your own risk"
-     - "Token values may fluctuate, possible total loss"
-     - "18+ only (gambling-adjacent content)"
-     - "No liability for smart contract bugs"
-  4. `apps/web/src/components/LegalFooter.tsx`:
-     - 푸터 링크 3종 + copyright + "testnet only" 배지 (chainId 기반)
-     - `RootLayout`에 삽입
-  5. `apps/web/src/components/ConsentBanner.tsx`:
-     - 최초 방문 시 표시, "I understand" 클릭 시 `localStorage.consentAcceptedAt = ISO` 저장
-     - 이후 숨김
-  6. 메타데이터: 각 페이지에 `metadata` export (title, noindex for disclaimer)
-- Acceptance:
-  - `/terms`, `/privacy`, `/disclaimer` 모두 렌더링 정상
-  - 모든 페이지 푸터에 링크 노출
-  - 최초 방문 시 동의 배너 표시, 동의 후 숨김
-  - 다크/라이트 모드 모두 렌더링 확인
-- Commit: `feat(web): add ToS, privacy, disclaimer pages with consent banner`
+### D-R2.1: 폰트 사이즈 스케일 비일관
+
+- **문제**: `--text-xs: 0.72rem`, `--text-sm: 0.82rem` 등 토큰이 정의되어 있지만, 컴포넌트에서 `font-size: 0.78rem`, `0.76rem`, `0.8rem`, `0.68rem` 등 중간 값을 직접 사용. 토큰의 의미 퇴색.
+- **개선**: 코드 내 임의 font-size를 가장 가까운 토큰으로 정리. 예: `0.78rem` → `var(--text-sm)`, `0.68rem` → `var(--text-xs)` 또는 `var(--text-2xs)`.
+
+### D-R2.2: `SeatPanel` — `.seatLabel` 텍스트가 너무 작음
+
+- **문제**: `.seatLabel` font-size `0.72rem` (10.4px). 모바일에서 `0.69rem` (9.9px). 이는 최소 가독 사이즈(~11px) 이하.
+- **개선**: 최소 `var(--text-xs)` (0.72rem = 10.4px) 유지하되, 모바일에서도 줄이지 않기. `letter-spacing: 0.04em` + uppercase 조합이면 더 더 작아 보이므로 `0.75rem` 이상 권장.
+
+### D-R2.3: `.aggressionBadge` font-size 0.58rem — 너무 작음
+
+- **문제**: `SeatPanel.module.css` `.aggressionBadge`가 `0.58rem` (8.4px). 사실상 읽기 불가.
+- **개선**: 최소 `0.65rem` (var(--text-2xs)). uppercase + letter-spacing 조합이면 `0.68rem` 이상.
+
+### D-R2.4: 숫자/금액에 tabular-nums 미적용
+
+- **문제**: 포커 칩 스택, 팟 사이즈 등 숫자가 proportional figures로 렌더. 숫자가 변경될 때 너비가 변하면서 레이아웃 떨림 발생.
+- **개선**: `.seatStack`, `.potValue`, `.landingStatValue`, `AnimatedNumber` 등 수치 표시 요소에 `font-variant-numeric: tabular-nums` 적용.
+
+### D-R2.5: `LiveDashboard` — pot 표시 raw wei 값
+
+- **문제**: `LiveDashboard.tsx` line 392에 `{hand?.pot ?? "0"} RCHIP`으로 포맷 없이 raw 값 출력. 다른 곳에서는 `formatChips()` 사용.
+- **개선**: `formatChips(hand?.pot ?? "0")` 으로 통일.
 
 ---
 
-## T-1304 Auth endpoint rate limiting + audit log (P0)
+## D-R3: Visual Hierarchy & Information Architecture
 
-- Status: [x] DONE
-- Depends on: —
-- Goal: `/auth/nonce`, `/auth/verify`, `/dealer/*` 엔드포인트에 IP 기반 rate limiting과 감사 로그를 추가하여 브루트포스/에뉴머레이션을 차단한다.
-- Scope:
-  - **ownerview**: auth/dealer 라우트에 express-rate-limit 또는 자체 limiter 연결
-  - **감사 로그**: 인증 성공/실패 DB 테이블에 기록 (10일 rolling)
-  - **알람 가능**: 특정 IP 실패 10회 초과 시 메트릭 증가
-- Tasks:
-  1. `services/ownerview/src/middleware/rateLimit.ts` 신규:
-     - IP + path 조합으로 token bucket (10 req/min for auth, 30 req/min for dealer)
-     - exceeded 시 429 + `Retry-After` 헤더
-     - trust proxy 처리 (X-Forwarded-For)
-  2. `services/ownerview/src/routes/auth.ts` 에 미들웨어 적용
-  3. `services/ownerview/src/routes/dealer.ts` 에 미들웨어 적용
-  4. DB 테이블 `auth_events(id, ip, path, address, outcome, reason, created_at)`:
-     - `services/indexer/migrations/010_auth_events.sql` (indexer가 ownerview DB 공유 전제)
-     - ownerview 쪽에서 insert, 90일 TTL 스크립트
-  5. `packages/shared/src/metrics.ts` 에 카운터 추가:
-     - `railbird_auth_attempts_total{outcome, path}`
-     - `railbird_auth_rate_limited_total{path}`
-  6. 테스트: `services/ownerview/src/middleware/rateLimit.test.ts`
-     - 11번째 요청에 429
-     - 1분 후 리셋
-     - trust proxy 헤더 파싱
-- Acceptance:
-  - 11번째 `/auth/nonce` 요청이 429 반환
-  - `auth_events` 테이블에 성공/실패 기록
-  - Prometheus 메트릭 노출 확인
-  - 유닛 테스트 최소 5개 통과
-- Commit: `feat(ownerview,indexer): add auth rate limiting and audit events`
+### D-R3.1: Lobby page — Featured table과 LiveTablesGrid의 정보 중복
+
+- **문제**: featured live table 카드에 seats, pot, blinds, actions 전부 보여주고, 바로 아래 LiveTablesGrid에서 같은 테이블이 또 나옴. 사용자가 같은 정보를 두 번 소화.
+- **개선**: LiveTablesGrid에서 featured table을 제외하거나, featured를 더 크게/differentiated 하게 표현하고 grid에서는 compact 버전으로.
+
+### D-R3.2: `TableViewer` — 정보 밀도 과다
+
+- **문제**: TableViewer에 표시되는 정보 블록: connection status, owner banner, breadcrumb, coachmarks, matchup poster, header, action required banner, now acting bar, join seat form, table layout, AI commentary, action log, showdown results, players panel. 총 14개 섹션이 선형 배치.
+- **개선**:
+  - Action required + Now acting bar → 하나로 합치기
+  - Players panel과 Action log → 탭으로 묶기 (또는 사이드 패널)
+  - AI Commentary는 토글 기본값을 closed로 (현재 open)
+
+### D-R3.3: Agent page — stat card 라벨이 generic
+
+- **문제**: "External Assets (A)", "Treasury Shares (B)" 같은 기술 라벨. 일반 유저에게 의미 전달 약함.
+- **개선**: "Total Value", "Reserved Supply", "Circulating Supply", "Price per Share" 등 유저 친화적 라벨 + 기술 명칭은 tooltip으로.
+
+### D-R3.4: Leaderboard — 빈 상태에서 demo 데이터 opacity 0.55
+
+- **문제**: `opacity: 0.55`로 데모 데이터를 보여주는데, 위에 "SAMPLE DATA" 배너가 있어도 유저가 실제 데이터와 혼동 가능. `pointerEvents: "none"` + `userSelect: "none"`이 적용되어 있지만 시각적 구분 부족.
+- **개선**: demo 영역에 반복적인 대각선 줄무늬 overlay나 watermark "DEMO" 추가. 또는 opacity를 0.35로 더 낮추기.
 
 ---
 
-## T-1305 CORS deny-by-default (P0)
+## D-R4: Color & Contrast
 
-- Status: [x] DONE
-- Depends on: —
-- Goal: 모든 HTTP 서비스(indexer, ownerview, fleet)에서 `CORS_ALLOWED_ORIGINS` 가 비어있을 때 `*` 로 폴백하지 않고 **deny-all** 로 동작하도록 한다.
-- Scope:
-  - **indexer, ownerview, fleet**: CORS 미들웨어 통일
-  - **공유 유틸**: `packages/shared/src/http/cors.ts`
-- Tasks:
-  1. `packages/shared/src/http/cors.ts` 신규:
-     - `parseAllowedOrigins(raw?: string) => string[] | false`
-     - 빈 문자열/undefined → `[]` (deny all non-explicit)
-     - `*` 명시 → `["*"]` (개발 전용)
-     - `createCorsMiddleware(origins)` Express 미들웨어 팩토리
-  2. 각 서비스의 기존 CORS 로직을 공유 유틸로 교체
-  3. 로컬 개발용 `.env.example` 에 `CORS_ALLOWED_ORIGINS=http://localhost:3000` 디폴트 주석
-  4. 테스트: `packages/shared/src/http/cors.test.ts`
-     - empty → deny
-     - single origin → allow only that
-     - wildcard → allow all (개발용)
-     - preflight OPTIONS 처리
-- Acceptance:
-  - `CORS_ALLOWED_ORIGINS` 미설정 상태에서 cross-origin 요청이 **차단**됨
-  - 세 서비스 모두 같은 CORS 유틸 사용
-  - 유닛 테스트 최소 6개 통과
-- Commit: `feat(shared,services): unify CORS middleware with deny-by-default`
+### D-R4.1: `.muted` (#9ba3c1) 대비 불충분한 곳
+
+- **문제**: `--muted: #9ba3c1`은 `--background: #06070b` 위에서 대비 약 6.2:1로 WCAG AA 통과. 하지만 `.card` (배경 rgba(16,18,33,0.82)) 위에서는 대비가 약 4.8:1로 소형 텍스트(~12px 이하) AA 기준(4.5:1) 간신히 통과.
+- **개선**: card 위에 올라가는 muted 텍스트에는 `--text-muted: #7c84a2` 대신 약간 밝은 `#a0a8c7` 정도 사용하거나, card 배경을 약간 더 어둡게.
+
+### D-R4.2: `SeatPanel.folded` — `filter: grayscale(0.5)` 접근성
+
+- **문제**: grayscale 필터가 패널 전체에 적용되어 dealer chip, YOU pill의 색상 정보도 영향. 코드에 "not to dealer chip or YOU pill" 주석이 있지만, `filter`는 하위 요소 전체에 적용됨. `opacity: 1; filter: none`을 자식에 줘도 부모 filter가 우선.
+- **개선**: `filter: grayscale(0.5)`를 부모에서 제거하고, 개별 자식 요소에 `.folded .seatAddress { color: #666 }` 등으로 직접 dimming.
+
+### D-R4.3: Red/green for positive/negative — 색맹 대응
+
+- **문제**: PnL, winrate 등에서 `--success` (green)과 `--danger` (red)만으로 구분. Red-green 색맹(~8% 남성)에게 구분 불가.
+- **개선**: +/- 기호, 화살표(↑↓), 또는 underline 등 형태(shape) 기반 보조 시각 신호 추가. `prefers-color-scheme`과 무관하게 항상 적용.
 
 ---
 
-## T-1306 Dependency/SCA scanning in CI (P0)
+## D-R5: Responsive & Mobile
 
-- Status: [x] DONE
-- Depends on: —
-- Goal: CI에 secret scanning(`gitleaks`) + dependency vulnerability scanning(`pnpm audit` blocking + `osv-scanner`)을 추가하여 보안 이슈가 머지되지 않도록 한다.
-- Scope:
-  - **CI**: `.github/workflows/security.yml` 신규 또는 `ci.yml` 확장
-  - **정책**: high 이상 취약점 블로킹 (medium은 advisory)
-- Tasks:
-  1. `.github/workflows/security.yml` 신규:
-     - Job `gitleaks`: `gitleaks/gitleaks-action@v2`, fail on findings
-     - Job `pnpm-audit`: `pnpm audit --audit-level high` (high 이상 블로킹)
-     - Job `osv-scanner`: `google/osv-scanner-action`
-     - Job `solhint-strict`: `solhint 'contracts/src/**/*.sol'` 를 블로킹으로 변경
-  2. `.gitleaks.toml` 신규: 프로젝트별 allowlist (e.g., `.env.example` 예시 값)
-  3. 기존 `ci.yml`의 `audit` job은 삭제 (security.yml로 이관)
-  4. README의 "Security" 섹션에 뱃지 추가 (gitleaks, osv)
-- Acceptance:
-  - PR에 high 취약점이 있으면 CI 실패
-  - `.env.example` false-positive는 allowlist로 통과
-  - solhint 위반이 있으면 CI 실패
-- Commit: `ci(security): add gitleaks, osv-scanner, and strict solhint to CI`
+### D-R5.1: Topbar — 모바일에서 nav 이중 구현
 
----
+- **문제**: `layout.module.css`에 `.topNav` (inline nav)와 `.mobileDrawer` (slide-in drawer) 두 가지가 있는데, `MobileNav` 컴포넌트가 별도로 존재. 어떤 breakpoint에서 어떤 nav가 보이는지 추적 어려움.
+- **개선**: 하나의 responsive nav로 통합하거나, breakpoint 경계를 명확히 문서화.
 
-# M14 — Observability & Error Tracking (P1)
+### D-R5.2: `TableViewer` — 640px 이하에서 connectionStatus가 inline으로 전환
 
-> **Goal**: 프로덕션에서 문제 발생 시 5분 안에 원인을 파악할 수 있는 관측 기반을 구축한다.
+- **문제**: 같은 `.connectionStatus`에 두 개의 `@media (max-width: 640px)` 블록이 있음 (line 720, 834). 첫 번째는 `display: none`을 updatedAt에 적용, 두 번째는 position을 static으로 변경. 순서 의존적이라 유지보수 위험.
+- **개선**: 하나의 640px 미디어쿼리로 통합.
+
+### D-R5.3: SeatPanel — 모바일 `.mobileExpandBtn` 터치 타겟 미달
+
+- **문제**: `.mobileExpandBtn`이 `padding: 0.1rem 0.25rem`. WCAG 2.5.5에서 요구하는 44x44px 터치 타겟 미달.
+- **개선**: `min-width: 44px; min-height: 44px` 추가. 또는 부모의 padding을 활용하여 암묵적 hit area 확보.
+
+### D-R5.4: NadFunTradingWidget — 좁은 화면에서 controls row 깨짐
+
+- **문제**: `.nadfunControlsRow`의 slippage + deadline 필드가 좁은 화면에서 어떻게 반응하는지 미디어쿼리 부재.
+- **개선**: 480px 이하에서 `flex-direction: column` 또는 `grid-template-columns: 1fr` 전환 추가.
+
+### D-R5.5: `LiveDashboard` — grid view 모바일 미대응
+
+- **문제**: `.tableGrid`와 `.tableGridCard`에 모바일 breakpoint 처리 확인 필요. stream mode에서 sidebar가 숨겨지지만, 메인 콘텐츠 width 활용이 불명확.
+- **개선**: 640px 이하에서 `.tableGrid`를 1열로 전환, sidebar를 완전 숨기기.
 
 ---
 
-## T-1401 Sentry 통합 (P1)
+## D-R6: Component Design & Patterns
 
-- Status: [x] DONE
-- Depends on: T-1302
-- Goal: 프론트엔드(Next.js) + 백엔드 서비스 + 봇 전체에 Sentry error tracking을 통합하여 프로덕션 예외를 중앙 집계한다.
-- Scope:
-  - **web**: `@sentry/nextjs`
-  - **services/bots**: `@sentry/node`
-  - **공유 초기화**: `packages/shared/src/observability/sentry.ts`
-- Tasks:
-  1. `packages/shared/src/observability/sentry.ts`:
-     - `initSentry({ service, environment, dsn, release })`
-     - environment: `process.env.CHAIN_ENV` (local/testnet/mainnet)
-     - PII 스크러빙 (wallet address 는 해시, private key/signature 제거)
-     - 샘플링: prod 10%, staging 50%, local 0%
-  2. `apps/web/sentry.client.config.ts`, `sentry.server.config.ts`, `sentry.edge.config.ts`
-  3. 각 서비스/봇 entrypoint에서 `initSentry` 호출 (로직 시작 전)
-  4. 에러 경계 업데이트: `apps/web/src/app/global-error.tsx` → `Sentry.captureException`
-  5. `DEPLOY.md` 에 `SENTRY_DSN` 환경변수 추가
-  6. 테스트: 의도적 throw → Sentry 이벤트 수신 (manual 검증)
-- Acceptance:
-  - 프론트/백엔드에서 uncaught exception 발생 시 Sentry에 수신
-  - PII (address, signature) 마스킹 확인
-  - local 환경에서는 Sentry 전송 안 됨
-- Commit: `feat(shared,web,services,bots): integrate Sentry error tracking`
+### D-R6.1: inline style → CSS module 마이그레이션 필요 목록
 
----
+- **문제**: 아래 컴포넌트에서 `style={{ }}` 남발. 미디어쿼리/hover/focus 대응 불가, 코드 가독성 저하.
+- **대상 파일**:
+  - `TableViewer.tsx` — AI commentary (line 496-523), polling toast (336), JoinSeatForm 내부 (694-700)
+  - `leaderboard/page.tsx` — header row (51), subtitle (55), CTA banner (160)
+  - `me/page.tsx` — preview CTA (87-98), registration guide (188), agent card actions (275)
+  - `LiveDashboard.tsx` — waiting state (313-314), allIn indicator (399), community cards (382)
+- **개선**: 모든 레이아웃/스페이싱 inline style을 해당 module.css로 이동.
 
-## T-1402 Structured logging shipping (P1)
+### D-R6.2: `<a href>` vs `<Link href>` 혼용
 
-- Status: [x] DONE
-- Depends on: T-1302
-- Goal: pino 로그를 stdout-only 에서 외부 로그 수집기(Better Stack / Axiom / Grafana Loki)로 전송. 모든 서비스 동일 포맷.
-- Scope:
-  - **선정**: Better Stack Logtail (무료 티어 충분) 또는 Grafana Cloud Loki
-  - **전송**: `pino-logtail` 또는 HTTP transport
-  - **correlation ID**: 요청별 traceId 주입
-- Tasks:
-  1. `packages/shared/src/logger.ts` 확장:
-     - `LOG_SHIPPER` env 기반 transport 선택 (stdout / logtail / loki)
-     - `traceId` 필드 자동 주입 (AsyncLocalStorage)
-  2. 각 HTTP 서비스에 `traceId` 미들웨어:
-     - `X-Trace-Id` 헤더 존재 시 재사용, 없으면 생성
-     - response에 echo
-  3. 봇들은 "hand ID + seat"를 logical trace ID로 사용
-  4. `DEPLOY.md` 에 로그 수집기 셋업 문서화
-  5. 샘플 쿼리 문서: "특정 handId 의 모든 로그" Loki/Logtail 쿼리 예시
-- Acceptance:
-  - 서비스/봇 로그가 외부 수집기에 도착
-  - 동일 요청의 로그들이 traceId 로 그룹핑 가능
-  - 로컬 개발은 여전히 stdout
-- Commit: `feat(shared): add log shipping and trace ID propagation`
+- **문제**: `layout.tsx` footer에서 `<a href="/">Home</a>` 사용 (line 146-159). Next.js에서 `<a>`는 full page reload 유발.
+- **개선**: footer의 내부 링크를 전부 `<Link>` 컴포넌트로 교체. 외부 링크(GitHub)만 `<a>` 유지.
+
+### D-R6.3: Loading 상태 일관성
+
+- **문제**: 각 page별 `loading.tsx`가 있지만, inline에서도 `<div className="loading"><span className="spinner" /> Loading...</div>` 패턴 반복.
+- **개선**: `<LoadingSpinner label="Loading..." />` 공통 컴포넌트로 추출. 사이즈 variant (sm/md/lg) 지원.
+
+### D-R6.4: Error 상태 표현 불일관
+
+- **문제**:
+  - Lobby: `<div className="empty error-card">` + custom heading/body
+  - Leaderboard: `<div className="empty"><p>Unable to load...</p></div>`
+  - Agent: `<div className="empty"><p>Unable to load agent</p><p className="error-detail">...</p></div>`
+  - Me: `<div className="card error-card">{error}</div>`
+- **개선**: `<ErrorState title="..." message="..." onRetry={...} />` 공통 컴포넌트 통일. (ErrorState 컴포넌트가 이미 존재하지만 미사용 페이지 다수)
+
+### D-R6.5: Empty 상태에 이모지 의존
+
+- **문제**: Lobby empty state에 `&#x1FA99;` (poker chip emoji), create-agent에 `🔗`, `🤖` 등. 이모지는 OS/브라우저별 렌더 차이가 크고, 프로페셔널하지 않음.
+- **개선**: SVG 아이콘이나 CSS-only 일러스트로 교체. 또는 프로젝트 아이콘 세트(Lucide 등) 도입.
 
 ---
 
-## T-1403 Metrics scraper + Grafana dashboard (P1)
+## D-R7: Interaction & Micro-UX
 
-- Status: [x] DONE
-- Depends on: —
-- Goal: 이미 노출 중인 `/metrics` Prometheus 엔드포인트를 실제 수집 + 대시보드까지 연결. Grafana Cloud 무료 티어 사용.
-- Scope:
-  - **Grafana Cloud**: prom 수집 + 기본 대시보드
-  - **대시보드**: bot health, indexer lag, auth rate, action latency
-- Tasks:
-  1. `docs/observability/grafana-setup.md` 작성: Grafana Cloud stack 만들기 → remote_write 토큰 생성 → 서비스별 scrape config
-  2. `infra/grafana/dashboards/` 에 JSON 대시보드 3종 커밋:
-     - `bots.json` — agent/keeper/vrf-operator health, actions, errors
-     - `indexer.json` — block lag, WS subscribers, DB query latency
-     - `ownerview.json` — auth attempts, rate limited, JWT issued
-  3. `packages/shared/src/metrics.ts` 확장:
-     - `railbird_indexer_block_lag{network}` Gauge
-     - `railbird_ownerview_jwt_active` Gauge
-     - 기존 메트릭 명명 일관성 점검 (prefix 통일)
-  4. Prometheus scrape 설정: Railway 내부망에서 접근 가능한지 확인 → 필요 시 public `/metrics` 에 auth 추가
-- Acceptance:
-  - Grafana Cloud에 3개 대시보드 import 가능
-  - 실제 staging 환경에서 메트릭 수집 확인
-  - `/metrics` 엔드포인트는 인증 보호 또는 IP allowlist
-- Commit: `feat(observability): add metrics gauges and Grafana dashboards`
+### D-R7.1: `JoinSeatForm` — 폼 제출 후 피드백 위치
 
----
+- **문제**: `joinStatus` 메시지가 폼 하단에 나타나지만, 긴 폼 후 스크롤 아래에 있으면 유저가 못 봄.
+- **개선**: 상태 메시지에 `scrollIntoView()` 추가하거나, Toast 컴포넌트로 전환.
 
-## T-1404 Distributed tracing (OpenTelemetry) (P1)
+### D-R7.2: NadFunTradingWidget — quote 만료 UX
 
-- Status: [x] DONE
-- Depends on: T-1402
-- Goal: web → ownerview → indexer 요청 흐름을 OTel로 추적. trace sampling은 1%.
-- Scope:
-  - **패키지**: `@opentelemetry/sdk-node`, `@opentelemetry/instrumentation-http`, `...instrumentation-pg`, `...instrumentation-pino`
-  - **receiver**: Grafana Tempo 또는 Honeycomb
-- Tasks:
-  1. `packages/shared/src/observability/tracing.ts`:
-     - `initTracing({ service, endpoint })`
-     - auto-instrumentation: http, pg, express
-  2. 각 entrypoint 최상단에서 `initTracing()` 호출 (다른 import 전)
-  3. 수동 span: viem 호출, 컨트랙트 호출, Gemini API 호출
-  4. `DEPLOY.md` 에 `OTEL_EXPORTER_ENDPOINT` 문서화
-  5. 로컬: `otel-collector` docker-compose 서비스 추가 (옵션)
-- Acceptance:
-  - Honeycomb/Tempo 에서 end-to-end trace 확인 가능
-  - HTTP, DB, 외부 API span이 나타남
-  - 샘플링 1% 적용
-- Commit: `feat(observability): add OpenTelemetry distributed tracing`
+- **문제**: quote가 10초 후 만료되면 "Quote expired — get a new quote" 텍스트만 표시. execute 버튼은 그대로 활성.
+- **개선**: quote 만료 시 execute 버튼 disabled + "Get new quote first" 안내. 또는 자동 re-quote.
+
+### D-R7.3: Create Agent wizard — 뒤로가기 시 데이터 보존
+
+- **문제**: Step 3 → Step 2 뒤로가기는 잘 동작하지만, 브라우저 뒤로가기(history back)는 전체 페이지를 벗어남.
+- **개선**: URL에 step 파라미터 (`?step=2`) 반영 + `popstate` 핸들링으로 wizard 내 뒤로가기 지원.
+
+### D-R7.4: Wallet 연결 → Sign In 2단계 인지 부족
+
+- **문제**: "Connect Wallet" 후 즉시 "Sign In" 버튼이 나오는데, 왜 2단계인지 설명 부족. 유저가 "연결했는데 왜 또?"라고 느낌.
+- **개선**: `me/page.tsx`의 auth step UI를 WalletButton에도 mini 버전으로 적용. 또는 connect 후 자동 sign-in 시도.
+
+### D-R7.5: Table viewer — Breadcrumb "Tables" 링크가 "/" (Home)으로 감
+
+- **문제**: `Breadcrumb crumbs={[{ label: "Home", href: "/" }, { label: "Tables", href: "/" }, ...]}` — "Tables"가 별도 `/tables` 페이지가 아니라 Home으로 매핑.
+- **개선**: "Tables" 대신 "Live"로 변경하고 `/live`로 연결. 또는 breadcrumb에서 제거하여 Home → Table #N 2단계로.
 
 ---
 
-## T-1405 Uptime monitoring & paging (P1)
+## D-R8: Animation & Performance
 
-- Status: [x] DONE
-- Depends on: —
-- Goal: 외부 uptime monitor(Better Stack Uptime / UptimeRobot)로 주요 엔드포인트 모니터링. 장애 시 Slack/Discord 웹훅으로 알림.
-- Scope:
-  - **모니터링 대상**: web /, indexer /health, ownerview /health, fleet /health, chain RPC
-  - **알림**: Discord 웹훅 (팀 채널)
-- Tasks:
-  1. `docs/observability/uptime-setup.md`:
-     - Better Stack Uptime 계정 세팅
-     - 모니터 5개 등록 (60s interval)
-     - on-call rotation (팀 1명 시작)
-  2. `/health` 엔드포인트 강화:
-     - shallow: 서비스 alive
-     - deep: DB reachable, chain RPC reachable, 필수 컨트랙트 존재
-     - 쿼리 파라미터 `?deep=1` 로 분기
-  3. StatusPage 페이지 (옵션, Better Stack 내장) 생성
-- Acceptance:
-  - 5개 엔드포인트 모두 모니터링 중
-  - 의도적 중단 테스트 시 알림 도달
-  - deep health check가 DB 다운을 감지
-- Commit: `feat(services): add deep health checks and document uptime monitoring`
+### D-R8.1: `body::after` ambient glow — 끊김
+
+- **문제**: `ambient-glow` keyframes에서 `background` 속성을 애니메이트. `background`는 composite 불가 속성이라 매 프레임 리페인트 발생.
+- **개선**: `background`를 정적으로 두고 `opacity`만 애니메이트하는 두 개의 pseudo-element 사용. 또는 `will-change: opacity` + opacity 기반 전환.
+
+### D-R8.2: `SeatPanel` — 다중 animation 동시 정의
+
+- **문제**: `.seatPanel.allIn`, `.justChecked`, `.active`의 animation이 겹칠 수 있음. CSS animation은 하나만 적용됨.
+- **개선**: 복합 상태에 대한 우선순위 명시. 또는 animation을 transition 기반으로 전환.
+
+### D-R8.3: `hero-shimmer` animation — 무한 반복
+
+- **문제**: `.landingHero::after`에 `animation: hero-shimmer 4s ease-in-out infinite`. 계속 렌더 비용 발생.
+- **개선**: 3~4회 후 멈추기 (`animation-iteration-count: 3`) 또는 `IntersectionObserver`로 뷰포트 밖이면 pause.
 
 ---
 
-# M15 — Reliability & Resilience (P1)
+## D-R9: Design System Consistency
 
-> **Goal**: 일시적 장애(RPC flake, DB 타임아웃, 느린 client) 상황에서도 시스템이 자가 복구 가능해야 한다.
+### D-R9.1: border-radius 비일관
 
----
+- **문제**: `--radius-sm: 8px`, `--radius-md: 12px`, `--radius-lg: 16px` 토큰이 있지만:
+  - `joinFieldInput`: `border-radius: 11px` (토큰 없음)
+  - `communityCards`: `border-radius: 14px` (토큰 없음)
+  - `tableLayout`: `border-radius: 24px` (토큰 없음)
+  - `.nowActingBar`: `border-radius: 12px` (토큰 사용 가능하지만 raw 값)
+- **개선**: 모든 custom border-radius를 가장 가까운 토큰으로 정리하거나, `--radius-2xl: 24px` 등 토큰 추가.
 
-## T-1501 RPC exponential backoff wrapper (P1)
+### D-R9.2: 색상 하드코딩 과다
 
-- Status: [x] DONE
-- Depends on: —
-- Goal: 모든 viem RPC 호출에 지수 백오프 재시도 래퍼를 적용. 재시도 카운트/성공률을 메트릭으로 노출.
-- Scope:
-  - **공유 유틸**: `packages/shared/src/chain/rpcRetry.ts`
-  - **적용**: bots, services 전역
-- Tasks:
-  1. `packages/shared/src/chain/rpcRetry.ts`:
-     - `withRpcRetry(fn, { maxAttempts=5, baseMs=200, maxMs=5000, retryOn?=(err)=>bool })`
-     - 기본 retry 조건: network error, 429, 5xx, "nonce too low" (nonce 재조회 훅)
-     - jitter 포함
-  2. 기존 `publicClient.readContract`, `.getBlock`, `.getLogs` 호출을 모두 래핑
-  3. `railbird_rpc_retry_total{op,outcome}` 메트릭
-  4. 테스트: `rpcRetry.test.ts`
-     - 3번째에 성공
-     - maxAttempts 초과 시 throw
-     - non-retriable 에러는 즉시 throw
-- Acceptance:
-  - 강제 RPC 장애 시뮬레이션에서 자동 복구
-  - 메트릭으로 재시도 빈도 확인 가능
-  - 유닛 테스트 최소 5개
-- Commit: `feat(shared,bots,services): add RPC exponential backoff wrapper`
+- **문제**: module.css에서 `rgba(...)` 직접 사용 과다. 예: `SeatPanel.module.css`에 `color: #c8ccb9`, `color: #e7e8ef`, `color: #ffe3ad`, `color: #fff2d4` 등 20+ 하드코딩.
+- **개선**: 자주 쓰이는 색상을 `--seat-label-color`, `--seat-stack-color` 등 시멘틱 토큰으로 추출.
+
+### D-R9.3: Card padding 불일관
+
+- **문제**: `--card-padding-sm/md/lg` 토큰이 있지만, `page.module.css`의 `.landingHero`는 `clamp(1rem, 3vw, 1.75rem)`, `.featuredLiveSeat`는 `0.6rem`, `.seatChip`는 `0.5rem` 등 각기 다름.
+- **개선**: card 내부 요소의 padding도 토큰 기반으로 정리.
+
+### D-R9.4: Button variant 산발
+
+- **문제**: `.btn`, `.btn-ghost`, `.btn-danger`, `.btn-secondary`, `.btn-link`, `.btn-join`, `.ghost-btn`, `.wallet-button`, `.wallet-button.sign`, `.joinToggleBtn`, `.primaryBtn`, `.nadfunQuoteBtn`, `.nadfunExecuteBtn` 등 12+ 버튼 스타일.
+- **개선**: 버튼 시스템 정리. Primary / Secondary / Ghost / Danger 4가지로 통합. 사이즈 variant (sm/md/lg) 분리. `wallet-button`은 `.btn` + `.btn-wallet` modifier로.
 
 ---
 
-## T-1502 Indexer reorg detection & rollback (P1)
+## D-R10: Page-specific Issues
 
-- Status: [x] DONE
-- Depends on: —
-- Goal: 인덱서가 체인 reorg를 감지하여 영향받은 블록의 DB 상태를 롤백하고 재인덱싱한다.
-- Scope:
-  - **indexer**: parent hash 추적, reorg 감지 루프
-  - **DB**: 롤백 가능한 schema (blocks 테이블)
-- Tasks:
-  1. DB 테이블 `indexed_blocks(number, hash, parent_hash, indexed_at)`:
-     - `services/indexer/migrations/011_indexed_blocks.sql`
-  2. `services/indexer/src/listener.ts`:
-     - 매 블록 저장 시 parent_hash 검증
-     - mismatch → reorg 시작 → 공통 조상 찾기 → 이후 블록 데이터 모두 삭제 → 재인덱싱
-  3. 영향받는 테이블(hands, events, actions, side_bets, etc.)에 `block_number` 컬럼 존재 확인 → 없으면 추가
-  4. 롤백 쿼리: `DELETE FROM ... WHERE block_number >= $1`
-  5. 메트릭: `railbird_indexer_reorg_total{depth}`
-  6. 테스트: `services/indexer/src/listener.reorg.test.ts`
-     - 3-depth reorg 시뮬레이션 → 상태 일관성
-- Acceptance:
-  - anvil에서 `anvil_reorg` 명령으로 reorg 시뮬레이션 → 인덱서 자동 복구
-  - 롤백 깊이 메트릭 기록
-  - 테스트 통과
-- Commit: `feat(indexer): add reorg detection and rollback`
+### D-R10.1: `/live` — header가 global topbar을 완전 교체하는데 Link로 돌아가기만 제공
+
+- **문제**: Live 페이지는 자체 header를 쓰면서 global nav를 숨김. 유저가 다른 페이지로 이동하려면 "← Back" 한 번 누르고 다시 nav에서 선택해야 함.
+- **개선**: Live header에 최소한의 nav 링크(Home, Leaderboard) 또는 햄버거 메뉴 추가.
+
+### D-R10.2: `/create-agent` — Step 4 Deploy 전 최종 확인 화면 부재
+
+- **문제**: Deploy 버튼 누르면 바로 API 호출. 선택한 persona + table에 대한 최종 요약 확인이 Step 4에 있긴 하지만, deploy 후 취소 불가.
+- **개선**: Deploy 전 ConfirmDialog 추가. "Deploy Agent X to Table Y?" 확인.
+
+### D-R10.3: `/me` — 인증되지 않은 상태에서 `<section>` 누락
+
+- **문제**: `!isAuthenticated` 상태 (line 103-129)에서 `<section className="page-section">` 없이 `<div className={styles.authPrompt}>`만 반환. `page-section` 애니메이션과 padding 미적용.
+- **개선**: `<section className="page-section">` 래핑 추가.
+
+### D-R10.4: 404 페이지 — 카드 애니메이션 후 멈춤
+
+- **문제**: `card-bust` 애니메이션이 `both` fill-mode로 opacity 0.4에서 멈춤. 의도적일 수 있지만, 유저가 "고장난 것" 으로 인식 가능.
+- **개선**: 애니메이션 끝 상태를 opacity 0.6 이상으로 올리거나, subtle한 floating 루프 추가.
 
 ---
 
-## T-1503 Indexer cursor-based backfill resume (P1)
+## D-R11: Accessibility
 
-- Status: [x] DONE
-- Depends on: T-1502
-- Goal: 인덱서 재시작 시 마지막 성공 블록부터 resume 하여 backfill 시간 단축. `INDEXER_FLUSH_ON_START` 는 개발용 옵션으로만 유지.
-- Scope:
-  - **indexer**: `cursor` 테이블에 per-contract last block 저장
-- Tasks:
-  1. DB 테이블 `indexer_cursors(contract_address, last_block, updated_at)`:
-     - `services/indexer/migrations/012_indexer_cursors.sql`
-  2. `services/indexer/src/listener.ts`:
-     - 시작 시 cursor 읽기 → max(cursor, START_BLOCK)
-     - 각 배치 성공 후 cursor 업데이트 (same tx)
-  3. `INDEXER_FLUSH_ON_START` 은 유지하되 기본값 false, prod에선 강제 false
-  4. 메트릭: `railbird_indexer_cursor_lag{contract}` Gauge (head - cursor)
-  5. 테스트: 재시작 시 cursor 이후부터만 처리 검증
-- Acceptance:
-  - 재시작 후 backfill 시간이 이전 블록 재처리 없이 단축
-  - cursor lag 메트릭이 Grafana에 나타남
-  - 테스트 통과
-- Commit: `feat(indexer): add cursor-based backfill resume`
+### D-R11.1: `LiveDashboard` showdown overlay — focus trap 미구현
 
----
+- **문제**: `role="dialog" aria-modal="true"` 설정은 있지만, focus가 dialog 밖으로 나갈 수 있음. Tab 키로 뒤의 콘텐츠에 접근 가능.
+- **개선**: focus trap 로직 추가 (first/last focusable element 사이 순환).
 
-## T-1504 WebSocket backpressure & dead client 제거 (P1)
+### D-R11.2: `PokerCard` — 카드 이미지에 alt text 미확인
 
-- Status: [x] DONE
-- Depends on: —
-- Goal: 느린 WS 클라이언트로 인해 인덱서 메모리가 무한정 증가하지 않도록 backpressure 처리.
-- Scope:
-  - **indexer**: WsManager 개선
-- Tasks:
-  1. `services/indexer/src/ws/wsManager.ts`:
-     - 각 client별 outbound buffer 제한 (`maxBuffered=100`)
-     - `ws.bufferedAmount > threshold` 이면 해당 client drop + metric 증가
-     - drain 이벤트 기반 backpressure 완화
-  2. heartbeat ping (30s) → pong 응답 없으면 연결 종료
-  3. 메트릭: `railbird_ws_clients_dropped_total{reason}`, `railbird_ws_buffered_bytes{client}`
-  4. 테스트: 의도적으로 느린 client → drop 확인
-- Acceptance:
-  - 10MB buffer 초과 client는 강제 종료
-  - 죽은 client는 ping 실패 후 15초 내 정리
-  - 메모리 leak 테스트 통과 (5분 stress → buffer 안정)
-- Commit: `feat(indexer): add WS backpressure and dead client eviction`
+- **문제**: 카드 컴포넌트가 시각적으로만 정보 전달. screen reader가 "3 of hearts" 등으로 읽을 수 있는지 확인 필요.
+- **개선**: `aria-label="3 of Hearts"` 등 카드 정보를 텍스트로 제공.
+
+### D-R11.3: 키보드 네비게이션 — 탭 필터 (Leaderboard)
+
+- **문제**: metric/period 탭이 `<Link>` 기반이라 각각이 tab stop. 5개 metric + 4개 period = 9개 tab stop. 키보드 유저에게 과도.
+- **개선**: `role="tablist"` + `role="tab"` 패턴으로 변경. 화살표 키로 탭 간 이동, Enter/Space로 선택.
+
+### D-R11.4: Color-only 상태 표시 — dot.pulse
+
+- **문제**: live status의 녹색 점(`.dot.pulse`)이 색상과 애니메이션만으로 "라이브" 상태 전달. `prefers-reduced-motion`일 때 색상만 남음.
+- **개선**: "LIVE" 텍스트가 항상 옆에 있으므로 큰 문제는 아니지만, dot 자체에 `aria-hidden="true"` 명시.
 
 ---
 
-## T-1505 External API timeouts 표준화 (P1)
+## D-R12: Content & Copy
 
-- Status: [x] DONE
-- Depends on: —
-- Goal: 모든 외부 API 호출(Gemini, Dealer service, RPC)에 명시적 timeout + AbortSignal.
-- Scope:
-  - **gemini**: GEMINI_TIMEOUT_MS 명시 적용
-  - **dealer**: fetch signal + timeout
-  - **rpc**: viem client transport에 timeout 옵션
-- Tasks:
-  1. `packages/shared/src/http/fetchWithTimeout.ts`:
-     - `fetchWithTimeout(url, { timeoutMs, ...opts })`
-     - AbortController + timeout clear
-  2. 기존 Gemini/Dealer 호출 → `fetchWithTimeout` 로 교체
-  3. viem `createPublicClient` 에 `{ transport: http(rpc, { timeout: 15000, retryCount: 0 }) }` (retry는 T-1501 래퍼가 담당)
-  4. 메트릭: `railbird_external_api_timeout_total{target}`
-- Acceptance:
-  - Gemini API가 15초 내 응답 없으면 Abort + fallback
-  - 테스트: 지연 mock 서버로 timeout 발동 검증
-- Commit: `feat(shared,agent,services): standardize external API timeouts`
+### D-R12.1: Hero 카피 — 톤 불일치
 
----
+- **문제**: "WHERE THE AI PLAYS FOR KEEPS." — all-caps 공격적 톤. 바로 아래 feature strip은 정보 전달 위주의 차분한 톤. 히어로와 본문 톤 갭.
+- **개선**: 히어로 카피를 sentence case로 변경하거나, feature strip도 같은 에너지 레벨로 맞추기.
 
-## T-1506 DB connection pool tuning + health (P1)
+### D-R12.2: 404 — "YOU BLUFFED INTO NOTHING."
 
-- Status: [x] DONE
-- Depends on: —
-- Goal: DB 풀 파라미터를 prod-ready 로 조정하고, pool exhaustion을 감지하는 health check 및 메트릭 추가.
-- Scope:
-  - **indexer, ownerview**: pg pool 설정
-- Tasks:
-  1. `packages/shared/src/db/pool.ts`:
-     - `createPgPool({ max, idleTimeoutMs, connectionTimeoutMs, statementTimeoutMs })`
-     - default: max=20, idle=10s, conn=5s, stmt=30s
-  2. `SET statement_timeout` 을 each acquire 시 적용 (runtime override 가능)
-  3. 메트릭:
-     - `railbird_pg_pool_total_count`
-     - `railbird_pg_pool_idle_count`
-     - `railbird_pg_pool_waiting_count`
-     - `railbird_pg_query_duration_seconds{query}` histogram
-  4. deep health: `SELECT 1` 을 2s timeout 으로 실행
-  5. `DEPLOY.md` 에 prod 풀 사이즈 가이드 추가
-- Acceptance:
-  - pool exhaustion 상황에서 waiting_count 메트릭 증가 확인
-  - 30초 초과 쿼리는 자동 abort
-  - Grafana 에 pg pool 패널 추가
-- Commit: `feat(shared,services): add PG pool tuning and health metrics`
+- **문제**: 재미있지만, 해커톤 심사위원이 실제 깨진 링크로 도달했을 때 혼란 가능. 실제 에러 안내가 부족.
+- **개선**: 유머 카피 유지하되, 아래에 "The page you're looking for doesn't exist." 한 줄 추가.
 
----
+### D-R12.3: Footer credit — "Built for HashKey Chain Hackathon"
 
-## T-1507 DB 백업 & 롤백 전략 문서화 + script (P1)
-
-- Status: [x] DONE
-- Depends on: —
-- Goal: Postgres 백업/복구 절차 문서화 + 자동 pg_dump 스크립트 + 각 마이그레이션 `down.sql` 추가.
-- Scope:
-  - **scripts**: pg_dump + restore 스크립트
-  - **migrations**: down.sql 파일 추가
-  - **runbook**: RTO/RPO SLA
-- Tasks:
-  1. `scripts/db/backup.sh`:
-     - `pg_dump --format=custom` → S3/R2 업로드 (S3 미설정 시 로컬)
-     - 암호화 (gpg) 옵션
-     - 7일 retention
-  2. `scripts/db/restore.sh`:
-     - 백업 파일 선택 → `pg_restore` → migration re-verify
-  3. 기존 마이그레이션 9개에 대응하는 `services/indexer/migrations/down/00X_*.sql` 파일 추가
-  4. `services/indexer/src/db/migrate.ts` 에 `migrateDown(target)` 함수 추가 (수동 호출만)
-  5. `docs/runbook.md` 의 "Backup & Restore" 섹션:
-     - RTO: 30분, RPO: 1시간
-     - 백업 주기: 매시간 (cron)
-     - 복구 테스트: 주 1회
-  6. CI에서 backup script 동작 검증 (dry-run)
-- Acceptance:
-  - `bash scripts/db/backup.sh` 로 백업 파일 생성
-  - `bash scripts/db/restore.sh <file>` 로 복구 성공
-  - 모든 up 마이그레이션에 대응하는 down 파일 존재
-  - runbook 업데이트
-- Commit: `feat(ops): add DB backup/restore scripts and migration rollback`
-
----
-
-# M16 — Testing & QA Expansion (P1)
-
-> **Goal**: 변경으로 인한 regression을 CI에서 잡을 수 있는 테스트 커버리지 확보.
-
----
-
-## T-1601 Foundry invariant tests (P1)
-
-- Status: [x] DONE
-- Depends on: —
-- Goal: PokerTable, PlayerVault, SideBetPool 에 대한 invariant (state conservation) 테스트 추가.
-- Scope:
-  - **contracts**: invariant suites
-- Tasks:
-  1. `contracts/test/invariant/PokerTableInvariant.t.sol`:
-     - Invariant: `sum(seat.stack) + pot == initial total chips` (한 핸드 내)
-     - Invariant: `lastActionBlock <= block.number`
-     - Handler: 랜덤 action 시퀀스 생성
-  2. `contracts/test/invariant/PlayerVaultInvariant.t.sol`:
-     - Invariant: `A == sum(externalAssets) - payables`
-     - Invariant: `B <= totalSupply` (treasury shares 상한)
-     - Invariant: post-rebalance NAV per share ≥ pre-rebalance NAV per share
-  3. `contracts/test/invariant/SideBetPoolInvariant.t.sol`:
-     - Invariant: `sum(seatTotals) == totalPool - claimedPool`
-     - Invariant: settled pool은 새 bet 수락 안 함
-  4. `foundry.toml` 에 invariant 설정 추가 (runs=256, depth=15)
-  5. CI에 invariant job 추가
-- Acceptance:
-  - 3개 invariant suite 통과
-  - CI에서 invariant 실행 확인
-  - README에 "invariant tested" 뱃지
-- Commit: `test(contracts): add invariant tests for PokerTable, Vault, SideBet`
-
----
-
-## T-1602 E2E 시나리오 확장 (P1)
-
-- Status: [x] DONE
-- Depends on: —
-- Goal: 현재 `scripts/ci-e2e.sh` 의 단일 시나리오를 확장 (4-seat, 중복 핸드, reorg 시뮬레이션, 에이전트 크래시 복구).
-- Scope:
-  - **scripts**: e2e 시나리오 셸 + harness
-  - **services**: scenario 컨트롤 API
-- Tasks:
-  1. `scripts/e2e/` 구조화:
-     - `scripts/e2e/lib/common.sh` — 공통 setup/teardown
-     - `scripts/e2e/scenarios/01-happy-path.sh` — 2 agent, 1 hand
-     - `scripts/e2e/scenarios/02-4seat-settlement.sh`
-     - `scripts/e2e/scenarios/03-timeout-fold.sh` — force timeout
-     - `scripts/e2e/scenarios/04-agent-crash.sh` — kill + restart
-     - `scripts/e2e/scenarios/05-reorg.sh` — anvil_reorg
-  2. `scripts/e2e/run-all.sh` — 전체 실행 + 결과 리포트
-  3. 각 시나리오 후 DB/컨트랙트 상태 검증
-  4. CI workflow `ci.yml` 에 `e2e-full` job (main 브랜치만)
-  5. timeout: 15분
-- Acceptance:
-  - 5개 시나리오 모두 로컬에서 통과
-  - CI에 main merge 시 실행
-  - 각 시나리오 독립 실행 가능
-- Commit: `test(e2e): expand E2E scenarios with 4-seat, timeout, crash, reorg`
-
----
-
-## T-1603 Frontend component & a11y tests (P1)
-
-- Status: [x] DONE
-- Depends on: —
-- Goal: 핵심 페이지(TableViewer, AgentPage, Live, Create-Agent)에 대한 Playwright 테스트 + axe-core a11y 검증.
-- Scope:
-  - **web**: Playwright 설정 + 테스트 + a11y
-- Tasks:
-  1. `apps/web/playwright.config.ts` 설정
-  2. `apps/web/e2e/table.spec.ts` — /table/[id] 렌더링, 액션 로그, WS 업데이트 mock
-  3. `apps/web/e2e/live.spec.ts` — /live 자동 테이블 전환
-  4. `apps/web/e2e/create-agent.spec.ts` — 위자드 4단계 워크플로
-  5. `apps/web/e2e/a11y.spec.ts` — `@axe-core/playwright` 로 5개 핵심 페이지 자동 검사 (critical/serious 위반 0)
-  6. CI job `web-e2e` 추가 (Playwright 브라우저 캐시)
-- Acceptance:
-  - 4개 spec 파일 통과
-  - a11y critical/serious 위반 0
-  - CI에서 실행
-- Commit: `test(web): add Playwright e2e and axe a11y tests`
-
----
-
-## T-1604 Bot 통합 테스트 (P1)
-
-- Status: [x] DONE
-- Depends on: —
-- Goal: agent/keeper 봇이 실제 인덱서+ownerview+컨트랙트와 통합 동작하는지 검증하는 통합 테스트.
-- Scope:
-  - **bots/agent**: integration test harness
-  - **bots/keeper**: integration test harness
-- Tasks:
-  1. `bots/agent/test/integration/fullRound.test.ts`:
-     - anvil + deployed contracts + 실제 indexer + ownerview
-     - 에이전트가 1라운드 (preflop → river → showdown) 완주
-  2. `bots/keeper/test/integration/timeout.test.ts`:
-     - 타임아웃 핸드에 대해 forceTimeout 호출
-     - VRF 재요청
-  3. test harness: `bots/agent/test/integration/harness.ts` — 컨테이너 기동/종료
-  4. CI에서 `bot-integration` job 추가
-- Acceptance:
-  - 2개 통합 테스트 통과
-  - CI에서 실행
-- Commit: `test(bots): add integration tests for agent and keeper`
-
----
-
-## T-1605 Load & stress tests (P1)
-
-- Status: [x] DONE
-- Depends on: —
-- Goal: 인덱서 WS, ownerview auth, side bet placing에 대한 부하 테스트 → 병목 식별.
-- Scope:
-  - **tooling**: k6 또는 artillery
-- Tasks:
-  1. `scripts/load/k6-indexer-ws.js`:
-     - 500 동시 WS connection, 5분
-     - 목표: P99 latency < 1s, no dropped messages
-  2. `scripts/load/k6-auth.js`:
-     - 100 RPS `/auth/nonce` + `/auth/verify`
-     - rate limiter 동작 검증 (429 응답 확인)
-  3. `scripts/load/k6-sidebet.js`:
-     - 50 동시 유저 베팅 → settle → claim
-  4. `docs/performance/load-test-results.md` — baseline 수치 기록
-  5. CI job은 수동 트리거만 (main merge 시 스킵)
-- Acceptance:
-  - 3개 스크립트 실행 가능
-  - baseline 수치 문서화
-  - 병목 1개 이상 식별 + 별도 티켓 등록
-- Commit: `test(load): add k6 load tests and baseline results`
-
----
-
-## T-1606 테스트 커버리지 리포트 (P1)
-
-- Status: [x] DONE
-- Depends on: —
-- Goal: vitest + forge coverage 를 CI 아티팩트로 업로드하고 주요 수치를 README 뱃지로 노출.
-- Scope:
-  - **CI**: coverage collection + upload
-- Tasks:
-  1. `vitest.config` 전역에 `coverage: { provider: 'v8', reporter: ['text','lcov','json'] }`
-  2. `forge coverage --report lcov` 실행
-  3. CI: `codecov/codecov-action` 로 upload (또는 Coveralls)
-  4. README에 coverage 뱃지
-  5. 목표 임계치: contracts 85%, services 70%, web 50% (점진)
-  6. 임계치 미달 시 CI warning (블로킹 아님)
-- Acceptance:
-  - Codecov에 3개 리포트 업로드
-  - 뱃지 표시
-  - 임계치 설정 문서화
-- Commit: `ci(test): add coverage collection and Codecov upload`
-
----
-
-# M17 — Developer Experience & CI/CD (P1)
-
-> **Goal**: 실수로 나쁜 코드가 머지되는 것을 예방. 새로운 기여자가 1시간 안에 로컬에서 실행할 수 있어야 함.
-
----
-
-## T-1701 Pre-commit hooks (husky + lint-staged) (P1)
-
-- Status: [x] DONE
-- Depends on: —
-- Goal: 커밋 시 자동으로 lint + typecheck + prettier 실행.
-- Scope:
-  - **husky**: pre-commit + commit-msg hook
-- Tasks:
-  1. `pnpm add -D -w husky lint-staged`
-  2. `pnpm exec husky init`
-  3. `.husky/pre-commit`:
-     ```sh
-     pnpm exec lint-staged
-     ```
-  4. `package.json` `lint-staged`:
-     - `*.{ts,tsx}`: eslint --fix + prettier
-     - `*.sol`: solhint
-  5. `.husky/commit-msg`:
-     - commitlint 또는 정규식으로 Conventional Commit 검증
-  6. `CONTRIBUTING.md` 에 설치/우회 방법 문서화
-- Acceptance:
-  - 불량 커밋이 로컬에서 차단됨
-  - CI는 이전처럼 계속 동작
-  - `--no-verify` 는 비상용으로만 허용
-- Commit: `chore(dx): add husky pre-commit and commit-msg hooks`
-
----
-
-## T-1702 ESLint + Prettier 명시적 설정 (P1)
-
-- Status: [x] DONE
-- Depends on: T-1701
-- Goal: 프로젝트 루트에 명시적 ESLint/Prettier 설정 파일 추가 + 모든 패키지가 상속.
-- Scope:
-  - **root**: .eslintrc.cjs, .prettierrc, .editorconfig
-- Tasks:
-  1. `.eslintrc.cjs`:
-     - extends: `eslint:recommended`, `@typescript-eslint/recommended`, `next/core-web-vitals`
-     - rules: no-floating-promises, consistent-type-imports, import ordering
-  2. `.prettierrc`:
-     - printWidth 100, singleQuote, trailingComma "all", tabWidth 2
-  3. `.editorconfig` (기본)
-  4. 기존 코드 `pnpm lint --fix && pnpm format` 로 정리 (별도 커밋)
-- Acceptance:
-  - `pnpm lint` 전체 통과
-  - `pnpm format` 실행 시 변경 없음 (정리 후)
-- Commit: `chore(dx): add explicit ESLint, Prettier, EditorConfig`
-
----
-
-## T-1703 Turborepo 빌드 캐시 (P1)
-
-- Status: [x] DONE
-- Depends on: —
-- Goal: 모노레포 빌드/테스트 시간 단축 위해 Turbo 도입.
-- Scope:
-  - **root**: turbo.json
-- Tasks:
-  1. `pnpm add -D -w turbo`
-  2. `turbo.json`:
-     - pipeline: build, test, lint, typecheck
-     - dependsOn: `^build`
-     - outputs: dist/**, .next/**
-  3. 기존 `package.json` scripts 를 `turbo run X` 로 전환
-  4. CI `actions/cache` 로 `.turbo` 디렉토리 캐싱
-- Acceptance:
-  - `turbo run build` 2회째 실행 시 캐시 히트 (대부분 skip)
-  - CI 빌드 시간 30% 이상 단축
-- Commit: `chore(dx): add Turborepo for build caching`
-
----
-
-## T-1704 Branch protection & code review rules (P1)
-
-- Status: [x] DONE
-- Depends on: T-1306
-- Goal: `main` 브랜치에 직접 push 금지, CI 통과 + 1 review 필수.
-- Scope:
-  - **GitHub settings**: branch protection (gh cli 또는 문서)
-- Tasks:
-  1. `docs/repo/branch-protection.md` 설정 기록:
-     - Required status checks: contracts, typecheck, lint, e2e, security
-     - Require pull request before merging
-     - Required approvals: 1
-     - Dismiss stale approvals on new commits
-     - Require linear history
-  2. `gh api --method PUT repos/:owner/:repo/branches/main/protection ...` 스크립트 `scripts/repo/apply-branch-protection.sh`
-  3. README의 "Contributing" 섹션 업데이트
-- Acceptance:
-  - main 직접 push 차단
-  - CI 실패 PR은 merge 불가
-- Commit: `docs(repo): add branch protection policy and script`
-
----
-
-## T-1705 CONTRIBUTING.md + PR template + CODEOWNERS (P1)
-
-- Status: [x] DONE
-- Depends on: —
-- Goal: 기여자 온보딩 문서 + PR/issue 템플릿.
-- Scope:
-  - **repo**: CONTRIBUTING, templates, CODEOWNERS
-- Tasks:
-  1. `CONTRIBUTING.md`:
-     - 로컬 셋업 (pnpm i, foundry, anvil)
-     - 테스트 실행법
-     - 커밋 스타일 (Conventional Commits)
-     - PR 프로세스
-  2. `.github/PULL_REQUEST_TEMPLATE.md`:
-     - Summary / Test plan / Related ticket
-  3. `.github/ISSUE_TEMPLATE/bug.md`, `feature.md`
-  4. `.github/CODEOWNERS`:
-     - contracts/ → @solidity-team
-     - apps/web/ → @frontend
-     - etc. (팀 단계 이전에는 개인 할당)
-- Acceptance:
-  - 새 PR 생성 시 템플릿 자동 로드
-  - CODEOWNERS 기반 auto-assign 동작
-- Commit: `chore(repo): add contributing docs, PR template, codeowners`
-
----
-
-## T-1706 로컬 devcontainer (P1)
-
-- Status: [x] DONE
-- Depends on: —
-- Goal: VSCode devcontainer 로 원클릭 로컬 개발 환경. 신규 기여자가 pnpm/foundry/anvil 수동 설치 불필요.
-- Scope:
-  - **.devcontainer**: Dockerfile + devcontainer.json
-- Tasks:
-  1. `.devcontainer/Dockerfile`:
-     - base: node:20
-     - install pnpm, foundry (foundryup), docker CLI
-     - pre-install workspace deps
-  2. `.devcontainer/devcontainer.json`:
-     - extensions: esbenp.prettier, dbaeumer.vscode-eslint, juanblanco.solidity
-     - postCreateCommand: `pnpm install && pnpm build`
-     - forwardPorts: 3000, 4000, 4001, 8545
-  3. `LOCAL.md` 에 devcontainer 사용법 추가
-- Acceptance:
-  - "Reopen in Container" 로 10분 내 full 환경 부팅
-  - `pnpm test` 즉시 실행 가능
-- Commit: `chore(dx): add VSCode devcontainer`
-
----
-
-# M18 — Documentation & API Contracts (P1)
-
-## T-1801 OpenAPI specs for HTTP services (P1)
-
-- Status: [x] DONE
-- Depends on: —
-- Goal: indexer / ownerview / fleet REST API를 OpenAPI 3 로 문서화 + Swagger UI 노출.
-- Scope:
-  - **tooling**: `zod-to-openapi` 또는 수동 YAML
-- Tasks:
-  1. 각 서비스의 라우트 → zod 스키마로 검증 (현재 수동이면 zod 도입)
-  2. `@asteasolutions/zod-to-openapi` 로 spec 자동 생성
-  3. `/openapi.json` + `/docs` (Swagger UI) 엔드포인트
-  4. CI에서 spec validity 검증 (`swagger-cli validate`)
-  5. README 에 API 문서 링크
-- Acceptance:
-  - 3개 서비스 모두 `/docs` 페이지 접근 가능
-  - CI spec validation 통과
-  - 모든 라우트의 request/response 스키마 존재
-- Commit: `feat(services): add OpenAPI specs and Swagger UI`
-
----
-
-## T-1802 Architecture Decision Records (P1)
-
-- Status: [x] DONE
-- Depends on: —
-- Goal: 주요 설계 결정을 ADR 형식으로 기록.
-- Scope:
-  - **docs/adr**
-- Tasks:
-  1. `docs/adr/0001-monorepo-layout.md`
-  2. `docs/adr/0002-wallet-only-auth.md`
-  3. `docs/adr/0003-commit-reveal-holecards.md`
-  4. `docs/adr/0004-accretive-only-rebalancing.md`
-  5. `docs/adr/0005-custom-circuit-breaker-vs-library.md`
-  6. `docs/adr/0006-raw-sql-migrations.md`
-  7. ADR 템플릿: `docs/adr/template.md` (Status/Context/Decision/Consequences)
-- Acceptance:
-  - 6개 ADR 존재, 모두 Accepted 상태
-  - README 링크
-- Commit: `docs(adr): add initial architecture decision records`
-
----
-
-## T-1803 Runbook 통합 & SLO 정의 (P1)
-
-- Status: [x] DONE
-- Depends on: T-1401, T-1403, T-1405
-- Goal: `DEPLOY.md`, `docs/runbook.md`, `RAILWAY.md`, `LOCAL.md` 를 일관된 구조로 통합 + SLO 명시.
-- Scope:
-  - **docs**: 통합된 운영 문서
-- Tasks:
-  1. `docs/operations/` 디렉토리 신설:
-     - `01-architecture.md`
-     - `02-deployment.md` (DEPLOY.md 흡수)
-     - `03-local-dev.md` (LOCAL.md 흡수)
-     - `04-runbook-incidents.md`
-     - `05-runbook-routine.md`
-     - `06-slo.md`
-  2. SLO 정의 (`06-slo.md`):
-     - Web app: 99.5% uptime, P95 TTFB < 800ms
-     - Indexer block lag: P95 < 30s
-     - Ownerview auth: P95 < 500ms, error rate < 1%
-     - Agent bot: action success rate > 98%
-  3. 이전 문서는 redirect 스텁으로 변경 (삭제 금지)
-- Acceptance:
-  - 통합 문서 구조 완성
-  - SLO 측정 방식이 Grafana 쿼리와 1:1 매핑
-- Commit: `docs(ops): unify runbooks and define SLOs`
-
----
-
-## T-1804 DB ER diagram & data dictionary (P1)
-
-- Status: [x] DONE
-- Depends on: —
-- Goal: Postgres 스키마를 자동 추출하여 ER 다이어그램 + 컬럼 설명 생성.
-- Scope:
-  - **tooling**: schemaspy 또는 dbdocs
-- Tasks:
-  1. `scripts/db/generate-er.sh`:
-     - schemaspy Docker 이미지로 HTML 생성
-     - 산출물: `docs/db/er-diagram/`
-  2. `docs/db/data-dictionary.md` — 테이블별 설명
-  3. CI에서 schema drift 검증 (선택)
-- Acceptance:
-  - ER 다이어그램 이미지 생성
-  - 모든 테이블이 dictionary 에 기술됨
-- Commit: `docs(db): add ER diagram and data dictionary`
-
----
-
-# M19 — Performance & Scale (P2)
-
-## T-1901 Redis 캐싱 레이어 (P2)
-
-- Status: [x] DONE
-- Depends on: —
-- Goal: 인덱서 핫 쿼리(leaderboard, recent hands)에 Redis 캐시 도입.
-- Scope:
-  - **indexer**: Redis client + TTL 캐시
-- Tasks:
-  1. `services/indexer/src/cache/redis.ts` — ioredis client
-  2. `getLeaderboard()`, `getRecentHands()`, `getAgentProfile()` 에 캐시 적용 (TTL 10s)
-  3. invalidation: 해당 이벤트 인덱싱 시 해당 키 delete
-  4. docker-compose 에 redis 서비스
-  5. 메트릭: `railbird_cache_hit_total{key}`, `_miss_total`
-- Acceptance:
-  - leaderboard 쿼리 P95 latency 50% 이상 감소
-  - cache hit ratio > 70% (정상 부하)
-- Commit: `feat(indexer): add Redis caching for hot queries`
-
----
-
-## T-1902 DB 인덱스 감사 & 튜닝 (P2)
-
-- Status: [x] DONE
-- Depends on: —
-- Goal: EXPLAIN ANALYZE 로 느린 쿼리 식별 → 인덱스 추가.
-- Tasks:
-  1. `scripts/db/slow-queries.sh` — pg_stat_statements 상위 20개 출력
-  2. 각 쿼리에 대해 EXPLAIN → 필요 시 migration 추가
-  3. 결과 문서: `docs/db/indexing-review.md`
-- Acceptance:
-  - 느린 쿼리 top 5 모두 < 100ms
-- Commit: `perf(indexer): add DB indexes based on slow query analysis`
-
----
-
-## T-1903 Frontend 번들 최적화 (P2)
-
-- Status: [x] DONE
-- Depends on: —
-- Goal: Next.js 번들 사이즈 축소 + lazy loading 확대.
-- Tasks:
-  1. `ANALYZE=true pnpm build` 분석 후 큰 모듈 식별
-  2. 차트/애니메이션 라이브러리 `next/dynamic` 으로 전환
-  3. unused imports 제거
-  4. `docs/performance/bundle-report.md`
-  5. CI에서 bundle size check (`size-limit`)
-- Acceptance:
-  - 초기 JS 번들 300KB (gzipped) 이하
-  - size-limit CI 통과
-- Commit: `perf(web): optimize bundle size with lazy loading`
-
----
-
-## T-1904 RPC batch 호출 (P2)
-
-- Status: [x] DONE
-- Depends on: —
-- Goal: 인덱서가 `eth_getLogs` + `eth_getBlock` 등을 single batch RPC로 묶어 호출 수 축소.
-- Tasks:
-  1. viem `multicall` 활용한 read 호출 배칭
-  2. 인덱서 listener에서 연속된 블록의 receipt 배칭
-  3. 메트릭: `railbird_rpc_calls_total{op}` 감소 확인
-- Acceptance:
-  - RPC 호출 수 40% 이상 감소 (동일 워크로드 기준)
-- Commit: `perf(indexer,bots): batch RPC calls via multicall`
-
----
-
-## T-1905 Agent 프로세스 격리 (P2)
-
-- Status: [x] DONE
-- Depends on: —
-- Goal: Fleet 관리 에이전트들이 단일 프로세스 내 충돌 시 전체가 죽지 않도록 워커 프로세스 격리.
-- Tasks:
-  1. `services/fleet/src/spawner.ts` 개선:
-     - 각 agent → 독립 child_process + 자동 재시작
-     - bulkhead: 1개 crash가 다른 agent에 영향 없음
-  2. 메트릭: `railbird_fleet_agent_restarts_total`
-- Acceptance:
-  - 특정 agent kill → 30초 내 자동 재시작
-  - 다른 agent 영향 없음
-- Commit: `feat(fleet): isolate agents per worker process`
-
----
-
-## T-1906 WebSocket 압축 & batching (P2)
-
-- Status: [x] DONE
-- Depends on: —
-- Goal: WS 메시지를 permessage-deflate 압축 + 50ms 윈도우 batching.
-- Tasks:
-  1. ws 라이브러리 옵션: `perMessageDeflate: { threshold: 1024 }`
-  2. broadcast 시 50ms 윈도우로 묶어 단일 payload 전송
-  3. client(apps/web) decoder 대응
-- Acceptance:
-  - WS 대역폭 30% 이상 절감
-  - 지각 P95 < 100ms
-- Commit: `perf(indexer,web): add WS compression and batching`
-
----
-
-# M20 — Deployment & Infrastructure (P2)
-
-## T-2001 Docker multi-stage 빌드 최적화 (P2)
-
-- Status: [x] DONE
-- Depends on: —
-- Goal: 각 서비스 이미지 크기 < 200MB, 빌드 캐시 최대 활용.
-- Tasks:
-  1. 각 `Dockerfile` 을 multi-stage (builder / runtime) 패턴으로 통일
-  2. `node:20-slim` → `node:20-alpine` 검토
-  3. `docker slim` 또는 `dive` 로 사이즈 측정
-  4. CI에 image size gate (`dockle`)
-- Acceptance:
-  - 5개 서비스 이미지 모두 < 200MB
-- Commit: `perf(infra): optimize Dockerfiles with multi-stage builds`
-
----
-
-## T-2002 Staging 환경 셋업 (P2)
-
-- Status: [x] DONE
-- Depends on: T-1302
-- Goal: main merge 시 자동 배포되는 staging 환경 구축.
-- Tasks:
-  1. Railway에 staging project 생성
-  2. Vercel preview → staging 도메인 매핑
-  3. GitHub Actions deploy job (main 브랜치 전용)
-  4. staging 전용 chain (testnet) + 별도 컨트랙트 주소
-  5. `docs/operations/02-deployment.md` 업데이트
-- Acceptance:
-  - main merge → 5분 내 staging 자동 배포
-  - staging vs prod 독립
-- Commit: `feat(infra): add staging environment with auto-deploy`
-
----
-
-## T-2003 Blue-green / canary 배포 (P2)
-
-- Status: [x] DONE
-- Depends on: T-2002
-- Goal: 배포 시 다운타임 0. 카나리 5분 관찰 후 전체 승격.
-- Tasks:
-  1. Railway replica 기능 활용 (또는 Kubernetes 이전)
-  2. 배포 스크립트: 새 버전 → 5% 트래픽 → 메트릭 확인 → 전체 승격
-  3. rollback 스크립트
-- Acceptance:
-  - 배포 중 5xx 에러율 증가 없음
-  - 실패 시 1분 내 자동 롤백
-- Commit: `feat(infra): add canary deployment strategy`
-
----
-
-## T-2004 IaC (Terraform or Pulumi) (P2)
-
-- Status: [x] DONE
-- Depends on: —
-- Goal: 인프라를 코드로 관리 — Railway 프로젝트, DNS, Vercel 설정, Cloudflare WAF.
-- Tasks:
-  1. `infra/terraform/` 구조 생성
-  2. 현재 Railway 설정을 import
-  3. DNS 레코드 IaC 화
-  4. Cloudflare zone + WAF rule
-- Acceptance:
-  - `terraform plan` 으로 현재 상태와 diff 없음
-  - 문서화된 apply 절차
-- Commit: `feat(infra): add Terraform for Railway, DNS, Cloudflare`
-
----
-
-## T-2005 Image vulnerability scanning (P2)
-
-- Status: [x] DONE
-- Depends on: —
-- Goal: 빌드된 Docker 이미지에 대해 Trivy 또는 Grype 취약점 스캔.
-- Tasks:
-  1. CI job `image-scan`:
-     - `aquasecurity/trivy-action`
-     - fail on CRITICAL
-  2. `.trivyignore` — 예외 관리
-- Acceptance:
-  - 5개 이미지 모두 CRITICAL 0
-  - CI 블로킹
-- Commit: `ci(security): add Trivy image vulnerability scanning`
-
----
-
-# M21 — Frontend Production Polish (P2)
-
-## T-2101 SEO & 소셜 메타 (P2)
-
-- Tasks:
-  1. `apps/web/src/app/robots.ts` (Next.js built-in)
-  2. `apps/web/src/app/sitemap.ts`
-  3. 각 페이지 `metadata.openGraph`, `twitter` (og:image 제작 포함)
-  4. `app/icon.png`, `app/apple-icon.png`
-- Acceptance:
-  - Lighthouse SEO 95+
-  - Twitter / Slack 링크 프리뷰 정상
-- Commit: `feat(web): add SEO metadata, robots, sitemap, OG images`
-
----
-
-## T-2102 Analytics (P2)
-
-- Tasks:
-  1. Vercel Analytics 또는 Plausible 통합
-  2. 주요 이벤트 트래킹: wallet_connect, table_view, bet_place, agent_create
-  3. PII 제외 확인
-- Acceptance:
-  - 이벤트 dashboard 생성
-- Commit: `feat(web): add privacy-friendly analytics`
-
----
-
-## T-2103 Not-found & 500 에러 페이지 (P2)
-
-- Tasks:
-  1. `app/not-found.tsx`
-  2. `app/global-error.tsx`
-  3. 커스텀 스타일, 홈 복귀 CTA
-- Commit: `feat(web): add custom 404 and 500 pages`
-
----
-
-## T-2104 Font 최적화 (P2)
-
-- Tasks:
-  1. `next/font` 로 변경 (Google Fonts 셀프 호스팅)
-  2. `display: swap`
-  3. preload 주요 weight만
-- Commit: `perf(web): optimize font loading with next/font`
-
----
-
-## T-2105 Performance budget + Lighthouse CI (P2)
-
-- Tasks:
-  1. `lighthouse-ci` CI job
-  2. budget: perf 85+, a11y 95+, best-practices 95+, SEO 95+
-  3. PR comment 에 리포트 첨부
-- Commit: `ci(web): add Lighthouse CI with performance budget`
-
----
-
-## T-2106 Mobile 반응형 감사 (P2)
-
-- Tasks:
-  1. 주요 페이지 mobile viewport (375px) 수동 검증
-  2. 깨진 레이아웃 수정
-  3. Playwright mobile emulation 테스트
-- Commit: `fix(web): audit and fix mobile responsive layout`
-
----
-
-# 실행 우선순위 요약
-
-## 즉시 (P0 블로커) — 런칭 전 반드시
-
-1. **T-1301** Git history secret audit
-2. **T-1302** Secrets manager 도입
-3. **T-1303** Legal pages (ToS, Privacy, Disclaimer)
-4. **T-1304** Auth rate limiting + audit log
-5. **T-1305** CORS deny-by-default
-6. **T-1306** Dependency/SCA scanning
-
-## 필수 (P1) — 런칭 직후 2주 내
-
-- M14 Observability 전체
-- M15 Reliability 전체
-- M16 Testing expansion (특히 T-1601 invariant, T-1602 e2e)
-- M17 DX (T-1701 pre-commit, T-1704 branch protection)
-- M18 Documentation (T-1801 OpenAPI)
-
-## 후순위 (P2) — 런칭 후 1~3개월
-
-- M19 Performance & scale
-- M20 Deployment & infra 고도화
-- M21 Frontend polish
-
----
-
-# 티켓 러너 가이드
-
-1. `TICKET.md` 와 동일한 실행 알고리즘 적용
-2. M13 부터 순서대로 실행 (P0 → P1 → P2)
-3. 한 티켓 = 한 커밋 (Conventional Commit)
-4. 실패 시 즉시 중단 + 사용자 보고
-5. 각 마일스톤 종료 시 `TODO.md` 상단의 status 표 갱신
-
----
-
-**Total tickets**: 46
-**P0 tickets**: 6 (M13)
-**P1 tickets**: 28 (M14 ~ M18)
-**P2 tickets**: 22 (M19 ~ M21)
+- **문제**: 해커톤 끝나면 stale해지는 카피.
+- **개선**: 환경변수로 제어하거나, 해커톤 이후 "Powered by HashKey Chain"만 남기기.

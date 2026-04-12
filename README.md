@@ -53,44 +53,44 @@ AI agents play on-chain Texas Hold'em — with verifiable shuffles, encrypted ho
 
 ### HashKey Chain Integration
 
-| Feature | Usage |
-|---------|-------|
-| **KYC SBT** | `isHuman()` check on seat registration — only KYC-verified wallets can join |
-| **OP Stack** | Full EVM equivalence, low gas, standard Solidity tooling (Foundry) |
-| **VRF** | On-chain randomness for community card shuffles and hole card seeding |
-| **Blockscout** | Source-verified contracts on `https://testnet-explorer.hsk.xyz` |
+| Feature        | Usage                                                                       |
+| -------------- | --------------------------------------------------------------------------- |
+| **KYC SBT**    | `isHuman()` check on seat registration — only KYC-verified wallets can join |
+| **OP Stack**   | Full EVM equivalence, low gas, standard Solidity tooling (Foundry)          |
+| **VRF**        | On-chain randomness for community card shuffles and hole card seeding       |
+| **Blockscout** | Source-verified contracts on `https://testnet-explorer.hsk.xyz`             |
 
 ### Demo & Links
 
-| | |
-|---|---|
-| **Demo URL** | `https://railbird.fun` |
-| **Demo Video** | See `docs/demo-script.md` for walkthrough |
-| **Block Explorer** | `https://testnet-explorer.hsk.xyz` |
-| **DoraHacks** | `https://dorahacks.io/hackathon/2045` |
+|                    |                                           |
+| ------------------ | ----------------------------------------- |
+| **Demo URL**       | `https://railbird.fun`                    |
+| **Demo Video**     | See `docs/demo-script.md` for walkthrough |
+| **Block Explorer** | `https://testnet-explorer.hsk.xyz`        |
+| **DoraHacks**      | `https://dorahacks.io/hackathon/2045`     |
 
 ### Deployed Contract Addresses (Testnet)
 
-| Contract | Address |
-|----------|---------|
-| ChipToken (RCHIP) | [`0x51745FeAB545eA4d0818E49629Ad1b0A808431F2`](https://testnet-explorer.hsk.xyz/address/0x51745FeAB545eA4d0818E49629Ad1b0A808431F2) |
-| PokerTable 1 (low-stakes) | [`0x537BEd9Ea230F5c5f1462E1f6f29DeBB18aA0D5a`](https://testnet-explorer.hsk.xyz/address/0x537BEd9Ea230F5c5f1462E1f6f29DeBB18aA0D5a) |
+| Contract                   | Address                                                                                                                             |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| ChipToken (RCHIP)          | [`0x51745FeAB545eA4d0818E49629Ad1b0A808431F2`](https://testnet-explorer.hsk.xyz/address/0x51745FeAB545eA4d0818E49629Ad1b0A808431F2) |
+| PokerTable 1 (low-stakes)  | [`0x537BEd9Ea230F5c5f1462E1f6f29DeBB18aA0D5a`](https://testnet-explorer.hsk.xyz/address/0x537BEd9Ea230F5c5f1462E1f6f29DeBB18aA0D5a) |
 | PokerTable 2 (high-stakes) | [`0xEB830f6E5dFE6b5F52E0F05d5606540D2BB8cb16`](https://testnet-explorer.hsk.xyz/address/0xEB830f6E5dFE6b5F52E0F05d5606540D2BB8cb16) |
-| PlayerRegistry | [`0xFe11800ACD7c4e7Bc609e038B5dE4f2b3C0d6bd2`](https://testnet-explorer.hsk.xyz/address/0xFe11800ACD7c4e7Bc609e038B5dE4f2b3C0d6bd2) |
-| PlayerVault | [`0x6FE1F723c0BE33ecCA5Dca7e1D6954B7859A59A1`](https://testnet-explorer.hsk.xyz/address/0x6FE1F723c0BE33ecCA5Dca7e1D6954B7859A59A1) |
-| ProductionVRFAdapter | [`0xD02AF45258012208A46e1C00f91C2a2c8c2aFB15`](https://testnet-explorer.hsk.xyz/address/0xD02AF45258012208A46e1C00f91C2a2c8c2aFB15) |
+| PlayerRegistry             | [`0xFe11800ACD7c4e7Bc609e038B5dE4f2b3C0d6bd2`](https://testnet-explorer.hsk.xyz/address/0xFe11800ACD7c4e7Bc609e038B5dE4f2b3C0d6bd2) |
+| PlayerVault                | [`0x6FE1F723c0BE33ecCA5Dca7e1D6954B7859A59A1`](https://testnet-explorer.hsk.xyz/address/0x6FE1F723c0BE33ecCA5Dca7e1D6954B7859A59A1) |
+| ProductionVRFAdapter       | [`0xD02AF45258012208A46e1C00f91C2a2c8c2aFB15`](https://testnet-explorer.hsk.xyz/address/0xD02AF45258012208A46e1C00f91C2a2c8c2aFB15) |
 
 ### Tech Stack
 
-| Layer | Technology |
-|-------|------------|
-| Smart Contracts | Solidity + Foundry |
-| Chain | HashKey Chain Testnet (OP Stack, Chain ID 133) |
-| Frontend | Next.js + TypeScript + viem |
-| Wallet | MetaMask (`window.ethereum`) |
-| AI | Google Gemini API (`gemini-2.0-flash`) |
-| Backend | Node.js + TypeScript + PostgreSQL |
-| Crypto | ECIES encryption, VRF, keccak256 commit/reveal |
+| Layer           | Technology                                     |
+| --------------- | ---------------------------------------------- |
+| Smart Contracts | Solidity + Foundry                             |
+| Chain           | HashKey Chain Testnet (OP Stack, Chain ID 133) |
+| Frontend        | Next.js + TypeScript + viem                    |
+| Wallet          | MetaMask (`window.ethereum`)                   |
+| AI              | Google Gemini API (`gemini-2.0-flash`)         |
+| Backend         | Node.js + TypeScript + PostgreSQL              |
+| Crypto          | ECIES encryption, VRF, keccak256 commit/reveal |
 
 ### Quick Start (3 lines)
 
@@ -121,6 +121,7 @@ pnpm install
 ```
 
 **HashKey Chain Testnet:**
+
 - RPC: `https://testnet.hsk.xyz`
 - Explorer: `https://testnet-explorer.hsk.xyz`
 - Faucet: `https://faucet.hsk.xyz/faucet`
@@ -351,6 +352,7 @@ export WMON_ADDRESS=0x5a4E0bFDeF88C9032CB4d24338C5EB3d3870BfDd
 ### 6. Start Services
 
 **Terminal 2: OwnerView Service**
+
 ```bash
 cd services/ownerview
 JWT_SECRET=your-secret-key-at-least-32-characters \
@@ -361,6 +363,7 @@ pnpm start
 ```
 
 **Terminal 3: Indexer Service**
+
 ```bash
 cd services/indexer
 DB_HOST=localhost \
@@ -377,6 +380,7 @@ pnpm start
 ```
 
 **Terminal 4: Web App**
+
 ```bash
 cd apps/web
 NEXT_PUBLIC_INDEXER_URL=https://indexer.railbird.fun \
@@ -385,12 +389,14 @@ pnpm dev
 ```
 
 **Option A: Quick Start (all 4 agents + keeper in one command)**
+
 ```bash
 # From repo root:
 POKER_TABLE_ADDRESS=<address> ./scripts/run-4agents.sh
 ```
 
 Default 4-agent personalities use different aggression values:
+
 - Seat 0: `0.15` (tight)
 - Seat 1: `0.35` (balanced)
 - Seat 2: `0.60` (loose)
@@ -399,6 +405,7 @@ Default 4-agent personalities use different aggression values:
 **Option B: Individual terminals**
 
 **Terminal 5: Agent Bot (Seat 0)**
+
 ```bash
 cd bots/agent
 RPC_URL=http://localhost:8545 \
@@ -410,6 +417,7 @@ pnpm start
 ```
 
 **Terminal 6: Agent Bot (Seat 1)**
+
 ```bash
 cd bots/agent
 RPC_URL=http://localhost:8545 \
@@ -421,6 +429,7 @@ pnpm start
 ```
 
 **Terminal 7: Agent Bot (Seat 2)**
+
 ```bash
 cd bots/agent
 RPC_URL=http://localhost:8545 \
@@ -432,6 +441,7 @@ pnpm start
 ```
 
 **Terminal 8: Agent Bot (Seat 3)**
+
 ```bash
 cd bots/agent
 RPC_URL=http://localhost:8545 \
@@ -443,6 +453,7 @@ pnpm start
 ```
 
 **Terminal 9: Keeper Bot**
+
 ```bash
 cd bots/keeper
 RPC_URL=http://localhost:8545 \
@@ -456,68 +467,68 @@ pnpm start
 
 ### Common (All Services)
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `CHAIN_ENV` | Yes | `local`, `testnet`, or `mainnet` |
-| `RPC_URL` | Yes | Ethereum RPC endpoint URL |
-| `POKER_TABLE_ADDRESS` | Yes | Deployed PokerTable contract |
-| `PLAYER_REGISTRY_ADDRESS` | Yes | Deployed PlayerRegistry contract |
-| `PLAYER_VAULT_ADDRESS` | Yes | Deployed PlayerVault contract |
-| `VRF_ADAPTER_ADDRESS` | Yes | Deployed VRF adapter contract |
-| `RCHIP_TOKEN_ADDRESS` | Yes | Deployed ChipToken (`rCHIP`) token |
+| Variable                  | Required | Description                        |
+| ------------------------- | -------- | ---------------------------------- |
+| `CHAIN_ENV`               | Yes      | `local`, `testnet`, or `mainnet`   |
+| `RPC_URL`                 | Yes      | Ethereum RPC endpoint URL          |
+| `POKER_TABLE_ADDRESS`     | Yes      | Deployed PokerTable contract       |
+| `PLAYER_REGISTRY_ADDRESS` | Yes      | Deployed PlayerRegistry contract   |
+| `PLAYER_VAULT_ADDRESS`    | Yes      | Deployed PlayerVault contract      |
+| `VRF_ADAPTER_ADDRESS`     | Yes      | Deployed VRF adapter contract      |
+| `RCHIP_TOKEN_ADDRESS`     | Yes      | Deployed ChipToken (`rCHIP`) token |
 
 ### OwnerView Service
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `JWT_SECRET` | Yes | - | Secret for JWT signing (32+ chars) |
-| `DEALER_API_KEY` | Non-local | - | API key for /dealer/* endpoint auth |
-| `HOLECARD_DATA_DIR` | No | `./data/holecards` | Persistent hole card storage dir |
-| `PORT` | No | 3001 | HTTP server port |
+| Variable            | Required  | Default            | Description                          |
+| ------------------- | --------- | ------------------ | ------------------------------------ |
+| `JWT_SECRET`        | Yes       | -                  | Secret for JWT signing (32+ chars)   |
+| `DEALER_API_KEY`    | Non-local | -                  | API key for /dealer/\* endpoint auth |
+| `HOLECARD_DATA_DIR` | No        | `./data/holecards` | Persistent hole card storage dir     |
+| `PORT`              | No        | 3001               | HTTP server port                     |
 
 ### Indexer Service
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `DB_HOST` | Yes | - | PostgreSQL host |
-| `DB_PORT` | No | 5432 | PostgreSQL port |
-| `DB_NAME` | Yes | - | Database name |
-| `DB_USER` | Yes | - | Database user |
-| `DB_PASSWORD` | Yes | - | Database password |
-| `PORT` | No | 3002 | HTTP server port |
+| Variable      | Required | Default | Description       |
+| ------------- | -------- | ------- | ----------------- |
+| `DB_HOST`     | Yes      | -       | PostgreSQL host   |
+| `DB_PORT`     | No       | 5432    | PostgreSQL port   |
+| `DB_NAME`     | Yes      | -       | Database name     |
+| `DB_USER`     | Yes      | -       | Database user     |
+| `DB_PASSWORD` | Yes      | -       | Database password |
+| `PORT`        | No       | 3002    | HTTP server port  |
 
 ### Agent Bot
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `OPERATOR_PRIVATE_KEY` | Yes | - | Private key for seat operator |
-| `OWNERVIEW_URL` | No | `https://ownerview.railbird.fun` | OwnerView service URL |
-| `AGGRESSION_FACTOR` | No | 0.3 | Strategy aggression (`0.0~1.0`) |
-| `TURN_ACTION_DELAY_MS` | No | 60000 | Delay from turn start to action (ms) |
-| `MAX_HANDS` | No | 0 (unlimited) | Stop after N hands |
-| `POLL_INTERVAL_MS` | No | 1000 | State polling interval |
+| Variable               | Required | Default                          | Description                          |
+| ---------------------- | -------- | -------------------------------- | ------------------------------------ |
+| `OPERATOR_PRIVATE_KEY` | Yes      | -                                | Private key for seat operator        |
+| `OWNERVIEW_URL`        | No       | `https://ownerview.railbird.fun` | OwnerView service URL                |
+| `AGGRESSION_FACTOR`    | No       | 0.3                              | Strategy aggression (`0.0~1.0`)      |
+| `TURN_ACTION_DELAY_MS` | No       | 60000                            | Delay from turn start to action (ms) |
+| `MAX_HANDS`            | No       | 0 (unlimited)                    | Stop after N hands                   |
+| `POLL_INTERVAL_MS`     | No       | 1000                             | State polling interval               |
 
 ### Keeper Bot
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `KEEPER_PRIVATE_KEY` | Yes | - | Private key for keeper |
-| `PLAYER_VAULT_ADDRESS` | No | - | For rebalancing support |
-| `ENABLE_REBALANCING` | No | false | Enable treasury rebalancing |
-| `POLL_INTERVAL_MS` | No | 2000 | State polling interval |
+| Variable               | Required | Default | Description                 |
+| ---------------------- | -------- | ------- | --------------------------- |
+| `KEEPER_PRIVATE_KEY`   | Yes      | -       | Private key for keeper      |
+| `PLAYER_VAULT_ADDRESS` | No       | -       | For rebalancing support     |
+| `ENABLE_REBALANCING`   | No       | false   | Enable treasury rebalancing |
+| `POLL_INTERVAL_MS`     | No       | 2000    | State polling interval      |
 
 ### Web App
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `NEXT_PUBLIC_INDEXER_URL` | No | `https://indexer.railbird.fun` | Indexer API URL |
-| `NEXT_PUBLIC_OWNERVIEW_URL` | No | `https://ownerview.railbird.fun` | OwnerView URL |
-| `NEXT_PUBLIC_NADFUN_LENS_ADDRESS` | No | `0xd2F5843b64329D6A296A4e6BB05BA2a9BD3816F8` | nad.fun-compatible Lens contract |
-| `NEXT_PUBLIC_NADFUN_BONDING_ROUTER_ADDRESS` | No | `0xa69d9F9B3D64bdD781cB4351E071FBA5DC43018d` | nad.fun-compatible bonding router |
-| `NEXT_PUBLIC_NADFUN_DEX_ROUTER_ADDRESS` | No | `0xa69d9F9B3D64bdD781cB4351E071FBA5DC43018d` | nad.fun-compatible DEX router |
-| `NEXT_PUBLIC_WMON_ADDRESS` | No | `0x5a4E0bFDeF88C9032CB4d24338C5EB3d3870BfDd` | Wrapped MON address |
-| `NEXT_PUBLIC_RPC_URL` | No | - | RPC for client-side calls |
-| `NEXT_PUBLIC_CHIP_SYMBOL` | No | `rCHIP` | UI label for poker chips |
+| Variable                                    | Required | Default                                      | Description                       |
+| ------------------------------------------- | -------- | -------------------------------------------- | --------------------------------- |
+| `NEXT_PUBLIC_INDEXER_URL`                   | No       | `https://indexer.railbird.fun`               | Indexer API URL                   |
+| `NEXT_PUBLIC_OWNERVIEW_URL`                 | No       | `https://ownerview.railbird.fun`             | OwnerView URL                     |
+| `NEXT_PUBLIC_NADFUN_LENS_ADDRESS`           | No       | `0xd2F5843b64329D6A296A4e6BB05BA2a9BD3816F8` | nad.fun-compatible Lens contract  |
+| `NEXT_PUBLIC_NADFUN_BONDING_ROUTER_ADDRESS` | No       | `0xa69d9F9B3D64bdD781cB4351E071FBA5DC43018d` | nad.fun-compatible bonding router |
+| `NEXT_PUBLIC_NADFUN_DEX_ROUTER_ADDRESS`     | No       | `0xa69d9F9B3D64bdD781cB4351E071FBA5DC43018d` | nad.fun-compatible DEX router     |
+| `NEXT_PUBLIC_WMON_ADDRESS`                  | No       | `0x5a4E0bFDeF88C9032CB4d24338C5EB3d3870BfDd` | Wrapped MON address               |
+| `NEXT_PUBLIC_RPC_URL`                       | No       | -                                            | RPC for client-side calls         |
+| `NEXT_PUBLIC_CHIP_SYMBOL`                   | No       | `rCHIP`                                      | UI label for poker chips          |
 
 ## Running Tests
 
@@ -540,6 +551,16 @@ cd bots/keeper && pnpm test
 
 ## API Endpoints
 
+Each HTTP service ships an OpenAPI 3.0.3 spec at `/openapi.json` and a Swagger UI at `/docs`:
+
+| Service   | Spec URL                             | Swagger UI                   |
+| --------- | ------------------------------------ | ---------------------------- |
+| Indexer   | `http://localhost:3002/openapi.json` | `http://localhost:3002/docs` |
+| OwnerView | `http://localhost:3001/openapi.json` | `http://localhost:3001/docs` |
+| Fleet     | `http://localhost:3003/openapi.json` | `http://localhost:3003/docs` |
+
+CI runs `node scripts/openapi/validate.mjs` to enforce structural validity on every PR.
+
 ### Indexer REST API (default: http://localhost:3002)
 
 - `GET /api/health` - Health check
@@ -560,26 +581,31 @@ cd bots/keeper && pnpm test
 ## Troubleshooting
 
 ### Contract deployment fails
+
 - Ensure Anvil is running: `anvil --host 0.0.0.0`
 - Check RPC URL is correct
 - Verify private key has funds
 
 ### Indexer can't connect to database
+
 - Ensure PostgreSQL is running: `pg_isready`
 - Verify database exists: `psql -l | grep playerco`
 - Check connection credentials
 
 ### Bot can't find seat
+
 - Verify seat is registered on table
 - Check operator address matches private key
 - Ensure seats are filled before starting hand
 
 ### Table polling lag
+
 - Check indexer health and response time (`/api/health`)
 - Reduce frontend polling interval only if indexer can handle it
 - Verify CORS settings for `https://railbird.fun`
 
 ### Hole cards not returned
+
 - Verify JWT is valid and not expired
 - Check address is seat owner (not just operator)
 - Ensure dealer has dealt cards for the hand

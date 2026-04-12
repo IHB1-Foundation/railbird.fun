@@ -1,6 +1,13 @@
 import { randomUUID } from "node:crypto";
 import express, { type Express, type Request, type Response, type NextFunction } from "express";
-import { type Address, createLogger, parseAllowedOrigins, createCorsMiddleware } from "@playerco/shared";
+import swaggerUi from "swagger-ui-express";
+import {
+  type Address,
+  createLogger,
+  parseAllowedOrigins,
+  createCorsMiddleware,
+} from "@playerco/shared";
+import { ownerviewOpenApiSpec } from "./openapi.js";
 
 const logger = createLogger({ service: "ownerview" });
 import { AuthService } from "./auth/index.js";
@@ -10,9 +17,15 @@ import { DealerService, HandStartedEventListener } from "./dealer/index.js";
 import { DealerSeedStore } from "./dealer/dealerSeedStore.js";
 import { EncryptionKeyStore } from "./encryptionKeyStore.js";
 import { createAuthMiddleware } from "./middleware/index.js";
-import { createAuthRoutes, createOwnerRoutes, createDealerRoutes, createReasoningRoutes, createTreasuryReasoningRouter, createCommentaryRoutes } from "./routes/index.js";
+import {
+  createAuthRoutes,
+  createOwnerRoutes,
+  createDealerRoutes,
+  createReasoningRoutes,
+  createTreasuryReasoningRouter,
+  createCommentaryRoutes,
+} from "./routes/index.js";
 import { logMemoryWarning } from "./routes/reasoning.js";
-
 
 export interface AppConfig {
   jwtSecret: string;
@@ -70,18 +83,19 @@ export async function createApp(config: AppConfig): Promise<AppContext> {
   // Middleware
   app.use(express.json());
   // CORS — deny-by-default. Set CORS_ALLOWED_ORIGINS=https://railbird.fun,... in production.
-  app.use(createCorsMiddleware(
-    parseAllowedOrigins(process.env.CORS_ALLOWED_ORIGINS),
-    "GET, POST, OPTIONS",
-    "Content-Type, Authorization, X-CSRF-Token, X-Request-ID"
-  ));
+  app.use(
+    createCorsMiddleware(
+      parseAllowedOrigins(process.env.CORS_ALLOWED_ORIGINS),
+      "GET, POST, OPTIONS",
+      "Content-Type, Authorization, X-CSRF-Token, X-Request-ID",
+    ),
+  );
 
   // X-Request-ID correlation tracing
   app.use((req: Request, res: Response, next: NextFunction) => {
     const incoming = req.headers["x-request-id"];
     const requestId =
-      (typeof incoming === "string" && incoming.length > 0 ? incoming : null) ??
-      randomUUID();
+      (typeof incoming === "string" && incoming.length > 0 ? incoming : null) ?? randomUUID();
     res.locals["requestId"] = requestId;
     res.setHeader("X-Request-ID", requestId);
     logger.debug({ method: req.method, path: req.path, requestId }, "Incoming request");
@@ -89,7 +103,12 @@ export async function createApp(config: AppConfig): Promise<AppContext> {
   });
 
   // Create services - only pass defined values to preserve defaults
-  const authConfig: { jwtSecret: string; nonceTtlMs?: number; sessionTtlMs?: number; noncePersistPath?: string } = {
+  const authConfig: {
+    jwtSecret: string;
+    nonceTtlMs?: number;
+    sessionTtlMs?: number;
+    noncePersistPath?: string;
+  } = {
     jwtSecret: config.jwtSecret,
   };
   if (config.nonceTtlMs !== undefined) authConfig.nonceTtlMs = config.nonceTtlMs;
@@ -134,12 +153,7 @@ export async function createApp(config: AppConfig): Promise<AppContext> {
 
   // Event listener for automatic dealing (optional)
   let eventListener: HandStartedEventListener | undefined;
-  if (
-    config.enableEventListener &&
-    config.rpcUrl &&
-    config.pokerTableAddress &&
-    config.tableId
-  ) {
+  if (config.enableEventListener && config.rpcUrl && config.pokerTableAddress && config.tableId) {
     eventListener = new HandStartedEventListener(
       {
         rpcUrl: config.rpcUrl,
@@ -147,9 +161,22 @@ export async function createApp(config: AppConfig): Promise<AppContext> {
         trustlessDealerEnabled: config.trustlessDealerEnabled,
       },
       dealerService,
-      config.tableId
+      config.tableId,
     );
   }
+
+  // OpenAPI spec + Swagger UI
+  app.get("/openapi.json", (_req: Request, res: Response) => {
+    res.setHeader("Cache-Control", "public, max-age=300");
+    res.json(ownerviewOpenApiSpec);
+  });
+  app.use(
+    "/docs",
+    swaggerUi.serve,
+    swaggerUi.setup(ownerviewOpenApiSpec, {
+      customSiteTitle: "Railbird OwnerView API",
+    }),
+  );
 
   // Auth routes (public)
   app.use("/auth", createAuthRoutes(authService));
@@ -168,7 +195,11 @@ export async function createApp(config: AppConfig): Promise<AppContext> {
   // Owner routes (authenticated, requires chain service)
   if (chainService) {
     const authMiddleware = createAuthMiddleware(authService);
-    app.use("/owner", authMiddleware, createOwnerRoutes(chainService, holeCardStore, encryptionKeyStore));
+    app.use(
+      "/owner",
+      authMiddleware,
+      createOwnerRoutes(chainService, holeCardStore, encryptionKeyStore),
+    );
   } else {
     // Return 503 if owner routes are requested but chain service is not configured
     app.use("/owner", (_req: Request, res: Response) => {
@@ -186,13 +217,16 @@ export async function createApp(config: AppConfig): Promise<AppContext> {
 
   if (retentionInterval > 0) {
     retentionTimer = setInterval(() => {
-      holeCardStore.deleteOlderThan(retentionMaxAge).then((deleted) => {
-        if (deleted > 0) {
-          logger.info({ deleted }, 'Retention cleaned up expired hole card records');
-        }
-      }).catch((err) => {
-        logger.error({ err }, 'Retention error during cleanup');
-      });
+      holeCardStore
+        .deleteOlderThan(retentionMaxAge)
+        .then((deleted) => {
+          if (deleted > 0) {
+            logger.info({ deleted }, "Retention cleaned up expired hole card records");
+          }
+        })
+        .catch((err) => {
+          logger.error({ err }, "Retention error during cleanup");
+        });
     }, retentionInterval);
   }
 
@@ -222,7 +256,7 @@ export async function createApp(config: AppConfig): Promise<AppContext> {
   // Error handler
   app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
     const requestId = res.locals["requestId"] as string | undefined;
-    logger.error({ err, requestId }, 'Unhandled error');
+    logger.error({ err, requestId }, "Unhandled error");
     res.status(500).json({
       error: "Internal server error",
       code: "INTERNAL_ERROR",

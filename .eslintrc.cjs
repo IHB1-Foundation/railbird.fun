@@ -13,8 +13,10 @@ module.exports = {
   plugins: ["@typescript-eslint"],
   extends: ["eslint:recommended", "plugin:@typescript-eslint/recommended"],
   rules: {
-    // Catch unhandled promise rejections
-    "@typescript-eslint/no-floating-promises": "warn",
+    // no-floating-promises requires typed linting (parserOptions.project), which
+    // would force every package to expose its tsconfig to eslint. We rely on
+    // strict tsc instead. Re-enable once we adopt typed linting via projectService.
+    "@typescript-eslint/no-floating-promises": "off",
     // Enforce consistent type-only imports
     "@typescript-eslint/consistent-type-imports": [
       "warn",

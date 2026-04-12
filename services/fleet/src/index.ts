@@ -2,10 +2,12 @@
 // Manages pools of operator wallets and spawns agent bot processes on demand.
 
 import express from "express";
+import swaggerUi from "swagger-ui-express";
 import { createLogger, parseAllowedOrigins, createCorsMiddleware } from "@playerco/shared";
 import { WalletPool, parseOperatorKeys } from "./pool.js";
 import { ProcessManager } from "./spawner.js";
 import { createFleetRouter } from "./api.js";
+import { fleetOpenApiSpec } from "./openapi.js";
 
 const logger = createLogger({ service: "fleet" });
 
@@ -16,7 +18,10 @@ async function main() {
 
   const keys = parseOperatorKeys();
   if (keys.length === 0) {
-    logger.warn({}, "FLEET_OPERATOR_KEYS is empty — no wallets available. Set comma-separated private keys.");
+    logger.warn(
+      {},
+      "FLEET_OPERATOR_KEYS is empty — no wallets available. Set comma-separated private keys.",
+    );
   }
 
   const pool = new WalletPool(keys);
@@ -26,11 +31,13 @@ async function main() {
   app.use(express.json());
 
   // CORS — deny-by-default; explicitly allow origins via CORS_ALLOWED_ORIGINS env
-  app.use(createCorsMiddleware(
-    parseAllowedOrigins(process.env.CORS_ALLOWED_ORIGINS),
-    "GET, POST, DELETE, OPTIONS",
-    "Content-Type, Authorization"
-  ));
+  app.use(
+    createCorsMiddleware(
+      parseAllowedOrigins(process.env.CORS_ALLOWED_ORIGINS),
+      "GET, POST, DELETE, OPTIONS",
+      "Content-Type, Authorization",
+    ),
+  );
 
   app.get("/health", (_req, res) => {
     res.json({
@@ -39,6 +46,19 @@ async function main() {
       agents: manager.list().length,
     });
   });
+
+  // OpenAPI spec + Swagger UI
+  app.get("/openapi.json", (_req, res) => {
+    res.setHeader("Cache-Control", "public, max-age=300");
+    res.json(fleetOpenApiSpec);
+  });
+  app.use(
+    "/docs",
+    swaggerUi.serve,
+    swaggerUi.setup(fleetOpenApiSpec, {
+      customSiteTitle: "Railbird Fleet API",
+    }),
+  );
 
   app.use("/fleet", createFleetRouter(pool, manager));
 

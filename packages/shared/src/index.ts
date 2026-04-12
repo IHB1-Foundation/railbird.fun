@@ -64,7 +64,12 @@ export {
 } from "./metrics.js";
 
 // Contract ABIs (generated from Foundry artifacts)
-export { POKER_TABLE_ABI, PLAYER_REGISTRY_ABI, PLAYER_VAULT_ABI, SIDE_BET_POOL_ABI } from "./abis/index.js";
+export {
+  POKER_TABLE_ABI,
+  PLAYER_REGISTRY_ABI,
+  PLAYER_VAULT_ABI,
+  SIDE_BET_POOL_ABI,
+} from "./abis/index.js";
 
 // ABI version tracking (N-5)
 export { computeAbiHash, logAbiVersions, ABI_HASHES } from "./abiVersion.js";
@@ -88,6 +93,8 @@ export { parseAllowedOrigins, createCorsMiddleware } from "./http/cors.js";
 export { traceIdMiddleware } from "./http/traceId.js";
 export { fetchWithTimeout } from "./http/fetchWithTimeout.js";
 export type { FetchWithTimeoutOptions } from "./http/fetchWithTimeout.js";
+export { buildOpenApiSpec, validateOpenApiSpec } from "./http/openapi.js";
+export type { OpenApiSpec, OpenApiInfo, OpenApiServer } from "./http/openapi.js";
 
 // Chain utilities
 export { withRpcRetry } from "./chain/rpcRetry.js";

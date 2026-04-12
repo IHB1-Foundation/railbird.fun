@@ -145,6 +145,35 @@ jobs:
       - name: Run all TypeScript tests
         run: pnpm test
 
+  # ── OpenAPI spec validation (T-1801) ─────────────────────────────────────
+  openapi:
+    name: OpenAPI Spec Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared, indexer, ownerview, fleet
+        run: |
+          pnpm --filter @playerco/shared build
+          pnpm --filter @playerco/indexer build
+          pnpm --filter @playerco/ownerview build
+          pnpm --filter @playerco/fleet build
+
+      - name: Validate OpenAPI specs
+        run: node scripts/openapi/validate.mjs
+
   # ── Linting ───────────────────────────────────────────────────────────────
   lint:
     name: Lint

@@ -103,6 +103,7 @@
   color: #ffe0a8;
   text-shadow: 0 0 16px rgba(255, 182, 88, 0.25);
   transition: color 0.3s ease;
+  font-variant-numeric: tabular-nums; /* D-R2.4 */
 }
 
 /* G-10: pot collect — gold burst when winner is decided */

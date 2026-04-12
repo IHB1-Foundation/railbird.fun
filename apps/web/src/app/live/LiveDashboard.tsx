@@ -3,15 +3,16 @@
 import { useState, useEffect, useCallback, useRef, useId } from "react";
 import Link from "next/link";
 import { INDEXER_BASE, getTable, getTables } from "@/lib/api";
+import { formatChips } from "@/lib/utils";
 import type { TableResponse, HandResponse } from "@/lib/types";
 import { AgentCards } from "./AgentCards";
 import { StatsTicker } from "./StatsTicker";
 import styles from "./live.module.css";
 
 const POLL_INTERVAL = 3_000;
-const CARD_SYMBOLS = ["2","3","4","5","6","7","8","9","T","J","Q","K","A"];
-const SUIT_SYMBOLS = ["♣","♦","♥","♠"];
-const SUIT_COLORS = ["#6b7280","#ef4444","#ef4444","#3b82f6"];
+const CARD_SYMBOLS = ["2", "3", "4", "5", "6", "7", "8", "9", "T", "J", "Q", "K", "A"];
+const SUIT_SYMBOLS = ["♣", "♦", "♥", "♠"];
+const SUIT_COLORS = ["#6b7280", "#ef4444", "#ef4444", "#3b82f6"];
 
 function formatCard(card: number): { rank: string; suit: string; color: string } {
   const rank = CARD_SYMBOLS[card % 13] ?? "?";
@@ -24,7 +25,9 @@ function CardChip({ card }: { card: number }) {
   return (
     <div className={styles.cardChip}>
       <span className={styles.cardChipRank}>{rank}</span>
-      <span className={styles.cardChipSuit} style={{ color }}>{suit}</span>
+      <span className={styles.cardChipSuit} style={{ color }}>
+        {suit}
+      </span>
     </div>
   );
 }
@@ -54,7 +57,9 @@ function compareTableActivity(a: TableResponse, b: TableResponse): number {
 }
 
 function getOccupiedSeatCount(table: TableResponse): number {
-  return table.seats.filter((seat) => seat.ownerAddress !== "0x0000000000000000000000000000000000000000").length;
+  return table.seats.filter(
+    (seat) => seat.ownerAddress !== "0x0000000000000000000000000000000000000000",
+  ).length;
 }
 
 interface LiveDashboardProps {
@@ -62,10 +67,7 @@ interface LiveDashboardProps {
   streamMode?: boolean;
 }
 
-export function LiveDashboard({
-  mode = "spotlight",
-  streamMode = false,
-}: LiveDashboardProps) {
+export function LiveDashboard({ mode = "spotlight", streamMode = false }: LiveDashboardProps) {
   const [tables, setTables] = useState<TableResponse[]>([]);
   const [activeTableId, setActiveTableId] = useState<string | null>(null);
   const [activeTable, setActiveTable] = useState<TableResponse | null>(null);
@@ -87,9 +89,12 @@ export function LiveDashboard({
   const prevHandIdRef = useRef<string | null>(null);
   const lastCommentaryKeyRef = useRef<string | null>(null);
 
-  const isAllIn = hand?.actions?.some((a) => (
-    a.actionType === "ALL_IN" || (a.actionType === "RAISE" && a.amount && BigInt(a.amount) > 500n)
-  )) ?? false;
+  const isAllIn =
+    hand?.actions?.some(
+      (a) =>
+        a.actionType === "ALL_IN" ||
+        (a.actionType === "RAISE" && a.amount && BigInt(a.amount) > 500n),
+    ) ?? false;
   const avgPot = biggestPot / 3n;
   const isBigPot = hand ? BigInt(hand.pot ?? 0) > avgPot && avgPot > 0n : false;
 
@@ -122,8 +127,16 @@ export function LiveDashboard({
       setHand(currentHand);
 
       // Detect showdown
-      if (table.gameState === "SETTLED" && currentHand && currentHand.winnerSeat !== null && prevHandIdRef.current !== currentHand.handId) {
-        setShowdownInfo({ winner: currentHand.winnerSeat, pot: currentHand.settlementAmount ?? currentHand.pot });
+      if (
+        table.gameState === "SETTLED" &&
+        currentHand &&
+        currentHand.winnerSeat !== null &&
+        prevHandIdRef.current !== currentHand.handId
+      ) {
+        setShowdownInfo({
+          winner: currentHand.winnerSeat,
+          pot: currentHand.settlementAmount ?? currentHand.pot,
+        });
         setShowShowdown(true);
         setTimeout(() => setShowShowdown(false), 5000);
         prevHandIdRef.current = currentHand.handId;
@@ -152,13 +165,20 @@ export function LiveDashboard({
   const fetchSideBet = useCallback(async () => {
     if (!activeTable?.contractAddress || !hand?.handId) return;
     try {
-      const res = await fetch(`${INDEXER_BASE}/api/sidebets/${activeTable.contractAddress}/${hand.handId}`, { cache: "no-store" });
+      const res = await fetch(
+        `${INDEXER_BASE}/api/sidebets/${activeTable.contractAddress}/${hand.handId}`,
+        { cache: "no-store" },
+      );
       if (!res.ok) return;
-      const data = await res.json() as { totalPool?: string; seatTotals?: Record<string, string> };
+      const data = (await res.json()) as {
+        totalPool?: string;
+        seatTotals?: Record<string, string>;
+      };
       const totalPool = BigInt(data.totalPool ?? 0);
       const seatTotals = data.seatTotals ?? {};
       const seatOdds = Object.entries(seatTotals).map(([seat, amount]) => {
-        const pct = totalPool > 0n ? Math.round((Number(BigInt(amount)) / Number(totalPool)) * 100) : 0;
+        const pct =
+          totalPool > 0n ? Math.round((Number(BigInt(amount)) / Number(totalPool)) * 100) : 0;
         return { seat: parseInt(seat, 10), odds: `${pct}%` };
       });
       setSideBet({ totalPool, seatOdds });
@@ -169,7 +189,11 @@ export function LiveDashboard({
 
   // Add commentary entry
   const addCommentary = useCallback((text: string) => {
-    const time = new Date().toLocaleTimeString("en", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    const time = new Date().toLocaleTimeString("en", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
     setCommentary((prev) => [...prev.slice(-5), { text, time }]);
   }, []);
 
@@ -183,8 +207,10 @@ export function LiveDashboard({
     const { seatIndex, actionType, amount, potAfter } = lastAction;
     let text = "";
     if (actionType === "FOLD") text = `Seat ${seatIndex} folds. Pot: ${potAfter} RCHIP`;
-    else if (actionType === "CALL") text = `Seat ${seatIndex} calls ${amount}. Pot: ${potAfter} RCHIP`;
-    else if (actionType === "RAISE") text = `Seat ${seatIndex} raises to ${amount}! Pot: ${potAfter} RCHIP`;
+    else if (actionType === "CALL")
+      text = `Seat ${seatIndex} calls ${amount}. Pot: ${potAfter} RCHIP`;
+    else if (actionType === "RAISE")
+      text = `Seat ${seatIndex} raises to ${amount}! Pot: ${potAfter} RCHIP`;
     else if (actionType === "CHECK") text = `Seat ${seatIndex} checks.`;
     if (text) {
       lastCommentaryKeyRef.current = commentaryKey;
@@ -288,7 +314,11 @@ export function LiveDashboard({
                 <button
                   key={t.tableId}
                   onClick={() => setActiveTableId(t.tableId)}
-                  className={activeTableId === t.tableId ? `${styles.tableSelectorBtn} ${styles.tableSelectorBtnActive}` : styles.tableSelectorBtn}
+                  className={
+                    activeTableId === t.tableId
+                      ? `${styles.tableSelectorBtn} ${styles.tableSelectorBtnActive}`
+                      : styles.tableSelectorBtn
+                  }
                 >
                   Table #{t.tableId} (Hand #{t.currentHandId})
                 </button>
@@ -299,9 +329,7 @@ export function LiveDashboard({
                   onClick={() => setShowAllTables((v) => !v)}
                   aria-expanded={showAllTables}
                 >
-                  {showAllTables
-                    ? "Show less"
-                    : `+${tables.length - TABLE_PAGE_SIZE} more`}
+                  {showAllTables ? "Show less" : `+${tables.length - TABLE_PAGE_SIZE} more`}
                 </button>
               )}
             </div>
@@ -310,27 +338,36 @@ export function LiveDashboard({
           {showGridMode ? (
             tables.length === 0 ? (
               <div className={styles.waitingState}>
-                <div aria-hidden="true" style={{ fontSize: "3rem" }}>♠</div>
+                <div aria-hidden="true" style={{ fontSize: "3rem" }}>
+                  ♠
+                </div>
                 <p style={{ fontSize: "1.1rem", fontWeight: 600 }}>Waiting for tables…</p>
                 <p>The grid fills in automatically as the indexer publishes live tables.</p>
               </div>
             ) : (
               <div className={styles.tableGrid}>
                 {tables.map((table) => {
-                  const gridCards = table.currentHand?.communityCards?.filter((card) => card !== 255) ?? [];
+                  const gridCards =
+                    table.currentHand?.communityCards?.filter((card) => card !== 255) ?? [];
                   return (
                     <article key={table.tableId} className={styles.tableGridCard}>
                       <div className={styles.tableGridHeader}>
                         <div>
                           <p className={styles.tableGridEyebrow}>Table #{table.tableId}</p>
                           <h3 className={styles.tableGridTitle}>
-                            {table.currentHand ? `Hand #${table.currentHand.handId}` : "Waiting for next hand"}
+                            {table.currentHand
+                              ? `Hand #${table.currentHand.handId}`
+                              : "Waiting for next hand"}
                           </h3>
                         </div>
                         <button
                           type="button"
                           onClick={() => setActiveTableId(table.tableId)}
-                          className={activeTableId === table.tableId ? `${styles.tableSelectorBtn} ${styles.tableSelectorBtnActive}` : styles.tableSelectorBtn}
+                          className={
+                            activeTableId === table.tableId
+                              ? `${styles.tableSelectorBtn} ${styles.tableSelectorBtnActive}`
+                              : styles.tableSelectorBtn
+                          }
                         >
                           Focus
                         </button>
@@ -340,20 +377,27 @@ export function LiveDashboard({
                         <span>{getOccupiedSeatCount(table)} seats occupied</span>
                       </div>
                       <div className={styles.tableGridPot}>
-                        Pot {table.currentHand?.pot ?? "0"} RCHIP
+                        Pot {formatChips(table.currentHand?.pot ?? "0")} RCHIP
                       </div>
                       <div className={styles.tableGridCommunity}>
                         {gridCards.length > 0 ? (
-                          gridCards.map((card, index) => <CardChip key={`${table.tableId}-${index}`} card={card} />)
+                          gridCards.map((card, index) => (
+                            <CardChip key={`${table.tableId}-${index}`} card={card} />
+                          ))
                         ) : (
-                          <span className={styles.communityEmpty}>Cards reveal after the next hand begins</span>
+                          <span className={styles.communityEmpty}>
+                            Cards reveal after the next hand begins
+                          </span>
                         )}
                       </div>
                       <div className={styles.tableGridFooter}>
                         <Link href={`/table/${table.tableId}`} className={styles.headerBack}>
                           Open table
                         </Link>
-                        <Link href={`/embed/table/${table.tableId}?theme=dark`} className={styles.headerBack}>
+                        <Link
+                          href={`/embed/table/${table.tableId}?theme=dark`}
+                          className={styles.headerBack}
+                        >
                           Embed
                         </Link>
                       </div>
@@ -364,7 +408,9 @@ export function LiveDashboard({
             )
           ) : !activeTable ? (
             <div className={styles.waitingState}>
-              <div aria-hidden="true" style={{ fontSize: "3rem" }}>♠</div>
+              <div aria-hidden="true" style={{ fontSize: "3rem" }}>
+                ♠
+              </div>
               <p style={{ fontSize: "1.1rem", fontWeight: 600 }}>Waiting for next hand…</p>
               <p>AI agents are being deployed.</p>
             </div>
@@ -380,7 +426,9 @@ export function LiveDashboard({
                   <p className={styles.communityEmpty}>Cards dealt after preflop betting</p>
                 ) : (
                   <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-                    {communityCards.map((c, i) => <CardChip key={i} card={c} />)}
+                    {communityCards.map((c, i) => (
+                      <CardChip key={i} card={c} />
+                    ))}
                   </div>
                 )}
               </div>
@@ -389,7 +437,7 @@ export function LiveDashboard({
               <div className={styles.potRow}>
                 <div className={styles.potStat}>
                   <div className={styles.potLabel}>POT</div>
-                  <div className={styles.potValue}>{hand?.pot ?? "0"} RCHIP</div>
+                  <div className={styles.potValue}>{formatChips(hand?.pot ?? "0")} RCHIP</div>
                 </div>
                 <div className={styles.potStat}>
                   <div className={styles.potLabel}>CURRENT BET</div>
@@ -404,19 +452,37 @@ export function LiveDashboard({
 
               {/* G-17: Win Probability HP bar — stack-based estimate */}
               {(() => {
-                const occupied = (activeTable.seats ?? []).filter((s) => s.ownerAddress !== "0x0000000000000000000000000000000000000000");
+                const occupied = (activeTable.seats ?? []).filter(
+                  (s) => s.ownerAddress !== "0x0000000000000000000000000000000000000000",
+                );
                 if (occupied.length < 2) return null;
                 const [s0, s1] = occupied.slice(0, 2);
                 const v0 = BigInt(s0.stack ?? "0");
                 const v1 = BigInt(s1.stack ?? "0");
                 const total = v0 + v1;
-                const pct0 = total > 0n ? Math.round(Number(v0 * 100n / total)) : 50;
+                const pct0 = total > 0n ? Math.round(Number((v0 * 100n) / total)) : 50;
                 return (
-                  <div className={styles.winProbBar} aria-label="Win probability estimate based on stack sizes">
+                  <div
+                    className={styles.winProbBar}
+                    aria-label="Win probability estimate based on stack sizes"
+                  >
                     <div className={styles.winProbLabel}>
-                      <span className={styles.winProbLabelLeft}>Seat {s0.seatIndex} {pct0}%</span>
-                      <span style={{ fontSize: "var(--text-2xs)", color: "var(--text-muted)", textTransform: "none", letterSpacing: "normal" }}>WIN PROB</span>
-                      <span className={styles.winProbLabelRight}>{100 - pct0}% Seat {s1.seatIndex}</span>
+                      <span className={styles.winProbLabelLeft}>
+                        Seat {s0.seatIndex} {pct0}%
+                      </span>
+                      <span
+                        style={{
+                          fontSize: "var(--text-2xs)",
+                          color: "var(--text-muted)",
+                          textTransform: "none",
+                          letterSpacing: "normal",
+                        }}
+                      >
+                        WIN PROB
+                      </span>
+                      <span className={styles.winProbLabelRight}>
+                        {100 - pct0}% Seat {s1.seatIndex}
+                      </span>
                     </div>
                     <div className={styles.winProbTrack}>
                       <div className={styles.winProbLeft} style={{ width: `${pct0}%` }} />
@@ -478,7 +544,9 @@ export function LiveDashboard({
           role="dialog"
           aria-modal="true"
           aria-labelledby={showdownTitleId}
-          onKeyDown={(e) => { if (e.key === "Escape") setShowShowdown(false); }}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setShowShowdown(false);
+          }}
         >
           {/* Backdrop */}
           <div
@@ -487,13 +555,13 @@ export function LiveDashboard({
             aria-hidden="true"
           />
           <div className={styles.showdownCard}>
-            <div className={styles.showdownIcon} aria-hidden="true">🏆</div>
+            <div className={styles.showdownIcon} aria-hidden="true">
+              🏆
+            </div>
             <h2 id={showdownTitleId} className={styles.showdownTitle}>
               Seat {showdownInfo.winner} Wins!
             </h2>
-            <p className={styles.showdownPot}>
-              Pot: {showdownInfo.pot} RCHIP
-            </p>
+            <p className={styles.showdownPot}>Pot: {showdownInfo.pot} RCHIP</p>
             <button
               ref={showdownCloseRef}
               onClick={() => setShowShowdown(false)}

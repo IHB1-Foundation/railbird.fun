@@ -111,7 +111,7 @@
 
 .landingStatLabel {
   color: rgba(203, 213, 225, 0.85);
-  font-size: 0.76rem;
+  font-size: var(--text-xs); /* D-R2.1: was 0.76rem, normalized to token */
 }
 
 .landingStatValue {
@@ -120,6 +120,7 @@
   font-weight: 800;
   color: #ffffff;
   word-break: break-word;
+  font-variant-numeric: tabular-nums; /* D-R2.4 */
 }
 
 /* PD-A6: auto-fit eliminates orphan item when 3 doesn't divide evenly at breakpoints */

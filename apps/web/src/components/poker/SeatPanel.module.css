@@ -53,7 +53,7 @@
   justify-content: center;
   align-items: center;
   gap: 0.34rem;
-  font-size: 0.72rem;
+  font-size: 0.75rem; /* D-R2.2: min 0.75rem for uppercase+letter-spacing legibility */
   color: #c8ccb9;
   margin-bottom: 0.25rem;
   letter-spacing: 0.04em;
@@ -78,7 +78,7 @@
   margin-bottom: 0.18rem;
   padding: 0.06rem 0.38rem;
   border-radius: 999px;
-  font-size: 0.58rem;
+  font-size: 0.68rem; /* D-R2.3: min 0.68rem for uppercase+letter-spacing legibility (was 0.58rem) */
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -88,6 +88,7 @@
   font-size: 0.82rem;
   font-weight: 700;
   color: #ffe3ad;
+  font-variant-numeric: tabular-nums; /* D-R2.4: prevent layout shift on value change */
 }
 
 .seatBet {
@@ -382,11 +383,7 @@
   }
 }
 
-@media (max-width: 640px) {
-  .seatLabel {
-    font-size: 0.69rem;
-  }
-}
+/* D-R2.2: keep .seatLabel at min 0.75rem even on mobile — don't override */
 
 /* G-9: All-in flash effect */
 .seatPanel.allIn {

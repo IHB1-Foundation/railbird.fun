@@ -474,6 +474,37 @@
   text-decoration: none;
 }
 
+/* UX-7.1: Mode switcher */
+.modeSwitcher {
+  display: flex;
+  gap: 0.2rem;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: var(--radius-full);
+  padding: 0.2rem;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.modeSwitcherBtn {
+  padding: 0.2rem 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border-radius: var(--radius-full);
+  color: rgba(203, 213, 225, 0.7);
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.modeSwitcherBtn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.modeSwitcherActive {
+  color: #fff;
+  background: rgba(129, 108, 249, 0.35);
+  border: 1px solid rgba(129, 108, 249, 0.5);
+}
+
 /* Main board panel (D-22) */
 .mainBoard {
   background: var(--background-soft, #0d1020);

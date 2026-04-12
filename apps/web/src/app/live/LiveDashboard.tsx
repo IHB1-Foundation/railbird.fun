@@ -284,6 +284,32 @@ export function LiveDashboard({ mode = "spotlight", streamMode = false }: LiveDa
           </span>
         )}
         {isBigPot && <span className={styles.bigPotBadge}>BIG POT</span>}
+        {/* Mode switcher with descriptions (UX-7.1/7.2) */}
+        {!streamMode && (
+          <div className={styles.modeSwitcher}>
+            <Link
+              href="/live"
+              className={`${styles.modeSwitcherBtn} ${!showGridMode ? styles.modeSwitcherActive : ""}`}
+              title="Follow one match in detail"
+            >
+              Spotlight
+            </Link>
+            <Link
+              href="/live?mode=grid"
+              className={`${styles.modeSwitcherBtn} ${showGridMode ? styles.modeSwitcherActive : ""}`}
+              title="Monitor all tables at once"
+            >
+              Grid
+            </Link>
+            <Link
+              href="/live?stream=1"
+              className={styles.modeSwitcherBtn}
+              title="Broadcast Mode — reduced chrome for OBS"
+            >
+              Broadcast
+            </Link>
+          </div>
+        )}
         {/* D-R10.1: mini nav so users can jump to other sections without going back first */}
         <Link href="/" className={styles.headerBack}>
           Home

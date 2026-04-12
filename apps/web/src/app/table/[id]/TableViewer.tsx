@@ -603,6 +603,8 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
         chipSymbol={CHIP_SYMBOL}
         fetchError={refreshError ?? undefined}
         onRetry={refreshTable}
+        tableId={tableId}
+        handId={currentHand?.handId ?? null}
       />
 
       {/* Showdown Results */}

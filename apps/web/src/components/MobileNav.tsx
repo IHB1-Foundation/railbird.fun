@@ -5,14 +5,19 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import styles from "@/app/layout.module.css";
 
-const NAV_LINKS = [
-  { href: "/", label: "Tables" },
+// Primary links — core user journey (Watch → Bet → Create)
+const NAV_PRIMARY = [
+  { href: "/", label: "Lobby" },
   { href: "/live", label: "LIVE 🔴" },
-  { href: "/create-agent", label: "Create Agent" },
-  { href: "/evolution", label: "Evolution" },
-  { href: "/betting", label: "Rail Bets" },
   { href: "/leaderboard", label: "Leaderboard" },
+  { href: "/betting", label: "Bet" },
+];
+
+// Secondary links — power-user features
+const NAV_SECONDARY = [
+  { href: "/create-agent", label: "Create Agent" },
   { href: "/me", label: "My Agents" },
+  { href: "/evolution", label: "AI Evolution" },
   { href: "/docs", label: "Docs" },
 ];
 
@@ -65,15 +70,23 @@ export function MobileNav() {
       </button>
 
       {/* Desktop nav */}
-      <nav
-        className={styles.topNav}
-        aria-label="Main navigation"
-      >
-        {NAV_LINKS.map((link) => (
+      <nav className={styles.topNav} aria-label="Main navigation">
+        {NAV_PRIMARY.map((link) => (
           <Link
             key={link.href}
             href={link.href}
             className={isActive(link.href, pathname) ? styles.navLinkActive : ""}
+            aria-current={isActive(link.href, pathname) ? "page" : undefined}
+          >
+            {link.label}
+          </Link>
+        ))}
+        <span className={styles.navDivider} aria-hidden="true" />
+        {NAV_SECONDARY.map((link) => (
+          <Link
+            key={link.href}
+            href={link.href}
+            className={`${styles.navSecondary} ${isActive(link.href, pathname) ? styles.navLinkActive : ""}`}
             aria-current={isActive(link.href, pathname) ? "page" : undefined}
           >
             {link.label}
@@ -98,13 +111,25 @@ export function MobileNav() {
         <button className={styles.mobileDrawerClose} onClick={close} aria-label="Close navigation">
           ✕
         </button>
-        {NAV_LINKS.map((link, i) => (
+        {NAV_PRIMARY.map((link, i) => (
           <Link
             key={link.href}
             href={link.href}
             ref={i === 0 ? firstLinkRef : undefined}
             onClick={close}
             className={isActive(link.href, pathname) ? styles.navLinkActive : ""}
+            aria-current={isActive(link.href, pathname) ? "page" : undefined}
+          >
+            {link.label}
+          </Link>
+        ))}
+        <div className={styles.mobileNavDivider} aria-hidden="true" />
+        {NAV_SECONDARY.map((link) => (
+          <Link
+            key={link.href}
+            href={link.href}
+            onClick={close}
+            className={`${styles.mobileNavSecondary} ${isActive(link.href, pathname) ? styles.navLinkActive : ""}`}
             aria-current={isActive(link.href, pathname) ? "page" : undefined}
           >
             {link.label}

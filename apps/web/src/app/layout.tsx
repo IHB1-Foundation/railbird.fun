@@ -143,13 +143,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </main>
             <footer className="app-footer">
               <nav className="footer-nav" aria-label="Footer navigation">
-                <Link href="/">Home</Link>
+                <Link href="/">Lobby</Link>
                 <Link href="/live">Live</Link>
-                <Link href="/create-agent">Create Agent</Link>
-                <Link href="/evolution">Evolution</Link>
                 <Link href="/leaderboard">Leaderboard</Link>
+                <Link href="/betting">Bet</Link>
+                <Link href="/create-agent">Create Agent</Link>
+                <Link href="/me">My Agents</Link>
+                <Link href="/evolution">AI Evolution</Link>
                 <Link href="/docs">Docs</Link>
-                <Link href="/betting">Rail Bets</Link>
                 <a
                   href="https://github.com/0xYatha/railbird"
                   target="_blank"

@@ -1,0 +1,5 @@
+environment        = "staging"
+domain             = "railbird.xyz"
+cloudflare_zone_id = "REPLACE_WITH_ZONE_ID"
+indexer_origin     = ""
+ownerview_origin   = ""

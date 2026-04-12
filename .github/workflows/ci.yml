@@ -145,6 +145,34 @@ jobs:
       - name: Run all TypeScript tests
         run: pnpm test
 
+  # ── Web bundle size budget (T-1903) ──────────────────────────────────────
+  bundle-size:
+    name: Web Bundle Size Budget
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared package
+        run: pnpm --filter @playerco/shared build
+
+      - name: Build web app
+        run: pnpm --filter @playerco/web build
+
+      - name: Check size-limit
+        run: pnpm --filter @playerco/web run size
+
   # ── OpenAPI spec validation (T-1801) ─────────────────────────────────────
   openapi:
     name: OpenAPI Spec Validation

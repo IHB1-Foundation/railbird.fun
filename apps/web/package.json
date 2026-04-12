@@ -15,8 +15,29 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "typecheck": "tsc --noEmit",
-    "analyze": "ANALYZE=true next build"
+    "analyze": "ANALYZE=true next build",
+    "size": "size-limit"
   },
+  "size-limit": [
+    {
+      "name": "Initial JS payload (/)",
+      "path": ".next/static/chunks/main-*.js",
+      "limit": "120 KB",
+      "gzip": true
+    },
+    {
+      "name": "App framework chunk",
+      "path": ".next/static/chunks/framework-*.js",
+      "limit": "60 KB",
+      "gzip": true
+    },
+    {
+      "name": "Total first-load JS",
+      "path": ".next/static/chunks/{main,framework,webpack}-*.js",
+      "limit": "300 KB",
+      "gzip": true
+    }
+  ],
   "dependencies": {
     "@noble/curves": "^2.0.1",
     "@noble/hashes": "^2.0.1",
@@ -38,6 +59,8 @@
     "eslint": "^8.57.0",
     "eslint-config-next": "14.2.35",
     "jsdom": "^29.0.1",
+    "size-limit": "^11.2.0",
+    "@size-limit/file": "^11.2.0",
     "typescript": "^5.3.0",
     "vitest": "^1.6.0"
   }

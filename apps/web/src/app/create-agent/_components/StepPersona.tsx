@@ -157,9 +157,21 @@ export function StepPersona({
         <div>
           {/* Name */}
           <div className={styles.formGroup}>
-            <label htmlFor="agent-name" className={styles.formLabel}>
-              Agent Name (1–24 chars)
-            </label>
+            <div
+              style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}
+            >
+              <label htmlFor="agent-name" className={styles.formLabel}>
+                Agent Name
+              </label>
+              <span
+                style={{
+                  fontSize: "0.72rem",
+                  color: persona.name.length >= 20 ? "var(--warning)" : "var(--muted)",
+                }}
+              >
+                {persona.name.length}/24
+              </span>
+            </div>
             <input
               id="agent-name"
               type="text"
@@ -253,9 +265,21 @@ export function StepPersona({
 
           {/* System Prompt */}
           <div className={styles.formGroup}>
-            <label htmlFor="system-prompt" className={styles.formLabel}>
-              Personality Prompt (optional, max 200 chars)
-            </label>
+            <div
+              style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}
+            >
+              <label htmlFor="system-prompt" className={styles.formLabel}>
+                Personality Prompt (optional)
+              </label>
+              <span
+                style={{
+                  fontSize: "0.72rem",
+                  color: persona.systemPrompt.length >= 160 ? "var(--warning)" : "var(--muted)",
+                }}
+              >
+                {persona.systemPrompt.length}/200
+              </span>
+            </div>
             <textarea
               id="system-prompt"
               maxLength={200}

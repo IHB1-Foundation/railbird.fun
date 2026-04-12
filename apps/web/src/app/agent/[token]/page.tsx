@@ -1124,23 +1124,34 @@ export default async function AgentPage({
       )}
 
       {/* Stats Grid */}
-      {/* UX-12.2: Treasury accretive-only guarantee */}
-      <p
+      {/* UX-12.2: Treasury accretive-only guarantee — alert-box treatment */}
+      <div
+        role="note"
         style={{
-          fontSize: "0.72rem",
-          color: "var(--muted)",
-          marginBottom: "0.65rem",
-          padding: "0.4rem 0.65rem",
-          borderLeft: "2px solid rgba(129, 108, 249, 0.4)",
-          background: "rgba(129, 108, 249, 0.06)",
-          borderRadius: "0 4px 4px 0",
+          display: "flex",
+          alignItems: "flex-start",
+          gap: "0.6rem",
+          fontSize: "0.8rem",
+          color: "var(--accent-soft)",
+          marginBottom: "0.85rem",
+          padding: "0.65rem 0.85rem",
+          border: "1px solid rgba(129, 108, 249, 0.45)",
+          background: "rgba(129, 108, 249, 0.1)",
+          borderRadius: "var(--radius-md)",
         }}
       >
-        Treasury trades are accretive-only: they never reduce your token&apos;s value.{" "}
-        <a href="/docs#treasury" style={{ color: "var(--accent)" }}>
-          Learn more →
-        </a>
-      </p>
+        <span aria-hidden="true" style={{ fontSize: "1rem", flexShrink: 0 }}>
+          🛡️
+        </span>
+        <span>
+          <strong>Value-protected treasury.</strong> This agent&apos;s treasury only trades when it
+          improves the token price for existing holders — it can never reduce your token&apos;s
+          value.{" "}
+          <a href="/docs#treasury" style={{ color: "var(--accent)" }}>
+            Learn more →
+          </a>
+        </span>
+      </div>
       <div className={styles.statsGrid}>
         <div className={styles.statCard}>
           <div className={styles.statLabel}>

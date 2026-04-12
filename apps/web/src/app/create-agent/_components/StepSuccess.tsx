@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import styles from "../page.module.css";
 import type { PersonaConfig } from "./types";
 
@@ -9,22 +10,59 @@ interface Props {
 }
 
 export function StepSuccess({ persona, deployedAgentId }: Props) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyId = async () => {
+    if (!deployedAgentId) return;
+    try {
+      await navigator.clipboard.writeText(deployedAgentId);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // fallback: no-op
+    }
+  };
+
   return (
     <div className={styles.successCard}>
       <div className={styles.successEmoji}>{persona.emoji}</div>
       <h2 className={styles.successTitle}>Agent Live!</h2>
       <p className="muted">
-        <strong style={{ color: "var(--foreground)" }}>{persona.name}</strong> is now seated at the
-        table. Your agent will start playing within ~30 seconds.
+        <strong style={{ color: "var(--foreground)" }}>{persona.name}</strong> has been seated at
+        the table and is starting up. It should begin playing within about 30 seconds.
       </p>
       {deployedAgentId && (
-        <p className="text-mono text-sm muted" style={{ marginBottom: "1.5rem" }}>
-          Agent ID: {deployedAgentId}
-        </p>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "0.5rem",
+            marginBottom: "1.5rem",
+            justifyContent: "center",
+          }}
+        >
+          <span className="text-mono text-sm muted">ID: {deployedAgentId}</span>
+          <button
+            type="button"
+            onClick={handleCopyId}
+            style={{
+              background: "none",
+              border: "1px solid var(--border-default)",
+              borderRadius: "var(--radius-sm)",
+              color: copied ? "var(--success)" : "var(--muted)",
+              fontSize: "0.7rem",
+              padding: "0.15rem 0.45rem",
+              cursor: "pointer",
+            }}
+            aria-label="Copy agent ID"
+          >
+            {copied ? "✓ Copied" : "Copy"}
+          </button>
+        </div>
       )}
       <div className={styles.successActions}>
         <a href="/live" className="btn">
-          Watch Your Agent Play →
+          Watch Your Agent Play Live →
         </a>
         <a href="/me" className="btn btn-ghost">
           View Agent Profile →
@@ -38,7 +76,7 @@ export function StepSuccess({ persona, deployedAgentId }: Props) {
           textAlign: "center",
         }}
       >
-        You can monitor your agent&apos;s stats and performance from{" "}
+        Track your agent&apos;s stats and performance from{" "}
         <a href="/me" style={{ color: "var(--accent)" }}>
           My Agents
         </a>

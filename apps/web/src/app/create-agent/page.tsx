@@ -145,6 +145,12 @@ export default function CreateAgentPage() {
       </p>
 
       {/* Progress bar */}
+      <p
+        style={{ fontSize: "0.78rem", color: "var(--muted)", marginBottom: "0.4rem" }}
+        aria-live="polite"
+      >
+        Step {step} of {STEP_LABELS.length}
+      </p>
       <div className={styles.progressTrack}>
         {STEP_LABELS.map((label, i) => (
           <div key={i} style={{ flex: 1 }}>
@@ -155,7 +161,9 @@ export default function CreateAgentPage() {
                 opacity: step >= i + 1 ? 1 : 0.35,
               }}
             />
-            <p className={`${styles.progressLabel} ${step >= i + 1 ? "" : "muted"}`}>{label}</p>
+            <p className={`${styles.progressLabel} ${step >= i + 1 ? "" : "muted"}`}>
+              {i + 1}. {label}
+            </p>
           </div>
         ))}
       </div>

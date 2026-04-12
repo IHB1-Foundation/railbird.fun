@@ -1,7 +1,7 @@
 .tableLayout {
   position: relative;
   padding: 1.2rem;
-  border-radius: 24px;
+  border-radius: var(--radius-2xl); /* D-R9.1: was raw 24px */
   border: 1px solid rgba(169, 132, 89, 0.42);
   background:
     radial-gradient(800px 240px at 50% 112%, rgba(8, 10, 17, 0.94), rgba(8, 10, 17, 0)),
@@ -82,7 +82,7 @@
   align-items: center;
   min-height: 4.1rem;
   padding: 0.75rem 0.85rem;
-  border-radius: 14px;
+  border-radius: var(--radius-md); /* D-R9.1: was raw 14px, closest token is --radius-md(12px) */
   background: rgba(10, 17, 28, 0.66);
   border: 1px solid rgba(152, 193, 180, 0.26);
   box-shadow: inset 0 0 22px rgba(0, 0, 0, 0.35);

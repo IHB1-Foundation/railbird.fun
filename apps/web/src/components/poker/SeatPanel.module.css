@@ -54,7 +54,7 @@
   align-items: center;
   gap: 0.34rem;
   font-size: 0.75rem; /* D-R2.2: min 0.75rem for uppercase+letter-spacing legibility */
-  color: #c8ccb9;
+  color: var(--seat-label-color); /* D-R9.2: semantic token */
   margin-bottom: 0.25rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -64,7 +64,7 @@
   font-size: 0.76rem;
   font-family: var(--text-mono);
   margin-bottom: 0.22rem;
-  color: #e7e8ef;
+  color: var(--seat-address-color); /* D-R9.2: semantic token */
   min-width: 0; /* PD-A1: needed for ellipsis in flex/grid context */
   max-width: 100%;
   white-space: nowrap;
@@ -87,7 +87,7 @@
 .seatStack {
   font-size: 0.82rem;
   font-weight: 700;
-  color: #ffe3ad;
+  color: var(--seat-stack-color); /* D-R9.2: semantic token */
   font-variant-numeric: tabular-nums; /* D-R2.4: prevent layout shift on value change */
 }
 

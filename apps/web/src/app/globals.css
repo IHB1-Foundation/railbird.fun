@@ -48,6 +48,7 @@
   --radius-md: 12px;
   --radius-lg: 16px;
   --radius-xl: 20px;
+  --radius-2xl: 24px; /* D-R9.1: add missing 24px step used by tableLayout */
   --radius-full: 9999px;
 
   /* Border color tokens (D-4) */
@@ -141,6 +142,12 @@
   --card-padding-sm: var(--space-3);      /* 0.75rem */
   --card-padding-md: var(--space-4);      /* 1rem */
   --card-padding-lg: var(--space-6);      /* 1.5rem */
+
+  /* D-R9.2: Semantic seat color tokens — centralize hardcoded colors from SeatPanel.module.css */
+  --seat-label-color: #c8ccb9;
+  --seat-address-color: #e7e8ef;
+  --seat-stack-color: #ffe3ad;
+  --seat-pot-color: #fff2d4;
 
   /* PD-F3: text-muted-soft for large/decorative text that can use lighter color */
   --text-muted-soft: #9ba3c1;

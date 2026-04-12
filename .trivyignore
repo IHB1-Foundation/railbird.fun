@@ -1,0 +1,5 @@
+# Trivy ignore file — CVEs accepted with documented justification
+# Format: CVE-ID [# comment]
+
+# Add entries here as needed, e.g.:
+# CVE-2023-XXXXX # mitigated by <reason>, revisit <date>

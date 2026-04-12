@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # full history required for history scan
+          fetch-depth: 0 # full history required for history scan
 
       - name: Run gitleaks
         uses: gitleaks/gitleaks-action@v2
@@ -58,6 +58,91 @@ jobs:
           scan-args: |-
             --lockfile=pnpm-lock.yaml
             --skip-git
+
+  # ── Docker image vulnerability scanning (Trivy) ───────────────────────────
+  image-scan:
+    name: Image Vulnerability Scan (Trivy)
+    runs-on: ubuntu-latest
+    # Only run on push to main to keep PR feedback fast
+    if: github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build all service images
+        run: |
+          declare -A SERVICES=(
+            [indexer]="services/indexer"
+            [ownerview]="services/ownerview"
+            [fleet]="services/fleet"
+            [agent]="bots/agent"
+            [keeper]="bots/keeper"
+            [vrf-operator]="bots/vrf-operator"
+          )
+          for name in "${!SERVICES[@]}"; do
+            path="${SERVICES[$name]}"
+            echo "Building railbird-${name}:ci from ${path}/Dockerfile"
+            docker build -t "railbird-${name}:ci" -f "${path}/Dockerfile" .
+          done
+
+      - name: Scan indexer
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: railbird-indexer:ci
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          severity: CRITICAL
+          trivyignore-file: .trivyignore
+
+      - name: Scan ownerview
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: railbird-ownerview:ci
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          severity: CRITICAL
+          trivyignore-file: .trivyignore
+
+      - name: Scan fleet
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: railbird-fleet:ci
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          severity: CRITICAL
+          trivyignore-file: .trivyignore
+
+      - name: Scan agent bot
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: railbird-agent:ci
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          severity: CRITICAL
+          trivyignore-file: .trivyignore
+
+      - name: Scan keeper bot
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: railbird-keeper:ci
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          severity: CRITICAL
+          trivyignore-file: .trivyignore
+
+      - name: Scan vrf-operator bot
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: railbird-vrf-operator:ci
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          severity: CRITICAL
+          trivyignore-file: .trivyignore
 
   # ── Solhint (strict, blocking) ────────────────────────────────────────────
   solhint-strict:

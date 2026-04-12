@@ -15,6 +15,16 @@ export default function MyAgentsPage() {
   const [agents, setAgents] = useState<AgentResponse[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // UX-6.1: auto-trigger auth after connect (single "Connect & Verify" flow)
+  const [autoAuthPending, setAutoAuthPending] = useState(false);
+
+  // UX-6.1: when connect completes and auth is still pending, auto-sign
+  useEffect(() => {
+    if (isConnected && !isAuthenticated && autoAuthPending) {
+      setAutoAuthPending(false);
+      authenticate();
+    }
+  }, [isConnected, isAuthenticated, autoAuthPending, authenticate]);
 
   // Fetch agents owned by current wallet
   useEffect(() => {
@@ -82,10 +92,18 @@ export default function MyAgentsPage() {
               </div>
             </div>
           </div>
-          <p className={styles.authProgress}>Step 1 of 2</p>
-          <button onClick={connect} className="wallet-button">
-            🦊 Connect Wallet
+          <button
+            onClick={() => {
+              setAutoAuthPending(true);
+              connect();
+            }}
+            className="wallet-button"
+          >
+            🦊 Connect &amp; Verify
           </button>
+          <p style={{ fontSize: "0.72rem", color: "var(--muted)", marginTop: "0.5rem" }}>
+            Connects your wallet and verifies ownership in one step.
+          </p>
         </div>
 
         {/* Preview CTA for logged-out users */}

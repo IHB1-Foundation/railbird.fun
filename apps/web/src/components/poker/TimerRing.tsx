@@ -10,8 +10,8 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 function getColor(remaining: number, pct: number): string {
   if (remaining > 300) return "#4ade80"; // > 5 min: green
   if (remaining > 120) return "#facc15"; // 2-5 min: yellow
-  if (remaining > 60)  return "#fb923c"; // 1-2 min: orange
-  if (remaining > 0)   return "#ef4444"; // < 1 min: red
+  if (remaining > 60) return "#fb923c"; // 1-2 min: orange
+  if (remaining > 0) return "#ef4444"; // < 1 min: red
   // pct-based minimum: always at least yellow if <= 10%
   if (pct <= 0.1) return "#facc15";
   return "#4ade80";
@@ -53,8 +53,34 @@ export function TimerRing({ deadline }: TimerRingProps) {
     border: 0,
   };
 
+  // UX-5.3: Only show the full ring when < 5 minutes remain — saves visual space at 30-min deadline
+  if (remaining > 300) {
+    return (
+      <div
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: "0.3rem",
+          fontSize: "0.72rem",
+          color: "var(--muted)",
+        }}
+        aria-label={`${minutes}m ${String(seconds).padStart(2, "0")}s remaining`}
+      >
+        <span style={{ color: "#4ade80", fontSize: "0.6rem" }}>●</span>
+        {minutes}m
+      </div>
+    );
+  }
+
   return (
-    <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
+    <div
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        position: "relative",
+      }}
+    >
       <div aria-live="assertive" aria-atomic="true" style={srStyle}>
         {remaining === 0 ? "Time expired" : ""}
       </div>
@@ -104,4 +130,3 @@ export function TimerRing({ deadline }: TimerRingProps) {
     </div>
   );
 }
-

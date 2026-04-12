@@ -293,3 +293,47 @@ jobs:
           echo "=== Keeper ===" && cat /tmp/ci-keeper.log 2>/dev/null || true
           echo "=== Agent 0 ===" && cat /tmp/ci-agent0.log 2>/dev/null || true
           echo "=== Agent 1 ===" && cat /tmp/ci-agent1.log 2>/dev/null || true
+
+  # ── E2E Full Suite (T-1602) — main branch only ────────────────────────────
+  # Runs all E2E scenarios: happy-path, 4-seat, timeout, crash-recovery, (reorg skipped).
+  # Only runs on pushes to main to avoid slowing down PRs.
+  e2e-full:
+    name: E2E Full Suite (scenarios 01-05)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared package
+        run: pnpm --filter @playerco/shared build
+
+      - name: Run full E2E suite (scenarios 01-04, skip reorg)
+        run: SKIP_REORG=1 bash scripts/e2e/run-all.sh
+        timeout-minutes: 14
+
+      - name: Dump logs on failure
+        if: failure()
+        run: |
+          for f in /tmp/e2e-*.log; do
+            echo "=== $f ===" && tail -50 "$f" 2>/dev/null || true
+          done

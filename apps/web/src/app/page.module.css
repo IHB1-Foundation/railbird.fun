@@ -24,7 +24,7 @@
     transparent 52%
   );
   transform: translateX(-120%);
-  animation: hero-shimmer 4s ease-in-out infinite;
+  animation: hero-shimmer 4s ease-in-out 3; /* D-R8.3: run 3 times then stop, not infinite */
   pointer-events: none;
 }
 

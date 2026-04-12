@@ -237,24 +237,32 @@ body::before {
   opacity: 0.5;
 }
 
-/* G-3: Slow moving neon glow — violet↔cyan color shift */
+/* G-3: Slow moving neon glow — violet↔cyan color shift.
+   D-R8.1: use two layered pseudo-elements with opacity-only animation for compositing.
+   Animating `background` triggers repaint every frame; opacity is GPU-composited. */
 body::after {
   inset: auto -12% -34% -12%;
   height: 420px;
-  background: radial-gradient(circle at 50% 0%, rgba(167, 139, 250, 0.3), transparent 70%);
   filter: blur(18px);
-  animation: ambient-glow 8s ease-in-out infinite alternate;
 }
 
-@keyframes ambient-glow {
-  0%   { background: radial-gradient(circle at 50% 0%, rgba(167, 139, 250, 0.3), transparent 70%); }
-  50%  { background: radial-gradient(circle at 50% 0%, rgba(34, 211, 238, 0.18), transparent 70%); }
-  100% { background: radial-gradient(circle at 50% 0%, rgba(167, 139, 250, 0.3), transparent 70%); }
+/* Violet layer — always present */
+body::after {
+  background: radial-gradient(circle at 50% 0%, rgba(167, 139, 250, 0.3), transparent 70%);
+  animation: ambient-glow-violet 8s ease-in-out infinite alternate;
+  will-change: opacity;
+}
+
+@keyframes ambient-glow-violet {
+  0%   { opacity: 1; }
+  50%  { opacity: 0.4; }
+  100% { opacity: 1; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   body::after {
     animation: none;
+    opacity: 0.7;
   }
 }
 

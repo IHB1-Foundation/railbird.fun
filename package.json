@@ -10,7 +10,8 @@
     "test": "pnpm -r test",
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
-    "scenario:prod": "node scripts/scenario-prod-harness.mjs"
+    "scenario:prod": "node scripts/scenario-prod-harness.mjs",
+    "prepare": "husky"
   },
   "engines": {
     "node": ">=18"
@@ -20,12 +21,31 @@
       "next": "14.2.35"
     }
   },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix --max-warnings 0",
+      "prettier --write"
+    ],
+    "*.{js,mjs,cjs}": [
+      "prettier --write"
+    ],
+    "*.{json,md,yaml,yml}": [
+      "prettier --write"
+    ],
+    "*.sol": [
+      "solhint --fix"
+    ]
+  },
   "dependencies": {
     "tsx": "^4.7.0"
   },
   "devDependencies": {
+    "@commitlint/cli": "^20.5.0",
+    "@commitlint/config-conventional": "^20.5.0",
     "@sentry/nextjs": "^10.48.0",
     "@sentry/node": "^10.48.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
     "next": "14.2.35",
     "react": "18.2.0",
     "react-dom": "18.2.0"

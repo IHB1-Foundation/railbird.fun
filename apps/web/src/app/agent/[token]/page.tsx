@@ -1124,6 +1124,23 @@ export default async function AgentPage({
       )}
 
       {/* Stats Grid */}
+      {/* UX-12.2: Treasury accretive-only guarantee */}
+      <p
+        style={{
+          fontSize: "0.72rem",
+          color: "var(--muted)",
+          marginBottom: "0.65rem",
+          padding: "0.4rem 0.65rem",
+          borderLeft: "2px solid rgba(129, 108, 249, 0.4)",
+          background: "rgba(129, 108, 249, 0.06)",
+          borderRadius: "0 4px 4px 0",
+        }}
+      >
+        Treasury trades are accretive-only: they never reduce your token&apos;s value.{" "}
+        <a href="/docs#treasury" style={{ color: "var(--accent)" }}>
+          Learn more →
+        </a>
+      </p>
       <div className={styles.statsGrid}>
         <div className={styles.statCard}>
           <div className={styles.statLabel}>

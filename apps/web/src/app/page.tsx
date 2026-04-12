@@ -17,7 +17,8 @@ function isOngoingState(gameState: string): boolean {
 
 function getStatusClass(gameState: string): string {
   const state = GAME_STATES[gameState] ?? gameState;
-  if (state === "Waiting for Players" || state === "Settled" || state.includes("Dealing")) return "waiting";
+  if (state === "Waiting for Players" || state === "Settled" || state.includes("Dealing"))
+    return "waiting";
   return "live";
 }
 
@@ -43,20 +44,26 @@ export default async function LobbyPage() {
       <section className="page-section">
         <article className={`landing-hero card ${styles.landingHero}`}>
           <div className={styles.landingHeroCopy}>
-            <p className={styles.landingEyebrow}>Railbird · HashKey Chain Testnet · Hackathon Demo</p>
+            <p className={styles.landingEyebrow}>
+              Railbird · HashKey Chain Testnet · Hackathon Demo
+            </p>
             <h1 className={styles.landingTitle}>AI Agents Play On-Chain Poker.</h1>
             <p className={styles.landingSubtitle}>
-              Autonomous Gemini-powered agents compete at verifiable poker tables with VRF-dealt cards and encrypted hole cards. Watch every hand live.
+              Autonomous Gemini-powered agents compete at verifiable poker tables with VRF-dealt
+              cards and encrypted hole cards. Watch every hand live.
             </p>
           </div>
         </article>
         <div className="empty error-card">
           <p className={styles.errorHeading}>Unable to load tables</p>
           <p className={styles.errorBody}>
-            The indexer service could not be reached. This is usually temporary — please refresh in a few seconds.
+            The indexer service could not be reached. This is usually temporary — please refresh in
+            a few seconds.
           </p>
           <form action="/" method="GET">
-            <button type="submit" className="btn-ghost ghost-btn">Refresh</button>
+            <button type="submit" className="btn-ghost ghost-btn">
+              Refresh
+            </button>
           </form>
         </div>
       </section>
@@ -67,7 +74,7 @@ export default async function LobbyPage() {
   const liveTables = safeTables.filter((t) => isOngoingState(t.gameState));
   const occupiedSeats = safeTables.reduce(
     (acc, t) => acc + t.seats.filter((s) => s.ownerAddress.toLowerCase() !== ZERO_ADDRESS).length,
-    0
+    0,
   );
   const livePot = safeTables.reduce((acc, t) => acc + BigInt(t.currentHand?.pot || "0"), 0n);
   const totalHands = safeTables.reduce((acc, t) => acc + parseHandId(t.currentHandId), 0);
@@ -96,23 +103,33 @@ export default async function LobbyPage() {
 
       {/* G-40: Daily featured section — season label, daily challenge, hottest table */}
       <FeaturedOfTheDay
-        featuredTable={featuredTable ? {
-          tableAddress: String(featuredTable.tableId),
-          handCount: parseHandId(featuredTable.currentHandId),
-          activePlayers: featuredTable.seats.filter((s) => s.ownerAddress.toLowerCase() !== ZERO_ADDRESS).length,
-          potSize: `${formatChips(featuredTable.currentHand?.pot || "0")} ${CHIP_SYMBOL}`,
-        } : null}
+        featuredTable={
+          featuredTable
+            ? {
+                tableAddress: String(featuredTable.tableId),
+                handCount: parseHandId(featuredTable.currentHandId),
+                activePlayers: featuredTable.seats.filter(
+                  (s) => s.ownerAddress.toLowerCase() !== ZERO_ADDRESS,
+                ).length,
+                potSize: `${formatChips(featuredTable.currentHand?.pot || "0")} ${CHIP_SYMBOL}`,
+              }
+            : null
+        }
       />
 
       {safeTables.length === 0 && (
         <div className={`empty ${styles.emptyState}`}>
-          <span className={styles.emptyIcon} aria-hidden="true">&#x1FA99;</span>
+          <span className={styles.emptyIcon} aria-hidden="true">
+            &#x1FA99;
+          </span>
           <p className={styles.emptyTitle}>No active games yet</p>
           <p className={`text-muted ${styles.emptyDesc}`}>
             No active games yet — explore agent profiles or check back soon
           </p>
           <div className={styles.emptyActions}>
-            <a href="/leaderboard" className="btn">Explore Agents</a>
+            <a href="/leaderboard" className="btn">
+              Explore Agents
+            </a>
           </div>
         </div>
       )}
@@ -126,7 +143,9 @@ export default async function LobbyPage() {
               <h2 className={styles.featuredLiveTitle}>Table #{featuredTable.tableId}</h2>
             </div>
             <span className={`status ${getStatusClass(featuredTable.gameState)}`}>
-              <span className={`dot ${getStatusClass(featuredTable.gameState) === "live" ? "pulse" : ""}`} />
+              <span
+                className={`dot ${getStatusClass(featuredTable.gameState) === "live" ? "pulse" : ""}`}
+              />
               {GAME_STATES[featuredTable.gameState] ?? "Unknown State"}
             </span>
           </header>
@@ -147,14 +166,17 @@ export default async function LobbyPage() {
             <div>
               <p className="label">Actor</p>
               <p className={styles.featuredLiveValue}>
-                {featuredTable.currentHand?.actorSeat !== null && featuredTable.currentHand?.actorSeat !== undefined
-                  ? `Seat ${featuredTable.currentHand.actorSeat}` : "-"}
+                {featuredTable.currentHand?.actorSeat !== null &&
+                featuredTable.currentHand?.actorSeat !== undefined
+                  ? `Seat ${featuredTable.currentHand.actorSeat}`
+                  : "-"}
               </p>
             </div>
             <div>
               <p className="label">Blinds</p>
               <p className={styles.featuredLiveValue}>
-                {formatChips(featuredTable.smallBlind)}/{formatChips(featuredTable.bigBlind)} {CHIP_SYMBOL}
+                {formatChips(featuredTable.smallBlind)}/{formatChips(featuredTable.bigBlind)}{" "}
+                {CHIP_SYMBOL}
               </p>
             </div>
             <div>
@@ -163,7 +185,10 @@ export default async function LobbyPage() {
             </div>
             <div className={styles.tableMetaFull}>
               <span className="label">Contract:</span>{" "}
-              <span className={`text-mono ${styles.tableContractValue}`} title={featuredTable.contractAddress}>
+              <span
+                className={`text-mono ${styles.tableContractValue}`}
+                title={featuredTable.contractAddress}
+              >
                 {shortenAddress(featuredTable.contractAddress)}
               </span>
             </div>
@@ -171,13 +196,17 @@ export default async function LobbyPage() {
 
           <div className={styles.featuredLiveSeats}>
             {featuredTable.seats.map((seat) => {
-              const seatProfile = getAgentProfile(seat.operatorAddress) || getAgentProfile(seat.ownerAddress);
+              const seatProfile =
+                getAgentProfile(seat.operatorAddress) || getAgentProfile(seat.ownerAddress);
               return (
                 <div key={seat.seatIndex} className={styles.featuredLiveSeat}>
                   <div className={styles.seatChipLabel}>Seat {seat.seatIndex}</div>
                   {seat.ownerAddress.toLowerCase() !== ZERO_ADDRESS ? (
                     <>
-                      <div className={`${styles.seatAddr} ${seatProfile ? "" : "text-mono"}`} title={seat.ownerAddress}>
+                      <div
+                        className={`${styles.seatAddr} ${seatProfile ? "" : "text-mono"}`}
+                        title={seat.ownerAddress}
+                      >
                         {seatProfile ? seatProfile.name : shortenAddress(seat.ownerAddress)}
                       </div>
                       <div className={`value-accent ${styles.seatStackLine}`}>
@@ -196,24 +225,37 @@ export default async function LobbyPage() {
             <div className={styles.featuredLiveActions}>
               <p className="label">Recent Actions</p>
               <div className={styles.featuredLiveActionList}>
-                {featuredTable.currentHand.actions.slice(-5).reverse().map((action, idx) => (
-                  <div key={`${action.txHash}-${idx}`} className={styles.featuredLiveActionItem}>
-                    <span>Seat {action.seatIndex}</span>
-                    <span>{action.actionType}</span>
-                    <span>{action.amount !== "0" ? `${formatChips(action.amount)} ${CHIP_SYMBOL}` : "-"}</span>
-                  </div>
-                ))}
+                {featuredTable.currentHand.actions
+                  .slice(-5)
+                  .reverse()
+                  .map((action, idx) => (
+                    <div key={`${action.txHash}-${idx}`} className={styles.featuredLiveActionItem}>
+                      <span>Seat {action.seatIndex}</span>
+                      <span>{action.actionType}</span>
+                      <span>
+                        {action.amount !== "0"
+                          ? `${formatChips(action.amount)} ${CHIP_SYMBOL}`
+                          : "-"}
+                      </span>
+                    </div>
+                  ))}
               </div>
             </div>
           ) : null}
 
           <footer className={styles.featuredLiveFooter}>
-            <Link href={`/table/${featuredTable.tableId}`} className="btn">Open Live Table</Link>
+            <Link href={`/table/${featuredTable.tableId}`} className="btn">
+              Open Live Table
+            </Link>
           </footer>
         </article>
       )}
 
-      <LiveTablesGrid tables={safeTables} />
+      {/* D-R3.1: exclude featured table from grid to avoid duplicate info */}
+      <LiveTablesGrid
+        tables={safeTables}
+        excludeTableId={featuredTable ? String(featuredTable.tableId) : undefined}
+      />
     </section>
   );
 }

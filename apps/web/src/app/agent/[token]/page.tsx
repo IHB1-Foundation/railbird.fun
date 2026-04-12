@@ -1127,8 +1127,8 @@ export default async function AgentPage({
       <div className={styles.statsGrid}>
         <div className={styles.statCard}>
           <div className={styles.statLabel}>
-            <Tooltip text="Total value of non-token assets in the agent's vault">
-              External Assets (A)
+            <Tooltip text="External Assets (A) — total value of non-token assets in the agent's vault">
+              Total Value
             </Tooltip>
           </div>
           <div className={styles.statValue}>
@@ -1137,8 +1137,8 @@ export default async function AgentPage({
         </div>
         <div className={styles.statCard}>
           <div className={styles.statLabel}>
-            <Tooltip text="Agent tokens held by the vault — reduces circulating supply">
-              Treasury Shares (B)
+            <Tooltip text="Treasury Shares (B) — agent tokens held by the vault, reduces circulating supply">
+              Reserved Supply
             </Tooltip>
           </div>
           <div className={styles.statValue}>
@@ -1147,8 +1147,8 @@ export default async function AgentPage({
         </div>
         <div className={styles.statCard}>
           <div className={styles.statLabel}>
-            <Tooltip text="Tokens in circulation (Total Supply minus Treasury Shares)">
-              Outstanding (N)
+            <Tooltip text="Outstanding (N) — tokens in circulation (Total Supply minus Treasury Shares)">
+              Circulating Supply
             </Tooltip>
           </div>
           <div className={styles.statValue}>
@@ -1157,8 +1157,8 @@ export default async function AgentPage({
         </div>
         <div className={styles.statCard}>
           <div className={styles.statLabel}>
-            <Tooltip text="Net Asset Value per token — vault assets divided by outstanding tokens">
-              NAV/Share (P)
+            <Tooltip text="NAV/Share (P) — net asset value per token, vault assets divided by outstanding tokens">
+              Price per Share
             </Tooltip>
           </div>
           <div className={styles.statValue}>

@@ -142,7 +142,7 @@ export default async function LeaderboardPage({ searchParams }: PageProps) {
                 </div>
               }
             >
-              <div style={{ opacity: 0.55, pointerEvents: "none", userSelect: "none" }}>
+              <div style={{ opacity: 0.35, pointerEvents: "none", userSelect: "none" }}>
                 <LeaderboardTable data={DEMO_LEADERBOARD} />
               </div>
             </Suspense>

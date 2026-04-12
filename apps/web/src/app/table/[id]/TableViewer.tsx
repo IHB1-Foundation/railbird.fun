@@ -71,7 +71,8 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
     refreshTable,
     commentaries,
   } = useTableState(tableId, initialData);
-  const [commentaryOpen, setCommentaryOpen] = useState(true);
+  const [commentaryOpen, setCommentaryOpen] =
+    useState(false); /* D-R3.2: default closed to reduce info density */
 
   const [revealedHolecards, setRevealedHolecards] = useState<RevealedHolecardResponse[]>([]);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number>(() => Date.now());

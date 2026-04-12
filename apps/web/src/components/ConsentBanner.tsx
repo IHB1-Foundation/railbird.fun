@@ -27,9 +27,14 @@ export function ConsentBanner() {
     <div className={styles.banner} role="dialog" aria-label="Terms consent">
       <p className={styles.text}>
         By using Railbird you agree to our{" "}
-        <Link href="/terms">Terms of Service</Link> and{" "}
-        <Link href="/privacy">Privacy Policy</Link>.
-        This is experimental software on testnet — use at your own risk.
+        <Link href="/terms" target="_blank" rel="noopener noreferrer">
+          Terms of Service
+        </Link>{" "}
+        and{" "}
+        <Link href="/privacy" target="_blank" rel="noopener noreferrer">
+          Privacy Policy
+        </Link>
+        . This is experimental software on testnet — use at your own risk.
       </p>
       <button className={styles.btn} onClick={handleAccept}>
         I understand

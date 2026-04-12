@@ -18,7 +18,7 @@ export function ShareButton() {
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setTimeout(() => setCopied(false), 3000);
     } catch {
       setFallbackUrl(url);
     }
@@ -35,7 +35,7 @@ export function ShareButton() {
     try {
       await navigator.clipboard.writeText(code);
       setEmbedCopied(true);
-      setTimeout(() => setEmbedCopied(false), 2000);
+      setTimeout(() => setEmbedCopied(false), 3000);
     } catch {
       /* ignore */
     }
@@ -115,7 +115,7 @@ export function ShareButton() {
           }}
         >
           <p style={{ color: "var(--muted)", marginBottom: "0.4rem" }}>
-            Embed this table widget on your site:
+            Copy this code and paste it into your website&apos;s HTML to embed a live table widget:
           </p>
           <code
             style={{

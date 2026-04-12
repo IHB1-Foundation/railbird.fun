@@ -1,14 +1,19 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 
-// ↑ ↑ ↓ ↓ ← → ← → B A
+// ↑ ↑ ↓ ↓ ← → ← → B A  (using e.code for locale/keyboard-layout independence)
 const KONAMI_SEQUENCE = [
-  "ArrowUp", "ArrowUp",
-  "ArrowDown", "ArrowDown",
-  "ArrowLeft", "ArrowRight",
-  "ArrowLeft", "ArrowRight",
-  "b", "a",
+  "ArrowUp",
+  "ArrowUp",
+  "ArrowDown",
+  "ArrowDown",
+  "ArrowLeft",
+  "ArrowRight",
+  "ArrowLeft",
+  "ArrowRight",
+  "KeyB",
+  "KeyA",
 ];
 
 const CREDITS_UNLOCKED_KEY = "railbird:credits-unlocked";
@@ -22,7 +27,7 @@ export function useKonami(onActivate: () => void) {
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
-      sequenceRef.current.push(e.key);
+      sequenceRef.current.push(e.code);
 
       // Keep only the last N keys
       if (sequenceRef.current.length > KONAMI_SEQUENCE.length) {
@@ -30,14 +35,9 @@ export function useKonami(onActivate: () => void) {
       }
 
       // Check if sequence matches
-      const matches = KONAMI_SEQUENCE.every(
-        (key, i) => key === sequenceRef.current[i],
-      );
+      const matches = KONAMI_SEQUENCE.every((key, i) => key === sequenceRef.current[i]);
 
-      if (
-        matches &&
-        sequenceRef.current.length === KONAMI_SEQUENCE.length
-      ) {
+      if (matches && sequenceRef.current.length === KONAMI_SEQUENCE.length) {
         sequenceRef.current = [];
         localStorage.setItem(CREDITS_UNLOCKED_KEY, "true");
         onActivate();

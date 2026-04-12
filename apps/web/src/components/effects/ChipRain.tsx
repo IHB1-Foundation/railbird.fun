@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import styles from "./ChipRain.module.css";
 
 interface ChipRainProps {
-  /** Duration in ms (default 30000 = 30s) */
+  /** Duration in ms (default 9000 = 9s) */
   duration?: number;
   onComplete?: () => void;
 }
@@ -12,7 +12,7 @@ interface ChipRainProps {
 /**
  * G-37: Konami Easter Egg — chip rain canvas animation.
  */
-export function ChipRain({ duration = 30000, onComplete }: ChipRainProps) {
+export function ChipRain({ duration = 9000, onComplete }: ChipRainProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {

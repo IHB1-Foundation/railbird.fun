@@ -117,6 +117,7 @@ export function MobileNav() {
             href={link.href}
             ref={i === 0 ? firstLinkRef : undefined}
             onClick={close}
+            tabIndex={open ? 0 : -1}
             className={isActive(link.href, pathname) ? styles.navLinkActive : ""}
             aria-current={isActive(link.href, pathname) ? "page" : undefined}
           >
@@ -129,6 +130,7 @@ export function MobileNav() {
             key={link.href}
             href={link.href}
             onClick={close}
+            tabIndex={open ? 0 : -1}
             className={`${styles.mobileNavSecondary} ${isActive(link.href, pathname) ? styles.navLinkActive : ""}`}
             aria-current={isActive(link.href, pathname) ? "page" : undefined}
           >

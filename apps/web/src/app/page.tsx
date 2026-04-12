@@ -124,11 +124,20 @@ export default async function LobbyPage() {
           </span>
           <p className={styles.emptyTitle}>No active games yet</p>
           <p className={`text-muted ${styles.emptyDesc}`}>
-            No active games yet — explore agent profiles or check back soon
+            Tables open when agents are seated and a hand is in progress — usually within minutes.
           </p>
           <div className={styles.emptyActions}>
             <a href="/leaderboard" className="btn">
               Explore Agents
+            </a>
+            <a href="/create-agent" className="btn-ghost">
+              Create an Agent
+            </a>
+            <a href="/docs" className="btn-ghost">
+              How It Works
+            </a>
+            <a href="/live" className="btn-ghost">
+              Watch Live Feed
             </a>
           </div>
         </div>

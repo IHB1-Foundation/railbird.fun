@@ -30,10 +30,7 @@ function getCardSuit(cardIndex: number): number {
   return Math.floor(cardIndex / 13);
 }
 
-export function evaluateHandRank(
-  holeCards: [number, number],
-  communityCards: number[]
-): string {
+export function evaluateHandRank(holeCards: [number, number], communityCards: number[]): string {
   const allCards = [...holeCards, ...communityCards.filter((c) => c !== 255)];
   if (allCards.length < 5) return "Incomplete Hand";
 
@@ -67,9 +64,7 @@ export function evaluateHandRank(
   }
 
   if (isFlush && isStraight) {
-    return uniqueRanks[0] === 12 && uniqueRanks[1] === 11
-      ? HAND_RANK_NAMES[9]
-      : HAND_RANK_NAMES[8];
+    return uniqueRanks[0] === 12 && uniqueRanks[1] === 11 ? HAND_RANK_NAMES[9] : HAND_RANK_NAMES[8];
   }
   if (counts[0] === 4) return HAND_RANK_NAMES[7];
   if (counts[0] === 3 && counts[1] === 2) return HAND_RANK_NAMES[6];
@@ -101,9 +96,9 @@ export function ShowdownResultsPanel({
   const [collapsed, setCollapsed] = useState(false);
   const seatMap = new Map(seats.map((s) => [s.seatIndex, s]));
 
-  // Auto-collapse after 30 seconds
+  // Auto-collapse after 120 seconds — users need time to review the hand
   useEffect(() => {
-    const timer = setTimeout(() => setCollapsed(true), 30_000);
+    const timer = setTimeout(() => setCollapsed(true), 120_000);
     return () => clearTimeout(timer);
   }, []);
 
@@ -111,11 +106,14 @@ export function ShowdownResultsPanel({
     if (winnerSeat === null) return "";
     const winnerSeatData = seatMap.get(winnerSeat);
     const winnerProfile = winnerSeatData
-      ? getAgentProfile(winnerSeatData.operatorAddress) || getAgentProfile(winnerSeatData.ownerAddress)
+      ? getAgentProfile(winnerSeatData.operatorAddress) ||
+        getAgentProfile(winnerSeatData.ownerAddress)
       : null;
     const name = winnerProfile ? winnerProfile.name : `Seat ${winnerSeat}`;
     const winnerHand = revealedHolecards.find((h) => h.seatIndex === winnerSeat);
-    const handRank = winnerHand ? evaluateHandRank([winnerHand.card1, winnerHand.card2], communityCards) : "";
+    const handRank = winnerHand
+      ? evaluateHandRank([winnerHand.card1, winnerHand.card2], communityCards)
+      : "";
     return `${name} wins ${formatChips(pot)} chips${handRank ? ` with ${handRank}` : ""}`;
   })();
 
@@ -125,15 +123,39 @@ export function ShowdownResultsPanel({
         role="status"
         aria-live="polite"
         aria-atomic="true"
-        style={{ position: "absolute", width: "1px", height: "1px", padding: 0, margin: "-1px", overflow: "hidden", clip: "rect(0,0,0,0)", whiteSpace: "nowrap", border: 0 }}
+        style={{
+          position: "absolute",
+          width: "1px",
+          height: "1px",
+          padding: 0,
+          margin: "-1px",
+          overflow: "hidden",
+          clip: "rect(0,0,0,0)",
+          whiteSpace: "nowrap",
+          border: 0,
+        }}
       >
         {winnerAnnouncement}
       </div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5rem" }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "0.5rem",
+        }}
+      >
         <h3 className="section-title-sm">Showdown</h3>
         <button
           onClick={() => setCollapsed((v) => !v)}
-          style={{ background: "none", border: "none", color: "var(--muted)", cursor: "pointer", fontSize: "0.8rem", padding: "0.2rem 0.4rem" }}
+          style={{
+            background: "none",
+            border: "none",
+            color: "var(--muted)",
+            cursor: "pointer",
+            fontSize: "0.8rem",
+            padding: "0.2rem 0.4rem",
+          }}
           aria-expanded={!collapsed}
           aria-label={collapsed ? "Expand showdown results" : "Collapse showdown results"}
         >
@@ -148,17 +170,20 @@ export function ShowdownResultsPanel({
         </div>
       ) : (
         <>
-          {winnerSeat !== null && (() => {
-            const winnerSeatData = seatMap.get(winnerSeat);
-            const winnerProfile = winnerSeatData
-              ? getAgentProfile(winnerSeatData.operatorAddress) || getAgentProfile(winnerSeatData.ownerAddress)
-              : null;
-            return (
-              <div className="showdown-winner-banner">
-                Winner: {winnerProfile ? winnerProfile.name : `Seat ${winnerSeat}`} — {formatChips(pot)} {CHIP_SYMBOL}
-              </div>
-            );
-          })()}
+          {winnerSeat !== null &&
+            (() => {
+              const winnerSeatData = seatMap.get(winnerSeat);
+              const winnerProfile = winnerSeatData
+                ? getAgentProfile(winnerSeatData.operatorAddress) ||
+                  getAgentProfile(winnerSeatData.ownerAddress)
+                : null;
+              return (
+                <div className="showdown-winner-banner">
+                  Winner: {winnerProfile ? winnerProfile.name : `Seat ${winnerSeat}`} —{" "}
+                  {formatChips(pot)} {CHIP_SYMBOL}
+                </div>
+              );
+            })()}
           <div className="showdown-grid">
             {revealedHolecards.map((h) => {
               const isWinner = winnerSeat === h.seatIndex;
@@ -171,26 +196,17 @@ export function ShowdownResultsPanel({
               return (
                 <div
                   key={h.seatIndex}
-                  className={cn(
-                    "showdown-seat-card",
-                    isWinner && "showdown-winner"
-                  )}
+                  className={cn("showdown-seat-card", isWinner && "showdown-winner")}
                 >
                   <div className="showdown-seat-header">
                     <span className="showdown-seat-label">
                       {seatProfile ? seatProfile.name : `Seat ${h.seatIndex}`}
                     </span>
-                    {isWinner && (
-                      <span className="showdown-winner-badge">Winner</span>
-                    )}
+                    {isWinner && <span className="showdown-winner-badge">Winner</span>}
                   </div>
-                  {seat &&
-                    seat.ownerAddress.toLowerCase() !== ZERO_ADDRESS &&
-                    !seatProfile && (
-                      <div className="showdown-owner">
-                        {shortenAddress(seat.ownerAddress)}
-                      </div>
-                    )}
+                  {seat && seat.ownerAddress.toLowerCase() !== ZERO_ADDRESS && !seatProfile && (
+                    <div className="showdown-owner">{shortenAddress(seat.ownerAddress)}</div>
+                  )}
                   <div className="hole-cards">
                     <PokerCard cardIndex={h.card1} />
                     <PokerCard cardIndex={h.card2} />

@@ -158,9 +158,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   GitHub
                 </a>
               </nav>
-              <p className="footer-credit">
-                Built for HashKey Chain Hackathon · Powered by HashKey Chain
-              </p>
+              <p className="footer-credit">Powered by HashKey Chain</p>
             </footer>
             <LegalFooter />
             <ConsentBanner />

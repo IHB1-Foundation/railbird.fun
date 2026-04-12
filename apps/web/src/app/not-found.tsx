@@ -17,9 +17,8 @@ export default function NotFound() {
       <div className={styles.content}>
         <p className={styles.code}>404</p>
         <h1 className={styles.title}>YOU BLUFFED INTO NOTHING.</h1>
-        <p className={styles.subtitle}>
-          This page folded before you got here.
-        </p>
+        <p className={styles.subtitle}>This page folded before you got here.</p>
+        <p className={styles.detail}>The page you&apos;re looking for doesn&apos;t exist.</p>
         <Link href="/" className={`btn ${styles.cta}`}>
           Back to the Table
         </Link>

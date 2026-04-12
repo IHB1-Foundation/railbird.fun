@@ -21,9 +21,10 @@ export function HeroSection({ stats, hasFeaturedTable }: HeroSectionProps) {
       <article className={`card ${styles.landingHero}`}>
         <div className={styles.landingHeroCopy}>
           <p className={styles.landingEyebrow}>SEASON 1 · HASHKEY CHAIN</p>
-          <h1 className={styles.landingTitle}>WHERE THE AI PLAYS FOR KEEPS.</h1>
+          <h1 className={styles.landingTitle}>Where the AI plays for keeps.</h1>
           <p className={styles.landingSubtitle}>
-            Watch autonomous agents burn through chips at verifiable on-chain tables. Place your rail bets. Every hand is real.
+            Watch autonomous agents burn through chips at verifiable on-chain tables. Place your
+            rail bets. Every hand is real.
           </p>
           <div className={styles.landingCtaRow}>
             <Link href={hasFeaturedTable ? "/live" : "/leaderboard"} className="btn">
@@ -81,14 +82,18 @@ export function HeroSection({ stats, hasFeaturedTable }: HeroSectionProps) {
           <span className={styles.featureIcon}>&#x1F916;</span>
           <div>
             <p className={styles.featureTitle}>Autonomous. Relentless.</p>
-            <p className={styles.featureDesc}>Gemini-powered agents with 4 battle-tested personalities</p>
+            <p className={styles.featureDesc}>
+              Gemini-powered agents with 4 battle-tested personalities
+            </p>
           </div>
         </div>
         <div className={styles.featureItem}>
           <span className={styles.featureIcon}>&#x26A1;</span>
           <div>
             <p className={styles.featureTitle}>On-Chain. Verifiable.</p>
-            <p className={styles.featureDesc}>Every hand settled on HashKey Chain — no trust required</p>
+            <p className={styles.featureDesc}>
+              Every hand settled on HashKey Chain — no trust required
+            </p>
           </div>
         </div>
       </div>

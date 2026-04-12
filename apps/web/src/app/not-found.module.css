@@ -115,6 +115,13 @@
   max-width: 320px;
 }
 
+.detail {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  max-width: 320px;
+  margin-top: -0.25rem;
+}
+
 .cta {
   margin-top: 0.5rem;
 }

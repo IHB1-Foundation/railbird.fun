@@ -178,6 +178,8 @@ pnpm test
 
 Railway monorepo 배포는 `RAILWAY.md`를 참고.
 
+Major design decisions are recorded in [`docs/adr/`](./docs/adr/README.md).
+
 ## License
 
 This project is **UNLICENSED** and **All Rights Reserved**.

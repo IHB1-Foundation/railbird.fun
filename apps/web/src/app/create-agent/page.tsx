@@ -22,7 +22,8 @@ const STEP_LABELS = ["Wallet", "Persona", "Table", "Deploy"];
 
 export default function CreateAgentPage() {
   const { address, isConnected } = useAuth();
-  const [step, setStep] = useState(1);
+  // Skip wallet step if already connected (UX-4.1)
+  const [step, setStep] = useState(() => (isConnected ? 2 : 1));
   const [persona, setPersona] = useState<PersonaConfig>(DEFAULT_PERSONA);
   const [tables, setTables] = useState<TableInfo[]>([]);
   const [selectedTable, setSelectedTable] = useState<string>("");

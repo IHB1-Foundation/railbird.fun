@@ -18,26 +18,93 @@ interface Props {
 
 const PRESET_NAMES = Object.keys(PERSONA_PRESETS);
 
-function Slider({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
+const SLIDER_META: Record<string, { low: string; high: string; hint: string }> = {
+  Aggression: {
+    low: "Passive",
+    high: "Aggressive",
+    hint: "High = bets and raises often. Low = checks and calls more.",
+  },
+  Tightness: {
+    low: "Loose",
+    high: "Tight",
+    hint: "High = only plays premium hands. Low = plays many hands.",
+  },
+  "Bluff Frequency": {
+    low: "Honest",
+    high: "Bluffer",
+    hint: "High = bluffs frequently. Low = rarely bluffs.",
+  },
+  "Position Awareness": {
+    low: "Ignores",
+    high: "Position-first",
+    hint: "High = plays differently based on table position.",
+  },
+};
+
+function Slider({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  onChange: (v: number) => void;
+}) {
   const id = `slider-${label.toLowerCase().replace(/\s+/g, "-")}`;
+  const meta = SLIDER_META[label];
   return (
     <div className={styles.formGroup}>
       <div className={styles.sliderRow}>
-        <label htmlFor={id} className={styles.sliderLabel}>{label}</label>
-        <span className={styles.sliderValue} aria-hidden="true">{value.toFixed(2)}</span>
+        <label htmlFor={id} className={styles.sliderLabel}>
+          {label}
+        </label>
+        <span className={styles.sliderValue} aria-hidden="true">
+          {value.toFixed(2)}
+        </span>
       </div>
+      {meta && (
+        <p style={{ fontSize: "0.72rem", color: "var(--muted)", margin: "0 0 0.3rem" }}>
+          {meta.hint}
+        </p>
+      )}
       <input
         id={id}
-        type="range" min={0} max={1} step={0.01} value={value}
+        type="range"
+        min={0}
+        max={1}
+        step={0.01}
+        value={value}
         onChange={(e) => onChange(parseFloat(e.target.value))}
         aria-valuetext={value.toFixed(2)}
         style={{ width: "100%", accentColor: "var(--accent)" }}
       />
+      {meta && (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            fontSize: "0.68rem",
+            color: "var(--muted)",
+            marginTop: "0.15rem",
+          }}
+        >
+          <span>{meta.low}</span>
+          <span>{meta.high}</span>
+        </div>
+      )}
     </div>
   );
 }
 
-export function StepPersona({ persona, setPersona, nameError, setNameError, applyPreset, onBack, onNext }: Props) {
+export function StepPersona({
+  persona,
+  setPersona,
+  nameError,
+  setNameError,
+  applyPreset,
+  onBack,
+  onNext,
+}: Props) {
   return (
     <div className={styles.stepCard} style={{ textAlign: "left" }}>
       <h2 className={styles.stepTitle}>Configure Persona</h2>
@@ -46,17 +113,28 @@ export function StepPersona({ persona, setPersona, nameError, setNameError, appl
         <div>
           {/* Name */}
           <div className={styles.formGroup}>
-            <label htmlFor="agent-name" className={styles.formLabel}>Agent Name (1–24 chars)</label>
+            <label htmlFor="agent-name" className={styles.formLabel}>
+              Agent Name (1–24 chars)
+            </label>
             <input
               id="agent-name"
-              type="text" maxLength={24} value={persona.name}
-              onChange={(e) => { setPersona((p) => ({ ...p, name: e.target.value })); setNameError(null); }}
+              type="text"
+              maxLength={24}
+              value={persona.name}
+              onChange={(e) => {
+                setPersona((p) => ({ ...p, name: e.target.value }));
+                setNameError(null);
+              }}
               placeholder="e.g. Serpent"
               aria-invalid={!!nameError}
               aria-describedby={nameError ? "name-error" : undefined}
               className={`${styles.formInput}${nameError ? ` ${styles.hasError}` : ""}`}
             />
-            {nameError && <p id="name-error" role="alert" className={styles.formError}>{nameError}</p>}
+            {nameError && (
+              <p id="name-error" role="alert" className={styles.formError}>
+                {nameError}
+              </p>
+            )}
           </div>
 
           {/* Presets */}
@@ -80,7 +158,10 @@ export function StepPersona({ persona, setPersona, nameError, setNameError, appl
                   key={em}
                   onClick={() => setPersona((p) => ({ ...p, emoji: em }))}
                   className={styles.presetBtn}
-                  style={{ fontSize: "1.25rem", borderColor: persona.emoji === em ? "var(--accent)" : undefined }}
+                  style={{
+                    fontSize: "1.25rem",
+                    borderColor: persona.emoji === em ? "var(--accent)" : undefined,
+                  }}
                 >
                   {em}
                 </button>
@@ -105,10 +186,26 @@ export function StepPersona({ persona, setPersona, nameError, setNameError, appl
           </div>
 
           {/* Sliders */}
-          <Slider label="Aggression" value={persona.aggression} onChange={(v) => setPersona((p) => ({ ...p, aggression: v }))} />
-          <Slider label="Tightness" value={persona.tightness} onChange={(v) => setPersona((p) => ({ ...p, tightness: v }))} />
-          <Slider label="Bluff Frequency" value={persona.bluffFrequency} onChange={(v) => setPersona((p) => ({ ...p, bluffFrequency: v }))} />
-          <Slider label="Position Awareness" value={persona.positionAwareness} onChange={(v) => setPersona((p) => ({ ...p, positionAwareness: v }))} />
+          <Slider
+            label="Aggression"
+            value={persona.aggression}
+            onChange={(v) => setPersona((p) => ({ ...p, aggression: v }))}
+          />
+          <Slider
+            label="Tightness"
+            value={persona.tightness}
+            onChange={(v) => setPersona((p) => ({ ...p, tightness: v }))}
+          />
+          <Slider
+            label="Bluff Frequency"
+            value={persona.bluffFrequency}
+            onChange={(v) => setPersona((p) => ({ ...p, bluffFrequency: v }))}
+          />
+          <Slider
+            label="Position Awareness"
+            value={persona.positionAwareness}
+            onChange={(v) => setPersona((p) => ({ ...p, positionAwareness: v }))}
+          />
 
           {/* System Prompt */}
           <div className={styles.formGroup}>
@@ -117,7 +214,8 @@ export function StepPersona({ persona, setPersona, nameError, setNameError, appl
             </label>
             <textarea
               id="system-prompt"
-              maxLength={200} value={persona.systemPrompt}
+              maxLength={200}
+              value={persona.systemPrompt}
               onChange={(e) => setPersona((p) => ({ ...p, systemPrompt: e.target.value }))}
               placeholder="e.g. Be mysterious, never reveal your hand strength..."
               rows={3}

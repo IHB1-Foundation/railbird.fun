@@ -236,6 +236,9 @@ importers:
       swagger-ui-express:
         specifier: ^5.0.1
         version: 5.0.1(express@4.22.1)
+      viem:
+        specifier: ^2.21.0
+        version: 2.45.1(typescript@5.9.3)
     devDependencies:
       '@types/express':
         specifier: ^4.17.21

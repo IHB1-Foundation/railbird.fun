@@ -104,13 +104,20 @@ jobs:
           node-version: "22"
           cache: pnpm
 
+      - name: Restore Turbo cache
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: turbo-typecheck-${{ runner.os }}-${{ github.sha }}
+          restore-keys: turbo-typecheck-${{ runner.os }}-
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Build shared package
         run: pnpm --filter @playerco/shared build
 
-      - name: Type check all packages
+      - name: Type check all packages (turbo)
         run: pnpm typecheck
 
   # ── TypeScript / Node.js ───────────────────────────────────────────────────
@@ -201,7 +208,7 @@ jobs:
     env:
       # Minimal env vars required for the local stack
       KEEPER_PRIVATE_KEY: "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
-      AGENT_PRIVATE_KEY:  "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"
+      AGENT_PRIVATE_KEY: "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"
       VRF_OPERATOR_PRIVATE_KEY: "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a"
       JWT_SECRET: "ci-test-secret-must-be-32-chars-long-min"
       DEALER_API_KEY: "ci-dealer-key"
@@ -326,18 +333,18 @@ jobs:
 
       - name: Run web tests with coverage
         run: pnpm --filter @playerco/web exec vitest run --coverage
-        continue-on-error: true  # thresholds warn, don't block
+        continue-on-error: true # thresholds warn, don't block
 
       - name: Run Forge coverage
         run: cd contracts && forge coverage --report lcov --no-match-path "test/invariant/*"
-        continue-on-error: true  # coverage report is advisory
+        continue-on-error: true # coverage report is advisory
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
           files: apps/web/coverage/lcov.info,contracts/lcov.info
           flags: web,contracts
-          fail_ci_if_error: false  # advisory only
+          fail_ci_if_error: false # advisory only
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 

@@ -5,11 +5,11 @@
   "license": "UNLICENSED",
   "description": "PlayerCo - Poker Agent Company on-chain",
   "scripts": {
-    "build": "pnpm -r build",
-    "clean": "pnpm -r clean",
-    "test": "pnpm -r test",
-    "lint": "pnpm -r lint",
-    "typecheck": "pnpm -r typecheck",
+    "build": "turbo run build",
+    "clean": "turbo run clean",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
     "scenario:prod": "node scripts/scenario-prod-harness.mjs",
     "prepare": "husky"
   },
@@ -52,6 +52,7 @@
     "next": "14.2.35",
     "prettier": "^3.8.2",
     "react": "18.2.0",
-    "react-dom": "18.2.0"
+    "react-dom": "18.2.0",
+    "turbo": "^2.9.6"
   }
 }

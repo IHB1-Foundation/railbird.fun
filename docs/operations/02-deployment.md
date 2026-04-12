@@ -13,7 +13,72 @@ The session runner does **not** push — operators run:
 git push origin main
 ```
 
-A staging tag is cut by pushing to `staging` (T-2002).
+A staging tag is cut by pushing to `staging`.
+
+## Staging environment
+
+Staging mirrors production but targets HSK testnet and uses isolated
+Railway + Vercel projects. It deploys automatically on every push to
+`main` so that integration is always verified before manual promotion.
+
+### One-time Railway staging setup
+
+```bash
+# Install the Railway CLI
+npm install -g @railway/cli && railway login
+
+# Create a new Railway project called "railbird-staging"
+railway init --name railbird-staging
+
+# For each service, deploy from the project root:
+railway up --service indexer   --dockerfile services/indexer/Dockerfile
+railway up --service ownerview --dockerfile services/ownerview/Dockerfile
+railway up --service fleet     --dockerfile services/fleet/Dockerfile
+railway up --service keeper    --dockerfile bots/keeper/Dockerfile
+railway up --service agent     --dockerfile bots/agent/Dockerfile
+railway up --service vrf-op    --dockerfile bots/vrf-operator/Dockerfile
+```
+
+Set the same env vars as production but point to testnet contracts and a
+separate `DATABASE_URL` (Railway creates a Postgres instance per project).
+
+### Vercel staging domain
+
+1. In the Vercel dashboard, create a new project linked to the same repo.
+2. Set "Production Branch" to `main`; this creates a dedicated staging URL.
+3. Set all `NEXT_PUBLIC_*` env vars to point to the Railway staging services.
+4. Enable "Deploy on every push to main" — Vercel handles this by default.
+
+### Auto-deploy GitHub Action
+
+`.github/workflows/ci.yml` already runs on push to `main`. To add a
+post-CI deploy step to Railway staging, add:
+
+```yaml
+deploy-staging:
+  name: Deploy to Railway Staging
+  needs: [typecheck, lint, contracts]
+  if: github.ref == 'refs/heads/main'
+  runs-on: ubuntu-latest
+  steps:
+    - uses: actions/checkout@v4
+    - name: Deploy to Railway
+      run: npx @railway/cli@latest up --service indexer
+      env:
+        RAILWAY_TOKEN: ${{ secrets.RAILWAY_STAGING_TOKEN }}
+```
+
+Add `RAILWAY_STAGING_TOKEN` as a GitHub Actions secret.
+
+### Staging vs production independence
+
+| Dimension | Staging                | Production              |
+| --------- | ---------------------- | ----------------------- |
+| Chain     | HSK Testnet (133)      | HSK Mainnet (177)       |
+| Contracts | Separate deploy        | Live contracts          |
+| Database  | Isolated Railway DB    | Production Railway DB   |
+| Web URL   | `staging.railbird.xyz` | `railbird.xyz`          |
+| Analytics | Vercel Analytics (dev) | Vercel Analytics (prod) |
 
 ## Required env per service
 

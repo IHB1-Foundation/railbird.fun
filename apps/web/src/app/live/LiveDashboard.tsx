@@ -272,7 +272,7 @@ export function LiveDashboard({ mode = "spotlight", streamMode = false }: LiveDa
       {/* Header */}
       <div className={styles.liveHeader}>
         <div className={styles.liveBadge}>
-          <div className={styles.liveDot} />
+          <div className={styles.liveDot} aria-hidden="true" />
           LIVE
         </div>
         <span className={styles.headerTitle}>AI Poker Arena</span>
@@ -550,6 +550,11 @@ export function LiveDashboard({ mode = "spotlight", streamMode = false }: LiveDa
           aria-labelledby={showdownTitleId}
           onKeyDown={(e) => {
             if (e.key === "Escape") setShowShowdown(false);
+            if (e.key === "Tab") {
+              // Single focusable element — keep focus within dialog
+              e.preventDefault();
+              showdownCloseRef.current?.focus();
+            }
           }}
         >
           {/* Backdrop */}

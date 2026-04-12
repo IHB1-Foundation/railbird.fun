@@ -8,6 +8,7 @@ import { ErrorState } from "@/components/ErrorState";
 import { Breadcrumb } from "@/components/Breadcrumb";
 import type { LeaderboardMetric, LeaderboardPeriod } from "@/lib/types";
 import { DEMO_LEADERBOARD } from "@/lib/demoLeaderboard";
+import { LeaderboardTabs } from "./LeaderboardTabs";
 import styles from "./leaderboard.module.css";
 
 export const dynamic = "force-dynamic";
@@ -57,42 +58,13 @@ export default async function LeaderboardPage({ searchParams }: PageProps) {
         Rankings are computed per-hand after settlement.
       </p>
 
-      {/* Filter tabs — stack vertically on mobile */}
-      <div className={styles.filterStack}>
-        {/* Metric Tabs */}
-        <div className="filter-row">
-          <span className="filter-label">Metric:</span>
-          <div className={`tabs ${styles.tabsScrollable}`}>
-            {VALID_METRICS.map((m) => (
-              <Link
-                key={m}
-                href={`/leaderboard?metric=${m}&period=${period}`}
-                className={`tab ${m === metric ? "active" : ""}`}
-                prefetch={false}
-              >
-                {m.toUpperCase()}
-              </Link>
-            ))}
-          </div>
-        </div>
-
-        {/* Period Tabs */}
-        <div className="filter-row filter-row-last">
-          <span className="filter-label">Period:</span>
-          <div className={`tabs ${styles.tabsScrollable}`}>
-            {VALID_PERIODS.map((p) => (
-              <Link
-                key={p}
-                href={`/leaderboard?metric=${metric}&period=${p}`}
-                className={`tab ${p === period ? "active" : ""}`}
-                prefetch={false}
-              >
-                {p}
-              </Link>
-            ))}
-          </div>
-        </div>
-      </div>
+      {/* Filter tabs — accessible tablist with arrow-key navigation */}
+      <LeaderboardTabs
+        metric={metric}
+        period={period}
+        validMetrics={VALID_METRICS}
+        validPeriods={VALID_PERIODS}
+      />
 
       {/* Leaderboard Table */}
       {error ? (

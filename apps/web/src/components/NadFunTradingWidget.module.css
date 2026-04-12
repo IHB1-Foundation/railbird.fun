@@ -155,6 +155,12 @@
   margin-bottom: 0.75rem;
 }
 
+@media (max-width: 480px) {
+  .nadfunControlsRow {
+    flex-direction: column; /* D-R5.4: stack slippage + deadline fields on small screens */
+  }
+}
+
 .nadfunPresets {
   display: flex;
   gap: 0.4rem;

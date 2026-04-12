@@ -694,3 +694,14 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* D-R5.5: On very small screens, hide sidebar entirely to maximize main content */
+@media (max-width: 640px) {
+  .sidePane {
+    display: none;
+  }
+
+  .liveBody {
+    grid-template-columns: 1fr;
+  }
+}

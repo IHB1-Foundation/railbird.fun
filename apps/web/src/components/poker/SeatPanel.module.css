@@ -355,9 +355,14 @@
     color: var(--muted);
     cursor: pointer;
     font-size: 0.6rem;
-    padding: 0.1rem 0.25rem;
+    /* D-R5.3: WCAG 2.5.5 minimum touch target 44×44px */
+    min-width: 44px;
+    min-height: 44px;
     margin-left: auto;
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   /* Hide full details on mobile by default */

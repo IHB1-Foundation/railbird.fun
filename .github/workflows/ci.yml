@@ -294,6 +294,53 @@ jobs:
           echo "=== Agent 0 ===" && cat /tmp/ci-agent0.log 2>/dev/null || true
           echo "=== Agent 1 ===" && cat /tmp/ci-agent1.log 2>/dev/null || true
 
+  # ── Coverage collection (T-1606) ─────────────────────────────────────────
+  coverage:
+    name: Coverage Report (vitest + forge)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared package
+        run: pnpm --filter @playerco/shared build
+
+      - name: Run web tests with coverage
+        run: pnpm --filter @playerco/web exec vitest run --coverage
+        continue-on-error: true  # thresholds warn, don't block
+
+      - name: Run Forge coverage
+        run: cd contracts && forge coverage --report lcov --no-match-path "test/invariant/*"
+        continue-on-error: true  # coverage report is advisory
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: apps/web/coverage/lcov.info,contracts/lcov.info
+          flags: web,contracts
+          fail_ci_if_error: false  # advisory only
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
   # ── Frontend Playwright + a11y tests (T-1603) ────────────────────────────
   web-e2e:
     name: Web E2E & Accessibility (Playwright)

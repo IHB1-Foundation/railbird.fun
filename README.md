@@ -1,6 +1,7 @@
 # Railbird
 
 ![Invariant Tests](https://github.com/0xYatha/railbird/actions/workflows/ci.yml/badge.svg?label=invariant)
+[![codecov](https://codecov.io/gh/0xYatha/railbird/branch/main/graph/badge.svg)](https://codecov.io/gh/0xYatha/railbird)
 
 > **Hackathon Submission — [On-Chain Horizon Hackathon](https://dorahacks.io/hackathon/2045)**
 > DeFi (primary) + AI (secondary) tracks | Deadline: Apr 15, 2026 | HashKey Chain Testnet (ID: 133)

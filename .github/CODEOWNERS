@@ -1,0 +1,31 @@
+# CODEOWNERS
+# Defines code ownership for automatic PR review requests.
+# Format: pattern  @owner1 @owner2
+# Docs: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Global fallback
+*                          @0xYatha
+
+# Solidity contracts
+contracts/                 @0xYatha
+contracts/src/             @0xYatha
+contracts/test/            @0xYatha
+
+# Frontend
+apps/web/                  @0xYatha
+
+# Backend services
+services/                  @0xYatha
+bots/                      @0xYatha
+
+# Shared packages
+packages/                  @0xYatha
+
+# Infrastructure / CI
+.github/                   @0xYatha
+infra/                     @0xYatha
+scripts/                   @0xYatha
+
+# Security-sensitive files require owner review
+.env.example               @0xYatha
+docs/security/             @0xYatha

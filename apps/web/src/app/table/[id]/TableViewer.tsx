@@ -446,11 +446,11 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
             <div className={styles.tableHandId}>Hand #{currentHand.handId}</div>
           )}
           <Link
-            href="/betting"
+            href={`/betting?table=${tableId}`}
             className="btn btn-ghost"
             style={{ fontSize: "0.78rem", padding: "0.3rem 0.75rem", minHeight: 0 }}
           >
-            🎲 Place Rail Bet
+            🎲 Bet on This Table
           </Link>
           <ShareButton />
         </div>

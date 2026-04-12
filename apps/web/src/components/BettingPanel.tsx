@@ -106,7 +106,7 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
   });
 
   const showSuccess = useCallback((text: string) => setNotice({ text, type: "success" }), []);
-  const showError   = useCallback((text: string) => setNotice({ text, type: "error" }),   []);
+  const showError = useCallback((text: string) => setNotice({ text, type: "error" }), []);
 
   // Auto-clear: success after 5 s, error after 10 s
   useEffect(() => {
@@ -167,11 +167,15 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
     if (!marketOpen) return;
     const id = setInterval(async () => {
       try {
-        const res = await fetch(`${INDEXER_BASE}/api/tables/${table.tableId}`, { cache: "no-store" });
+        const res = await fetch(`${INDEXER_BASE}/api/tables/${table.tableId}`, {
+          cache: "no-store",
+        });
         if (!res.ok) return;
         const next = (await res.json()) as TableResponse;
         setTable(next);
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }, 5000);
     return () => clearInterval(id);
   }, [marketOpen, table.tableId]);
@@ -181,11 +185,15 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
     if (marketOpen) return;
     const id = setInterval(async () => {
       try {
-        const res = await fetch(`${INDEXER_BASE}/api/tables/${table.tableId}`, { cache: "no-store" });
+        const res = await fetch(`${INDEXER_BASE}/api/tables/${table.tableId}`, {
+          cache: "no-store",
+        });
         if (!res.ok) return;
         const next = (await res.json()) as TableResponse;
         setTable(next);
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }, 3000);
     return () => clearInterval(id);
   }, [marketOpen, table.tableId]);
@@ -261,10 +269,25 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
     } else {
       showError(`Hand #${handId} settled: no winning tickets this round.`);
     }
-  }, [bankrollWei, handId, settledHands, showError, showSuccess, table.tableId, wagers, winnerSeat]);
+  }, [
+    bankrollWei,
+    handId,
+    settledHands,
+    showError,
+    showSuccess,
+    table.tableId,
+    wagers,
+    winnerSeat,
+  ]);
 
-  const openWagers = wagers.filter((w) => w.status === "open").slice(-8).reverse();
-  const settledWagers = wagers.filter((w) => w.status !== "open").slice(-8).reverse();
+  const openWagers = wagers
+    .filter((w) => w.status === "open")
+    .slice(-8)
+    .reverse();
+  const settledWagers = wagers
+    .filter((w) => w.status !== "open")
+    .slice(-8)
+    .reverse();
   const recentBets = [...wagers].reverse().slice(0, 10);
 
   const selectedMarket = market.find((m) => m.seatIndex === selectedSeat) ?? null;
@@ -288,7 +311,9 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
     }
     const stakeWei = parseChipInputToWei(stakeInput);
     if (!stakeWei) {
-      showError(`Invalid stake: enter a positive whole number between 1 and ${MAX_STAKE_CHIPS.toLocaleString()} chips.`);
+      showError(
+        `Invalid stake: enter a positive whole number between 1 and ${MAX_STAKE_CHIPS.toLocaleString()} chips.`,
+      );
       return null;
     }
     if (stakeWei > bankrollWei) {
@@ -314,7 +339,7 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
     };
     persist(nextBankroll, [...wagers, wager]);
     showSuccess(
-      `Bet accepted: ${selectedMarket.profile.codename} / ${formatChips(stakeWei)} ${CHIP_SYMBOL} @ ${formatOdds(selectedMarket.oddsBps)}x`
+      `Bet accepted: ${selectedMarket.profile.codename} / ${formatChips(stakeWei)} ${CHIP_SYMBOL} @ ${formatOdds(selectedMarket.oddsBps)}x`,
     );
   }
 
@@ -357,10 +382,14 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
         aria-label="Toggle bankroll details"
       >
         <span>
-          🎫 <span className={styles.mobileBankrollChips}>{formatChips(bankrollWei)} {CHIP_SYMBOL}</span>
+          🎫{" "}
+          <span className={styles.mobileBankrollChips}>
+            {formatChips(bankrollWei)} {CHIP_SYMBOL}
+          </span>
           {" | "}
           <span className={cn(styles.mobileBankrollPnl, pnlPositive ? "positive" : "negative")}>
-            {pnlPositive ? "+" : ""}{formatChips(pnlForSummary)} P&L
+            {pnlPositive ? "+" : ""}
+            {formatChips(pnlForSummary)} P&L
           </span>
         </span>
         <span className={styles.mobileBankrollToggle}>{mobileBankrollOpen ? "▲" : "▼"}</span>
@@ -380,7 +409,8 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
               return (
                 <div style={{ fontSize: "0.75rem", display: "grid", gap: "0.1rem" }}>
                   <span style={{ color: positive ? "var(--success)" : "var(--danger)" }}>
-                    Session P&L: {positive ? "+" : ""}{formatChips(pnl)} {CHIP_SYMBOL}
+                    Session P&L: {positive ? "+" : ""}
+                    {formatChips(pnl)} {CHIP_SYMBOL}
                   </span>
                   {settledCount > 0 && (
                     <span className="muted">
@@ -390,7 +420,15 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
                 </div>
               );
             })()}
-            <button className="ghost-btn" onClick={(e) => { e.stopPropagation(); setShowResetConfirm(true); }} type="button" aria-label="Reset virtual bankroll to default">
+            <button
+              className="ghost-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowResetConfirm(true);
+              }}
+              type="button"
+              aria-label="Reset virtual bankroll to default"
+            >
               Reset
             </button>
           </div>
@@ -399,9 +437,40 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
 
       <div className={styles.betHeader}>
         <div>
-          <h2 className="section-title">Predict the Winner</h2>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
+              flexWrap: "wrap",
+              marginBottom: "0.25rem",
+            }}
+          >
+            <h2 className="section-title" style={{ margin: 0 }}>
+              Predict the Winner
+            </h2>
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.25rem",
+                fontSize: "0.7rem",
+                fontWeight: 700,
+                letterSpacing: "0.04em",
+                textTransform: "uppercase",
+                color: "#86efac",
+                background: "rgba(134, 239, 172, 0.12)",
+                border: "1px solid rgba(134, 239, 172, 0.35)",
+                borderRadius: "999px",
+                padding: "0.15rem 0.5rem",
+              }}
+              title="No real funds — this is a practice betting board using virtual chips"
+            >
+              Practice Mode
+            </span>
+          </div>
           <p className={styles.betSubtitle}>
-            Place virtual bets on which AI agent wins the current hand.
+            Place virtual bets on which AI agent wins the current hand. No real funds at risk.
           </p>
           {jargonExpanded && (
             <div className={styles.jargonExplainer}>
@@ -434,7 +503,8 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
             return (
               <div style={{ fontSize: "0.75rem", display: "grid", gap: "0.1rem" }}>
                 <span style={{ color: positive ? "var(--success)" : "var(--danger)" }}>
-                  Session P&L: {positive ? "+" : ""}{formatChips(pnl)} {CHIP_SYMBOL}
+                  Session P&L: {positive ? "+" : ""}
+                  {formatChips(pnl)} {CHIP_SYMBOL}
                 </span>
                 {settledCount > 0 && (
                   <span className="muted">
@@ -444,21 +514,31 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
               </div>
             );
           })()}
-          <button className="ghost-btn" onClick={() => setShowResetConfirm(true)} type="button" aria-label="Reset virtual bankroll to default">
+          <button
+            className="ghost-btn"
+            onClick={() => setShowResetConfirm(true)}
+            type="button"
+            aria-label="Reset virtual bankroll to default"
+          >
             Reset
           </button>
         </div>
       </div>
 
-      <div className={`${styles.betMarketState} ${marketOpen ? styles.open : styles.closed}`} aria-live="polite" aria-atomic="true">
-        {marketOpen
-          ? `Hand #${handId} market open`
-          : "Market closed — Refreshing status..."}
+      <div
+        className={`${styles.betMarketState} ${marketOpen ? styles.open : styles.closed}`}
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        {marketOpen ? `Hand #${handId} market open` : "Market closed — Refreshing status..."}
       </div>
 
       {notice && (
         <div
-          className={cn(styles.betNotice, notice.type === "success" ? styles.betNoticeSuccess : styles.betNoticeError)}
+          className={cn(
+            styles.betNotice,
+            notice.type === "success" ? styles.betNoticeSuccess : styles.betNoticeError,
+          )}
           role="alert"
           aria-live="polite"
         >
@@ -485,7 +565,9 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
               aria-checked={selectedSeat === entry.seatIndex}
               aria-label={`Bet on ${entry.profile.codename} at seat ${entry.seatIndex}`}
               tabIndex={0}
-              onKeyDown={(e) => { if (e.key === " " || e.key === "Enter") setSelectedSeat(entry.seatIndex); }}
+              onKeyDown={(e) => {
+                if (e.key === " " || e.key === "Enter") setSelectedSeat(entry.seatIndex);
+              }}
             >
               <div className={styles.betAgentTop}>
                 <div>
@@ -508,12 +590,16 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
                   className={styles.betProbFill}
                   style={{ width: `${Math.round(entry.winProb * 100)}%` }}
                 />
-                <span className={styles.betProbLabel}>{toImpliedPercent(entry.winProb)} win est.</span>
+                <span className={styles.betProbLabel}>
+                  {toImpliedPercent(entry.winProb)} win est.
+                </span>
               </div>
 
               <div className={styles.betAgentStats}>
                 <span>Aggro: {(entry.profile.aggression * 100).toFixed(0)}%</span>
-                <span>Stack: {formatChips(entry.stack)} {CHIP_SYMBOL}</span>
+                <span>
+                  Stack: {formatChips(entry.stack)} {CHIP_SYMBOL}
+                </span>
               </div>
 
               <div className={styles.betAgentOwner}>{shortenAddress(entry.ownerAddress)}</div>
@@ -538,9 +624,10 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
             <span>{selectedMarket ? `${formatOdds(selectedMarket.oddsBps)}x` : "-"}</span>
           </div>
 
-          <label className={styles.betInputLabel} htmlFor="stake-input">Stake ({CHIP_SYMBOL})</label>
+          <label className={styles.betInputLabel} htmlFor="stake-input">
+            Stake ({CHIP_SYMBOL})
+          </label>
           {(() => {
-            const stakeNum = parseFloat(stakeInput);
             const stakeWeiCheck = parseChipInputToWei(stakeInput);
             const exceedsBankroll = stakeWeiCheck !== null && stakeWeiCheck > bankrollWei;
             const invalid = stakeInput !== "" && (!stakeWeiCheck || exceedsBankroll);
@@ -587,24 +674,39 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
           </div>
 
           {/* Potential payout */}
-          {selectedMarket && (() => {
-            const stakeWei = parseChipInputToWei(stakeInput);
-            if (!stakeWei || stakeWei <= 0n) return null;
-            const payout = (stakeWei * BigInt(selectedMarket.oddsBps)) / 10_000n;
-            const profit = payout - stakeWei;
-            return (
-              <div style={{ display: "grid", gap: "0.25rem", fontSize: "0.8rem", background: "rgba(255,255,255,0.02)", borderRadius: "8px", padding: "0.45rem 0.6rem", border: "1px solid rgba(149,158,204,0.2)" }}>
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span className="label">Potential Win</span>
-                  <span className="value-positive">{formatChips(payout)} {CHIP_SYMBOL}</span>
+          {selectedMarket &&
+            (() => {
+              const stakeWei = parseChipInputToWei(stakeInput);
+              if (!stakeWei || stakeWei <= 0n) return null;
+              const payout = (stakeWei * BigInt(selectedMarket.oddsBps)) / 10_000n;
+              const profit = payout - stakeWei;
+              return (
+                <div
+                  style={{
+                    display: "grid",
+                    gap: "0.25rem",
+                    fontSize: "0.8rem",
+                    background: "rgba(255,255,255,0.02)",
+                    borderRadius: "8px",
+                    padding: "0.45rem 0.6rem",
+                    border: "1px solid rgba(149,158,204,0.2)",
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span className="label">Potential Win</span>
+                    <span className="value-positive">
+                      {formatChips(payout)} {CHIP_SYMBOL}
+                    </span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span className="label">Profit</span>
+                    <span className="value-positive">
+                      +{formatChips(profit)} {CHIP_SYMBOL}
+                    </span>
+                  </div>
                 </div>
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span className="label">Profit</span>
-                  <span className="value-positive">+{formatChips(profit)} {CHIP_SYMBOL}</span>
-                </div>
-              </div>
-            );
-          })()}
+              );
+            })()}
 
           <button
             type="button"
@@ -612,7 +714,9 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
             onClick={placeBet}
             disabled={!marketOpen}
             aria-disabled={!marketOpen}
-            aria-label={marketOpen ? "Place bet on selected agent" : "Betting is closed — wait for next hand"}
+            aria-label={
+              marketOpen ? "Place bet on selected agent" : "Betting is closed — wait for next hand"
+            }
           >
             Place Bet
           </button>
@@ -662,7 +766,9 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
                     key={wager.id}
                     className={`${styles.betTicket} ${wager.status === "won" ? styles.won : styles.lost} ${isFlashing ? (flashType === "won" ? styles.flashWon : styles.flashLost) : ""}`}
                   >
-                    <div>Hand #{wager.handId} · Seat {wager.seatIndex}</div>
+                    <div>
+                      Hand #{wager.handId} · Seat {wager.seatIndex}
+                    </div>
                     <div>{wager.profileName}</div>
                     <div>
                       {wager.status === "won"
@@ -699,10 +805,24 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
                   <tr key={w.id}>
                     <td>#{w.handId}</td>
                     <td>{w.profileName}</td>
-                    <td>{formatChips(BigInt(w.stakeWei))} {CHIP_SYMBOL}</td>
+                    <td>
+                      {formatChips(BigInt(w.stakeWei))} {CHIP_SYMBOL}
+                    </td>
                     <td>{formatOdds(w.oddsBps)}x</td>
-                    <td className={w.status === "won" ? "value-positive" : w.status === "lost" ? "value-negative" : ""}>
-                      {w.status === "open" ? "⏳ Pending" : w.status === "won" ? `✓ Won +${formatChips(BigInt(w.payoutWei || "0"))}` : "✗ Lost"}
+                    <td
+                      className={
+                        w.status === "won"
+                          ? "value-positive"
+                          : w.status === "lost"
+                            ? "value-negative"
+                            : ""
+                      }
+                    >
+                      {w.status === "open"
+                        ? "⏳ Pending"
+                        : w.status === "won"
+                          ? `✓ Won +${formatChips(BigInt(w.payoutWei || "0"))}`
+                          : "✗ Lost"}
                     </td>
                   </tr>
                 ))}
@@ -712,7 +832,14 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
         )}
       </div>
 
-      <p style={{ marginTop: "0.75rem", fontSize: "0.72rem", color: "var(--muted)", textAlign: "center" }}>
+      <p
+        style={{
+          marginTop: "0.75rem",
+          fontSize: "0.72rem",
+          color: "var(--muted)",
+          textAlign: "center",
+        }}
+      >
         *Virtual bets only — no real funds at risk
       </p>
 
@@ -723,31 +850,37 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
         confirmLabel="Reset"
         cancelLabel="Cancel"
         danger
-        onConfirm={() => { resetBook(); setShowResetConfirm(false); }}
+        onConfirm={() => {
+          resetBook();
+          setShowResetConfirm(false);
+        }}
         onCancel={() => setShowResetConfirm(false)}
       />
 
-      {showBetConfirm && selectedMarket && pendingBetWei && (() => {
-        const payout = (pendingBetWei * BigInt(selectedMarket.oddsBps)) / 10_000n;
-        return (
-          <ConfirmDialog
-            open
-            title={`Bet on ${selectedMarket.profile.codename}`}
-            message={`Stake ${formatChips(pendingBetWei)} ${CHIP_SYMBOL} at ${formatOdds(selectedMarket.oddsBps)}x odds — potential win: ${formatChips(payout)} ${CHIP_SYMBOL}`}
-            confirmLabel="Confirm Bet"
-            cancelLabel="Cancel"
-            onConfirm={() => {
-              commitBet(pendingBetWei);
-              setShowBetConfirm(false);
-              setPendingBetWei(null);
-            }}
-            onCancel={() => {
-              setShowBetConfirm(false);
-              setPendingBetWei(null);
-            }}
-          />
-        );
-      })()}
+      {showBetConfirm &&
+        selectedMarket &&
+        pendingBetWei &&
+        (() => {
+          const payout = (pendingBetWei * BigInt(selectedMarket.oddsBps)) / 10_000n;
+          return (
+            <ConfirmDialog
+              open
+              title={`Bet on ${selectedMarket.profile.codename}`}
+              message={`Stake ${formatChips(pendingBetWei)} ${CHIP_SYMBOL} at ${formatOdds(selectedMarket.oddsBps)}x odds — potential win: ${formatChips(payout)} ${CHIP_SYMBOL}`}
+              confirmLabel="Confirm Bet"
+              cancelLabel="Cancel"
+              onConfirm={() => {
+                commitBet(pendingBetWei);
+                setShowBetConfirm(false);
+                setPendingBetWei(null);
+              }}
+              onCancel={() => {
+                setShowBetConfirm(false);
+                setPendingBetWei(null);
+              }}
+            />
+          );
+        })()}
     </section>
   );
 }

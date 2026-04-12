@@ -213,6 +213,7 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
   const [error, setError] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
   const [_txStatus, setTxStatus] = useState<"submitted" | "confirming" | null>(null);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const lensAddressRaw = getLensAddress();
   const bondingRouterRaw = getBondingRouterAddress();
@@ -534,6 +535,22 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
         </a>
       </div>
 
+      {/* Stage explainer */}
+      <p
+        style={{
+          fontSize: "0.75rem",
+          color: "var(--muted)",
+          marginBottom: "0.5rem",
+          lineHeight: 1.4,
+        }}
+      >
+        {stage === "bonding"
+          ? "Trading on bonding curve — price rises as more tokens are bought. No external liquidity needed."
+          : stage === "graduated"
+            ? "Token has graduated to a decentralized exchange (DEX). Price is set by open-market trading."
+            : "Token is temporarily locked and cannot be traded right now. Check back soon."}
+      </p>
+
       {stage === "locked" && (
         <div className={styles.nadfunLockedNotice} role="status">
           Token is currently in locked stage — trading is temporarily unavailable.
@@ -606,76 +623,103 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
             />
           </div>
 
-          {/* Slippage + Deadline */}
-          <div className={styles.nadfunControlsRow}>
-            <div className={`${styles.nadfunField} ${styles.nadfunFieldSm}`}>
-              <label className={styles.nadfunLabel} htmlFor="nadfun-slippage">
-                Slippage (%)
-                <span
-                  className={styles.nadfunSlippageTip}
-                  title="Maximum price difference allowed. 1% is standard."
-                >
-                  {" "}
-                  ⓘ
-                </span>
-              </label>
-              <input
-                id="nadfun-slippage"
-                className={`${styles.nadfunInput} ${slippageWarning?.level === "error" ? styles.nadfunInputError : ""}`}
-                type="number"
-                min="0.1"
-                max="49"
-                step="0.1"
-                value={(slippageBps / 100).toFixed(1)}
-                onChange={(e) => setSlippageBps(Math.round(parseFloat(e.target.value) * 100))}
-                aria-label="Slippage tolerance in percent"
-                aria-describedby={slippageWarning ? "slippage-warning" : undefined}
-                aria-invalid={slippageWarning?.level === "error"}
-              />
-              {slippageWarning && (
-                <span
-                  id="slippage-warning"
-                  className={
-                    slippageWarning.level === "error"
-                      ? styles.nadfunSlippageError
-                      : styles.nadfunSlippageWarn
-                  }
-                  role={slippageWarning.level === "error" ? "alert" : "status"}
-                >
-                  {slippageWarning.msg}
-                </span>
-              )}
-            </div>
-            <div className={`${styles.nadfunField} ${styles.nadfunFieldSm}`}>
-              <label className={styles.nadfunLabel} htmlFor="nadfun-deadline">
-                Deadline (min)
-              </label>
-              <input
-                id="nadfun-deadline"
-                className={styles.nadfunInput}
-                type="number"
-                min="1"
-                max="120"
-                value={deadlineMinutes}
-                onChange={(e) => setDeadlineMinutes(parseInt(e.target.value, 10) || 30)}
-                aria-label="Transaction deadline in minutes"
-              />
-            </div>
-          </div>
+          {/* Advanced Settings toggle */}
+          <div>
+            <button
+              type="button"
+              onClick={() => setAdvancedOpen((v) => !v)}
+              style={{
+                background: "none",
+                border: "none",
+                color: "var(--muted)",
+                fontSize: "0.75rem",
+                cursor: "pointer",
+                padding: "0.25rem 0",
+                display: "flex",
+                alignItems: "center",
+                gap: "0.3rem",
+              }}
+              aria-expanded={advancedOpen}
+            >
+              <span aria-hidden="true">{advancedOpen ? "▲" : "▼"}</span>
+              Advanced Settings (slippage, deadline)
+            </button>
 
-          {/* Quick slippage presets */}
-          <div className={styles.nadfunPresets} aria-label="Slippage presets">
-            {[50, 100, 200, 500].map((bps) => (
-              <button
-                key={bps}
-                type="button"
-                className="ghost-btn"
-                onClick={() => setSlippageBps(bps)}
-                aria-pressed={slippageBps === bps}
-              >
-                {bps / 100}%
-              </button>
-            ))}
+            {advancedOpen && (
+              <>
+                {/* Slippage + Deadline */}
+                <div className={styles.nadfunControlsRow}>
+                  <div className={`${styles.nadfunField} ${styles.nadfunFieldSm}`}>
+                    <label className={styles.nadfunLabel} htmlFor="nadfun-slippage">
+                      Slippage (%)
+                      <span
+                        className={styles.nadfunSlippageTip}
+                        title="Maximum price difference allowed. 1% is standard."
+                      >
+                        {" "}
+                        ⓘ
+                      </span>
+                    </label>
+                    <input
+                      id="nadfun-slippage"
+                      className={`${styles.nadfunInput} ${slippageWarning?.level === "error" ? styles.nadfunInputError : ""}`}
+                      type="number"
+                      min="0.1"
+                      max="49"
+                      step="0.1"
+                      value={(slippageBps / 100).toFixed(1)}
+                      onChange={(e) => setSlippageBps(Math.round(parseFloat(e.target.value) * 100))}
+                      aria-label="Slippage tolerance in percent"
+                      aria-describedby={slippageWarning ? "slippage-warning" : undefined}
+                      aria-invalid={slippageWarning?.level === "error"}
+                    />
+                    {slippageWarning && (
+                      <span
+                        id="slippage-warning"
+                        className={
+                          slippageWarning.level === "error"
+                            ? styles.nadfunSlippageError
+                            : styles.nadfunSlippageWarn
+                        }
+                        role={slippageWarning.level === "error" ? "alert" : "status"}
+                      >
+                        {slippageWarning.msg}
+                      </span>
+                    )}
+                  </div>
+                  <div className={`${styles.nadfunField} ${styles.nadfunFieldSm}`}>
+                    <label className={styles.nadfunLabel} htmlFor="nadfun-deadline">
+                      Deadline (min)
+                    </label>
+                    <input
+                      id="nadfun-deadline"
+                      className={styles.nadfunInput}
+                      type="number"
+                      min="1"
+                      max="120"
+                      value={deadlineMinutes}
+                      onChange={(e) => setDeadlineMinutes(parseInt(e.target.value, 10) || 30)}
+                      aria-label="Transaction deadline in minutes"
+                    />
+                  </div>
+                </div>
+
+                {/* Quick slippage presets */}
+                <div className={styles.nadfunPresets} aria-label="Slippage presets">
+                  {[50, 100, 200, 500].map((bps) => (
+                    <button
+                      key={bps}
+                      type="button"
+                      className="ghost-btn"
+                      onClick={() => setSlippageBps(bps)}
+                      aria-pressed={slippageBps === bps}
+                    >
+                      {bps / 100}%
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
 
           {/* Quote */}
@@ -697,26 +741,44 @@ export function NadFunTradingWidget({ tokenAddress }: NadFunTradingWidgetProps) 
                 {` (slippage ${(slippageBps / 100).toFixed(1)}%)`}
               </span>
               {quoteSecondsLeft > 0 && (
-                <span
-                  className={`${styles.nadfunCountdownBadge} ${quoteSecondsLeft <= 5 ? styles.nadfunCountdownUrgent : ""}`}
-                  aria-label={`Quote valid for ${quoteSecondsLeft} seconds`}
-                >
-                  ⏱ {quoteSecondsLeft}s
-                </span>
+                <div style={{ marginTop: "0.35rem" }}>
+                  {/* Visual progress bar for quote validity */}
+                  <div
+                    style={{
+                      height: "3px",
+                      borderRadius: "999px",
+                      background: "rgba(255,255,255,0.1)",
+                      overflow: "hidden",
+                    }}
+                    aria-hidden="true"
+                  >
+                    <div
+                      style={{
+                        height: "100%",
+                        width: `${(quoteSecondsLeft / 30) * 100}%`,
+                        background: quoteSecondsLeft <= 5 ? "var(--danger)" : "var(--success)",
+                        transition: "width 1s linear, background 0.3s ease",
+                      }}
+                    />
+                  </div>
+                  <span
+                    style={{ fontSize: "0.7rem", color: "var(--muted)" }}
+                    aria-label={`Quote valid for ${quoteSecondsLeft} seconds`}
+                  >
+                    Quote valid for {quoteSecondsLeft}s
+                  </span>
+                </div>
               )}
             </div>
           )}
 
-          {quoteExpired && !quote && !quoteLoading && (
+          {(quoteExpired && !quote && !quoteLoading) || (tabSwitchNotice && !quote) ? (
             <div className={styles.nadfunQuoteExpired} role="status" aria-live="polite">
-              Quote expired — get a new quote
+              {tabSwitchNotice && !quote
+                ? `Switched to ${tabSwitchNotice} — refresh quote below`
+                : "Quote expired — get a fresh price"}
             </div>
-          )}
-          {tabSwitchNotice && !quote && (
-            <div className={styles.nadfunTabSwitchNotice} role="status" aria-live="polite">
-              Switched to {tabSwitchNotice} — click Get Quote for a new price
-            </div>
-          )}
+          ) : null}
 
           {/* Execute */}
           {isConnected ? (

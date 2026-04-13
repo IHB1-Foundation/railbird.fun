@@ -46,29 +46,37 @@ export function WalletButton() {
     return () => clearTimeout(timer);
   }, [errorVisible, displayedError]);
 
-  const handleConnect = () => { clearError(); setErrorVisible(false); connect(); };
-  const handleAuthenticate = () => { clearError(); setErrorVisible(false); authenticate(); };
+  const handleConnect = () => {
+    clearError();
+    setErrorVisible(false);
+    connect();
+  };
+  const handleAuthenticate = () => {
+    clearError();
+    setErrorVisible(false);
+    authenticate();
+  };
   const handleDisconnect = () => setShowDisconnectConfirm(true);
-  const confirmDisconnect = () => { disconnect(); setShowDisconnectConfirm(false); };
+  const confirmDisconnect = () => {
+    disconnect();
+    setShowDisconnectConfirm(false);
+  };
   const dismissError = () => setErrorVisible(false);
 
-  const errorEl = errorVisible && displayedError ? (
-    <span className={styles.errorMessage}>
-      {displayedError}
-      <button
-        className={styles.errorDismiss}
-        onClick={dismissError}
-        aria-label="Dismiss error"
-      >
-        ×
-      </button>
-    </span>
-  ) : null;
+  const errorEl =
+    errorVisible && displayedError ? (
+      <span className={styles.errorMessage}>
+        {displayedError}
+        <button className={styles.errorDismiss} onClick={dismissError} aria-label="Dismiss error">
+          ×
+        </button>
+      </span>
+    ) : null;
 
   // Not connected
   if (!isConnected) {
     return (
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+      <div className={styles.walletWrapper}>
         <button
           onClick={handleConnect}
           disabled={isLoading}
@@ -86,9 +94,13 @@ export function WalletButton() {
   // Connected but not authenticated
   if (!isAuthenticated) {
     return (
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+      <div className={styles.walletWrapper}>
         <div className={styles.walletStatus} role="group" aria-label="Wallet status">
-          <span className={styles.walletAddress} title={address || undefined} aria-label={`Connected address: ${address || ""}`}>
+          <span
+            className={styles.walletAddress}
+            title={address || undefined}
+            aria-label={`Connected address: ${address || ""}`}
+          >
             {shortenAddress(address || "")}
           </span>
           <button
@@ -126,12 +138,22 @@ export function WalletButton() {
 
   // Fully authenticated
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
-      <div className={`${styles.walletStatus} ${styles.authenticated}`} role="group" aria-label="Authenticated wallet">
-        <span className={styles.walletAddress} title={address || undefined} aria-label={`Signed-in address: ${address || ""}`}>
+    <div className={styles.walletWrapper}>
+      <div
+        className={`${styles.walletStatus} ${styles.authenticated}`}
+        role="group"
+        aria-label="Authenticated wallet"
+      >
+        <span
+          className={styles.walletAddress}
+          title={address || undefined}
+          aria-label={`Signed-in address: ${address || ""}`}
+        >
           {shortenAddress(address || "")}
         </span>
-        <span className={styles.authBadge} aria-live="polite">Signed In</span>
+        <span className={styles.authBadge} aria-live="polite">
+          Signed In
+        </span>
         <button
           onClick={handleDisconnect}
           className={`${styles.walletButton} ${styles.disconnect}`}

@@ -133,6 +133,11 @@
   align-items: flex-start;
   gap: 0.8rem;
   margin-bottom: 1rem;
+  min-width: 0;
+}
+
+.tableHeader > * {
+  min-width: 0;
 }
 
 .tableHeadingMeta {

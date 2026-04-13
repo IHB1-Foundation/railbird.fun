@@ -21,8 +21,12 @@ export function ChipRain({ duration = 9000, onComplete }: ChipRainProps) {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    const resizeCanvas = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    resizeCanvas();
+    window.addEventListener("resize", resizeCanvas);
 
     const CHIP_COLORS = [
       ["#ef4444", "#b91c1c"],
@@ -144,7 +148,10 @@ export function ChipRain({ duration = 9000, onComplete }: ChipRainProps) {
     }
 
     frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("resize", resizeCanvas);
+    };
   }, [duration, onComplete]);
 
   return (

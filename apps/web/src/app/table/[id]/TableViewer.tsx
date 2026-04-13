@@ -127,11 +127,10 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
     getHoleCards,
   );
 
-  // Stringify seats for stable memo key
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const seatsKey = useMemo(() => JSON.stringify(table.seats), [JSON.stringify(table.seats)]);
+  // Stable memo key for seats — stringify once, use as dep
+  const seatsJson = JSON.stringify(table.seats);
   const normalizedSeats = useMemo(() => {
-    const parsed = JSON.parse(seatsKey) as typeof table.seats;
+    const parsed = JSON.parse(seatsJson) as typeof table.seats;
     const byIndex = new Map(parsed.map((seat) => [seat.seatIndex, seat]));
     return Array.from({ length: maxSeats }, (_, seatIndex) => {
       return (
@@ -147,7 +146,7 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
       );
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [maxSeats, seatsKey]);
+  }, [maxSeats, seatsJson]);
 
   const seatByIndex = useMemo(
     () => new Map(normalizedSeats.map((seat) => [seat.seatIndex, seat])),

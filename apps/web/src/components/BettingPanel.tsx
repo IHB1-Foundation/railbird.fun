@@ -556,7 +556,7 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
       )}
 
       <div className={styles.betLayout}>
-        <div className={styles.betAgentGrid}>
+        <div className={styles.betAgentGrid} role="radiogroup" aria-label="Select agent to bet on">
           {market.map((entry) => (
             <article
               key={entry.seatIndex}
@@ -595,7 +595,7 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
               <div className={styles.betProbBar}>
                 <div
                   className={styles.betProbFill}
-                  style={{ width: `${Math.round(entry.winProb * 100)}%` }}
+                  style={{ transform: `scaleX(${entry.winProb})` }}
                 />
                 <span className={styles.betProbLabel}>
                   {toImpliedPercent(entry.winProb)} win est.

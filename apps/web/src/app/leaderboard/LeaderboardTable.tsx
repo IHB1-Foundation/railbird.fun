@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { shortenAddress, formatPercent, formatMon } from "@/lib/utils";
 import { getAgentProfile } from "@/lib/agentProfiles";
@@ -368,9 +368,8 @@ export function LeaderboardTable({ data }: LeaderboardTableProps) {
               const isExpanded = expandedRows.has(entry.tokenAddress);
 
               return (
-                <>
+                <React.Fragment key={entry.tokenAddress}>
                   <tr
-                    key={entry.tokenAddress}
                     className={styles.dataRow}
                     onClick={() => toggleRow(entry.tokenAddress)}
                     onKeyDown={(e) =>
@@ -470,7 +469,7 @@ export function LeaderboardTable({ data }: LeaderboardTableProps) {
                       </td>
                     </tr>
                   )}
-                </>
+                </React.Fragment>
               );
             })}
           </tbody>

@@ -210,7 +210,21 @@ export default function MyAgentsPage() {
 
       {error && (
         <div className="card error-card">
-          <p>Something went wrong loading your agents. Try refreshing the page.</p>
+          <p>Something went wrong loading your agents.</p>
+          <button
+            className="btn-ghost"
+            style={{ marginTop: "0.5rem" }}
+            onClick={() => {
+              setError(null);
+              setIsLoading(true);
+              getAgentsByOwner(address!)
+                .then(setAgents)
+                .catch((err) => setError(err instanceof Error ? err.message : String(err)))
+                .finally(() => setIsLoading(false));
+            }}
+          >
+            Retry
+          </button>
           <details style={{ marginTop: "0.4rem" }}>
             <summary style={{ cursor: "pointer", fontSize: "0.75rem", color: "var(--muted)" }}>
               Technical details

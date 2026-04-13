@@ -112,7 +112,7 @@ abstract contract SeatManager is PokerTableBase {
         require(owner != address(0), "S3");
         require(buyIn >= bigBlind * 10, "S4");
         if (playerRegistry != address(0)) {
-            require(IPlayerRegistry(playerRegistry).isRegistered(owner), "Agent not registered in PlayerRegistry");
+            require(IPlayerRegistry(playerRegistry).isRegistered(owner), "S13");
         }
         address(chipToken).safeTransferFrom(msg.sender, address(this), buyIn);
 
@@ -274,14 +274,22 @@ abstract contract SeatManager is PokerTableBase {
         if (playerRegistry == address(0)) return;
         address vault = IPlayerRegistry(playerRegistry).getVault(owner);
         if (vault == address(0)) return;
-        try IPlayerVaultBuyIn(vault).fundBuyIn(address(this), amount) {} catch {}
+        try IPlayerVaultBuyIn(vault).fundBuyIn(address(this), amount) {
+            return;
+        } catch {
+            return;
+        }
     }
 
     function _notifyVaultRelease(address owner, uint256 amount) internal {
         if (playerRegistry == address(0) || amount == 0) return;
         address vault = IPlayerRegistry(playerRegistry).getVault(owner);
         if (vault == address(0)) return;
-        try IPlayerVaultBuyIn(vault).releaseEscrow(address(this), amount) {} catch {}
+        try IPlayerVaultBuyIn(vault).releaseEscrow(address(this), amount) {
+            return;
+        } catch {
+            return;
+        }
     }
 
     function _isSeatOccupied(uint8 seatIndex) internal view returns (bool) {
@@ -321,7 +329,6 @@ abstract contract SeatManager is PokerTableBase {
     function _evictBustedSeats() internal override {
         for (uint8 i = 0; i < numSeats; i++) {
             if (seats[i].owner != address(0) && seats[i].stack == 0) {
-                address owner = seats[i].owner;
                 delete seats[i];
                 needsPostBlind[i] = false;
                 emit SeatUpdated(i, address(0), address(0), 0);

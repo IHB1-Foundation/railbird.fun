@@ -158,7 +158,11 @@ abstract contract SettlementEngine is PokerTableBase {
                 } else {
                     pnl = -int256(seats[i].totalHandBet);
                 }
-                try IPlayerVaultPnl(vault).onSettlement(handId, pnl) {} catch {}
+                try IPlayerVaultPnl(vault).onSettlement(handId, pnl) {
+                    continue;
+                } catch {
+                    continue;
+                }
             }
         }
 

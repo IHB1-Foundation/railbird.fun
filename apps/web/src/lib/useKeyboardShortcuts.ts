@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useCallback } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 
 // Keyboard shortcut sequences: g+<key> for navigation, ? for help overlay
@@ -8,8 +8,16 @@ import { useRouter } from "next/navigation";
 
 export function useKeyboardShortcuts() {
   const router = useRouter();
-  const buffer: string[] = [];
-  let bufferTimer: ReturnType<typeof setTimeout> | null = null;
+  const bufferRef = useRef<string[]>([]);
+  const bufferTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const resetBuffer = useCallback(() => {
+    bufferRef.current.length = 0;
+    if (bufferTimerRef.current) {
+      clearTimeout(bufferTimerRef.current);
+      bufferTimerRef.current = null;
+    }
+  }, []);
 
   const handleKey = useCallback(
     (e: KeyboardEvent) => {
@@ -21,37 +29,56 @@ export function useKeyboardShortcuts() {
       const key = e.key.toLowerCase();
 
       // ? — toggle help
-      if (key === "?" && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+      if (key === "?" && !e.ctrlKey && !e.metaKey && !e.altKey) {
         // Dispatch custom event that the help overlay listens to
         window.dispatchEvent(new CustomEvent("keyboard-help-toggle"));
         return;
       }
 
       // Accumulate g+<key> chord
+      const buffer = bufferRef.current;
       buffer.push(key);
-      if (bufferTimer) clearTimeout(bufferTimer);
-      bufferTimer = setTimeout(() => { buffer.length = 0; }, 600);
+      if (buffer.length > 2) buffer.shift();
+      if (bufferTimerRef.current) clearTimeout(bufferTimerRef.current);
+      bufferTimerRef.current = setTimeout(() => {
+        bufferRef.current.length = 0;
+        bufferTimerRef.current = null;
+      }, 600);
 
       if (buffer.length === 2 && buffer[0] === "g") {
         const dest = buffer[1];
-        buffer.length = 0;
-        if (bufferTimer) clearTimeout(bufferTimer);
+        resetBuffer();
 
         switch (dest) {
-          case "h": router.push("/"); break;
-          case "l": router.push("/live"); break;
-          case "b": router.push("/leaderboard"); break;
-          case "c": router.push("/create-agent"); break;
-          case "e": router.push("/evolution"); break;
-          case "m": router.push("/me"); break;
+          case "h":
+            router.push("/");
+            break;
+          case "l":
+            router.push("/live");
+            break;
+          case "b":
+            router.push("/leaderboard");
+            break;
+          case "c":
+            router.push("/create-agent");
+            break;
+          case "e":
+            router.push("/evolution");
+            break;
+          case "m":
+            router.push("/me");
+            break;
         }
       }
     },
-    [router] // eslint-disable-line react-hooks/exhaustive-deps
+    [resetBuffer, router],
   );
 
   useEffect(() => {
     window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  }, [handleKey]);
+    return () => {
+      window.removeEventListener("keydown", handleKey);
+      resetBuffer();
+    };
+  }, [handleKey, resetBuffer]);
 }

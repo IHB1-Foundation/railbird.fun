@@ -217,6 +217,7 @@ contract ChainlinkVRFAdapter is IVRFAdapter {
         emit RandomnessFulfilled(internalId, chainlinkRequestId, req.table, randomness);
 
         // Callback into PokerTable — identical to ProductionVRFAdapter.
+        // solhint-disable-next-line avoid-low-level-calls
         (bool success,) = req.table.call(
             abi.encodeWithSignature("fulfillVRF(uint256,uint256)", internalId, randomness)
         );

@@ -11,18 +11,6 @@ interface BreadcrumbProps {
   crumbs: Crumb[];
 }
 
-const srStyle: React.CSSProperties = {
-  position: "absolute",
-  width: "1px",
-  height: "1px",
-  padding: 0,
-  margin: "-1px",
-  overflow: "hidden",
-  clip: "rect(0,0,0,0)",
-  whiteSpace: "nowrap",
-  border: 0,
-};
-
 export function Breadcrumb({ crumbs }: BreadcrumbProps) {
   if (crumbs.length === 0) return null;
   const parent = crumbs[crumbs.length - 2];
@@ -44,7 +32,11 @@ export function Breadcrumb({ crumbs }: BreadcrumbProps) {
       >
         {crumbs.map((crumb, i) => (
           <li key={i} style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
-            {i > 0 && <span aria-hidden="true" style={{ opacity: 0.5 }}>›</span>}
+            {i > 0 && (
+              <span aria-hidden="true" style={{ opacity: 0.5 }}>
+                ›
+              </span>
+            )}
             {crumb.href ? (
               <Link
                 href={crumb.href}

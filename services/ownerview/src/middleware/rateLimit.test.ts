@@ -1,7 +1,7 @@
-import { describe, it, mock } from "node:test";
+import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
-import type { Request, Response, NextFunction } from "express";
-import { createRateLimiter } from "./rateLimit.js";
+import type { Request, NextFunction } from "express";
+import { createRateLimiter, resetRateLimiterBuckets } from "./rateLimit.js";
 
 function mockReq(ip: string, path = "/auth/nonce"): Request {
   return {
@@ -17,9 +17,17 @@ function mockRes() {
   const res = {
     _statusCode: () => statusCode,
     _headers: () => headers,
-    status(code: number) { statusCode = code; return res; },
-    json(_body: unknown) { return res; },
-    set(k: string, v: string) { headers[k] = v; return res; },
+    status(code: number) {
+      statusCode = code;
+      return res;
+    },
+    json(_body: unknown) {
+      return res;
+    },
+    set(k: string, v: string) {
+      headers[k] = v;
+      return res;
+    },
   };
   return res;
 }
@@ -27,10 +35,16 @@ function mockRes() {
 function noop(): void {}
 
 describe("createRateLimiter", () => {
+  beforeEach(() => {
+    resetRateLimiterBuckets();
+  });
+
   it("allows requests within limit", () => {
     const limiter = createRateLimiter({ maxRequests: 5, windowMs: 60_000 });
     let passCount = 0;
-    const next: NextFunction = () => { passCount++; };
+    const next: NextFunction = () => {
+      passCount++;
+    };
     for (let i = 0; i < 5; i++) {
       limiter(mockReq(`allow-${i}`), mockRes() as any, next);
     }
@@ -41,7 +55,9 @@ describe("createRateLimiter", () => {
     const limiter = createRateLimiter({ maxRequests: 10, windowMs: 60_000 });
     const ip = "5.6.7.8";
     let passCount = 0;
-    const next: NextFunction = () => { passCount++; };
+    const next: NextFunction = () => {
+      passCount++;
+    };
     for (let i = 0; i < 10; i++) {
       limiter(mockReq(ip), mockRes() as any, next);
     }
@@ -70,7 +86,9 @@ describe("createRateLimiter", () => {
       socket: { remoteAddress: "127.0.0.1" },
     } as unknown as Request;
     let pass = 0;
-    const next: NextFunction = () => { pass++; };
+    const next: NextFunction = () => {
+      pass++;
+    };
     limiter(req, mockRes() as any, next);
     assert.equal(pass, 1);
     const res = mockRes();
@@ -82,7 +100,9 @@ describe("createRateLimiter", () => {
     const limiter = createRateLimiter({ maxRequests: 1, windowMs: 60_000 });
     const ip = "11.11.11.11";
     let pass = 0;
-    const next: NextFunction = () => { pass++; };
+    const next: NextFunction = () => {
+      pass++;
+    };
     limiter(mockReq(ip, "/auth/nonce"), mockRes() as any, next);
     limiter(mockReq(ip, "/auth/verify"), mockRes() as any, next);
     assert.equal(pass, 2);

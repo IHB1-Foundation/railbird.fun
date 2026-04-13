@@ -15,6 +15,14 @@ interface RateLimitOptions {
 const buckets = new Map<string, TokenBucket>();
 
 /**
+ * Reset all in-memory buckets.
+ * Primarily used by tests so suites don't leak limiter state into each other.
+ */
+export function resetRateLimiterBuckets(): void {
+  buckets.clear();
+}
+
+/**
  * Return the client IP from X-Forwarded-For (trust proxy) or socket address.
  */
 function getClientIp(req: Request): string {
@@ -67,7 +75,13 @@ export function createRateLimiter(opts: RateLimitOptions): RequestHandler {
 }
 
 /** Pre-built limiter: 10 req/min for auth endpoints */
-export const authRateLimiter: RequestHandler = createRateLimiter({ maxRequests: 10, windowMs: 60_000 });
+export const authRateLimiter: RequestHandler = createRateLimiter({
+  maxRequests: 10,
+  windowMs: 60_000,
+});
 
 /** Pre-built limiter: 30 req/min for dealer/owner endpoints */
-export const dealerRateLimiter: RequestHandler = createRateLimiter({ maxRequests: 30, windowMs: 60_000 });
+export const dealerRateLimiter: RequestHandler = createRateLimiter({
+  maxRequests: 30,
+  windowMs: 60_000,
+});

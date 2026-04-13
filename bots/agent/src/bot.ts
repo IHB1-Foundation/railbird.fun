@@ -1,24 +1,41 @@
 // Main Agent Bot implementation
 
 import { ChainClient, GameState, type TableState } from "./chain/client.js";
-import { OwnerViewClient, type HoleCardsResponse } from "./auth/ownerviewClient.js";
-import { SimpleStrategy, type Strategy, Decision, type DecisionContext, type HoleCards } from "./strategy/index.js";
+import { OwnerViewClient } from "./auth/ownerviewClient.js";
+import type { GTODeviationData } from "./auth/ownerviewClient.js";
+import {
+  SimpleStrategy,
+  type Strategy,
+  Decision,
+  type DecisionContext,
+  type HoleCards,
+} from "./strategy/index.js";
 import { signMessage } from "viem/accounts";
 import { keccak256, encodeAbiParameters, createWalletClient, http } from "viem";
 import type { Chain } from "viem";
 import { deriveEncryptionKeyPair } from "./auth/encryptionKey.js";
-import { CircuitBreaker, CircuitOpenError, createLogger, PLAYER_REGISTRY_ABI } from "@playerco/shared";
+import {
+  CircuitBreaker,
+  CircuitOpenError,
+  createLogger,
+  PLAYER_REGISTRY_ABI,
+} from "@playerco/shared";
 import type { VectorStore } from "./rag/vectorStore.js";
 import { embedHand } from "./rag/embedder.js";
 import type { HandSummary } from "./rag/types.js";
 import { randomBytes } from "node:crypto";
 import { PerformanceEvaluator } from "./evolution/evaluator.js";
 import { StrategyOptimizer } from "./evolution/optimizer.js";
-import type { HandResult, PerformanceScore, StrategyParams } from "./evolution/types.js";
+import type {
+  EvolutionConfig,
+  HandResult,
+  PerformanceScore,
+  StrategyParams,
+} from "./evolution/types.js";
 import { DEFAULT_EVOLUTION_CONFIG } from "./evolution/types.js";
 import { DeviationAnalyzer } from "./gto/deviation.js";
 import type { DeviationResult } from "./gto/deviation.js";
-import type { FacingAction } from "./gto/ranges.js";
+import type { FacingAction, Position } from "./gto/ranges.js";
 import { OpponentTracker } from "./opponent/tracker.js";
 import { CounterStrategyAdvisor } from "./opponent/counter.js";
 import type { ObservedAction } from "./opponent/types.js";
@@ -38,7 +55,7 @@ export interface AgentBotConfig {
   /** PlayerRegistry contract address for on-chain strategy registration. */
   playerRegistryAddress?: `0x${string}`;
   /** Per-agent evolution tuning (overrides DEFAULT_EVOLUTION_CONFIG). */
-  evolutionConfig?: Partial<import("./evolution/types.js").EvolutionConfig>;
+  evolutionConfig?: Partial<EvolutionConfig>;
   /** Number of preflop decisions to collect before applying GTO feedback (default: 20). */
   gtoFeedbackWindowSize?: number;
 }
@@ -76,8 +93,16 @@ export class AgentBot {
   };
 
   // Circuit breakers for external services
-  private ownerViewCircuit = new CircuitBreaker({ name: "OwnerView", failureThreshold: 5, recoveryTimeoutMs: 30_000 });
-  private rpcCircuit = new CircuitBreaker({ name: "RPC", failureThreshold: 5, recoveryTimeoutMs: 30_000 });
+  private ownerViewCircuit = new CircuitBreaker({
+    name: "OwnerView",
+    failureThreshold: 5,
+    recoveryTimeoutMs: 30_000,
+  });
+  private rpcCircuit = new CircuitBreaker({
+    name: "RPC",
+    failureThreshold: 5,
+    recoveryTimeoutMs: 30_000,
+  });
 
   // RAG: per-hand tracking for VectorStore recording
   private vectorStore: VectorStore | undefined;
@@ -94,13 +119,13 @@ export class AgentBot {
   // T-1203: Opponent modeling
   private opponentTracker = new OpponentTracker();
   private counterAdvisor = new CounterStrategyAdvisor();
-  private previousState: import("./chain/client.js").TableState | null = null;
+  private previousState: TableState | null = null;
   private lastObservedActionBlock: bigint = 0n;
 
   // T-1103: Self-play evolution state
   private evolutionEvaluator = new PerformanceEvaluator();
   private evolutionOptimizer: StrategyOptimizer;
-  private effectiveEvolutionConfig: import("./evolution/types.js").EvolutionConfig;
+  private effectiveEvolutionConfig: EvolutionConfig;
   private handResultWindow: HandResult[] = [];
   private prevPerformanceScore: PerformanceScore | null = null;
   private evolutionTotalHandsEvaluated: number = 0;
@@ -197,16 +222,26 @@ export class AgentBot {
    * Called at startup and after each evolution update.
    * Fails silently — must not block game play.
    */
-  async registerStrategyOnChain(overrideParams?: { aggressionBps: number; tightnessBps: number; bluffFreqBps: number; personaId: string }): Promise<void> {
+  async registerStrategyOnChain(overrideParams?: {
+    aggressionBps: number;
+    tightnessBps: number;
+    bluffFreqBps: number;
+    personaId: string;
+  }): Promise<void> {
     const registryAddress = this.config.playerRegistryAddress;
     if (!registryAddress) return;
 
-    const strat = this.strategy as unknown as { persona?: { id: string; aggression: number; tightness: number; bluffFrequency: number } };
+    const strat = this.strategy as unknown as {
+      persona?: { id: string; aggression: number; tightness: number; bluffFrequency: number };
+    };
     const persona = strat.persona;
     const personaId = overrideParams?.personaId ?? persona?.id ?? "unknown";
-    const aggressionBps = overrideParams?.aggressionBps ?? Math.round((persona?.aggression ?? 0.5) * 10000);
-    const tightnessBps = overrideParams?.tightnessBps ?? Math.round((persona?.tightness ?? 0.5) * 10000);
-    const bluffFreqBps = overrideParams?.bluffFreqBps ?? Math.round((persona?.bluffFrequency ?? 0.3) * 10000);
+    const aggressionBps =
+      overrideParams?.aggressionBps ?? Math.round((persona?.aggression ?? 0.5) * 10000);
+    const tightnessBps =
+      overrideParams?.tightnessBps ?? Math.round((persona?.tightness ?? 0.5) * 10000);
+    const bluffFreqBps =
+      overrideParams?.bluffFreqBps ?? Math.round((persona?.bluffFrequency ?? 0.3) * 10000);
 
     const configData = JSON.stringify({ personaId, aggressionBps, tightnessBps, bluffFreqBps });
     const configHash = keccak256(new TextEncoder().encode(configData) as unknown as `0x${string}`);
@@ -219,7 +254,11 @@ export class AgentBot {
     };
 
     const account = (await import("viem/accounts")).privateKeyToAccount(this.config.privateKey);
-    const walletClient = createWalletClient({ account, chain, transport: http(this.config.rpcUrl) });
+    const walletClient = createWalletClient({
+      account,
+      chain,
+      transport: http(this.config.rpcUrl),
+    });
 
     await walletClient.writeContract({
       address: registryAddress,
@@ -235,7 +274,10 @@ export class AgentBot {
       ],
     });
 
-    logger.info({ personaId, aggressionBps, tightnessBps, bluffFreqBps }, "Strategy registered on-chain");
+    logger.info(
+      { personaId, aggressionBps, tightnessBps, bluffFreqBps },
+      "Strategy registered on-chain",
+    );
   }
 
   /**
@@ -247,7 +289,14 @@ export class AgentBot {
     this.currentBackoffMs = pollInterval;
     let encryptionPubKey: Uint8Array | null = null;
 
-    logger.info({ address: this.address, table: this.config.pokerTableAddress, maxHands: maxHands || "unlimited" }, "AgentBot starting");
+    logger.info(
+      {
+        address: this.address,
+        table: this.config.pokerTableAddress,
+        maxHands: maxHands || "unlimited",
+      },
+      "AgentBot starting",
+    );
 
     // Authenticate with OwnerView if available
     if (this.ownerviewClient) {
@@ -283,7 +332,10 @@ export class AgentBot {
 
     // Register current strategy on-chain (T-1102)
     await this.registerStrategyOnChain().catch((err: unknown) => {
-      logger.warn({ err: err instanceof Error ? err.message : String(err) }, "Strategy on-chain registration failed (non-fatal)");
+      logger.warn(
+        { err: err instanceof Error ? err.message : String(err) },
+        "Strategy on-chain registration failed (non-fatal)",
+      );
     });
 
     while (this.running) {
@@ -313,7 +365,10 @@ export class AgentBot {
       await this.sleep(this.currentBackoffMs);
     }
 
-    logger.info({ stats: { ...this.stats, totalProfit: this.stats.totalProfit.toString() } }, "AgentBot stopped");
+    logger.info(
+      { stats: { ...this.stats, totalProfit: this.stats.totalProfit.toString() } },
+      "AgentBot stopped",
+    );
   }
 
   /**
@@ -332,7 +387,8 @@ export class AgentBot {
     if (
       this.encryptionKeyState !== "registering" ||
       this.encryptionKeyRegistrationStartedAt === null ||
-      Date.now() - this.encryptionKeyRegistrationStartedAt < AgentBot.ENCRYPTION_KEY_REGISTRATION_TIMEOUT_MS
+      Date.now() - this.encryptionKeyRegistrationStartedAt <
+        AgentBot.ENCRYPTION_KEY_REGISTRATION_TIMEOUT_MS
     ) {
       return;
     }
@@ -346,11 +402,17 @@ export class AgentBot {
     try {
       const { secp256k1 } = await import("@noble/curves/secp256k1.js");
       const pubKey = secp256k1.getPublicKey(this.encryptionPrivKey, true);
-      const alreadyRegistered = await this.chainClient.registerEncryptionKey(this.mySeatIndex, pubKey);
+      const alreadyRegistered = await this.chainClient.registerEncryptionKey(
+        this.mySeatIndex,
+        pubKey,
+      );
       // null return means "same key already on-chain" → treat as registered
       this.encryptionKeyState = "registered";
       this.encryptionKeyRegistrationStartedAt = null;
-      logger.info({ status: alreadyRegistered === null ? "already set" : alreadyRegistered }, "Recovered from stuck encryption key registration");
+      logger.info(
+        { status: alreadyRegistered === null ? "already set" : alreadyRegistered },
+        "Recovered from stuck encryption key registration",
+      );
     } catch (error) {
       logger.warn({ error }, "Stuck registration recovery failed, rolling back to unregistered");
       this.encryptionKeyState = "unregistered";
@@ -421,12 +483,20 @@ export class AgentBot {
           }
         }
         this.lastStack = currentStack;
-        logger.info({ handId: String(this.lastHandId), handsPlayed: this.stats.handsPlayed, handsWon: this.stats.handsWon }, "Hand complete");
+        logger.info(
+          {
+            handId: String(this.lastHandId),
+            handsPlayed: this.stats.handsPlayed,
+            handsWon: this.stats.handsWon,
+          },
+          "Hand complete",
+        );
 
         // Record hand to VectorStore for RAG
         if (this.vectorStore && this.currentHandActions.length > 0) {
           try {
-            const result: "won" | "lost" | "split" = profit > 0n ? "won" : profit === 0n ? "split" : "lost";
+            const result: "won" | "lost" | "split" =
+              profit > 0n ? "won" : profit === 0n ? "split" : "lost";
             const summary: HandSummary = {
               handId: String(this.lastHandId),
               position: this.currentHandPosition,
@@ -441,13 +511,22 @@ export class AgentBot {
             };
             const embedding = embedHand(summary);
             this.vectorStore.add({ handId: summary.handId, summary, embedding });
-            logger.debug({ handId: summary.handId, result, ragSize: this.vectorStore.size }, "Hand recorded to VectorStore");
+            logger.debug(
+              { handId: summary.handId, result, ragSize: this.vectorStore.size },
+              "Hand recorded to VectorStore",
+            );
             // Persist async (non-blocking)
             this.vectorStore.persist().catch((err: unknown) => {
-              logger.warn({ err: err instanceof Error ? err.message : String(err) }, "VectorStore persist failed (non-fatal)");
+              logger.warn(
+                { err: err instanceof Error ? err.message : String(err) },
+                "VectorStore persist failed (non-fatal)",
+              );
             });
           } catch (err) {
-            logger.warn({ err: err instanceof Error ? err.message : String(err) }, "Failed to record hand to VectorStore (non-fatal)");
+            logger.warn(
+              { err: err instanceof Error ? err.message : String(err) },
+              "Failed to record hand to VectorStore (non-fatal)",
+            );
           }
         }
         // T-1103: Record hand result for evolution
@@ -469,7 +548,10 @@ export class AgentBot {
             this.stats.handsPlayed >= this.effectiveEvolutionConfig.minHandsBeforeEval
           ) {
             this.runEvolutionAsync(this.handResultWindow.splice(0)).catch((err: unknown) => {
-              logger.warn({ err: err instanceof Error ? err.message : String(err) }, "Evolution run failed (non-fatal)");
+              logger.warn(
+                { err: err instanceof Error ? err.message : String(err) },
+                "Evolution run failed (non-fatal)",
+              );
             });
           }
         }
@@ -477,7 +559,10 @@ export class AgentBot {
         // T-1203: Finalize opponent stats for the completed hand
         const participatingSeatIndexes = state.seats
           .map((_, i) => i)
-          .filter((i) => state.seats[i].owner !== "0x0000000000000000000000000000000000000000" as string);
+          .filter(
+            (i) =>
+              state.seats[i].owner !== ("0x0000000000000000000000000000000000000000" as string),
+          );
         this.opponentTracker.finalizeHand(participatingSeatIndexes);
 
         // Reset per-hand tracking
@@ -504,7 +589,7 @@ export class AgentBot {
         const prev = prevState.seats[seatIdx];
         const curr = state.seats[seatIdx];
         if (!prev || !curr) continue;
-        if (prev.owner === "0x0000000000000000000000000000000000000000" as string) continue;
+        if (prev.owner === ("0x0000000000000000000000000000000000000000" as string)) continue;
 
         const street = gameStateToStreet(state.gameState);
         if (!street) continue;
@@ -512,13 +597,30 @@ export class AgentBot {
         let observed: ObservedAction | null = null;
         if (prev.isActive && !curr.isActive) {
           // Player folded
-          observed = { seatIndex: seatIdx, action: "fold", street, facingBet: state.hand.currentBet > 0n, isVoluntary: true };
+          observed = {
+            seatIndex: seatIdx,
+            action: "fold",
+            street,
+            facingBet: state.hand.currentBet > 0n,
+            isVoluntary: true,
+          };
         } else if (curr.currentBet > prev.currentBet) {
           // Bet increased — raise or bet
           const facingBet = prevState.hand.currentBet > 0n;
-          observed = { seatIndex: seatIdx, action: facingBet ? "raise" : "bet", street, facingBet, isVoluntary: true };
+          observed = {
+            seatIndex: seatIdx,
+            action: facingBet ? "raise" : "bet",
+            street,
+            facingBet,
+            isVoluntary: true,
+          };
           this.currentHandOpponentActions.push(`${street}:raise`);
-        } else if (curr.currentBet === state.hand.currentBet && curr.currentBet === prev.currentBet && prev.isActive && curr.isActive) {
+        } else if (
+          curr.currentBet === state.hand.currentBet &&
+          curr.currentBet === prev.currentBet &&
+          prev.isActive &&
+          curr.isActive
+        ) {
           // No change in bet — either check or call
           const facingBet = prevState.hand.currentBet > 0n;
           const action = facingBet ? "call" : "check";
@@ -548,10 +650,16 @@ export class AgentBot {
         this.chainClient
           .revealDecision(rev.handId, rev.seatIndex, rev.action, rev.reasoning, rev.salt)
           .then((txHash) => {
-            logger.info({ handId: String(rev.handId), seatIndex: rev.seatIndex, txHash }, "AI decision revealed on-chain");
+            logger.info(
+              { handId: String(rev.handId), seatIndex: rev.seatIndex, txHash },
+              "AI decision revealed on-chain",
+            );
           })
           .catch((err: unknown) => {
-            logger.warn({ err: err instanceof Error ? err.message : String(err), handId: String(rev.handId) }, "Failed to reveal AI decision (non-fatal)");
+            logger.warn(
+              { err: err instanceof Error ? err.message : String(err), handId: String(rev.handId) },
+              "Failed to reveal AI decision (non-fatal)",
+            );
           });
       }
       // Try to start a new hand if settled
@@ -560,7 +668,7 @@ export class AgentBot {
           logger.debug("Attempting to start new hand");
           await this.chainClient.startHand();
           logger.info("Started new hand");
-        } catch (error) {
+        } catch {
           // Another player might have started, or conditions not met
           // This is expected behavior, not an error
         }
@@ -592,7 +700,10 @@ export class AgentBot {
         const turnKey = `${state.currentHandId}:${state.gameState}:${state.hand.actorSeat}:${state.lastActionBlock}`;
         if (this.waitingTurnKey !== turnKey) {
           this.waitingTurnKey = turnKey;
-          logger.info({ turnActionDelayMs, eligibleAt: String(actionEligibleAt) }, "My turn started, waiting before action");
+          logger.info(
+            { turnActionDelayMs, eligibleAt: String(actionEligibleAt) },
+            "My turn started, waiting before action",
+          );
         }
         return;
       }
@@ -621,10 +732,7 @@ export class AgentBot {
     if (this.ownerviewClient) {
       try {
         const response = await this.ownerViewCircuit.execute(() =>
-          this.ownerviewClient!.getHoleCards(
-            String(state.tableId),
-            String(state.currentHandId)
-          )
+          this.ownerviewClient!.getHoleCards(String(state.tableId), String(state.currentHandId)),
         );
         if (response.holeCards && response.holeCards.length >= 2) {
           holeCards = {
@@ -649,7 +757,7 @@ export class AgentBot {
           if (this.consecutiveCircuitOpenHands >= AgentBot.FOLD_ONLY_THRESHOLD) {
             logger.error(
               { consecutiveHands: this.consecutiveCircuitOpenHands },
-              "CRITICAL: OwnerView has been unavailable for extended period; playing blind"
+              "CRITICAL: OwnerView has been unavailable for extended period; playing blind",
             );
           }
         } else {
@@ -658,7 +766,10 @@ export class AgentBot {
           this.stats.apiErrors++;
           // Escalate every CRITICAL_API_ERROR_INTERVAL cumulative errors
           if (this.stats.apiErrors % AgentBot.CRITICAL_API_ERROR_INTERVAL === 0) {
-            logger.error({ apiErrors: this.stats.apiErrors }, "CRITICAL: cumulative hole card API errors; OwnerView may be degraded");
+            logger.error(
+              { apiErrors: this.stats.apiErrors },
+              "CRITICAL: cumulative hole card API errors; OwnerView may be degraded",
+            );
           }
         }
       }
@@ -674,14 +785,20 @@ export class AgentBot {
       const opponentSections: string[] = [];
       for (let i = 0; i < state.seats.length; i++) {
         if (i === seatIndex) continue;
-        if (state.seats[i].owner === "0x0000000000000000000000000000000000000000" as string) continue;
+        if (state.seats[i].owner === ("0x0000000000000000000000000000000000000000" as string))
+          continue;
         const profile = this.opponentTracker.getProfile(i);
         const advice = this.counterAdvisor.advise(profile);
-        opponentSections.push(this.counterAdvisor.formatPromptSection(i, `Seat ${i}`, profile, advice));
+        opponentSections.push(
+          this.counterAdvisor.formatPromptSection(i, `Seat ${i}`, profile, advice),
+        );
       }
       if (opponentSections.length > 0) opponentRead = opponentSections.join("\n");
     } catch (err) {
-      logger.debug({ err: err instanceof Error ? err.message : String(err) }, "[OpponentModel] Failed to build opponent read (non-fatal)");
+      logger.debug(
+        { err: err instanceof Error ? err.message : String(err) },
+        "[OpponentModel] Failed to build opponent read (non-fatal)",
+      );
     }
 
     // Build decision context
@@ -696,14 +813,21 @@ export class AgentBot {
 
     // Track position for RAG
     if (this.mySeatIndex !== null) {
-      this.currentHandPosition = describePositionSimple(this.mySeatIndex, state.buttonSeat, state.seats.length);
+      this.currentHandPosition = describePositionSimple(
+        this.mySeatIndex,
+        state.buttonSeat,
+        state.seats.length,
+      );
     }
     // Track hole cards for RAG
     if (holeCards) {
       this.currentHandHoleCards = formatHoleCardsSimple(holeCards);
     }
     // Track community cards for RAG
-    const commCards = state.communityCards.filter((c: number) => c !== 255).map(formatCardSimple).join(" ");
+    const commCards = state.communityCards
+      .filter((c: number) => c !== 255)
+      .map(formatCardSimple)
+      .join(" ");
     if (commCards) {
       this.currentHandCommunityCards = commCards;
     }
@@ -717,7 +841,7 @@ export class AgentBot {
         raiseAmount: decision.raiseAmount ? String(decision.raiseAmount) : undefined,
         hasReasoning: !!decision.reasoning,
       },
-      "Deciding action"
+      "Deciding action",
     );
 
     if (decision.reasoning) {
@@ -726,7 +850,9 @@ export class AgentBot {
     }
 
     // Generate AI decision commitment (fire-and-forget, pre-action)
-    const actionStr = decision.raiseAmount ? `raise ${String(decision.raiseAmount)}` : decision.action;
+    const actionStr = decision.raiseAmount
+      ? `raise ${String(decision.raiseAmount)}`
+      : decision.action;
     const reasoning = decision.reasoning ?? "";
     const salt = `0x${randomBytes(32).toString("hex")}` as `0x${string}`;
     const commitHash = keccak256(
@@ -738,8 +864,8 @@ export class AgentBot {
           { name: "reasoning", type: "string" },
           { name: "salt", type: "bytes32" },
         ],
-        [state.currentHandId, seatIndex, actionStr, reasoning, salt]
-      )
+        [state.currentHandId, seatIndex, actionStr, reasoning, salt],
+      ),
     );
     // T-1206: Compute reasoning hash for on-chain audit trail
     let reasoningHash: `0x${string}` | undefined;
@@ -750,15 +876,37 @@ export class AgentBot {
         breakdown: decision.breakdown,
         opponentRead: opponentRead,
       });
-      reasoningHash = keccak256(new TextEncoder().encode(reasoningPayload) as unknown as `0x${string}`);
+      reasoningHash = keccak256(
+        new TextEncoder().encode(reasoningPayload) as unknown as `0x${string}`,
+      );
     }
-    this.chainClient.commitDecision(seatIndex, commitHash, reasoningHash).then((txHash) => {
-      logger.debug({ handId: String(state.currentHandId), seatIndex, txHash, hasReasoningHash: !!reasoningHash }, "AI decision committed on-chain");
-      // Store for later reveal (overwrites any prior commitment for this hand)
-      this.pendingReveal = { handId: state.currentHandId, seatIndex, action: actionStr, reasoning, salt };
-    }).catch((err: unknown) => {
-      logger.debug({ err: err instanceof Error ? err.message : String(err) }, "commitDecision failed (non-fatal)");
-    });
+    this.chainClient
+      .commitDecision(seatIndex, commitHash, reasoningHash)
+      .then((txHash) => {
+        logger.debug(
+          {
+            handId: String(state.currentHandId),
+            seatIndex,
+            txHash,
+            hasReasoningHash: !!reasoningHash,
+          },
+          "AI decision committed on-chain",
+        );
+        // Store for later reveal (overwrites any prior commitment for this hand)
+        this.pendingReveal = {
+          handId: state.currentHandId,
+          seatIndex,
+          action: actionStr,
+          reasoning,
+          salt,
+        };
+      })
+      .catch((err: unknown) => {
+        logger.debug(
+          { err: err instanceof Error ? err.message : String(err) },
+          "commitDecision failed (non-fatal)",
+        );
+      });
 
     // Submit action
     let txHash: string | undefined;
@@ -786,19 +934,39 @@ export class AgentBot {
       // Fire-and-forget: send reasoning + GTO deviation to OwnerView (non-blocking)
       if (decision.reasoning && this.ownerviewClient) {
         // T-1104: compute GTO deviation for preflop decisions
-        let gtoDeviation: import("./auth/ownerviewClient.js").GTODeviationData | undefined;
-        const isPreflop = state.gameState === (await import("./chain/client.js")).GameState.BETTING_PRE;
+        let gtoDeviation: GTODeviationData | undefined;
+        const isPreflop =
+          state.gameState === (await import("./chain/client.js")).GameState.BETTING_PRE;
         if (isPreflop && holeCards) {
           try {
             const facingAction: FacingAction = amountToCall > 0n ? "raise" : "none";
-            const positionStr = describePositionSimple(seatIndex, state.buttonSeat, state.seats.length);
-            const posMap: Record<string, import("./gto/ranges.js").Position> = {
-              BTN: "BTN", SB: "SB", BB: "BB", CO: "CO", UTG: "UTG", MP: "UTG",
+            const positionStr = describePositionSimple(
+              seatIndex,
+              state.buttonSeat,
+              state.seats.length,
+            );
+            const posMap: Record<string, Position> = {
+              BTN: "BTN",
+              SB: "SB",
+              BB: "BB",
+              CO: "CO",
+              UTG: "UTG",
+              MP: "UTG",
             };
             const gtoPos = posMap[positionStr] ?? "BTN";
-            const aiAction = decision.action === Decision.RAISE ? "raise"
-              : decision.action === Decision.FOLD ? "fold" : "call";
-            const deviation = this.gtoAnalyzer.analyze(gtoPos, holeCards.card1, holeCards.card2, aiAction, facingAction);
+            const aiAction =
+              decision.action === Decision.RAISE
+                ? "raise"
+                : decision.action === Decision.FOLD
+                  ? "fold"
+                  : "call";
+            const deviation = this.gtoAnalyzer.analyze(
+              gtoPos,
+              holeCards.card1,
+              holeCards.card2,
+              aiAction,
+              facingAction,
+            );
             gtoDeviation = {
               gtoAction: deviation.gtoAction,
               gtoFrequency: deviation.gtoFrequency,
@@ -807,7 +975,16 @@ export class AgentBot {
               deviationType: deviation.deviationType,
               severity: deviation.severity,
             };
-            logger.debug({ gtoPos, aiAction, gtoAction: deviation.gtoAction, isDeviation: deviation.isDeviation, severity: deviation.severity.toFixed(2) }, "[GTO] Deviation analysis");
+            logger.debug(
+              {
+                gtoPos,
+                aiAction,
+                gtoAction: deviation.gtoAction,
+                isDeviation: deviation.isDeviation,
+                severity: deviation.severity.toFixed(2),
+              },
+              "[GTO] Deviation analysis",
+            );
             // N-3: accumulate deviations for feedback loop
             this.gtoDeviationWindow.push(deviation);
             const feedbackWindowSize = this.config.gtoFeedbackWindowSize ?? 20;
@@ -815,16 +992,22 @@ export class AgentBot {
               this.applyGTOFeedback(this.gtoDeviationWindow.splice(0));
             }
           } catch (err) {
-            logger.debug({ err: err instanceof Error ? err.message : String(err) }, "[GTO] Deviation analysis failed (non-fatal)");
+            logger.debug(
+              { err: err instanceof Error ? err.message : String(err) },
+              "[GTO] Deviation analysis failed (non-fatal)",
+            );
           }
         }
 
         // T-1203: Build opponentRead data for OwnerView
-        let opponentReadData: { seatIndex: number; profile: unknown; counterAdvice: unknown } | undefined;
+        let opponentReadData:
+          | { seatIndex: number; profile: unknown; counterAdvice: unknown }
+          | undefined;
         if (opponentRead) {
           for (let i = 0; i < state.seats.length; i++) {
             if (i === seatIndex) continue;
-            if (state.seats[i].owner === "0x0000000000000000000000000000000000000000" as string) continue;
+            if (state.seats[i].owner === ("0x0000000000000000000000000000000000000000" as string))
+              continue;
             const profile = this.opponentTracker.getProfile(i);
             const counterAdvice = this.counterAdvisor.advise(profile);
             opponentReadData = { seatIndex: i, profile, counterAdvice };
@@ -846,7 +1029,10 @@ export class AgentBot {
           breakdown: decision.breakdown,
         };
         this.ownerviewClient.submitReasoning(reasoningParams).catch((err: unknown) => {
-          logger.warn({ err: err instanceof Error ? err.message : String(err) }, "Failed to submit reasoning (non-fatal)");
+          logger.warn(
+            { err: err instanceof Error ? err.message : String(err) },
+            "Failed to submit reasoning (non-fatal)",
+          );
         });
       }
     } catch (error) {
@@ -883,7 +1069,7 @@ export class AgentBot {
 
     // Rate of each deviation type
     const tighterRate = (agg.deviationsByType.tighter ?? 0) / n;
-    const looserRate  = (agg.deviationsByType.looser  ?? 0) / n;
+    const looserRate = (agg.deviationsByType.looser ?? 0) / n;
     const passiveRate = (agg.deviationsByType.passive ?? 0) / n;
     const aggressiveRate = (agg.deviationsByType.aggressive ?? 0) / n;
 
@@ -914,7 +1100,7 @@ export class AgentBot {
     if (aggressionDelta === 0 && tightnessDelta === 0) {
       logger.debug(
         { conformance: agg.conformance.toFixed(1), avgSeverity: agg.avgSeverity.toFixed(2) },
-        "[GTO-FEEDBACK] No adjustment needed"
+        "[GTO-FEEDBACK] No adjustment needed",
       );
       return;
     }
@@ -922,7 +1108,7 @@ export class AgentBot {
     const prevAggression = persona.aggression;
     const prevTightness = persona.tightness;
     persona.aggression = Math.max(0.1, Math.min(0.95, persona.aggression + aggressionDelta));
-    persona.tightness  = Math.max(0.1, Math.min(0.95, persona.tightness  + tightnessDelta));
+    persona.tightness = Math.max(0.1, Math.min(0.95, persona.tightness + tightnessDelta));
 
     logger.info(
       {
@@ -930,9 +1116,9 @@ export class AgentBot {
         avgSeverity: agg.avgSeverity.toFixed(2),
         deviations: agg.deviationsByType,
         aggression: `${prevAggression.toFixed(3)}→${persona.aggression.toFixed(3)}`,
-        tightness:  `${prevTightness.toFixed(3)}→${persona.tightness.toFixed(3)}`,
+        tightness: `${prevTightness.toFixed(3)}→${persona.tightness.toFixed(3)}`,
       },
-      "[GTO-FEEDBACK] Strategy adjusted toward GTO"
+      "[GTO-FEEDBACK] Strategy adjusted toward GTO",
     );
   }
 
@@ -957,7 +1143,11 @@ export class AgentBot {
       bluffFrequency: persona.bluffFrequency,
     };
 
-    const result = this.evolutionOptimizer.evolve(currentParams, currentScore, this.prevPerformanceScore);
+    const result = this.evolutionOptimizer.evolve(
+      currentParams,
+      currentScore,
+      this.prevPerformanceScore,
+    );
     this.prevPerformanceScore = currentScore;
 
     if (result.evolved) {
@@ -971,7 +1161,7 @@ export class AgentBot {
           delta,
           composite: currentScore.composite.toFixed(3),
         },
-        "[EVOLUTION] Strategy parameters updated"
+        "[EVOLUTION] Strategy parameters updated",
       );
 
       // Update in-memory persona params
@@ -986,10 +1176,16 @@ export class AgentBot {
         tightnessBps: Math.round(newParams.tightness * 10000),
         bluffFreqBps: Math.round(newParams.bluffFrequency * 10000),
       }).catch((err: unknown) => {
-        logger.warn({ err: err instanceof Error ? err.message : String(err) }, "Evolution on-chain registration failed (non-fatal)");
+        logger.warn(
+          { err: err instanceof Error ? err.message : String(err) },
+          "Evolution on-chain registration failed (non-fatal)",
+        );
       });
     } else {
-      logger.debug({ composite: currentScore.composite.toFixed(3) }, "[EVOLUTION] No improvement — parameters unchanged");
+      logger.debug(
+        { composite: currentScore.composite.toFixed(3) },
+        "[EVOLUTION] No improvement — parameters unchanged",
+      );
     }
   }
 
@@ -1047,10 +1243,12 @@ function inferBoardTexture(communityCards: string): string {
   if (cards.length === 0) return "preflop";
   const suits = cards.map((c) => c[c.length - 1]);
   const uniqueSuits = new Set(suits).size;
-  const ranks = cards.map((c) => {
-    const r = "23456789TJQKA".indexOf(c[0]);
-    return r >= 0 ? r : 0;
-  }).sort((a, b) => a - b);
+  const ranks = cards
+    .map((c) => {
+      const r = "23456789TJQKA".indexOf(c[0]);
+      return r >= 0 ? r : 0;
+    })
+    .sort((a, b) => a - b);
   const gaps = ranks.slice(1).map((r, i) => r - ranks[i]);
   const isConnected = gaps.every((g) => g <= 2);
   if (uniqueSuits === 1) return "flush draw";

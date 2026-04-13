@@ -16,6 +16,10 @@ import type { TableState } from "../chain/client.js";
 
 const logger = createLogger({ service: "agent-bot:gemini" });
 
+type HandInfoWithActionCount = DecisionContext["tableState"]["hand"] & {
+  actionsInRound?: number;
+};
+
 interface GeminiGenerateContentResponse {
   candidates?: Array<{
     content?: {
@@ -80,10 +84,18 @@ class OpponentModel {
     return s;
   }
 
-  recordFold(seatIndex: number) { this.getOrCreate(seatIndex).foldCount++; }
-  recordCall(seatIndex: number) { this.getOrCreate(seatIndex).callCount++; }
-  recordRaise(seatIndex: number) { this.getOrCreate(seatIndex).raiseCount++; }
-  recordCheck(seatIndex: number) { this.getOrCreate(seatIndex).checkCount++; }
+  recordFold(seatIndex: number) {
+    this.getOrCreate(seatIndex).foldCount++;
+  }
+  recordCall(seatIndex: number) {
+    this.getOrCreate(seatIndex).callCount++;
+  }
+  recordRaise(seatIndex: number) {
+    this.getOrCreate(seatIndex).raiseCount++;
+  }
+  recordCheck(seatIndex: number) {
+    this.getOrCreate(seatIndex).checkCount++;
+  }
 
   /**
    * Returns a human-readable tendency label for a seat.
@@ -144,9 +156,8 @@ export class GeminiStrategy implements Strategy {
     this.endpointBaseUrl = config.endpointBaseUrl || DEFAULT_ENDPOINT_BASE_URL;
     this.persona = config.persona;
     this.vectorStore = config.vectorStore;
-    this.fallbackStrategy = config.fallbackStrategy || new SimpleStrategy(
-      config.persona?.aggression ?? 0.3
-    );
+    this.fallbackStrategy =
+      config.fallbackStrategy || new SimpleStrategy(config.persona?.aggression ?? 0.3);
   }
 
   async decide(context: DecisionContext): Promise<ActionDecision> {
@@ -210,7 +221,7 @@ export class GeminiStrategy implements Strategy {
       // Opponent's bet increased → called or raised
       if (cur.currentBet > old.currentBet) {
         const delta = cur.currentBet - old.currentBet;
-        if (delta > (state.bigBlind * 2n) && cur.currentBet > prev.hand.currentBet) {
+        if (delta > state.bigBlind * 2n && cur.currentBet > prev.hand.currentBet) {
           this.opponentModel.recordRaise(i);
           logger.debug({ seatIndex: i, delta: String(delta) }, "OpponentModel: inferred raise");
         } else {
@@ -221,11 +232,17 @@ export class GeminiStrategy implements Strategy {
       }
 
       // Bet unchanged and seat still active — likely checked (or no action yet this tick)
-      if (cur.isActive && old.isActive && cur.currentBet === old.currentBet &&
-          state.hand.actorSeat !== i) {
+      if (
+        cur.isActive &&
+        old.isActive &&
+        cur.currentBet === old.currentBet &&
+        state.hand.actorSeat !== i
+      ) {
         // Only record check if we think they had a chance to act
         // (actionsInRound increased but their bet didn't change)
-        if ((state.hand as any).actionsInRound > (prev.hand as any).actionsInRound) {
+        const currentActionsInRound = (state.hand as HandInfoWithActionCount).actionsInRound ?? 0;
+        const previousActionsInRound = (prev.hand as HandInfoWithActionCount).actionsInRound ?? 0;
+        if (currentActionsInRound > previousActionsInRound) {
           this.opponentModel.recordCheck(i);
           logger.debug({ seatIndex: i }, "OpponentModel: inferred check");
         }
@@ -236,8 +253,7 @@ export class GeminiStrategy implements Strategy {
   private async requestDecision(prompt: string): Promise<string> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
-    const url =
-      `${this.endpointBaseUrl}/models/${encodeURIComponent(this.model)}:generateContent`;
+    const url = `${this.endpointBaseUrl}/models/${encodeURIComponent(this.model)}:generateContent`;
 
     try {
       const response = await fetch(url, {
@@ -276,15 +292,16 @@ export class GeminiStrategy implements Strategy {
 
   private sanitizeDecision(
     rawDecision: GeminiRawDecision,
-    context: DecisionContext
+    context: DecisionContext,
   ): ActionDecision {
     const fallback = this.defaultSafeDecision(context);
     const normalizedAction = normalizeAction(rawDecision.action);
 
     // Extract reasoning (graceful — never blocks action decision)
-    const reasoning = typeof rawDecision.reasoning === "string" && rawDecision.reasoning.trim()
-      ? rawDecision.reasoning.trim()
-      : undefined;
+    const reasoning =
+      typeof rawDecision.reasoning === "string" && rawDecision.reasoning.trim()
+        ? rawDecision.reasoning.trim()
+        : undefined;
 
     // Extract factors (graceful — never blocks action decision)
     const factors = extractReasoningFactors(rawDecision.factors);
@@ -327,11 +344,7 @@ export class GeminiStrategy implements Strategy {
       return { ...fallback, reasoning, factors, breakdown };
     }
 
-    const clampedRaise = clampBigInt(
-      requestedRaise,
-      bounds.minRaiseTarget,
-      bounds.maxRaiseTarget
-    );
+    const clampedRaise = clampBigInt(requestedRaise, bounds.minRaiseTarget, bounds.maxRaiseTarget);
     return {
       action: Decision.RAISE,
       raiseAmount: clampedRaise,
@@ -357,8 +370,9 @@ export class GeminiStrategy implements Strategy {
     // Build a query vector from the current situation
     const holeCardsFormatted = formatHoleCards(context.holeCards).join(" ") || "unknown";
     const state = context.tableState;
-    const communityCount = state.communityCards.filter(c => c !== 255).length;
-    const boardTexture = communityCount === 0 ? "preflop" : communityCount <= 3 ? "flop" : "turn or river";
+    const communityCount = state.communityCards.filter((c) => c !== 255).length;
+    const boardTexture =
+      communityCount === 0 ? "preflop" : communityCount <= 3 ? "flop" : "turn or river";
 
     const queryVec = buildQueryVector({
       position,
@@ -369,7 +383,7 @@ export class GeminiStrategy implements Strategy {
     const similar = this.vectorStore.search(queryVec, 3);
     if (similar.length === 0) return null;
 
-    const lines = similar.map((v, i) => {
+    const lines = similar.map((v) => {
       const s = v.summary;
       const pnlStr = s.pnl >= 0n ? `+${s.pnl}` : String(s.pnl);
       return `  - Hand #${v.handId} (${s.position}, ${s.holeCards}): ${s.actions.join("→")} → ${s.result} ${pnlStr} chips.${s.reasoning ? ` Reasoning: "${s.reasoning.slice(0, 80)}..."` : ""}`;
@@ -389,14 +403,19 @@ export class GeminiStrategy implements Strategy {
     const isAllInCall = context.amountToCall > seat.stack && seat.stack > 0n;
 
     // Pot odds
-    const potOddsStr = context.amountToCall > 0n && context.amountToCall <= seat.stack
-      ? `${Number((context.amountToCall * 100n) / (state.hand.pot + context.amountToCall))}%`
-      : "n/a";
+    const potOddsStr =
+      context.amountToCall > 0n && context.amountToCall <= seat.stack
+        ? `${Number((context.amountToCall * 100n) / (state.hand.pot + context.amountToCall))}%`
+        : "n/a";
 
     // Community cards description
-    const communityDesc = state.communityCards.length > 0
-      ? state.communityCards.filter(c => c !== 255).map(formatCard).join(" ") || "none"
-      : "none";
+    const communityDesc =
+      state.communityCards.length > 0
+        ? state.communityCards
+            .filter((c) => c !== 255)
+            .map(formatCard)
+            .join(" ") || "none"
+        : "none";
 
     // Position
     const position = describePosition(context.mySeatIndex, state.buttonSeat, state.seats.length);
@@ -435,21 +454,23 @@ export class GeminiStrategy implements Strategy {
         maxRaiseTarget: raiseBounds.maxRaiseTarget.toString(),
       },
       opponents: opponentInfo,
-      ...(this.persona ? {
-        personality: {
-          aggression: this.persona.aggression,
-          tightness: this.persona.tightness,
-          bluffFrequency: this.persona.bluffFrequency,
-          style: `${this.persona.name} — ${this.persona.description}`,
-        },
-      } : {}),
+      ...(this.persona
+        ? {
+            personality: {
+              aggression: this.persona.aggression,
+              tightness: this.persona.tightness,
+              bluffFrequency: this.persona.bluffFrequency,
+              style: `${this.persona.name} — ${this.persona.description}`,
+            },
+          }
+        : {}),
     };
 
     // Build RAG context from similar past hands
     const ragSection = this.buildRagContext(context, position);
 
-    const systemLine = this.persona?.systemPromptOverride
-      ?? "You are a no-limit Texas Hold'em agent.";
+    const systemLine =
+      this.persona?.systemPromptOverride ?? "You are a no-limit Texas Hold'em agent.";
 
     return [
       systemLine,
@@ -585,9 +606,8 @@ function extractDecisionBreakdown(raw: unknown): DecisionBreakdown | undefined {
   const opponentRead = getString("opponentRead");
   const keyFactor = getString("keyFactor");
   const confidenceRaw = obj["confidence"];
-  const confidence = typeof confidenceRaw === "number"
-    ? Math.max(0, Math.min(100, Math.round(confidenceRaw)))
-    : 50;
+  const confidence =
+    typeof confidenceRaw === "number" ? Math.max(0, Math.min(100, Math.round(confidenceRaw))) : 50;
   if (!handStrength || !potOdds || !evEstimate || !opponentRead || !keyFactor) return undefined;
   return { handStrength, potOdds, evEstimate, opponentRead, keyFactor, confidence };
 }

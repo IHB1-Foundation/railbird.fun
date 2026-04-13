@@ -1,6 +1,6 @@
 // API routes tests
 
-import { describe, it, beforeEach, mock } from "node:test";
+import { describe, it } from "node:test";
 import assert from "node:assert";
 
 // Mock the database module before importing routes

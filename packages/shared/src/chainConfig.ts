@@ -1,13 +1,7 @@
 // @playerco/shared - Chain configuration system
 // No hardcoded addresses - all values loaded from environment
 
-import {
-  type ChainEnv,
-  type ChainConfig,
-  type Address,
-  type ContractAddresses,
-  ENV_VARS,
-} from "./types.js";
+import { type ChainEnv, type ChainConfig, type ContractAddresses, ENV_VARS } from "./types.js";
 
 /**
  * Known chain IDs by environment
@@ -36,7 +30,7 @@ const BLOCK_EXPLORERS: Record<ChainEnv, string> = {
 export class ChainConfigError extends Error {
   constructor(
     message: string,
-    public readonly missingVars?: string[]
+    public readonly missingVars?: string[],
   ) {
     super(message);
     this.name = "ChainConfigError";
@@ -62,33 +56,6 @@ function requireEnv(name: string): string {
 }
 
 /**
- * Gets an address from environment or throws if missing/invalid
- */
-function requireAddress(name: string): Address {
-  const value = requireEnv(name);
-  if (!isValidAddress(value)) {
-    throw new ChainConfigError(
-      `Invalid address for ${name}: "${value}" - must be 0x-prefixed 40 hex characters`
-    );
-  }
-  return value;
-}
-
-/**
- * Gets an optional address from environment, returns undefined if not set
- */
-function optionalAddress(name: string): Address | undefined {
-  const value = process.env[name];
-  if (!value) return undefined;
-  if (!isValidAddress(value)) {
-    throw new ChainConfigError(
-      `Invalid address for ${name}: "${value}" - must be 0x-prefixed 40 hex characters`
-    );
-  }
-  return value;
-}
-
-/**
  * Validates the chain environment value
  */
 function parseChainEnv(value: string): ChainEnv {
@@ -96,7 +63,7 @@ function parseChainEnv(value: string): ChainEnv {
     return value;
   }
   throw new ChainConfigError(
-    `Invalid CHAIN_ENV: "${value}" - must be one of: local, testnet, mainnet`
+    `Invalid CHAIN_ENV: "${value}" - must be one of: local, testnet, mainnet`,
   );
 }
 
@@ -105,16 +72,17 @@ function parseChainEnv(value: string): ChainEnv {
  * Validates each address and returns an array.
  */
 function parseAddressList(envName: string, raw: string): Address[] {
-  const parts = raw.split(",").map((s) => s.trim()).filter(Boolean);
+  const parts = raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
   if (parts.length === 0) {
-    throw new ChainConfigError(
-      `${envName} is set but contains no valid addresses`
-    );
+    throw new ChainConfigError(`${envName} is set but contains no valid addresses`);
   }
   for (const part of parts) {
     if (!isValidAddress(part)) {
       throw new ChainConfigError(
-        `Invalid address in ${envName}: "${part}" - must be 0x-prefixed 40 hex characters`
+        `Invalid address in ${envName}: "${part}" - must be 0x-prefixed 40 hex characters`,
       );
     }
   }
@@ -148,7 +116,7 @@ function loadContractAddresses(): ContractAddresses {
       missingVars.push(env);
     } else if (!isValidAddress(value)) {
       throw new ChainConfigError(
-        `Invalid address for ${env}: "${value}" - must be 0x-prefixed 40 hex characters`
+        `Invalid address for ${env}: "${value}" - must be 0x-prefixed 40 hex characters`,
       );
     } else {
       singles[key] = value;
@@ -158,7 +126,7 @@ function loadContractAddresses(): ContractAddresses {
   if (missingVars.length > 0) {
     throw new ChainConfigError(
       `Missing required contract addresses: ${missingVars.join(", ")}`,
-      missingVars
+      missingVars,
     );
   }
 
@@ -189,7 +157,7 @@ function validateVRFAdapterConfig(env: ChainEnv): void {
       `VRF_ADAPTER_TYPE must be "production" for ${env} environment (got: "${adapterType || ""}").\n` +
         `MockVRFAdapter is not allowed on non-local environments.\n` +
         `Deploy ProductionVRFAdapter and set VRF_ADAPTER_TYPE=production.`,
-      [ENV_VARS.VRF_ADAPTER_TYPE]
+      [ENV_VARS.VRF_ADAPTER_TYPE],
     );
   }
 }
@@ -282,7 +250,7 @@ export function clearChainConfigCache(): void {
  */
 export async function validateChainIdWithRpc(
   rpcUrl: string,
-  expectedChainId: number
+  expectedChainId: number,
 ): Promise<void> {
   let rpcChainId: number;
 
@@ -305,7 +273,7 @@ export async function validateChainIdWithRpc(
     rpcChainId = parseInt(json.result, 16);
   } catch (cause) {
     throw new ChainConfigError(
-      `Failed to validate chain ID via RPC (${rpcUrl}): ${cause instanceof Error ? cause.message : String(cause)}`
+      `Failed to validate chain ID via RPC (${rpcUrl}): ${cause instanceof Error ? cause.message : String(cause)}`,
     );
   }
 
@@ -313,7 +281,7 @@ export async function validateChainIdWithRpc(
     throw new ChainConfigError(
       `CHAIN_ID mismatch: configured CHAIN_ENV expects chain ID ${expectedChainId} ` +
         `but RPC at ${rpcUrl} returned chain ID ${rpcChainId}. ` +
-        `Check that RPC_URL and CHAIN_ENV point to the same network.`
+        `Check that RPC_URL and CHAIN_ENV point to the same network.`,
     );
   }
 }
@@ -323,7 +291,7 @@ export async function validateChainIdWithRpc(
  * Shorthand for getChainConfig().contracts[name]
  */
 export function getContractAddress<K extends keyof ContractAddresses>(
-  name: K
+  name: K,
 ): ContractAddresses[K] {
   return getChainConfig().contracts[name];
 }

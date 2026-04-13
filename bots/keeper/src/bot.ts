@@ -11,7 +11,7 @@ import {
 } from "./contractErrors.js";
 import { CircuitBreaker, CircuitOpenError, fetchWithTimeout, createLogger } from "@playerco/shared";
 import type { TreasuryAdvisor } from "./treasury/advisor.js";
-import type { RebalanceContext } from "./treasury/types.js";
+import type { RebalanceContext, RebalanceRecommendation } from "./treasury/types.js";
 
 const ZERO_BYTES32 = "0x0000000000000000000000000000000000000000000000000000000000000000";
 const DEFAULT_REQUEST_TIMEOUT_MS = parseInt(process.env.REQUEST_TIMEOUT_MS || "10000", 10);
@@ -103,8 +103,16 @@ export class KeeperBot {
   private treasuryAdvisor: TreasuryAdvisor | undefined;
 
   // Circuit breakers
-  private dealerCircuit = new CircuitBreaker({ name: "DealerAPI", failureThreshold: 5, recoveryTimeoutMs: 30_000 });
-  private rpcCircuit = new CircuitBreaker({ name: "RPC", failureThreshold: 5, recoveryTimeoutMs: 30_000 });
+  private dealerCircuit = new CircuitBreaker({
+    name: "DealerAPI",
+    failureThreshold: 5,
+    recoveryTimeoutMs: 30_000,
+  });
+  private rpcCircuit = new CircuitBreaker({
+    name: "RPC",
+    failureThreshold: 5,
+    recoveryTimeoutMs: 30_000,
+  });
 
   // Track last state to detect changes
   private lastHandId: bigint = 0n;
@@ -158,7 +166,15 @@ export class KeeperBot {
       this.tableId = await this.chainClient.getTableId();
     }
 
-    this.log.info({ address: this.address, table: this.config.pokerTableAddress, pollIntervalMs: pollInterval, dealerEnabled: this.hasDealerIntegration() }, "KeeperBot starting");
+    this.log.info(
+      {
+        address: this.address,
+        table: this.config.pokerTableAddress,
+        pollIntervalMs: pollInterval,
+        dealerEnabled: this.hasDealerIntegration(),
+      },
+      "KeeperBot starting",
+    );
 
     while (this.running) {
       try {
@@ -200,7 +216,10 @@ export class KeeperBot {
     }
 
     if (state.gameState !== this.lastGameState) {
-      this.log.info({ from: GameState[this.lastGameState], to: GameState[state.gameState] }, "State changed");
+      this.log.info(
+        { from: GameState[this.lastGameState], to: GameState[state.gameState] },
+        "State changed",
+      );
       this.lastGameState = state.gameState;
     }
 
@@ -283,15 +302,20 @@ export class KeeperBot {
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ tableAddress, handId, street, triggerAction, context: {} }),
         },
-        10_000
+        10_000,
       );
       if (res.ok) {
-        const payload = (await res.json()) as { entry?: { commentary?: string; personaContext?: string } };
+        const payload = (await res.json()) as {
+          entry?: { commentary?: string; personaContext?: string };
+        };
         commentary = payload.entry?.commentary;
         personaContext = payload.entry?.personaContext;
       }
     } catch (err) {
-      this.log.debug({ err: err instanceof Error ? err.message : String(err) }, "Commentary OwnerView call failed (non-fatal)");
+      this.log.debug(
+        { err: err instanceof Error ? err.message : String(err) },
+        "Commentary OwnerView call failed (non-fatal)",
+      );
       return;
     }
 
@@ -309,10 +333,13 @@ export class KeeperBot {
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ handId, street, commentary, personaContext }),
         },
-        5_000
+        5_000,
       );
     } catch (err) {
-      this.log.debug({ err: err instanceof Error ? err.message : String(err) }, "Commentary Indexer broadcast call failed (non-fatal)");
+      this.log.debug(
+        { err: err instanceof Error ? err.message : String(err) },
+        "Commentary Indexer broadcast call failed (non-fatal)",
+      );
     }
   }
 
@@ -322,7 +349,7 @@ export class KeeperBot {
   private async checkAndHandleTimeout(
     state: TableState,
     currentTimestamp: bigint,
-    currentBlock: bigint
+    currentBlock: bigint,
   ): Promise<void> {
     // Only in betting states
     if (!this.chainClient.isBettingState(state.gameState)) {
@@ -339,7 +366,10 @@ export class KeeperBot {
       return;
     }
 
-    this.log.info({ deadline: state.actionDeadline.toString(), current: currentTimestamp.toString() }, "Timeout detected");
+    this.log.info(
+      { deadline: state.actionDeadline.toString(), current: currentTimestamp.toString() },
+      "Timeout detected",
+    );
 
     // Jitter before acting to reduce collision with other keeper instances
     await this.coordinationJitter();
@@ -363,10 +393,7 @@ export class KeeperBot {
    * Check if VRF fulfillment is delayed and re-request if timeout exceeded.
    * VRF timeout is 5 minutes (on-chain constant VRF_TIMEOUT).
    */
-  private async checkAndReRequestVRF(
-    state: TableState,
-    currentTimestamp: bigint
-  ): Promise<void> {
+  private async checkAndReRequestVRF(state: TableState, currentTimestamp: bigint): Promise<void> {
     if (!this.chainClient.isVRFWaitingState(state.gameState)) {
       return;
     }
@@ -382,7 +409,10 @@ export class KeeperBot {
       return;
     }
 
-    this.log.info({ vrfRequestTs: state.vrfRequestTimestamp.toString(), current: currentTimestamp.toString() }, "VRF fulfillment delayed, re-requesting");
+    this.log.info(
+      { vrfRequestTs: state.vrfRequestTimestamp.toString(), current: currentTimestamp.toString() },
+      "VRF fulfillment delayed, re-requesting",
+    );
 
     // Jitter before acting to reduce collision with other keeper instances
     await this.coordinationJitter();
@@ -409,7 +439,7 @@ export class KeeperBot {
    */
   private async checkAndReRequestHoleCardVRF(
     state: TableState,
-    currentTimestamp: bigint
+    currentTimestamp: bigint,
   ): Promise<void> {
     if (!this.chainClient.isHoleCardVRFWaitingState(state.gameState)) {
       return;
@@ -427,7 +457,7 @@ export class KeeperBot {
 
     this.log.info(
       { vrfRequestTs: state.vrfRequestTimestamp.toString(), current: currentTimestamp.toString() },
-      "Hole card VRF delayed, re-requesting (may abort hand if retries exceeded)"
+      "Hole card VRF delayed, re-requesting (may abort hand if retries exceeded)",
     );
 
     await this.coordinationJitter();
@@ -530,7 +560,7 @@ export class KeeperBot {
     if (admin.toLowerCase() !== this.address.toLowerCase()) {
       this.log.warn(
         { dealer, admin, keeper: this.address },
-        "Keeper is not the configured dealer and cannot self-heal dealer assignment"
+        "Keeper is not the configured dealer and cannot self-heal dealer assignment",
       );
       return false;
     }
@@ -539,7 +569,7 @@ export class KeeperBot {
     this.recordAction("setDealer");
     this.log.info(
       { previousDealer: dealer, newDealer: this.address, tx: hash },
-      "Updated table dealer to keeper"
+      "Updated table dealer to keeper",
     );
     return true;
   }
@@ -566,7 +596,7 @@ export class KeeperBot {
     let commitments: Array<{ seatIndex: number; commitment: `0x${string}` }>;
     try {
       commitments = await this.dealerCircuit.execute(() =>
-        this.getDealerCommitments(state.currentHandId)
+        this.getDealerCommitments(state.currentHandId),
       );
     } catch (error) {
       if (error instanceof CircuitOpenError) {
@@ -589,9 +619,16 @@ export class KeeperBot {
       }
 
       try {
-        const hash = await this.chainClient.submitHoleCommit(state.currentHandId, seatIndex, commitment);
+        const hash = await this.chainClient.submitHoleCommit(
+          state.currentHandId,
+          seatIndex,
+          commitment,
+        );
         submitted++;
-        this.log.info({ handId: state.currentHandId.toString(), seatIndex, tx: hash }, "Submitted hole commit");
+        this.log.info(
+          { handId: state.currentHandId.toString(), seatIndex, tx: hash },
+          "Submitted hole commit",
+        );
       } catch (error) {
         if (!isCommitmentAlreadyExists(error)) {
           throw error;
@@ -631,9 +668,7 @@ export class KeeperBot {
 
     let commitments: Array<{ seatIndex: number; commitment: `0x${string}` }>;
     try {
-      commitments = await this.dealerCircuit.execute(() =>
-        this.getDealerCommitments(handId)
-      );
+      commitments = await this.dealerCircuit.execute(() => this.getDealerCommitments(handId));
     } catch (error) {
       if (error instanceof CircuitOpenError) {
         return;
@@ -656,14 +691,15 @@ export class KeeperBot {
 
       let reveal: { cards: [number, number]; salt: `0x${string}` };
       try {
-        reveal = await this.dealerCircuit.execute(() =>
-          this.getDealerReveal(handId, seatIndex)
-        );
+        reveal = await this.dealerCircuit.execute(() => this.getDealerReveal(handId, seatIndex));
       } catch (error) {
         if (error instanceof CircuitOpenError) {
           return;
         }
-        this.log.error({ err: error, handId: handId.toString(), seatIndex }, "Failed to get dealer reveal");
+        this.log.error(
+          { err: error, handId: handId.toString(), seatIndex },
+          "Failed to get dealer reveal",
+        );
         this.stats.apiErrors++;
         continue;
       }
@@ -673,7 +709,7 @@ export class KeeperBot {
           seatIndex,
           reveal.cards[0],
           reveal.cards[1],
-          reveal.salt
+          reveal.salt,
         );
         revealedCount++;
         this.log.info({ handId: handId.toString(), seatIndex, tx: hash }, "Revealed hole cards");
@@ -695,7 +731,7 @@ export class KeeperBot {
   }
 
   private async getDealerCommitments(
-    handId: bigint
+    handId: bigint,
   ): Promise<Array<{ seatIndex: number; commitment: `0x${string}` }>> {
     const baseUrl = this.config.ownerviewUrl!.replace(/\/$/, "");
     const tableId = this.tableId!.toString();
@@ -735,7 +771,7 @@ export class KeeperBot {
             seatOwners,
           }),
         },
-        DEFAULT_REQUEST_TIMEOUT_MS
+        DEFAULT_REQUEST_TIMEOUT_MS,
       );
       if (!dealRes.ok && dealRes.status !== 409) {
         const body = await dealRes.text().catch(() => "");
@@ -752,7 +788,7 @@ export class KeeperBot {
     const commitmentsRes = await fetchWithTimeout(
       `${baseUrl}/dealer/commitments?tableId=${encodeURIComponent(tableId)}&handId=${encodeURIComponent(handIdStr)}`,
       { headers: authHeader },
-      DEFAULT_REQUEST_TIMEOUT_MS
+      DEFAULT_REQUEST_TIMEOUT_MS,
     );
     if (!commitmentsRes.ok) {
       const body = await commitmentsRes.text().catch(() => "");
@@ -767,7 +803,7 @@ export class KeeperBot {
 
   private async getDealerReveal(
     handId: bigint,
-    seatIndex: number
+    seatIndex: number,
   ): Promise<{ cards: [number, number]; salt: `0x${string}` }> {
     const baseUrl = this.config.ownerviewUrl!.replace(/\/$/, "");
     const tableId = this.tableId!.toString();
@@ -777,7 +813,7 @@ export class KeeperBot {
     const res = await fetchWithTimeout(
       `${baseUrl}/dealer/reveal?tableId=${encodeURIComponent(tableId)}&handId=${encodeURIComponent(handIdStr)}&seatIndex=${seatIndex}`,
       { headers: authHeader },
-      DEFAULT_REQUEST_TIMEOUT_MS
+      DEFAULT_REQUEST_TIMEOUT_MS,
     );
     if (!res.ok) {
       const body = await res.text().catch(() => "");
@@ -818,7 +854,10 @@ export class KeeperBot {
    */
   private handleCoordinationRace(context: string, error: unknown): void {
     this.stats.coordinationSkips++;
-    this.log.info({ context, reason: String(error).split("\n")[0] }, "Coordination skip — another keeper acted first");
+    this.log.info(
+      { context, reason: String(error).split("\n")[0] },
+      "Coordination skip — another keeper acted first",
+    );
   }
 
   private isRateLimitError(error: unknown): boolean {
@@ -854,7 +893,8 @@ export class KeeperBot {
     // Ensure chipToken address is cached
     if (!this.chipTokenCache) {
       try {
-        const tokenAddr = this.config.autoRefillTokenAddress ?? await this.chainClient.getChipToken();
+        const tokenAddr =
+          this.config.autoRefillTokenAddress ?? (await this.chainClient.getChipToken());
         this.chipTokenCache = tokenAddr;
       } catch {
         return;
@@ -880,28 +920,45 @@ export class KeeperBot {
       const keeperIsOperator =
         seat.operator.toLowerCase() === this.chainClient.address.toLowerCase();
       if (!keeperIsOperator) {
-        this.log.debug({ seatIndex, operator: seat.operator }, "Auto-refill: seat needs refill but keeper is not operator, skipping");
+        this.log.debug(
+          { seatIndex, operator: seat.operator },
+          "Auto-refill: seat needs refill but keeper is not operator, skipping",
+        );
         continue;
       }
 
       if (this.refilledSeats.has(seatIndex)) continue;
       this.refilledSeats.add(seatIndex);
 
-      this.log.info({ seatIndex, owner: seat.owner, stack: seat.stack.toString() }, "Auto-refill: seat evicted, attempting re-registration");
+      this.log.info(
+        { seatIndex, owner: seat.owner, stack: seat.stack.toString() },
+        "Auto-refill: seat evicted, attempting re-registration",
+      );
 
       try {
         const approveHash = await this.chainClient.approveChipToken(tokenAddress, buyInAmount);
         this.log.info({ seatIndex, tx: approveHash }, "Auto-refill: approved token spend");
 
-        const registerHash = await this.chainClient.registerSeat(seatIndex, seat.owner, this.chainClient.address, buyInAmount);
+        const registerHash = await this.chainClient.registerSeat(
+          seatIndex,
+          seat.owner,
+          this.chainClient.address,
+          buyInAmount,
+        );
         this.stats.autoRefillsTriggered++;
         this.recordAction("autoRefill");
-        this.log.info({ seatIndex, owner: seat.owner, buyIn: buyInAmount.toString(), tx: registerHash }, "Auto-refill: seat re-registered");
+        this.log.info(
+          { seatIndex, owner: seat.owner, buyIn: buyInAmount.toString(), tx: registerHash },
+          "Auto-refill: seat re-registered",
+        );
 
         // Allow re-refill in a future session if evicted again
         this.refilledSeats.delete(seatIndex);
       } catch (error) {
-        this.log.warn({ err: error, seatIndex }, "Auto-refill: failed to re-register seat (non-fatal)");
+        this.log.warn(
+          { err: error, seatIndex },
+          "Auto-refill: failed to re-register seat (non-fatal)",
+        );
         // Don't delete from refilledSeats — retry next process restart
       }
     }
@@ -913,7 +970,8 @@ export class KeeperBot {
    */
   private async checkAndTriggerSideBetSettlement(state: TableState): Promise<void> {
     if (!this.config.sideBetPoolAddress) return;
-    if (state.gameState !== GameState.SETTLED && state.gameState !== GameState.WAITING_FOR_SEATS) return;
+    if (state.gameState !== GameState.SETTLED && state.gameState !== GameState.WAITING_FOR_SEATS)
+      return;
     if (state.currentHandId === 0n) return;
     if (this.sideBetSettledHands.has(state.currentHandId)) return;
 
@@ -934,7 +992,10 @@ export class KeeperBot {
       if (msg.includes("pool does not exist") || msg.includes("pool already settled")) {
         this.log.debug({ handId: state.currentHandId.toString() }, "No side bet pool to settle");
       } else {
-        this.log.warn({ err: error, handId: state.currentHandId.toString() }, "Failed to settle side bets (non-fatal)");
+        this.log.warn(
+          { err: error, handId: state.currentHandId.toString() },
+          "Failed to settle side bets (non-fatal)",
+        );
       }
     }
   }
@@ -947,7 +1008,8 @@ export class KeeperBot {
    */
   private async checkAndTriggerRebalancing(state: TableState, currentBlock: bigint): Promise<void> {
     if (!this.chainClient.hasVault()) return;
-    if (state.gameState !== GameState.SETTLED && state.gameState !== GameState.WAITING_FOR_SEATS) return;
+    if (state.gameState !== GameState.SETTLED && state.gameState !== GameState.WAITING_FOR_SEATS)
+      return;
     if (state.currentHandId === 0n) return;
 
     // Avoid retrying the same hand within this process run
@@ -963,8 +1025,10 @@ export class KeeperBot {
 
     if (!status.canRebalance) {
       // Not yet eligible (same hand or wrong state); mark to avoid repeated checks
-      if (status.currentHandId === state.currentHandId &&
-          status.lastRebalancedHandId === state.currentHandId) {
+      if (
+        status.currentHandId === state.currentHandId &&
+        status.lastRebalancedHandId === state.currentHandId
+      ) {
         this.rebalancedHands.add(state.currentHandId);
       }
       return;
@@ -972,10 +1036,13 @@ export class KeeperBot {
 
     // Respect the on-chain randomized delay (set by vault after settlement)
     if (currentBlock < status.rebalanceEligibleBlock) {
-      this.log.debug({
-        blocksRemaining: status.blocksRemaining.toString(),
-        eligibleBlock: status.rebalanceEligibleBlock.toString(),
-      }, "Rebalance not yet eligible, waiting for delay");
+      this.log.debug(
+        {
+          blocksRemaining: status.blocksRemaining.toString(),
+          eligibleBlock: status.rebalanceEligibleBlock.toString(),
+        },
+        "Rebalance not yet eligible, waiting for delay",
+      );
       return;
     }
 
@@ -1001,12 +1068,24 @@ export class KeeperBot {
 
     // AI advisory path (TREASURY_ADVISOR_ENABLED=true)
     if (this.treasuryAdvisor) {
-      await this.runAdvisedRebalancing(status.currentHandId, externalAssets, treasuryShares, maxMonBps, maxTokenBps);
+      await this.runAdvisedRebalancing(
+        status.currentHandId,
+        externalAssets,
+        treasuryShares,
+        maxMonBps,
+        maxTokenBps,
+      );
       return;
     }
 
     // Default rule-based path (unchanged behavior)
-    await this.runDefaultRebalancing(status.currentHandId, externalAssets, treasuryShares, maxMonBps, maxTokenBps);
+    await this.runDefaultRebalancing(
+      status.currentHandId,
+      externalAssets,
+      treasuryShares,
+      maxMonBps,
+      maxTokenBps,
+    );
   }
 
   /**
@@ -1021,14 +1100,14 @@ export class KeeperBot {
     maxTokenBps: bigint,
   ): Promise<void> {
     const ctx: RebalanceContext = {
-      navPerShare: 0n,           // No oracle available in MVP; advisor uses rule-based fallback
+      navPerShare: 0n, // No oracle available in MVP; advisor uses rule-based fallback
       externalAssets,
       treasuryShares,
-      outstandingShares: 0n,     // Not queried for MVP
-      tokenMarketPrice: 0n,      // No market price oracle in MVP
-      recentPnl: 0n,             // Not tracked at keeper level
+      outstandingShares: 0n, // Not queried for MVP
+      tokenMarketPrice: 0n, // No market price oracle in MVP
+      recentPnl: 0n, // Not tracked at keeper level
       cumulativePnl: 0n,
-      tokenStage: "bonding",     // Default; could be enhanced later
+      tokenStage: "bonding", // Default; could be enhanced later
       rebalanceMaxMonBps: Number(maxMonBps),
       rebalanceMaxTokenBps: Number(maxTokenBps),
     };
@@ -1037,30 +1116,55 @@ export class KeeperBot {
     try {
       rec = await this.treasuryAdvisor!.recommend(ctx);
     } catch (err) {
-      this.log.warn({ err: err instanceof Error ? err.message : String(err) }, "TreasuryAdvisor error — skipping rebalancing (fail-safe)");
+      this.log.warn(
+        { err: err instanceof Error ? err.message : String(err) },
+        "TreasuryAdvisor error — skipping rebalancing (fail-safe)",
+      );
       return;
     }
 
-    this.log.info({ action: rec.action, amountBps: rec.amountBps, confidence: rec.confidence, reasoning: rec.reasoning }, "AI treasury recommendation");
+    this.log.info(
+      {
+        action: rec.action,
+        amountBps: rec.amountBps,
+        confidence: rec.confidence,
+        reasoning: rec.reasoning,
+      },
+      "AI treasury recommendation",
+    );
 
     if (rec.action === "skip" || rec.amountBps === 0) {
-      this.log.info({ handId: handId.toString(), reasoning: rec.reasoning }, "TreasuryAdvisor: skip rebalancing");
+      this.log.info(
+        { handId: handId.toString(), reasoning: rec.reasoning },
+        "TreasuryAdvisor: skip rebalancing",
+      );
       return;
     }
 
     if (rec.action === "buy" && externalAssets > 0n && maxMonBps > 0n) {
       const cappedBps = BigInt(Math.min(rec.amountBps, Number(maxMonBps)));
-      const monAmount = externalAssets * cappedBps / 10000n;
+      const monAmount = (externalAssets * cappedBps) / 10000n;
       if (monAmount > 0n) {
         try {
           await this.coordinationJitter();
           const hash = await this.chainClient.rebalanceBuy(handId, monAmount, 0n);
           this.stats.rebalancesTriggered++;
           this.recordAction("rebalanceBuy");
-          this.log.info({ tx: hash, monAmount: monAmount.toString(), handId: handId.toString(), reasoning: rec.reasoning }, "AI-advised Vault rebalanceBuy triggered");
+          this.log.info(
+            {
+              tx: hash,
+              monAmount: monAmount.toString(),
+              handId: handId.toString(),
+              reasoning: rec.reasoning,
+            },
+            "AI-advised Vault rebalanceBuy triggered",
+          );
           this.submitTreasuryReasoning(handId, rec, hash);
         } catch (error) {
-          this.log.info({ err: String(error).split("\n")[0], handId: handId.toString() }, "AI-advised rebalanceBuy failed (accretive constraint or error)");
+          this.log.info(
+            { err: String(error).split("\n")[0], handId: handId.toString() },
+            "AI-advised rebalanceBuy failed (accretive constraint or error)",
+          );
         }
       }
       return;
@@ -1068,24 +1172,39 @@ export class KeeperBot {
 
     if (rec.action === "sell" && treasuryShares > 0n && maxTokenBps > 0n) {
       const cappedBps = BigInt(Math.min(rec.amountBps, Number(maxTokenBps)));
-      const tokenAmount = treasuryShares * cappedBps / 10000n;
+      const tokenAmount = (treasuryShares * cappedBps) / 10000n;
       if (tokenAmount > 0n) {
         try {
           await this.coordinationJitter();
           const hash = await this.chainClient.rebalanceSell(handId, tokenAmount, 0n);
           this.stats.rebalancesTriggered++;
           this.recordAction("rebalanceSell");
-          this.log.info({ tx: hash, tokenAmount: tokenAmount.toString(), handId: handId.toString(), reasoning: rec.reasoning }, "AI-advised Vault rebalanceSell triggered");
+          this.log.info(
+            {
+              tx: hash,
+              tokenAmount: tokenAmount.toString(),
+              handId: handId.toString(),
+              reasoning: rec.reasoning,
+            },
+            "AI-advised Vault rebalanceSell triggered",
+          );
           this.submitTreasuryReasoning(handId, rec, hash);
         } catch (error) {
-          this.log.info({ err: String(error).split("\n")[0], handId: handId.toString() }, "AI-advised rebalanceSell failed (accretive constraint or error)");
+          this.log.info(
+            { err: String(error).split("\n")[0], handId: handId.toString() },
+            "AI-advised rebalanceSell failed (accretive constraint or error)",
+          );
         }
       }
     }
   }
 
   /** Fire-and-forget: POST treasury reasoning to OwnerView (non-blocking). */
-  private submitTreasuryReasoning(handId: bigint, rec: import("./treasury/types.js").RebalanceRecommendation, txHash?: string): void {
+  private submitTreasuryReasoning(
+    handId: bigint,
+    rec: RebalanceRecommendation,
+    txHash?: string,
+  ): void {
     if (!this.config.ownerviewUrl || !this.config.vaultAddress) return;
     const url = `${this.config.ownerviewUrl.replace(/\/$/, "")}/treasury-reasoning`;
     const body = JSON.stringify({
@@ -1098,12 +1217,19 @@ export class KeeperBot {
       factors: rec.factors,
       txHash,
     });
-    fetchWithTimeout(url, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body,
-    }, DEFAULT_REQUEST_TIMEOUT_MS).catch((err: unknown) => {
-      this.log.warn({ err: err instanceof Error ? err.message : String(err) }, "Failed to submit treasury reasoning (non-fatal)");
+    fetchWithTimeout(
+      url,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body,
+      },
+      DEFAULT_REQUEST_TIMEOUT_MS,
+    ).catch((err: unknown) => {
+      this.log.warn(
+        { err: err instanceof Error ? err.message : String(err) },
+        "Failed to submit treasury reasoning (non-fatal)",
+      );
     });
   }
 
@@ -1119,34 +1245,46 @@ export class KeeperBot {
   ): Promise<void> {
     // Try rebalanceBuy first (uses external assets to buy treasury shares)
     if (externalAssets > 0n && maxMonBps > 0n) {
-      const monAmount = externalAssets * maxMonBps / 10000n;
+      const monAmount = (externalAssets * maxMonBps) / 10000n;
       if (monAmount > 0n) {
         try {
           await this.coordinationJitter();
           const hash = await this.chainClient.rebalanceBuy(handId, monAmount, 0n);
           this.stats.rebalancesTriggered++;
           this.recordAction("rebalanceBuy");
-          this.log.info({ tx: hash, monAmount: monAmount.toString(), handId: handId.toString() }, "Vault rebalanceBuy triggered");
+          this.log.info(
+            { tx: hash, monAmount: monAmount.toString(), handId: handId.toString() },
+            "Vault rebalanceBuy triggered",
+          );
           return;
         } catch (error) {
           // Accretive constraint not satisfied (price too high) or other error — try sell
-          this.log.info({ err: String(error).split("\n")[0], handId: handId.toString() }, "rebalanceBuy skipped (accretive constraint or error), trying sell");
+          this.log.info(
+            { err: String(error).split("\n")[0], handId: handId.toString() },
+            "rebalanceBuy skipped (accretive constraint or error), trying sell",
+          );
         }
       }
     }
 
     // Try rebalanceSell (sells treasury shares for external assets)
     if (treasuryShares > 0n && maxTokenBps > 0n) {
-      const tokenAmount = treasuryShares * maxTokenBps / 10000n;
+      const tokenAmount = (treasuryShares * maxTokenBps) / 10000n;
       if (tokenAmount > 0n) {
         try {
           await this.coordinationJitter();
           const hash = await this.chainClient.rebalanceSell(handId, tokenAmount, 0n);
           this.stats.rebalancesTriggered++;
           this.recordAction("rebalanceSell");
-          this.log.info({ tx: hash, tokenAmount: tokenAmount.toString(), handId: handId.toString() }, "Vault rebalanceSell triggered");
+          this.log.info(
+            { tx: hash, tokenAmount: tokenAmount.toString(), handId: handId.toString() },
+            "Vault rebalanceSell triggered",
+          );
         } catch (error) {
-          this.log.info({ err: String(error).split("\n")[0], handId: handId.toString() }, "rebalanceSell skipped (accretive constraint or error)");
+          this.log.info(
+            { err: String(error).split("\n")[0], handId: handId.toString() },
+            "rebalanceSell skipped (accretive constraint or error)",
+          );
         }
       }
     }

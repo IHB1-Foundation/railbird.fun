@@ -3,7 +3,7 @@
 import { test, describe } from "node:test";
 import assert from "node:assert";
 import { SimpleStrategy, scoreHoleCards, cardName, getRank, getSuit } from "./simpleStrategy.js";
-import { Decision, type DecisionContext, type HoleCards } from "./types.js";
+import { Decision, type DecisionContext } from "./types.js";
 import { GameState, type TableState } from "../chain/client.js";
 
 // Helper to create a minimal table state for testing
@@ -50,9 +50,7 @@ function createTableState(overrides: Partial<TableState> = {}): TableState {
   };
 }
 
-function createContext(
-  overrides: Partial<DecisionContext> = {}
-): DecisionContext {
+function createContext(overrides: Partial<DecisionContext> = {}): DecisionContext {
   return {
     tableState: createTableState(),
     mySeatIndex: 0,
@@ -227,9 +225,9 @@ describe("SimpleStrategy all-in with partial bet committed", () => {
         {
           owner: "0x1111111111111111111111111111111111111111",
           operator: "0x1111111111111111111111111111111111111111",
-          stack: 100n,          // Only 100 left
+          stack: 100n, // Only 100 left
           isActive: true,
-          currentBet: 500n,     // Already committed 500 this street
+          currentBet: 500n, // Already committed 500 this street
           isAllIn: false,
           totalHandBet: 500n,
         },
@@ -246,7 +244,7 @@ describe("SimpleStrategy all-in with partial bet committed", () => {
       hand: {
         handId: 1n,
         pot: 1100n,
-        currentBet: 600n,       // Table's current bet level
+        currentBet: 600n, // Table's current bet level
         actorSeat: 0,
         state: GameState.BETTING_PRE,
       },
@@ -255,7 +253,7 @@ describe("SimpleStrategy all-in with partial bet committed", () => {
       tableState,
       mySeatIndex: 0,
       canCheck: false,
-      amountToCall: 100n,       // Contract: 600 - 500 = 100
+      amountToCall: 100n, // Contract: 600 - 500 = 100
       holeCards: { card1: 0, card2: 1 }, // Weak: 2s 3s
     });
     // effectiveCallAmount = 600 - 500 = 100 = myStack → not an all-in overpay
@@ -266,7 +264,7 @@ describe("SimpleStrategy all-in with partial bet committed", () => {
     // This tests that we don't incorrectly trigger isAllInCall path
     assert.ok(
       decision.action === Decision.CALL || decision.action === Decision.FOLD,
-      "Should be CALL or FOLD, not stuck in wrong all-in branch"
+      "Should be CALL or FOLD, not stuck in wrong all-in branch",
     );
   });
 
@@ -331,38 +329,79 @@ describe("SimpleStrategy reasoning generation", () => {
   const strategy = new SimpleStrategy(0.0);
 
   test("always returns reasoning string", () => {
-    const ctx = createContext({ canCheck: true, amountToCall: 0n, holeCards: { card1: 12, card2: 25 } });
+    const ctx = createContext({
+      canCheck: true,
+      amountToCall: 0n,
+      holeCards: { card1: 12, card2: 25 },
+    });
     const decision = strategy.decide(ctx);
-    assert.ok(typeof decision.reasoning === "string" && decision.reasoning.length > 0, "reasoning should be a non-empty string");
+    assert.ok(
+      typeof decision.reasoning === "string" && decision.reasoning.length > 0,
+      "reasoning should be a non-empty string",
+    );
   });
 
   test("always returns factors object", () => {
-    const ctx = createContext({ canCheck: false, amountToCall: 5n, holeCards: { card1: 12, card2: 25 } });
+    const ctx = createContext({
+      canCheck: false,
+      amountToCall: 5n,
+      holeCards: { card1: 12, card2: 25 },
+    });
     const decision = strategy.decide(ctx);
     assert.ok(decision.factors !== undefined, "factors should be defined");
-    assert.ok(typeof decision.factors!.handStrength === "string", "factors.handStrength should be a string");
+    assert.ok(
+      typeof decision.factors!.handStrength === "string",
+      "factors.handStrength should be a string",
+    );
     assert.ok(typeof decision.factors!.potOdds === "string", "factors.potOdds should be a string");
-    assert.ok(typeof decision.factors!.position === "string", "factors.position should be a string");
-    assert.ok(typeof decision.factors!.opponentRead === "string", "factors.opponentRead should be a string");
+    assert.ok(
+      typeof decision.factors!.position === "string",
+      "factors.position should be a string",
+    );
+    assert.ok(
+      typeof decision.factors!.opponentRead === "string",
+      "factors.opponentRead should be a string",
+    );
   });
 
   test("handStrength in factors includes score", () => {
-    const ctx = createContext({ canCheck: false, amountToCall: 10n, holeCards: { card1: 12, card2: 25 } }); // AA
+    const ctx = createContext({
+      canCheck: false,
+      amountToCall: 10n,
+      holeCards: { card1: 12, card2: 25 },
+    }); // AA
     const decision = strategy.decide(ctx);
-    assert.ok(decision.factors!.handStrength.includes("100"), "handStrength should contain score 100 for AA");
+    assert.ok(
+      decision.factors!.handStrength.includes("100"),
+      "handStrength should contain score 100 for AA",
+    );
   });
 
   test("potOdds in factors contains percentage", () => {
-    const ctx = createContext({ canCheck: false, amountToCall: 5n, holeCards: { card1: 12, card2: 25 } });
+    const ctx = createContext({
+      canCheck: false,
+      amountToCall: 5n,
+      holeCards: { card1: 12, card2: 25 },
+    });
     const decision = strategy.decide(ctx);
     // pot=15, call=5 → 5/(15+5)=25%
-    assert.ok(decision.factors!.potOdds.includes("%") || decision.factors!.potOdds === "n/a (no bet)", "potOdds should have a percent or n/a");
+    assert.ok(
+      decision.factors!.potOdds.includes("%") || decision.factors!.potOdds === "n/a (no bet)",
+      "potOdds should have a percent or n/a",
+    );
   });
 
   test("opponentRead is rule-based message", () => {
-    const ctx = createContext({ canCheck: true, amountToCall: 0n, holeCards: { card1: 5, card2: 13 } });
+    const ctx = createContext({
+      canCheck: true,
+      amountToCall: 0n,
+      holeCards: { card1: 5, card2: 13 },
+    });
     const decision = strategy.decide(ctx);
-    assert.ok(decision.factors!.opponentRead.toLowerCase().includes("rule-based"), "opponentRead should say rule-based");
+    assert.ok(
+      decision.factors!.opponentRead.toLowerCase().includes("rule-based"),
+      "opponentRead should say rule-based",
+    );
   });
 });
 

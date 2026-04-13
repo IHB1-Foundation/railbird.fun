@@ -16,6 +16,34 @@ interface InMemoryEntry {
   resetAt: number; // epoch ms
 }
 
+interface RedisConstructorOptions {
+  maxRetriesPerRequest: number;
+  connectTimeout: number;
+  lazyConnect: boolean;
+}
+
+interface RedisMulti {
+  incr(key: string): RedisMulti;
+  pexpire(key: string, ms: number): RedisMulti;
+  exec(): Promise<Array<[Error | null, unknown]>>;
+}
+
+interface RedisClient {
+  multi(): RedisMulti;
+  ping(): Promise<string>;
+  connect(): Promise<void>;
+  on(event: string, fn: (...args: unknown[]) => void): void;
+}
+
+interface RedisCtor {
+  new (url: string, options: RedisConstructorOptions): RedisClient;
+}
+
+interface RedisModuleLike {
+  default?: unknown;
+  Redis?: unknown;
+}
+
 const inMemoryStore = new Map<string, InMemoryEntry>();
 
 /** Periodic cleanup of expired entries to prevent unbounded Map growth. */
@@ -42,11 +70,29 @@ function inMemoryIncrement(ip: string): { count: number; resetAt: number } {
 
 // Typed narrowly to avoid importing ioredis at module load time (optional dep).
 let redisClient: {
-  multi(): { incr(k: string): any; pexpire(k: string, ms: number): any; exec(): Promise<Array<[Error | null, any]>> };
+  multi(): RedisMulti;
   ping(): Promise<string>;
-  quit(): Promise<string>;
-  on(event: string, fn: (...args: any[]) => void): void;
+  connect(): Promise<void>;
+  on(event: string, fn: (...args: unknown[]) => void): void;
 } | null = null;
+
+function resolveRedisConstructor(moduleValue: unknown): RedisCtor {
+  if (typeof moduleValue === "function") {
+    return moduleValue as RedisCtor;
+  }
+
+  if (moduleValue && typeof moduleValue === "object") {
+    const redisModule = moduleValue as RedisModuleLike;
+    if (typeof redisModule.default === "function") {
+      return redisModule.default as RedisCtor;
+    }
+    if (typeof redisModule.Redis === "function") {
+      return redisModule.Redis as RedisCtor;
+    }
+  }
+
+  throw new Error("Unable to resolve ioredis constructor");
+}
 
 export async function initRateLimiter(): Promise<void> {
   const redisUrl = process.env.REDIS_URL;
@@ -55,15 +101,15 @@ export async function initRateLimiter(): Promise<void> {
     return;
   }
   try {
-    const ioredis = await import("ioredis");
-    const Redis = ioredis.default ?? (ioredis as any).Redis ?? ioredis;
-    const client = new (Redis as any)(redisUrl, {
+    const Redis = resolveRedisConstructor(await import("ioredis"));
+    const client = new Redis(redisUrl, {
       maxRetriesPerRequest: 1,
       connectTimeout: 3_000,
       lazyConnect: true,
     });
-    client.on("error", (err: Error) => {
-      logger.warn({ err: err.message }, "Redis rate limiter error — falling back to in-memory");
+    client.on("error", (err: unknown) => {
+      const message = err instanceof Error ? err.message : String(err);
+      logger.warn({ err: message }, "Redis rate limiter error — falling back to in-memory");
       redisClient = null;
     });
     await client.connect();
@@ -84,7 +130,8 @@ async function redisIncrement(ip: string): Promise<{ count: number; resetAt: num
   const key = `rl:rest:${ip}`;
 
   const results = await redisClient!.multi().incr(key).pexpire(key, ttlMs).exec();
-  const count = (results[0][1] as number) ?? 1;
+  const countResult = results[0]?.[1];
+  const count = typeof countResult === "number" ? countResult : 1;
   return { count, resetAt };
 }
 

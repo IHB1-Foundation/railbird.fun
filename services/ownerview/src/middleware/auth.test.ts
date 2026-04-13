@@ -2,7 +2,7 @@ import { describe, it, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import { createAuthMiddleware, type AuthenticatedRequest } from "./auth.js";
 import { AuthService } from "../auth/index.js";
-import type { Response, NextFunction } from "express";
+import type { Response } from "express";
 
 // Simple mock response
 function createMockResponse(): Response & { statusCode: number; jsonData: unknown } {

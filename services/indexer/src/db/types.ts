@@ -24,6 +24,10 @@ export interface Seat {
   updated_at: Date;
 }
 
+export interface SeatWithTokenAddress extends Seat {
+  token_address: string | null;
+}
+
 export interface Hand {
   hand_id: string;
   table_id: string;

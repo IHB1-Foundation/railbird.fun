@@ -9,7 +9,7 @@
     "clean": "rm -rf dist",
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
-    "lint": "echo 'lint not configured yet'"
+    "lint": "eslint src --ext .ts --max-warnings 0"
   },
   "dependencies": {
     "@playerco/shared": "workspace:*",

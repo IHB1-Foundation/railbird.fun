@@ -1,7 +1,7 @@
 // Unit tests for VrfOperatorBot
 // Run: pnpm --filter @playerco/vrf-operator-bot test
 
-import { describe, test, before, beforeEach } from "node:test";
+import { describe, test } from "node:test";
 import assert from "node:assert";
 import { VrfOperatorBot, type VrfOperatorBotConfig } from "./bot.js";
 import type { VrfRequest } from "./chain/client.js";
@@ -11,15 +11,16 @@ import type { VrfRequest } from "./chain/client.js";
 // ---------------------------------------------------------------------------
 
 const MOCK_ADDRESS = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" as `0x${string}`;
-const MOCK_TABLE   = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" as `0x${string}`;
-const MOCK_BLOCK_HASH = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef" as `0x${string}`;
+const MOCK_TABLE = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" as `0x${string}`;
+const MOCK_BLOCK_HASH =
+  "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef" as `0x${string}`;
 
 function makeConfig(overrides: Partial<VrfOperatorBotConfig> = {}): VrfOperatorBotConfig {
   return {
-    rpcUrl:             "http://localhost:8545",
-    privateKey:         "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
-    vrfAdapterAddress:  "0xcccccccccccccccccccccccccccccccccccccccc",
-    pollIntervalMs:     9999999, // don't actually poll in tests
+    rpcUrl: "http://localhost:8545",
+    privateKey: "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+    vrfAdapterAddress: "0xcccccccccccccccccccccccccccccccccccccccc",
+    pollIntervalMs: 9999999, // don't actually poll in tests
     ...overrides,
   };
 }
@@ -34,37 +35,57 @@ function makeBotWithMock(configOverrides: Partial<VrfOperatorBotConfig> = {}) {
 
   // Default mock state
   let nextRequestId = 1n;
-  let blockNumber   = 100n;
-  let blockHash     = MOCK_BLOCK_HASH;
-  const requests    = new Map<bigint, VrfRequest>();
+  let blockNumber = 100n;
+  const blockHash = MOCK_BLOCK_HASH;
+  const requests = new Map<bigint, VrfRequest>();
 
   const mock = {
-    get nextRequestId()  { return nextRequestId; },
-    set nextRequestId(v) { nextRequestId = v; },
-    get blockNumber()    { return blockNumber; },
-    set blockNumber(v)   { blockNumber = v; },
-    setRequest(id: bigint, req: VrfRequest) { requests.set(id, req); },
+    get nextRequestId() {
+      return nextRequestId;
+    },
+    set nextRequestId(v) {
+      nextRequestId = v;
+    },
+    get blockNumber() {
+      return blockNumber;
+    },
+    set blockNumber(v) {
+      blockNumber = v;
+    },
+    setRequest(id: bigint, req: VrfRequest) {
+      requests.set(id, req);
+    },
     // Track fulfill calls
     fulfilledCalls: [] as Array<{ requestId: bigint; randomness: bigint }>,
     fulfillShouldThrow: false as boolean | string,
   };
 
   const stubbedClient = {
-    get address() { return MOCK_ADDRESS; },
-    getOperator:       async () => MOCK_ADDRESS,
-    getNextRequestId:  async () => nextRequestId,
-    getBlockNumber:    async () => blockNumber,
-    getLatestBlock:    async () => ({ number: blockNumber, hash: blockHash }),
+    get address() {
+      return MOCK_ADDRESS;
+    },
+    getOperator: async () => MOCK_ADDRESS,
+    getNextRequestId: async () => nextRequestId,
+    getBlockNumber: async () => blockNumber,
+    getLatestBlock: async () => ({ number: blockNumber, hash: blockHash }),
     getRequest: async (id: bigint): Promise<VrfRequest> => {
-      return requests.get(id) ?? {
-        table: "0x0000000000000000000000000000000000000000" as `0x${string}`,
-        tableId: 0n, handId: 0n, purpose: 0,
-        requestedAt: 0n, requestedBlock: 0n, fulfilled: false,
-      };
+      return (
+        requests.get(id) ?? {
+          table: "0x0000000000000000000000000000000000000000" as `0x${string}`,
+          tableId: 0n,
+          handId: 0n,
+          purpose: 0,
+          requestedAt: 0n,
+          requestedBlock: 0n,
+          fulfilled: false,
+        }
+      );
     },
     fulfillRandomness: async (requestId: bigint, randomness: bigint) => {
       if (mock.fulfillShouldThrow) {
-        throw new Error(typeof mock.fulfillShouldThrow === "string" ? mock.fulfillShouldThrow : "mock error");
+        throw new Error(
+          typeof mock.fulfillShouldThrow === "string" ? mock.fulfillShouldThrow : "mock error",
+        );
       }
       mock.fulfilledCalls.push({ requestId, randomness });
       // Mark as fulfilled in our map
@@ -83,13 +104,13 @@ function makeBotWithMock(configOverrides: Partial<VrfOperatorBotConfig> = {}) {
 /** Returns a default fulfilled=false VRF request. */
 function makeRequest(overrides: Partial<VrfRequest> = {}): VrfRequest {
   return {
-    table:          MOCK_TABLE,
-    tableId:        1n,
-    handId:         1n,
-    purpose:        3,   // WAITING_VRF_FLOP
-    requestedAt:    BigInt(Math.floor(Date.now() / 1000) - 10),
+    table: MOCK_TABLE,
+    tableId: 1n,
+    handId: 1n,
+    purpose: 3, // WAITING_VRF_FLOP
+    requestedAt: BigInt(Math.floor(Date.now() / 1000) - 10),
     requestedBlock: 95n,
-    fulfilled:      false,
+    fulfilled: false,
     ...overrides,
   };
 }
@@ -105,7 +126,11 @@ describe("buildRandomness", () => {
     const req = makeRequest();
     const r1 = (bot as any).buildRandomness(1n, req, 100n, MOCK_BLOCK_HASH);
     const r2 = (bot as any).buildRandomness(1n, req, 100n, MOCK_BLOCK_HASH);
-    assert.notStrictEqual(r1, r2, "per-request salt must make same public inputs produce different output");
+    assert.notStrictEqual(
+      r1,
+      r2,
+      "per-request salt must make same public inputs produce different output",
+    );
   });
 
   test("result is never 0n", () => {
@@ -118,8 +143,8 @@ describe("buildRandomness", () => {
   });
 
   test("static randomSalt allowed on localhost (deterministic for testing)", () => {
-    const bot1 = makeBotWithMock({ randomSalt: "salt-a" }).bot;  // rpcUrl is localhost
-    const req  = makeRequest();
+    const bot1 = makeBotWithMock({ randomSalt: "salt-a" }).bot; // rpcUrl is localhost
+    const req = makeRequest();
     // Same salt + same inputs → same output (deterministic when static salt used)
     const r1 = (bot1 as any).buildRandomness(1n, req, 100n, MOCK_BLOCK_HASH);
     const r2 = (bot1 as any).buildRandomness(1n, req, 100n, MOCK_BLOCK_HASH);
@@ -135,14 +160,14 @@ describe("buildRandomness", () => {
     assert.throws(
       () => (bot as any).buildRandomness(1n, req, 100n, MOCK_BLOCK_HASH),
       /static randomSalt is not allowed outside local/,
-      "static salt on non-local URL must throw"
+      "static salt on non-local URL must throw",
     );
   });
 
   test("different randomSalts produce different output (localhost only)", () => {
     const bot1 = makeBotWithMock({ randomSalt: "salt-a" }).bot;
     const bot2 = makeBotWithMock({ randomSalt: "salt-b" }).bot;
-    const req  = makeRequest();
+    const req = makeRequest();
     const r1 = (bot1 as any).buildRandomness(1n, req, 100n, MOCK_BLOCK_HASH);
     const r2 = (bot2 as any).buildRandomness(1n, req, 100n, MOCK_BLOCK_HASH);
     assert.notStrictEqual(r1, r2, "different salts must produce different randomness");
@@ -213,9 +238,9 @@ describe("pendingRequestIds management", () => {
 
   test("stale pending requests are cleaned up", () => {
     const { bot } = makeBotWithMock();
-    const pending    = (bot as any).pendingRequestIds as Set<bigint>;
-    const addedAt    = (bot as any).pendingAddedAt    as Map<bigint, number>;
-    const staleMs    = 60 * 60 * 1000; // PENDING_STALE_AFTER_MS
+    const pending = (bot as any).pendingRequestIds as Set<bigint>;
+    const addedAt = (bot as any).pendingAddedAt as Map<bigint, number>;
+    const staleMs = 60 * 60 * 1000; // PENDING_STALE_AFTER_MS
 
     // Inject a stale entry (>1h old)
     const staleTime = Date.now() - staleMs - 1000;
@@ -235,8 +260,8 @@ describe("pendingRequestIds management", () => {
 
   test("non-stale entries are not removed by cleanPendingRequests", () => {
     const { bot } = makeBotWithMock();
-    const pending  = (bot as any).pendingRequestIds as Set<bigint>;
-    const addedAt  = (bot as any).pendingAddedAt    as Map<bigint, number>;
+    const pending = (bot as any).pendingRequestIds as Set<bigint>;
+    const addedAt = (bot as any).pendingAddedAt as Map<bigint, number>;
 
     pending.add(1n);
     addedAt.set(1n, Date.now() - 1000); // 1 second old
@@ -254,7 +279,11 @@ describe("pendingRequestIds management", () => {
 
     await (bot as any).tick(1n);
 
-    assert.strictEqual(mock.fulfilledCalls.length, 0, "should not fulfill an already-fulfilled request");
+    assert.strictEqual(
+      mock.fulfilledCalls.length,
+      0,
+      "should not fulfill an already-fulfilled request",
+    );
     const pending = (bot as any).pendingRequestIds as Set<bigint>;
     assert.ok(!pending.has(1n), "fulfilled request should not remain in pending");
   });
@@ -286,7 +315,11 @@ describe("tick — minConfirmations", () => {
 
     await (bot as any).tick(2n);
 
-    assert.strictEqual(mock.fulfilledCalls.length, 0, "should skip request that needs more confirmations");
+    assert.strictEqual(
+      mock.fulfilledCalls.length,
+      0,
+      "should skip request that needs more confirmations",
+    );
     const stats = bot.getStats();
     assert.strictEqual(stats.skippedNotReady, 1);
   });
@@ -313,20 +346,19 @@ describe("rescanWindow", () => {
     // We can't easily call run() without network, so test the initialization logic
     // by checking the formula used in run() via the config.
     const rescanWindow = 256n;
-    const nextId       = 500n;
+    const nextId = 500n;
 
     const expectedStart = nextId - rescanWindow; // 244n
 
     // Simulate what run() does:
-    const computed =
-      nextId > rescanWindow ? nextId - rescanWindow : 1n;
+    const computed = nextId > rescanWindow ? nextId - rescanWindow : 1n;
 
     assert.strictEqual(computed, expectedStart);
   });
 
   test("lastSeenRequestId defaults to 1n when nextId <= rescanWindow", () => {
     const rescanWindow = 256n;
-    const nextId       = 100n; // less than rescanWindow
+    const nextId = 100n; // less than rescanWindow
 
     const computed = nextId > rescanWindow ? nextId - rescanWindow : 1n;
     assert.strictEqual(computed, 1n);
@@ -336,8 +368,6 @@ describe("rescanWindow", () => {
     // The config option rescanFromRequestId overrides the computed start.
     // We verify the bot exposes this via the internal state after tick setup.
     const config = makeConfig({ rescanFromRequestId: 42n });
-    const bot = new VrfOperatorBot(config);
-
     // lastSeenRequestId starts at 1 before run() is called;
     // run() sets it from config. We test the formula path directly.
     const rescanFromConfig = config.rescanFromRequestId;
@@ -366,7 +396,7 @@ describe("stats", () => {
     const { bot, mock } = makeBotWithMock();
     mock.nextRequestId = 2n;
     mock.setRequest(1n, makeRequest({ requestedBlock: 90n }));
-    mock.blockNumber    = 100n;
+    mock.blockNumber = 100n;
     mock.fulfillShouldThrow = true;
 
     await (bot as any).tick(1n);
@@ -392,7 +422,11 @@ describe("stats", () => {
     const stats1 = bot.getStats();
     stats1.fulfilledRequests = 999;
     const stats2 = bot.getStats();
-    assert.strictEqual(stats2.fulfilledRequests, 0, "mutating returned stats must not affect internal state");
+    assert.strictEqual(
+      stats2.fulfilledRequests,
+      0,
+      "mutating returned stats must not affect internal state",
+    );
   });
 
   test("scannedRequests increments for each new requestId seen", async () => {

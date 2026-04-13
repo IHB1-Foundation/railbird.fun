@@ -7,7 +7,7 @@ import { generateSalt, generateCommitment } from "./cardGenerator.js";
 import { verifiableShuffle, extractHoleCards } from "./verifiableShuffle.js";
 import { encryptHoleCards } from "./eciesEncrypt.js";
 import type { EncryptedPayload } from "./eciesEncrypt.js";
-import { DealerSeedStore } from "./dealerSeedStore.js";
+import type { DealerSeedStore } from "./dealerSeedStore.js";
 
 /**
  * Serialize EncryptedPayload (Uint8Array fields) to JSON-safe hex strings.
@@ -27,7 +27,7 @@ function serializePayload(payload: EncryptedPayload): EncryptedPayloadSerialized
 export class DealerError extends Error {
   constructor(
     message: string,
-    public code: "ALREADY_DEALT" | "DEAL_FAILED" | "INVALID_PARAMS" | "MISSING_ENCRYPTION_KEY"
+    public code: "ALREADY_DEALT" | "DEAL_FAILED" | "INVALID_PARAMS" | "MISSING_ENCRYPTION_KEY",
   ) {
     super(message);
     this.name = "DealerError";
@@ -82,7 +82,7 @@ export class DealerService {
     if ((await this.holeCardStore.getHand(tableId, handId)).length > 0) {
       throw new DealerError(
         `Hole cards already dealt for table=${tableId}, hand=${handId}`,
-        "ALREADY_DEALT"
+        "ALREADY_DEALT",
       );
     }
 
@@ -112,7 +112,7 @@ export class DealerService {
       if (!pubKey) {
         throw new DealerError(
           `Missing encryption key for seat ${seatIndex}`,
-          "MISSING_ENCRYPTION_KEY"
+          "MISSING_ENCRYPTION_KEY",
         );
       }
 
@@ -147,7 +147,10 @@ export class DealerService {
   /**
    * Get commitments for a hand (for on-chain submission).
    */
-  async getCommitments(tableId: string, handId: string): Promise<Array<{ seatIndex: number; commitment: string }> | null> {
+  async getCommitments(
+    tableId: string,
+    handId: string,
+  ): Promise<Array<{ seatIndex: number; commitment: string }> | null> {
     const records = await this.holeCardStore.getHand(tableId, handId);
     if (records.length === 0) return null;
     return records.map((r) => ({ seatIndex: r.seatIndex, commitment: r.commitment }));
@@ -164,8 +167,13 @@ export class DealerService {
   async getRevealData(
     tableId: string,
     handId: string,
-    seatIndex: number
-  ): Promise<{ cards: [Card, Card]; salt: string; dealerSeed: string; vrfRandomness: string } | null> {
+    seatIndex: number,
+  ): Promise<{
+    cards: [Card, Card];
+    salt: string;
+    dealerSeed: string;
+    vrfRandomness: string;
+  } | null> {
     const record = await this.holeCardStore.get(tableId, handId, seatIndex);
     if (!record) return null;
 
@@ -193,7 +201,7 @@ export class DealerService {
   async getEncryptedCards(
     tableId: string,
     handId: string,
-    seatIndex: number
+    seatIndex: number,
   ): Promise<EncryptedPayloadSerialized | null> {
     const record = await this.holeCardStore.get(tableId, handId, seatIndex);
     return record?.encryptedCards ?? null;

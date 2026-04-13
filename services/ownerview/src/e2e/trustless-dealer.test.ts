@@ -14,7 +14,7 @@
  *   - Only the key-holder can decrypt their cards
  */
 
-import { describe, it, beforeEach } from "node:test";
+import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { secp256k1 } from "@noble/curves/secp256k1.js";
 import { keccak256, encodePacked } from "viem";
@@ -61,7 +61,9 @@ describe("E2E Trustless Dealer", () => {
   describe("Scenario 1: Happy path — shuffle, encrypt, decrypt, verify commitment", () => {
     it("deal → fetch encrypted → decrypt → verify commitment matches", async () => {
       const store = new HoleCardStore();
-      const service = new DealerService(store, new DealerSeedStore(), { testDealerSeed: TEST_DEALER_SEED });
+      const service = new DealerService(store, new DealerSeedStore(), {
+        testDealerSeed: TEST_DEALER_SEED,
+      });
       const { keys, privKeys } = buildKeys(2);
 
       const result = await service.deal({
@@ -104,13 +106,19 @@ describe("E2E Trustless Dealer", () => {
         const revealData = await service.getRevealData("T1", "1", seat);
         assert.ok(revealData);
         const recomputed = generateCommitment("T1", "1", seat, decrypted, revealData.salt);
-        assert.equal(recomputed, result.seats[seat].commitment, `seat ${seat} commitment must verify`);
+        assert.equal(
+          recomputed,
+          result.seats[seat].commitment,
+          `seat ${seat} commitment must verify`,
+        );
       }
     });
 
     it("wrong key → cannot decrypt (AES-GCM MAC failure)", async () => {
       const store = new HoleCardStore();
-      const service = new DealerService(store, new DealerSeedStore(), { testDealerSeed: TEST_DEALER_SEED });
+      const service = new DealerService(store, new DealerSeedStore(), {
+        testDealerSeed: TEST_DEALER_SEED,
+      });
       const { keys } = buildKeys(2);
 
       await service.deal({
@@ -135,7 +143,7 @@ describe("E2E Trustless Dealer", () => {
       await assert.rejects(
         () => decryptHoleCards(wrongKey, payload),
         /failed/i,
-        "wrong key must cause decryption failure"
+        "wrong key must cause decryption failure",
       );
     });
   });
@@ -147,13 +155,19 @@ describe("E2E Trustless Dealer", () => {
       const correctDeck = verifiableShuffle(TEST_VRF, TEST_DEALER_SEED);
       const tamperedDeck = verifiableShuffle(TEST_VRF, ALT_DEALER_SEED);
 
-      assert.notDeepEqual(correctDeck, tamperedDeck, "different seeds must produce different decks");
+      assert.notDeepEqual(
+        correctDeck,
+        tamperedDeck,
+        "different seeds must produce different decks",
+      );
     });
 
     it("getRevealData with wrong assumed seed reconstructs wrong cards", async () => {
       const store = new HoleCardStore();
       // Service uses TEST_DEALER_SEED internally
-      const service = new DealerService(store, new DealerSeedStore(), { testDealerSeed: TEST_DEALER_SEED });
+      const service = new DealerService(store, new DealerSeedStore(), {
+        testDealerSeed: TEST_DEALER_SEED,
+      });
       const { keys, privKeys } = buildKeys(2);
 
       await service.deal({
@@ -181,15 +195,19 @@ describe("E2E Trustless Dealer", () => {
 
       // The tampered deck (wrong seed) would give different cards
       const tamperedDeck = verifiableShuffle(TEST_VRF, ALT_DEALER_SEED);
-      const tamperedMatch = decrypted[0] === tamperedDeck[0] && decrypted[1] === tamperedDeck[1];
-      // In practice they differ (astronomically unlikely to match)
-      // The commitment is what enforces correctness on-chain
+      assert.equal(
+        decrypted[0] === tamperedDeck[0] && decrypted[1] === tamperedDeck[1],
+        false,
+        "wrong dealer seed should not reconstruct the same hole cards",
+      );
     });
 
     it("commitment verification catches tampered cards", async () => {
       const store = new HoleCardStore();
-      const service = new DealerService(store, new DealerSeedStore(), { testDealerSeed: TEST_DEALER_SEED });
-      const { keys, privKeys } = buildKeys(2);
+      const service = new DealerService(store, new DealerSeedStore(), {
+        testDealerSeed: TEST_DEALER_SEED,
+      });
+      const { keys } = buildKeys(2);
       const result = await service.deal({
         tableId: "T4",
         handId: "1",
@@ -211,7 +229,7 @@ describe("E2E Trustless Dealer", () => {
       assert.notEqual(
         tamperedCommit,
         result.seats[0].commitment,
-        "tampered cards must produce different commitment"
+        "tampered cards must produce different commitment",
       );
     });
   });
@@ -221,7 +239,9 @@ describe("E2E Trustless Dealer", () => {
   describe("Scenario 3: Missing reveal — no dealer seed reveal → ShuffleUnverified detectable", () => {
     it("dealer seed commit exists but no reveal → verifiable but unrevealed", async () => {
       const store = new HoleCardStore();
-      const service = new DealerService(store, new DealerSeedStore(), { testDealerSeed: TEST_DEALER_SEED });
+      const service = new DealerService(store, new DealerSeedStore(), {
+        testDealerSeed: TEST_DEALER_SEED,
+      });
       const { keys } = buildKeys(2);
 
       const result = await service.deal({
@@ -238,7 +258,11 @@ describe("E2E Trustless Dealer", () => {
 
       // Verify the commit matches the seed (what on-chain would verify)
       const expectedCommit = keccak256(encodePacked(["bytes32"], [TEST_DEALER_SEED]));
-      assert.equal(result.dealerSeedCommit, expectedCommit, "dealerSeedCommit must match keccak256(dealerSeed)");
+      assert.equal(
+        result.dealerSeedCommit,
+        expectedCommit,
+        "dealerSeedCommit must match keccak256(dealerSeed)",
+      );
 
       // On-chain: if settlement happens before revealDealerSeed is called,
       // ShuffleUnverified event would be emitted. Validated in Foundry ShuffleVerifier.t.sol.
@@ -246,7 +270,9 @@ describe("E2E Trustless Dealer", () => {
 
     it("getRevealData returns seed for on-chain verification at showdown", async () => {
       const store = new HoleCardStore();
-      const service = new DealerService(store, new DealerSeedStore(), { testDealerSeed: TEST_DEALER_SEED });
+      const service = new DealerService(store, new DealerSeedStore(), {
+        testDealerSeed: TEST_DEALER_SEED,
+      });
       const { keys } = buildKeys(2);
 
       await service.deal({
@@ -269,7 +295,9 @@ describe("E2E Trustless Dealer", () => {
   describe("Scenario 4: Key rotation — new key for next hand", () => {
     it("hand 1 uses key v1, hand 2 uses rotated key v2 — both independently decryptable", async () => {
       const store = new HoleCardStore();
-      const service = new DealerService(store, new DealerSeedStore(), { testDealerSeed: TEST_DEALER_SEED });
+      const service = new DealerService(store, new DealerSeedStore(), {
+        testDealerSeed: TEST_DEALER_SEED,
+      });
 
       const { keys: keysV1, privKeys: privKeysV1 } = buildKeys(2);
       const { keys: keysV2, privKeys: privKeysV2 } = buildKeys(2);
@@ -318,13 +346,15 @@ describe("E2E Trustless Dealer", () => {
       await assert.rejects(
         () => decryptHoleCards(privKeysV2.get(0)!, payload1),
         /failed/i,
-        "key v2 must not decrypt hand 1 (encrypted with key v1)"
+        "key v2 must not decrypt hand 1 (encrypted with key v1)",
       );
     });
 
     it("prev key cannot decrypt current hand after rotation", async () => {
       const store = new HoleCardStore();
-      const service = new DealerService(store, new DealerSeedStore(), { testDealerSeed: TEST_DEALER_SEED });
+      const service = new DealerService(store, new DealerSeedStore(), {
+        testDealerSeed: TEST_DEALER_SEED,
+      });
       const { keys: oldKeys, privKeys: oldPrivKeys } = buildKeys(2);
       const { keys: newKeys } = buildKeys(2);
 
@@ -355,10 +385,7 @@ describe("E2E Trustless Dealer", () => {
       };
 
       // Old private key cannot decrypt hand 2
-      await assert.rejects(
-        () => decryptHoleCards(oldPrivKeys.get(0)!, payload),
-        /failed/i
-      );
+      await assert.rejects(() => decryptHoleCards(oldPrivKeys.get(0)!, payload), /failed/i);
     });
   });
 
@@ -367,24 +394,29 @@ describe("E2E Trustless Dealer", () => {
   describe("Scenario 5: No encryption key — deal rejected", () => {
     it("empty encryptionKeys map → DealerError INVALID_PARAMS", async () => {
       const store = new HoleCardStore();
-      const service = new DealerService(store, new DealerSeedStore(), { testDealerSeed: TEST_DEALER_SEED });
+      const service = new DealerService(store, new DealerSeedStore(), {
+        testDealerSeed: TEST_DEALER_SEED,
+      });
 
       await assert.rejects(
-        () => service.deal({
-          tableId: "T9",
-          handId: "1",
-          vrfRandomness: TEST_VRF,
-          dealerSeed: TEST_DEALER_SEED,
-          encryptionKeys: new Map(), // no keys
-        }),
+        () =>
+          service.deal({
+            tableId: "T9",
+            handId: "1",
+            vrfRandomness: TEST_VRF,
+            dealerSeed: TEST_DEALER_SEED,
+            encryptionKeys: new Map(), // no keys
+          }),
         /INVALID_PARAMS|No encryption keys/,
-        "must reject deal without encryption keys"
+        "must reject deal without encryption keys",
       );
     });
 
     it("missing key for a specific seat → DealerError MISSING_ENCRYPTION_KEY", async () => {
       const store = new HoleCardStore();
-      const service = new DealerService(store, new DealerSeedStore(), { testDealerSeed: TEST_DEALER_SEED });
+      const service = new DealerService(store, new DealerSeedStore(), {
+        testDealerSeed: TEST_DEALER_SEED,
+      });
 
       // Only provide key for seat 0, not seat 1
       const partialKeys = new Map<number, Uint8Array>();
@@ -409,7 +441,9 @@ describe("E2E Trustless Dealer", () => {
   describe("Security: no plaintext cards in any output", () => {
     it("JSON serialization of all outputs contains no plaintext card arrays", async () => {
       const store = new HoleCardStore();
-      const service = new DealerService(store, new DealerSeedStore(), { testDealerSeed: TEST_DEALER_SEED });
+      const service = new DealerService(store, new DealerSeedStore(), {
+        testDealerSeed: TEST_DEALER_SEED,
+      });
       const { keys } = buildKeys(4);
 
       const result = await service.deal({
@@ -427,14 +461,19 @@ describe("E2E Trustless Dealer", () => {
       for (let seat = 0; seat < 4; seat++) {
         const record = (await store.get("SEC", "1", seat))!;
         const recordStr = JSON.stringify(record);
-        assert.ok(!recordStr.includes('"cards"'), `seat ${seat} record must not contain plaintext cards`);
+        assert.ok(
+          !recordStr.includes('"cards"'),
+          `seat ${seat} record must not contain plaintext cards`,
+        );
         assert.ok(recordStr.includes("encryptedCards"), `seat ${seat} must have encryptedCards`);
       }
     });
 
     it("all 4 seats have unique encrypted payloads", async () => {
       const store = new HoleCardStore();
-      const service = new DealerService(store, new DealerSeedStore(), { testDealerSeed: TEST_DEALER_SEED });
+      const service = new DealerService(store, new DealerSeedStore(), {
+        testDealerSeed: TEST_DEALER_SEED,
+      });
       const { keys } = buildKeys(4);
 
       const result = await service.deal({
@@ -445,13 +484,15 @@ describe("E2E Trustless Dealer", () => {
         encryptionKeys: keys,
       });
 
-      const ciphertexts = result.seats.map(s => s.encryptedCards.ciphertext);
+      const ciphertexts = result.seats.map((s) => s.encryptedCards.ciphertext);
       assert.equal(new Set(ciphertexts).size, 4, "all 4 seats must have different ciphertexts");
     });
 
     it("only the correct key-holder can decrypt each seat's cards", async () => {
       const store = new HoleCardStore();
-      const service = new DealerService(store, new DealerSeedStore(), { testDealerSeed: TEST_DEALER_SEED });
+      const service = new DealerService(store, new DealerSeedStore(), {
+        testDealerSeed: TEST_DEALER_SEED,
+      });
       const { keys, privKeys } = buildKeys(4);
 
       await service.deal({
@@ -480,7 +521,7 @@ describe("E2E Trustless Dealer", () => {
         await assert.rejects(
           () => decryptHoleCards(privKeys.get(other)!, payload0),
           /failed/i,
-          `seat ${other}'s key must not decrypt seat 0's cards`
+          `seat ${other}'s key must not decrypt seat 0's cards`,
         );
       }
     });

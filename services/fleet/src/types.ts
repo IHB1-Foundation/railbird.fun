@@ -1,5 +1,6 @@
 // Fleet service types — T-1202
 
+import type { ChildProcess } from "node:child_process";
 import type { FleetAgentConfig, FleetAgentStatus } from "@playerco/shared";
 
 export type { FleetAgentConfig, FleetAgentStatus };
@@ -22,5 +23,5 @@ export interface AgentProcess {
   status: FleetAgentStatus["status"];
   restarts: number;
   createdAt: number;
-  process?: import("node:child_process").ChildProcess;
+  process?: ChildProcess;
 }

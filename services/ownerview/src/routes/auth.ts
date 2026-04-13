@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import { randomBytes } from "crypto";
-import { AuthService, AuthError } from "../auth/index.js";
+import { AuthError } from "../auth/index.js";
+import type { AuthService } from "../auth/index.js";
 import { authRateLimiter } from "../middleware/rateLimit.js";
 
 /** Cookie names used by the double-submit CSRF pattern. */
@@ -14,7 +15,7 @@ export const COOKIE_CSRF = "csrf_token";
  */
 export function createAuthRoutes(
   authService: AuthService,
-  cookieSession: boolean = process.env.COOKIE_SESSION === "true"
+  cookieSession: boolean = process.env.COOKIE_SESSION === "true",
 ): Router {
   const router = Router();
 
@@ -104,8 +105,7 @@ export function createAuthRoutes(
       }
     } catch (err) {
       if (err instanceof AuthError) {
-        const statusCode =
-          err.code === "INVALID_SIGNATURE" ? 401 : 400;
+        const statusCode = err.code === "INVALID_SIGNATURE" ? 401 : 400;
         res.status(statusCode).json({
           error: err.message,
           code: err.code,

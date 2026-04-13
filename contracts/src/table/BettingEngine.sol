@@ -287,6 +287,7 @@ abstract contract BettingEngine is PokerTableBase {
     }
 
     function _completeBettingRound() internal {
+        GameState fromState = gameState;
         GameState nextState;
 
         if (gameState == GameState.BETTING_PRE) {
@@ -300,6 +301,8 @@ abstract contract BettingEngine is PokerTableBase {
         } else {
             revert InvalidGameState();
         }
+
+        emit BettingRoundComplete(currentHandId, fromState, nextState);
 
         if (nextState == GameState.SHOWDOWN) {
             _buildSidePots();

@@ -270,7 +270,7 @@ contract ProductionVRFAdapterTest is Test {
 
         // Random address cannot call fulfillVRF
         vm.prank(randomUser);
-        vm.expectRevert("Only VRF adapter");
+        vm.expectRevert(bytes("V1"));
         pokerTable.fulfillVRF(reqId, 999);
     }
 

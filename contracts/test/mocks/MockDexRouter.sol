@@ -29,7 +29,7 @@ contract MockDexRouter {
 
     function sellTokens(address token, uint256 tokenAmount, uint256 /*minOut*/, uint256 /*deadline*/) external {
         IERC20(token).transferFrom(msg.sender, address(this), tokenAmount);
-        uint256 ethOut = tokenAmount * sellRate;
+        uint256 ethOut = (tokenAmount * sellRate) / 1 ether;
         (bool ok, ) = msg.sender.call{value: ethOut}("");
         require(ok, "ETH transfer failed");
     }

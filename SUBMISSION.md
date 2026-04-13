@@ -58,14 +58,14 @@ Railbird turns a Gemini AI-powered poker agent into a fully transparent on-chain
 
 ## Deployed Contract Addresses (Testnet)
 
-| Contract                   | Address                                                                                                                             |
-| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| ChipToken (RCHIP)          | [`0x2210b79EC6e40d96072a0c26FfB64731a60d7865`](https://testnet-explorer.hsk.xyz/address/0x2210b79EC6e40d96072a0c26FfB64731a60d7865) |
-| PokerTable 1 (low-stakes)  | [`0x9250aB833Bb070FBd993aF1b0C103dd2D58ae601`](https://testnet-explorer.hsk.xyz/address/0x9250aB833Bb070FBd993aF1b0C103dd2D58ae601) |
-| PokerTable 2 (high-stakes) | [`0x984396E8798f8Fc30F0555FfA21F2bF982e54eD3`](https://testnet-explorer.hsk.xyz/address/0x984396E8798f8Fc30F0555FfA21F2bF982e54eD3) |
-| PlayerRegistry             | [`0x885b6a72480B264c258ba7167600D0D0Cc2fFF14`](https://testnet-explorer.hsk.xyz/address/0x885b6a72480B264c258ba7167600D0D0Cc2fFF14) |
-| PlayerVault                | [`0xd11838C992C3393fe3B9493cf4c640EB66b8AfB5`](https://testnet-explorer.hsk.xyz/address/0xd11838C992C3393fe3B9493cf4c640EB66b8AfB5) |
-| ProductionVRFAdapter       | [`0xdA613984af7Ae9e3A5834914C25d28c48be8D0d3`](https://testnet-explorer.hsk.xyz/address/0xdA613984af7Ae9e3A5834914C25d28c48be8D0d3) |
+| Contract                   | Address                                                                                                                             | Deploy TX                                                                                                             |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| ChipToken (RCHIP)          | [`0x2210b79EC6e40d96072a0c26FfB64731a60d7865`](https://testnet-explorer.hsk.xyz/address/0x2210b79EC6e40d96072a0c26FfB64731a60d7865) | [`0x2165...`](https://testnet-explorer.hsk.xyz/tx/0x216518f9d4510e9e2a368b0bd18aa0666ef9f75921af4b39e632aa42baa516b0) |
+| PokerTable 1 (low-stakes)  | [`0x9250aB833Bb070FBd993aF1b0C103dd2D58ae601`](https://testnet-explorer.hsk.xyz/address/0x9250aB833Bb070FBd993aF1b0C103dd2D58ae601) | [`0x3da2...`](https://testnet-explorer.hsk.xyz/tx/0x3da29053197f7cdd58de51af4695e278166592974336f7831f518a10981ec71c) |
+| PokerTable 2 (high-stakes) | [`0x984396E8798f8Fc30F0555FfA21F2bF982e54eD3`](https://testnet-explorer.hsk.xyz/address/0x984396E8798f8Fc30F0555FfA21F2bF982e54eD3) | [`0x79e4...`](https://testnet-explorer.hsk.xyz/tx/0x79e440685d4e5bd3a2b61205d9306946d0732bf158965de044e127a9c7b169bd) |
+| PlayerRegistry             | [`0x885b6a72480B264c258ba7167600D0D0Cc2fFF14`](https://testnet-explorer.hsk.xyz/address/0x885b6a72480B264c258ba7167600D0D0Cc2fFF14) | [`0xfe63...`](https://testnet-explorer.hsk.xyz/tx/0xfe63813adae9f33062d9727a4eb4c659ea54b16972088c7b63195f44595cc0b2) |
+| PlayerVault                | [`0xd11838C992C3393fe3B9493cf4c640EB66b8AfB5`](https://testnet-explorer.hsk.xyz/address/0xd11838C992C3393fe3B9493cf4c640EB66b8AfB5) | [`0x8871...`](https://testnet-explorer.hsk.xyz/tx/0x88717014e08f306d7a87a26e3b9a76e721fc02d3dd49893ed153bbf5c5a539d6) |
+| ProductionVRFAdapter       | [`0xdA613984af7Ae9e3A5834914C25d28c48be8D0d3`](https://testnet-explorer.hsk.xyz/address/0xdA613984af7Ae9e3A5834914C25d28c48be8D0d3) | [`0x22bb...`](https://testnet-explorer.hsk.xyz/tx/0x22bbc5f9f8d3961a1f7d5686c8fcf3d47759eda3d48f15e2dcc3611b120438ce) |
 
 ---
 
@@ -83,26 +83,44 @@ Railbird turns a Gemini AI-powered poker agent into a fully transparent on-chain
 
 ## On-Chain Evidence (Representative Transactions)
 
-> To be filled after M4 (T4.2)
+All transactions on HashKey Chain Testnet (Chain ID: 133). Deployer: `0x23EB3128d46727BC4587CE0CCC900D06486b862b`.
 
-| Transaction                 | Description | Explorer URL |
-| --------------------------- | ----------- | ------------ |
-| ChipToken deploy            |             | TBD          |
-| PokerTable 1 deploy         |             | TBD          |
-| PokerTable 2 deploy         |             | TBD          |
-| PlayerRegistry deploy       |             | TBD          |
-| PlayerVault deploy          |             | TBD          |
-| VRFAdapter deploy           |             | TBD          |
-| Agent registration          |             | TBD          |
-| Encryption key registration |             | TBD          |
-| Hand started                |             | TBD          |
-| VRF request                 |             | TBD          |
-| VRF fulfill                 |             | TBD          |
-| Fold action                 |             | TBD          |
-| Call action                 |             | TBD          |
-| Raise action                |             | TBD          |
-| Showdown + seed reveal      |             | TBD          |
-| Settlement                  |             | TBD          |
+### Contract Deployments
+
+| Transaction            | TX Hash                                                              | Explorer                                                                                                       |
+| ---------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| ChipToken deploy       | `0x216518f9d4510e9e2a368b0bd18aa0666ef9f75921af4b39e632aa42baa516b0` | [View](https://testnet-explorer.hsk.xyz/tx/0x216518f9d4510e9e2a368b0bd18aa0666ef9f75921af4b39e632aa42baa516b0) |
+| PokerTable 1 deploy    | `0x3da29053197f7cdd58de51af4695e278166592974336f7831f518a10981ec71c` | [View](https://testnet-explorer.hsk.xyz/tx/0x3da29053197f7cdd58de51af4695e278166592974336f7831f518a10981ec71c) |
+| PokerTable 2 deploy    | `0x79e440685d4e5bd3a2b61205d9306946d0732bf158965de044e127a9c7b169bd` | [View](https://testnet-explorer.hsk.xyz/tx/0x79e440685d4e5bd3a2b61205d9306946d0732bf158965de044e127a9c7b169bd) |
+| PlayerRegistry deploy  | `0xfe63813adae9f33062d9727a4eb4c659ea54b16972088c7b63195f44595cc0b2` | [View](https://testnet-explorer.hsk.xyz/tx/0xfe63813adae9f33062d9727a4eb4c659ea54b16972088c7b63195f44595cc0b2) |
+| PlayerVault deploy     | `0x88717014e08f306d7a87a26e3b9a76e721fc02d3dd49893ed153bbf5c5a539d6` | [View](https://testnet-explorer.hsk.xyz/tx/0x88717014e08f306d7a87a26e3b9a76e721fc02d3dd49893ed153bbf5c5a539d6) |
+| VRFAdapter deploy      | `0x22bbc5f9f8d3961a1f7d5686c8fcf3d47759eda3d48f15e2dcc3611b120438ce` | [View](https://testnet-explorer.hsk.xyz/tx/0x22bbc5f9f8d3961a1f7d5686c8fcf3d47759eda3d48f15e2dcc3611b120438ce) |
+| Vault authorizeTable 1 | `0xac51f0e8957b4d145316f532e7e2345f0d985843cddb8cf133ef84cc76b7ab07` | [View](https://testnet-explorer.hsk.xyz/tx/0xac51f0e8957b4d145316f532e7e2345f0d985843cddb8cf133ef84cc76b7ab07) |
+| Vault authorizeTable 2 | `0x17d69f56e0551f5caa8a643b1df763d11755bd21981a112f0aaab4f5f9fe3258` | [View](https://testnet-explorer.hsk.xyz/tx/0x17d69f56e0551f5caa8a643b1df763d11755bd21981a112f0aaab4f5f9fe3258) |
+| Vault initialize       | `0xde40b3e0176bdddb1316c097e6434938161075fbc10d3c032b9b47c72997dae5` | [View](https://testnet-explorer.hsk.xyz/tx/0xde40b3e0176bdddb1316c097e6434938161075fbc10d3c032b9b47c72997dae5) |
+
+### Seat Registration (PokerTable 2)
+
+| Transaction                 | Description                                                  | TX Hash                                                              | Explorer                                                                                                       |
+| --------------------------- | ------------------------------------------------------------ | -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Agent registration (seat 0) | `registerSeat()` — approve RCHIP + register seat with buy-in | `0xb3115d64fb4da0afaffb3bda01dd7d88c0e264a6ca06320fce6d48665c3a4232` | [View](https://testnet-explorer.hsk.xyz/tx/0xb3115d64fb4da0afaffb3bda01dd7d88c0e264a6ca06320fce6d48665c3a4232) |
+| Agent registration (seat 1) | `registerSeat()` — second agent joins table                  | `0x79593d1b0a6d97dd4a2cdea97663a042320f6f3f988c191eaae840475873130c` | [View](https://testnet-explorer.hsk.xyz/tx/0x79593d1b0a6d97dd4a2cdea97663a042320f6f3f988c191eaae840475873130c) |
+
+### Game Lifecycle (PokerTable 1)
+
+| Transaction           | Description                                                 | TX Hash                                                              | Explorer                                                                                                       |
+| --------------------- | ----------------------------------------------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Hand started          | `startHand()` — begins a new hand, posts blinds             | `0x95f92a3894ed0be538c853fd32ced61e3c5efec9cfd9afbfda6a7b3553221f7c` | [View](https://testnet-explorer.hsk.xyz/tx/0x95f92a3894ed0be538c853fd32ced61e3c5efec9cfd9afbfda6a7b3553221f7c) |
+| Hole card commit      | `submitHoleCommit()` — dealer commits encrypted cards       | `0xb2b7bdb45b55e0cefe3b18db4cb33b79c9fd42be0a045bfe647123bca57f293d` | [View](https://testnet-explorer.hsk.xyz/tx/0xb2b7bdb45b55e0cefe3b18db4cb33b79c9fd42be0a045bfe647123bca57f293d) |
+| Advance to preflop    | `advanceToPreflop()` — transition after hole card deals     | `0xd5912ffe9e6879f01e7e90951a3394a8eb4a5e27a0b2e72102d6e5d1af747299` | [View](https://testnet-explorer.hsk.xyz/tx/0xd5912ffe9e6879f01e7e90951a3394a8eb4a5e27a0b2e72102d6e5d1af747299) |
+| VRF fulfill           | `fulfillRandomness()` — VRF operator provides randomness    | `0x3dc411ea66fcbd4da24dec08d2587e87d0bc0749b3fabf6646a3b19afed767fa` | [View](https://testnet-explorer.hsk.xyz/tx/0x3dc411ea66fcbd4da24dec08d2587e87d0bc0749b3fabf6646a3b19afed767fa) |
+| Fold action           | `fold()` — agent folds hand                                 | `0x1559954af9cd4c8702440986c4ba24b17ba0a027dcf8338ea8c0cb2f02b75041` | [View](https://testnet-explorer.hsk.xyz/tx/0x1559954af9cd4c8702440986c4ba24b17ba0a027dcf8338ea8c0cb2f02b75041) |
+| Check action          | `check()` — agent checks                                    | `0x98fd02422ad47d5d6bfe96f9845f722a91e071a6fb46dca1cff0df6d88f3af79` | [View](https://testnet-explorer.hsk.xyz/tx/0x98fd02422ad47d5d6bfe96f9845f722a91e071a6fb46dca1cff0df6d88f3af79) |
+| Call action           | `call()` — agent calls current bet                          | `0x7950bac8f9890b2245e83c2c627476077b972a792b251666faf678826fec4704` | [View](https://testnet-explorer.hsk.xyz/tx/0x7950bac8f9890b2245e83c2c627476077b972a792b251666faf678826fec4704) |
+| Raise action          | `raise()` — agent raises to 0.4 RCHIP (2x big blind)        | `0xbdecdc9c210dba9dab2640c46f85b0e7fa6192ca95d10706394134537ac66889` | [View](https://testnet-explorer.hsk.xyz/tx/0xbdecdc9c210dba9dab2640c46f85b0e7fa6192ca95d10706394134537ac66889) |
+| Hole card reveal      | `revealHoleCards()` — reveal at showdown for verification   | `0x3ba6ffc7dcd4c9744c0167c8587434acf6db4f332c13cc7f7f6d13e78283963c` | [View](https://testnet-explorer.hsk.xyz/tx/0x3ba6ffc7dcd4c9744c0167c8587434acf6db4f332c13cc7f7f6d13e78283963c) |
+| Showdown + settlement | `settleShowdown()` — verify hands, distribute pot           | `0xd5c2b0a54af11924b5831a3c58c65c299a77dca9e2d0fd87534516dac4339ce1` | [View](https://testnet-explorer.hsk.xyz/tx/0xd5c2b0a54af11924b5831a3c58c65c299a77dca9e2d0fd87534516dac4339ce1) |
+| Settlement by fold    | Last active player wins pot after all others fold (hand 46) | `0x52ef56b30a82cafe5c006c41c5d3bb2480337653d1a24630ecea3657d0ff544e` | [View](https://testnet-explorer.hsk.xyz/tx/0x52ef56b30a82cafe5c006c41c5d3bb2480337653d1a24630ecea3657d0ff544e) |
 
 ---
 
@@ -110,3 +128,6 @@ Railbird turns a Gemini AI-powered poker agent into a fully transparent on-chain
 
 - Originally built on KAIA Kairos (Chain ID: 1001); fully ported to HashKey Chain for this hackathon.
 - Old KAIA addresses are preserved in git history but are no longer active.
+- PokerTable 1 has completed 46 hands with 6 active AI agents as of submission.
+- `registerEncryptionKey()` exists in source code but was added after this deployment; ECIES key exchange is handled off-chain via the OwnerView service for this testnet deployment.
+- All deploy transactions originate from a single Foundry broadcast (`DeployHashKey.s.sol`).

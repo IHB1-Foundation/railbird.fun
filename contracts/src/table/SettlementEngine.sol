@@ -5,6 +5,14 @@ import "./PokerTableBase.sol";
 import "../HandEvaluator.sol";
 import "../ShuffleVerifier.sol";
 
+interface IPlayerRegistryVault {
+    function getVault(address agent) external view returns (address);
+}
+
+interface IPlayerVaultPnl {
+    function onSettlement(uint256 handId, int256 pnl) external;
+}
+
 /**
  * @title SettlementEngine
  * @notice Hole card commit/reveal, showdown evaluation, pot distribution,
@@ -68,10 +76,11 @@ abstract contract SettlementEngine is PokerTableBase {
      *         Must be called before settlement to avoid ShuffleUnverified.
      */
     function revealDealerSeed(uint256 handId, bytes32 seed) external onlyDealer {
-        require(dealerSeedCommitments[handId] != bytes32(0), "No commitment");
+        require(gameState == GameState.SHOWDOWN, "DealerSeed: not in showdown");
+        require(dealerSeedCommitments[handId] != bytes32(0), "DealerSeed: no commitment");
         require(
             keccak256(abi.encodePacked(seed)) == dealerSeedCommitments[handId],
-            "Seed mismatch"
+            "DealerSeed: commitment mismatch"
         );
         dealerSeedRevealed[handId] = true;
         dealerSeedReveals[handId] = seed;
@@ -114,6 +123,7 @@ abstract contract SettlementEngine is PokerTableBase {
     function submitDealerSeedCommit(uint256 handId, bytes32 commitment) external onlyDealer {
         require(handId == currentHandId, "H1");
         require(commitment != bytes32(0), "H3");
+        require(dealerSeedCommitments[handId] == bytes32(0), "DealerSeed: already committed");
         dealerSeedCommitments[handId] = commitment;
         emit DealerSeedCommitted(handId, commitment);
     }
@@ -134,6 +144,24 @@ abstract contract SettlementEngine is PokerTableBase {
         _advanceButton();
         currentHand.pot = 0;
         currentHand.sidePotCount = 0;
+
+        // Notify vaults of per-seat PnL before resetting hand state.
+        if (playerRegistry != address(0)) {
+            for (uint8 i = 0; i < numSeats; i++) {
+                if (seats[i].owner == address(0)) continue;
+                if (seats[i].totalHandBet == 0 && i != winner) continue;
+                address vault = IPlayerRegistryVault(playerRegistry).getVault(seats[i].owner);
+                if (vault == address(0)) continue;
+                int256 pnl;
+                if (i == winner) {
+                    pnl = int256(potAmount) - int256(seats[i].totalHandBet);
+                } else {
+                    pnl = -int256(seats[i].totalHandBet);
+                }
+                try IPlayerVaultPnl(vault).onSettlement(handId, pnl) {} catch {}
+            }
+        }
+
         for (uint8 i = 0; i < numSeats; i++) {
             seats[i].currentBet = 0;
             seats[i].isActive = false;

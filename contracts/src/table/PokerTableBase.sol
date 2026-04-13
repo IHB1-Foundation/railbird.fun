@@ -92,6 +92,7 @@ abstract contract PokerTableBase {
     event HandStarted(uint256 indexed handId, uint256 smallBlind, uint256 bigBlind, uint8 buttonSeat);
     event ActionTaken(uint256 indexed handId, uint8 indexed seatIndex, ActionType action, uint256 amount, uint256 potAfter);
     event VRFRequested(uint256 indexed handId, GameState street, uint256 requestId);
+    event BettingRoundComplete(uint256 indexed handId, GameState fromState, GameState toState);
     event CommunityCardsDealt(uint256 indexed handId, GameState street, uint8[] cards);
     event HandSettled(uint256 indexed handId, uint8 winnerSeat, uint256 potAmount);
     event HoleCommitSubmitted(uint256 indexed handId, uint8 indexed seatIndex, bytes32 commitment);

@@ -73,12 +73,12 @@ AI agents play on-chain Texas Hold'em — with verifiable shuffles, encrypted ho
 
 | Contract                   | Address                                                                                                                             |
 | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| ChipToken (RCHIP)          | [`0x51745FeAB545eA4d0818E49629Ad1b0A808431F2`](https://testnet-explorer.hsk.xyz/address/0x51745FeAB545eA4d0818E49629Ad1b0A808431F2) |
-| PokerTable 1 (low-stakes)  | [`0x537BEd9Ea230F5c5f1462E1f6f29DeBB18aA0D5a`](https://testnet-explorer.hsk.xyz/address/0x537BEd9Ea230F5c5f1462E1f6f29DeBB18aA0D5a) |
-| PokerTable 2 (high-stakes) | [`0xEB830f6E5dFE6b5F52E0F05d5606540D2BB8cb16`](https://testnet-explorer.hsk.xyz/address/0xEB830f6E5dFE6b5F52E0F05d5606540D2BB8cb16) |
-| PlayerRegistry             | [`0xFe11800ACD7c4e7Bc609e038B5dE4f2b3C0d6bd2`](https://testnet-explorer.hsk.xyz/address/0xFe11800ACD7c4e7Bc609e038B5dE4f2b3C0d6bd2) |
-| PlayerVault                | [`0x6FE1F723c0BE33ecCA5Dca7e1D6954B7859A59A1`](https://testnet-explorer.hsk.xyz/address/0x6FE1F723c0BE33ecCA5Dca7e1D6954B7859A59A1) |
-| ProductionVRFAdapter       | [`0xD02AF45258012208A46e1C00f91C2a2c8c2aFB15`](https://testnet-explorer.hsk.xyz/address/0xD02AF45258012208A46e1C00f91C2a2c8c2aFB15) |
+| ChipToken (RCHIP)          | [`0x2210b79EC6e40d96072a0c26FfB64731a60d7865`](https://testnet-explorer.hsk.xyz/address/0x2210b79EC6e40d96072a0c26FfB64731a60d7865) |
+| PokerTable 1 (low-stakes)  | [`0x9250aB833Bb070FBd993aF1b0C103dd2D58ae601`](https://testnet-explorer.hsk.xyz/address/0x9250aB833Bb070FBd993aF1b0C103dd2D58ae601) |
+| PokerTable 2 (high-stakes) | [`0x984396E8798f8Fc30F0555FfA21F2bF982e54eD3`](https://testnet-explorer.hsk.xyz/address/0x984396E8798f8Fc30F0555FfA21F2bF982e54eD3) |
+| PlayerRegistry             | [`0x885b6a72480B264c258ba7167600D0D0Cc2fFF14`](https://testnet-explorer.hsk.xyz/address/0x885b6a72480B264c258ba7167600D0D0Cc2fFF14) |
+| PlayerVault                | [`0xd11838C992C3393fe3B9493cf4c640EB66b8AfB5`](https://testnet-explorer.hsk.xyz/address/0xd11838C992C3393fe3B9493cf4c640EB66b8AfB5) |
+| ProductionVRFAdapter       | [`0xdA613984af7Ae9e3A5834914C25d28c48be8D0d3`](https://testnet-explorer.hsk.xyz/address/0xdA613984af7Ae9e3A5834914C25d28c48be8D0d3) |
 
 ### Tech Stack
 

@@ -126,7 +126,7 @@ contract TrustlessDealerTest is Test {
         _registerSeat(0, owner1, operator1, BUY_IN);
 
         vm.prank(owner2);
-        vm.expectRevert("Not owner or operator");
+        vm.expectRevert(bytes("S9"));
         pokerTable.registerEncryptionKey(0, COMPRESSED_PUBKEY);
     }
 
@@ -203,7 +203,7 @@ contract TrustlessDealerTest is Test {
 
         pokerTable.startHand();
 
-        vm.expectRevert("Empty commitment");
+        vm.expectRevert(bytes("H3"));
         pokerTable.submitDealerSeedCommit(1, bytes32(0));
     }
 
@@ -342,7 +342,7 @@ contract TrustlessDealerTest is Test {
 
         pokerTable.startHand();
         // Still in WAITING_VRF_HOLECARDS, not WAITING_FOR_HOLECARDS
-        vm.expectRevert("Not waiting for hole cards");
+        vm.expectRevert(bytes("HC"));
         pokerTable.advanceToPreflop();
     }
 
@@ -354,7 +354,7 @@ contract TrustlessDealerTest is Test {
         mockVRF.fulfillLastRequest(TEST_RANDOMNESS);
         // Only submit commit for seat 0, not seat 1
         pokerTable.submitHoleCommit(1, 0, bytes32(uint256(42)));
-        vm.expectRevert("Missing hole commit");
+        vm.expectRevert(bytes("MC"));
         pokerTable.advanceToPreflop();
     }
 
@@ -444,7 +444,7 @@ contract TrustlessDealerTest is Test {
 
         // Old request fulfillment should fail (wrong request ID)
         vm.prank(address(mockVRF));
-        vm.expectRevert("Invalid request ID");
+        vm.expectRevert(bytes("V2"));
         pokerTable.fulfillVRF(oldRequestId, TEST_RANDOMNESS);
     }
 
@@ -461,7 +461,7 @@ contract TrustlessDealerTest is Test {
 
         // Trying to fulfill again should fail (state is no longer WAITING_VRF_HOLECARDS)
         vm.prank(address(mockVRF));
-        vm.expectRevert("Not waiting for VRF");
+        vm.expectRevert(bytes("V3"));
         pokerTable.fulfillVRF(hcReqId, TEST_RANDOMNESS + 1);
     }
 

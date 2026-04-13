@@ -5,6 +5,12 @@ import "./PokerTableBase.sol";
 
 interface IPlayerRegistry {
     function isRegistered(address agent) external view returns (bool);
+    function getVault(address agent) external view returns (address);
+}
+
+interface IPlayerVaultBuyIn {
+    function fundBuyIn(address table, uint256 amount) external;
+    function releaseEscrow(address table, uint256 amount) external;
 }
 
 /**
@@ -24,13 +30,19 @@ abstract contract SeatManager is PokerTableBase {
      */
     function registerEncryptionKey(uint8 seatIndex, bytes calldata pubKey) external {
         require(seatIndex < numSeats, "S1");
+        require(
+            gameState == GameState.WAITING_FOR_SEATS ||
+            gameState == GameState.SETTLED ||
+            gameState == GameState.TOURNAMENT_OVER,
+            "EncKeyReg: hand in progress"
+        );
         Seat storage seat = seats[seatIndex];
         require(seat.owner != address(0), "S8");
         require(msg.sender == seat.owner || msg.sender == seat.operator, "S9");
         require(
             (pubKey.length == 33 && (pubKey[0] == 0x02 || pubKey[0] == 0x03)) ||
             (pubKey.length == 65 && pubKey[0] == 0x04),
-            "Invalid public key"
+            "Invalid pubKey length"
         );
         encryptionKeys[seatIndex] = pubKey;
         emit EncryptionKeyRegistered(seatIndex, pubKey);
@@ -120,6 +132,7 @@ abstract contract SeatManager is PokerTableBase {
         }
 
         emit SeatUpdated(seatIndex, owner, op, buyIn);
+        _notifyVaultBuyIn(owner, buyIn);
     }
 
     function leaveSeat(uint8 seatIndex, address recipient) external {
@@ -146,6 +159,7 @@ abstract contract SeatManager is PokerTableBase {
 
         emit SeatUpdated(seatIndex, address(0), address(0), 0);
         emit SeatClosed(seatIndex, seatOwner, payoutRecipient, payoutAmount);
+        _notifyVaultRelease(seatOwner, payoutAmount);
     }
 
     /**
@@ -187,6 +201,7 @@ abstract contract SeatManager is PokerTableBase {
         Seat storage seat = seats[seatIndex];
         require(seat.owner != address(0), "S8");
         require(msg.sender == seat.owner, "S9");
+        require(amount > 0, "S12");
         require(amount <= seat.stack, "S10");
 
         address payoutRecipient = recipient == address(0) ? seat.owner : recipient;
@@ -194,6 +209,7 @@ abstract contract SeatManager is PokerTableBase {
 
         if (amount > 0) {
             address(chipToken).safeTransfer(payoutRecipient, amount);
+            _notifyVaultRelease(seat.owner, amount);
         }
 
         emit SeatUpdated(seatIndex, seat.owner, seat.operator, seat.stack);
@@ -251,6 +267,22 @@ abstract contract SeatManager is PokerTableBase {
     }
 
     // ============ Internal Seat Helpers ============
+
+    // ============ Vault Notification Helpers ============
+
+    function _notifyVaultBuyIn(address owner, uint256 amount) internal {
+        if (playerRegistry == address(0)) return;
+        address vault = IPlayerRegistry(playerRegistry).getVault(owner);
+        if (vault == address(0)) return;
+        try IPlayerVaultBuyIn(vault).fundBuyIn(address(this), amount) {} catch {}
+    }
+
+    function _notifyVaultRelease(address owner, uint256 amount) internal {
+        if (playerRegistry == address(0) || amount == 0) return;
+        address vault = IPlayerRegistry(playerRegistry).getVault(owner);
+        if (vault == address(0)) return;
+        try IPlayerVaultBuyIn(vault).releaseEscrow(address(this), amount) {} catch {}
+    }
 
     function _isSeatOccupied(uint8 seatIndex) internal view returns (bool) {
         return seats[seatIndex].owner != address(0);

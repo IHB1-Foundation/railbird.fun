@@ -92,13 +92,13 @@ contract SeatLifecycleTest is Test {
     function test_LeaveSeat_RevertIfNotOwner() public {
         _registerSeat(0, owner1);
 
-        vm.expectRevert("Not seat owner");
+        vm.expectRevert(bytes("S9"));
         vm.prank(owner2);
         pokerTable.leaveSeat(0, owner2);
     }
 
     function test_LeaveSeat_RevertIfSeatEmpty() public {
-        vm.expectRevert("Seat not occupied");
+        vm.expectRevert(bytes("S8"));
         vm.prank(owner1);
         pokerTable.leaveSeat(0, owner1);
     }
@@ -137,7 +137,7 @@ contract SeatLifecycleTest is Test {
 
         vm.startPrank(owner2);
         chipToken.approve(address(pokerTable), 500);
-        vm.expectRevert("Not seat owner");
+        vm.expectRevert(bytes("S9"));
         pokerTable.topUpSeat(0, 500);
         vm.stopPrank();
     }
@@ -146,14 +146,14 @@ contract SeatLifecycleTest is Test {
         _registerSeat(0, owner1);
 
         vm.prank(owner1);
-        vm.expectRevert("Top-up amount is zero");
+        vm.expectRevert(bytes("S11"));
         pokerTable.topUpSeat(0, 0);
     }
 
     function test_TopUpSeat_RevertIfSeatEmpty() public {
         vm.startPrank(owner1);
         chipToken.approve(address(pokerTable), 500);
-        vm.expectRevert("Seat not occupied");
+        vm.expectRevert(bytes("S8"));
         pokerTable.topUpSeat(0, 500);
         vm.stopPrank();
     }
@@ -189,14 +189,14 @@ contract SeatLifecycleTest is Test {
         _registerSeat(0, owner1);
 
         vm.prank(owner1);
-        vm.expectRevert("Insufficient seat stack");
+        vm.expectRevert(bytes("S10"));
         pokerTable.cashOutSeat(0, BUY_IN + 1, owner1);
     }
 
     function test_CashOutSeat_RevertIfNotOwner() public {
         _registerSeat(0, owner1);
 
-        vm.expectRevert("Not seat owner");
+        vm.expectRevert(bytes("S9"));
         vm.prank(owner2);
         pokerTable.cashOutSeat(0, 100, owner2);
     }
@@ -205,7 +205,7 @@ contract SeatLifecycleTest is Test {
         _registerSeat(0, owner1);
 
         vm.prank(owner1);
-        vm.expectRevert("Cash-out amount is zero");
+        vm.expectRevert(bytes("S12"));
         pokerTable.cashOutSeat(0, 0, owner1);
     }
 

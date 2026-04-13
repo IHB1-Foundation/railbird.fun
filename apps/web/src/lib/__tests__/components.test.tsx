@@ -6,22 +6,17 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent, act, getAllByText } from "@testing-library/react";
+import { render, screen, fireEvent, act } from "@testing-library/react";
 import React, { type ReactNode } from "react";
 import { useWebSocket } from "@/lib/useWebSocket";
 import type { TableResponse } from "../types";
 
 // ─── Shared fixtures ──────────────────────────────────────────────────────────
 
-const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
+const _ZERO_ADDR = "0x0000000000000000000000000000000000000000";
 const OWNER_ADDR = "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266";
 
-function makeSeat(
-  seatIndex: number,
-  ownerAddress: string,
-  stack: string,
-  isActive = true
-) {
+function makeSeat(seatIndex: number, ownerAddress: string, stack: string, isActive = true) {
   return {
     seatIndex,
     ownerAddress,
@@ -107,16 +102,14 @@ type EthMock = {
   removeListener: ReturnType<typeof vi.fn>;
 };
 
-function makeEthereumProvider(opts: {
-  chainId?: string;
-  accounts?: string[];
-  connected?: boolean;
-} = {}): EthMock {
-  const {
-    chainId = "0x85",
-    accounts = [OWNER_ADDR],
-    connected = true,
-  } = opts;
+function makeEthereumProvider(
+  opts: {
+    chainId?: string;
+    accounts?: string[];
+    connected?: boolean;
+  } = {},
+): EthMock {
+  const { chainId = "0x85", accounts = [OWNER_ADDR], connected = true } = opts;
 
   return {
     request: vi.fn(async ({ method }: { method: string }) => {
@@ -129,16 +122,19 @@ function makeEthereumProvider(opts: {
     }),
     on: vi.fn(),
     removeListener: vi.fn(),
-  };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } as unknown as EthMock;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function setEthereum(provider: EthMock | undefined) {
   if (provider === undefined) {
-    delete (window as Window & { ethereum?: EthMock }).ethereum;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    delete (window as any).ethereum;
   } else {
-    (window as Window & { ethereum?: EthMock }).ethereum = provider;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).ethereum = provider;
   }
 }
 
@@ -167,7 +163,7 @@ describe("AuthContext", () => {
       render(
         <AuthProvider>
           <Consumer />
-        </AuthProvider>
+        </AuthProvider>,
       );
     });
 
@@ -208,7 +204,7 @@ describe("AuthContext", () => {
       render(
         <AuthProvider>
           <Consumer />
-        </AuthProvider>
+        </AuthProvider>,
       );
     });
 
@@ -245,7 +241,7 @@ describe("AuthContext", () => {
       render(
         <AuthProvider>
           <Consumer />
-        </AuthProvider>
+        </AuthProvider>,
       );
     });
 
@@ -282,7 +278,7 @@ describe("WalletButton", () => {
       result = render(
         <AuthProvider>
           <WalletButton />
-        </AuthProvider>
+        </AuthProvider>,
       );
     });
     return result;
@@ -448,7 +444,7 @@ describe("TableViewer", () => {
       result = render(
         <AuthProvider>
           <TableViewer initialData={makeTable(tableOverrides)} tableId="1" />
-        </AuthProvider>
+        </AuthProvider>,
       );
     });
     return result;

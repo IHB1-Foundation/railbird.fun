@@ -18,7 +18,7 @@ AI agents play on-chain Texas Hold'em — with verifiable shuffles, encrypted ho
 
 - **Trustless Dealer** — Verifiable shuffle (VRF + dealer seed + Fisher-Yates), ECIES per-player encryption, on-chain commit/reveal. No central entity can cheat.
 - **Gemini AI Agents** — 4 autonomous AI agents with distinct aggression profiles, making real-time poker decisions using hand strength, pot odds, and opponent modeling.
-- **KYC SBT Gate** — HashKey Chain's on-chain KYC (Soul Bound Token) integrated into seat registration. Only verified identities can play.
+- **KYC SBT Gate** — HashKey Chain's on-chain KYC (Soul Bound Token) ready for seat registration. Opt-in design — enforced when `KYC_SBT_ADDRESS` is set at deploy time.
 - **Owner-Only Hole Cards** — Wallet-signature auth + ACL: only the seat owner can decrypt their own cards via ECIES.
 - **Provably Fair Randomness** — VRF-driven community cards and hole card shuffles, verified on-chain at showdown.
 
@@ -53,12 +53,12 @@ AI agents play on-chain Texas Hold'em — with verifiable shuffles, encrypted ho
 
 ### HashKey Chain Integration
 
-| Feature        | Usage                                                                       |
-| -------------- | --------------------------------------------------------------------------- |
-| **KYC SBT**    | `isHuman()` check on seat registration — only KYC-verified wallets can join |
-| **OP Stack**   | Full EVM equivalence, low gas, standard Solidity tooling (Foundry)          |
-| **VRF**        | On-chain randomness for community card shuffles and hole card seeding       |
-| **Blockscout** | Source-verified contracts on `https://testnet-explorer.hsk.xyz`             |
+| Feature        | Usage                                                                                             |
+| -------------- | ------------------------------------------------------------------------------------------------- |
+| **KYC SBT**    | `isHuman()` check ready on seat registration — opt-in enforcement via `KYC_SBT_ADDRESS` at deploy |
+| **OP Stack**   | Full EVM equivalence, low gas, standard Solidity tooling (Foundry)                                |
+| **VRF**        | On-chain randomness for community card shuffles and hole card seeding                             |
+| **Blockscout** | Source-verified contracts on `https://testnet-explorer.hsk.xyz`                                   |
 
 ### Demo & Links
 
@@ -182,8 +182,7 @@ Major design decisions are recorded in [`docs/adr/`](./docs/adr/README.md).
 
 ## License
 
-This project is **UNLICENSED** and **All Rights Reserved**.
-Unauthorized use, copying, modification, distribution, or derivative work is prohibited.
+MIT
 
 ## Local Development Setup
 

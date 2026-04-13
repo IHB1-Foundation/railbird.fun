@@ -6,7 +6,9 @@ import type { ReactNode } from "react";
 import type { TableResponse } from "../types";
 
 vi.mock("next/link", () => ({
-  default: ({ href, children }: { href: string; children: ReactNode }) => <a href={href}>{children}</a>,
+  default: ({ href, children }: { href: string; children: ReactNode }) => (
+    <a href={href}>{children}</a>
+  ),
 }));
 
 vi.mock("@/components/WalletButton", () => ({
@@ -20,7 +22,7 @@ vi.mock("@/lib/auth", () => ({
   }),
 }));
 
-const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+const _ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
 function jsonResponse(body: unknown, status = 200): Response {
   return {
@@ -31,16 +33,15 @@ function jsonResponse(body: unknown, status = 200): Response {
       get: () => null,
     },
     json: async () => body,
-  } as Response;
+  } as unknown as Response;
 }
 
-function installFetchMock(handler: (url: string, init?: RequestInit) => Promise<Response> | Response) {
+function installFetchMock(
+  handler: (url: string, init?: RequestInit) => Promise<Response> | Response,
+) {
   const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
-    const url = typeof input === "string"
-      ? input
-      : input instanceof URL
-        ? input.toString()
-        : input.url;
+    const url =
+      typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
     return handler(url, init);
   });
   vi.stubGlobal("fetch", fetchMock);
@@ -255,7 +256,9 @@ describe("SCENARIO.md harness", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: /select table/i }));
 
-    await waitFor(() => expect(screen.getByText(/1 seated · 8 open/i)).toBeTruthy(), { timeout: 3000 });
+    await waitFor(() => expect(screen.getByText(/1 seated · 8 open/i)).toBeTruthy(), {
+      timeout: 3000,
+    });
 
     fireEvent.click(screen.getByRole("button", { name: /deploy agent/i }));
     fireEvent.click(screen.getByRole("button", { name: /deploy agent/i }));
@@ -299,20 +302,25 @@ describe("SCENARIO.md harness", () => {
               ],
             },
           ]}
-          seatByIndex={new Map([
-            [0, {
-              seatIndex: 0,
-              ownerAddress: "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
-              operatorAddress: "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
-              stack: "1000",
-              isActive: true,
-              currentBet: "120",
-              tokenAddress: null,
-            }],
-          ])}
+          seatByIndex={
+            new Map([
+              [
+                0,
+                {
+                  seatIndex: 0,
+                  ownerAddress: "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+                  operatorAddress: "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+                  stack: "1000",
+                  isActive: true,
+                  currentBet: "120",
+                  tokenAddress: null,
+                },
+              ],
+            ])
+          }
           maxSeats={9}
           chipSymbol="RCHIP"
-        />
+        />,
       );
     });
 
@@ -367,14 +375,18 @@ describe("SCENARIO.md harness", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: /lookup/i }));
 
-    await waitFor(() => expect(screen.getByText(/on-chain reasoning hash/i)).toBeTruthy(), { timeout: 3000 });
+    await waitFor(() => expect(screen.getByText(/on-chain reasoning hash/i)).toBeTruthy(), {
+      timeout: 3000,
+    });
 
     fireEvent.change(screen.getByPlaceholderText(/paste the ai reasoning text here/i), {
       target: { value: "Pressure the capped range. Apply maximum fold equity." },
     });
     fireEvent.click(screen.getByRole("button", { name: /^verify$/i }));
 
-    await waitFor(() => expect(screen.getByText(/all decisions verified/i)).toBeTruthy(), { timeout: 3000 });
+    await waitFor(() => expect(screen.getByText(/all decisions verified/i)).toBeTruthy(), {
+      timeout: 3000,
+    });
     expect(screen.getByText(/reasoning hash matches on-chain commitment/i)).toBeTruthy();
   });
 

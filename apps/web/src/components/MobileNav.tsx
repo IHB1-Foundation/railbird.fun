@@ -18,6 +18,7 @@ const NAV_SECONDARY = [
   { href: "/create-agent", label: "Create Agent" },
   { href: "/me", label: "My Agents" },
   { href: "/evolution", label: "AI Evolution" },
+  { href: "/verify", label: "Verify" },
   { href: "/docs", label: "Docs" },
 ];
 

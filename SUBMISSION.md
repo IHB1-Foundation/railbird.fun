@@ -31,53 +31,53 @@ Railbird turns a Gemini AI-powered poker agent into a fully transparent on-chain
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|------------|
-| Smart Contracts | Solidity + Foundry |
-| Chain | HashKey Chain Testnet (OP Stack, Chain ID 133) |
-| Frontend | Next.js + TypeScript + viem |
-| Wallet | MetaMask (`window.ethereum`) |
-| AI | Google Gemini API (`gemini-2.0-flash`) |
-| Backend | Node.js + TypeScript + PostgreSQL |
-| Crypto | ECIES encryption, VRF, keccak256 commit/reveal, Fisher-Yates shuffle |
-| Services | Indexer (REST + WS), OwnerView (wallet-auth + ACL) |
+| Layer           | Technology                                                           |
+| --------------- | -------------------------------------------------------------------- |
+| Smart Contracts | Solidity + Foundry                                                   |
+| Chain           | HashKey Chain Testnet (OP Stack, Chain ID 133)                       |
+| Frontend        | Next.js + TypeScript + viem                                          |
+| Wallet          | MetaMask (`window.ethereum`)                                         |
+| AI              | Google Gemini API (`gemini-2.0-flash`)                               |
+| Backend         | Node.js + TypeScript + PostgreSQL                                    |
+| Crypto          | ECIES encryption, VRF, keccak256 commit/reveal, Fisher-Yates shuffle |
+| Services        | Indexer (REST + WS), OwnerView (wallet-auth + ACL)                   |
 
 ---
 
 ## HashKey Chain Integration
 
-| Feature | How Used |
-|---------|----------|
-| **KYC SBT** | `IKYCSBTChecker.isHuman()` enforced in `PokerTable.registerSeat()` |
-| **OP Stack** | Full EVM equivalence — no contract modifications needed |
-| **VRF** | Community card shuffles + hole card seeding via `ProductionVRFAdapter` |
-| **Blockscout** | Source-verified contracts at `https://testnet-explorer.hsk.xyz` |
-| **Chain ID 133** | Native HSK token for gas, RCHIP ERC-20 for poker chips |
+| Feature          | How Used                                                                                                          |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------- |
+| **KYC SBT**      | `IKYCSBTChecker.isHuman()` integrated in `PokerTable.registerSeat()` — opt-in gate, ready for mainnet enforcement |
+| **OP Stack**     | Full EVM equivalence — no contract modifications needed                                                           |
+| **VRF**          | Community card shuffles + hole card seeding via `ProductionVRFAdapter`                                            |
+| **Blockscout**   | Source-verified contracts at `https://testnet-explorer.hsk.xyz`                                                   |
+| **Chain ID 133** | Native HSK token for gas, RCHIP ERC-20 for poker chips                                                            |
 
 ---
 
 ## Deployed Contract Addresses (Testnet)
 
-| Contract | Address |
-|----------|---------|
-| ChipToken (RCHIP) | [`0x51745FeAB545eA4d0818E49629Ad1b0A808431F2`](https://testnet-explorer.hsk.xyz/address/0x51745FeAB545eA4d0818E49629Ad1b0A808431F2) |
-| PokerTable 1 (low-stakes) | [`0x537BEd9Ea230F5c5f1462E1f6f29DeBB18aA0D5a`](https://testnet-explorer.hsk.xyz/address/0x537BEd9Ea230F5c5f1462E1f6f29DeBB18aA0D5a) |
-| PokerTable 2 (high-stakes) | [`0xEB830f6E5dFE6b5F52E0F05d5606540D2BB8cb16`](https://testnet-explorer.hsk.xyz/address/0xEB830f6E5dFE6b5F52E0F05d5606540D2BB8cb16) |
-| PlayerRegistry | [`0xFe11800ACD7c4e7Bc609e038B5dE4f2b3C0d6bd2`](https://testnet-explorer.hsk.xyz/address/0xFe11800ACD7c4e7Bc609e038B5dE4f2b3C0d6bd2) |
-| PlayerVault | [`0x6FE1F723c0BE33ecCA5Dca7e1D6954B7859A59A1`](https://testnet-explorer.hsk.xyz/address/0x6FE1F723c0BE33ecCA5Dca7e1D6954B7859A59A1) |
-| ProductionVRFAdapter | [`0xD02AF45258012208A46e1C00f91C2a2c8c2aFB15`](https://testnet-explorer.hsk.xyz/address/0xD02AF45258012208A46e1C00f91C2a2c8c2aFB15) |
+| Contract                   | Address                                                                                                                             |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| ChipToken (RCHIP)          | [`0x2210b79EC6e40d96072a0c26FfB64731a60d7865`](https://testnet-explorer.hsk.xyz/address/0x2210b79EC6e40d96072a0c26FfB64731a60d7865) |
+| PokerTable 1 (low-stakes)  | [`0x9250aB833Bb070FBd993aF1b0C103dd2D58ae601`](https://testnet-explorer.hsk.xyz/address/0x9250aB833Bb070FBd993aF1b0C103dd2D58ae601) |
+| PokerTable 2 (high-stakes) | [`0x984396E8798f8Fc30F0555FfA21F2bF982e54eD3`](https://testnet-explorer.hsk.xyz/address/0x984396E8798f8Fc30F0555FfA21F2bF982e54eD3) |
+| PlayerRegistry             | [`0x885b6a72480B264c258ba7167600D0D0Cc2fFF14`](https://testnet-explorer.hsk.xyz/address/0x885b6a72480B264c258ba7167600D0D0Cc2fFF14) |
+| PlayerVault                | [`0xd11838C992C3393fe3B9493cf4c640EB66b8AfB5`](https://testnet-explorer.hsk.xyz/address/0xd11838C992C3393fe3B9493cf4c640EB66b8AfB5) |
+| ProductionVRFAdapter       | [`0xdA613984af7Ae9e3A5834914C25d28c48be8D0d3`](https://testnet-explorer.hsk.xyz/address/0xdA613984af7Ae9e3A5834914C25d28c48be8D0d3) |
 
 ---
 
 ## Links
 
-| | |
-|---|---|
-| **GitHub** | (this repo) |
-| **Demo URL** | `https://railbird.fun` |
-| **Demo Video** | See `docs/demo-script.md` |
-| **Block Explorer** | `https://testnet-explorer.hsk.xyz` |
-| **DoraHacks** | `https://dorahacks.io/hackathon/2045` |
+|                    |                                       |
+| ------------------ | ------------------------------------- |
+| **GitHub**         | (this repo)                           |
+| **Demo URL**       | `https://railbird.fun`                |
+| **Demo Video**     | See `docs/demo-script.md`             |
+| **Block Explorer** | `https://testnet-explorer.hsk.xyz`    |
+| **DoraHacks**      | `https://dorahacks.io/hackathon/2045` |
 
 ---
 
@@ -85,24 +85,24 @@ Railbird turns a Gemini AI-powered poker agent into a fully transparent on-chain
 
 > To be filled after M4 (T4.2)
 
-| Transaction | Description | Explorer URL |
-|-------------|-------------|--------------|
-| ChipToken deploy | | TBD |
-| PokerTable 1 deploy | | TBD |
-| PokerTable 2 deploy | | TBD |
-| PlayerRegistry deploy | | TBD |
-| PlayerVault deploy | | TBD |
-| VRFAdapter deploy | | TBD |
-| Agent registration | | TBD |
-| Encryption key registration | | TBD |
-| Hand started | | TBD |
-| VRF request | | TBD |
-| VRF fulfill | | TBD |
-| Fold action | | TBD |
-| Call action | | TBD |
-| Raise action | | TBD |
-| Showdown + seed reveal | | TBD |
-| Settlement | | TBD |
+| Transaction                 | Description | Explorer URL |
+| --------------------------- | ----------- | ------------ |
+| ChipToken deploy            |             | TBD          |
+| PokerTable 1 deploy         |             | TBD          |
+| PokerTable 2 deploy         |             | TBD          |
+| PlayerRegistry deploy       |             | TBD          |
+| PlayerVault deploy          |             | TBD          |
+| VRFAdapter deploy           |             | TBD          |
+| Agent registration          |             | TBD          |
+| Encryption key registration |             | TBD          |
+| Hand started                |             | TBD          |
+| VRF request                 |             | TBD          |
+| VRF fulfill                 |             | TBD          |
+| Fold action                 |             | TBD          |
+| Call action                 |             | TBD          |
+| Raise action                |             | TBD          |
+| Showdown + seed reveal      |             | TBD          |
+| Settlement                  |             | TBD          |
 
 ---
 

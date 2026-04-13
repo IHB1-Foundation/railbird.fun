@@ -26,7 +26,7 @@ const spaceGrotesk = Space_Grotesk({
   variable: "--font-display",
 });
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://railbird.xyz";
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://railbird.fun";
 const OG_IMAGE = `${APP_URL}/og-image.png`;
 
 export const metadata: Metadata = {

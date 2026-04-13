@@ -28,6 +28,14 @@ interface IDexRouter {
 }
 
 contract PlayerVault is IPlayerVault {
+    struct RebalanceSnapshot {
+        address token;
+        address router;
+        uint256 externalAssets;
+        uint256 treasuryBalance;
+        uint256 outstandingShares;
+    }
+
     // ─── Constants ────────────────────────────────────────────────────────────
 
     uint256 private constant MAX_BPS = 10_000;
@@ -205,47 +213,43 @@ contract PlayerVault is IPlayerVault {
     ) external onlyOwner nonReentrant {
         _checkRebalanceEligibility(handId);
         require(monIn > 0, "Zero monIn");
-
-        address token = agentToken;
-        address router = dexRouter;
-        require(token != address(0), "Agent token not set");
-        require(router != address(0), "Router not set");
-
-        // Snapshot NAV state before trade.
-        uint256 A = getExternalAssets();
-        uint256 B = IERC20(token).balanceOf(address(this));
-        uint256 T = IERC20(token).totalSupply();
-        require(T > B, "No outstanding shares");
-        uint256 N = T - B;
+        RebalanceSnapshot memory snapshot = _loadRebalanceSnapshot();
 
         // Enforce size limit: monIn ≤ A × rebalanceMaxMonBps / MAX_BPS.
-        require(A > 0, "No external assets");
-        require(monIn <= (A * rebalanceMaxMonBps) / MAX_BPS, "Buy exceeds size limit");
-        require(monIn <= A, "monIn exceeds available assets");
+        require(snapshot.externalAssets > 0, "No external assets");
+        require(
+            monIn <= (snapshot.externalAssets * rebalanceMaxMonBps) / MAX_BPS,
+            "Buy exceeds size limit"
+        );
+        require(monIn <= snapshot.externalAssets, "monIn exceeds available assets");
 
         // Execute the buy via DEX router.
-        uint256 tokensBefore = B;
-        IDexRouter(router).buyTokens{value: monIn}(
-            token,
+        uint256 tokensBefore = snapshot.treasuryBalance;
+        IDexRouter(snapshot.router).buyTokens{value: monIn}(
+            snapshot.token,
             minTokenOut,
             block.timestamp + REBALANCE_DEADLINE_BUFFER
         );
-        uint256 tokensAfter = IERC20(token).balanceOf(address(this));
+        uint256 tokensAfter = IERC20(snapshot.token).balanceOf(address(this));
         uint256 tokenOut = tokensAfter - tokensBefore;
         require(tokenOut > 0, "No tokens received");
 
         // Accretive-only check: monIn × N ≤ A × tokenOut  ↔  q_buy ≤ P.
-        require(monIn * N <= A * tokenOut, "Buy would dilute NAV");
+        require(
+            monIn * snapshot.outstandingShares <= snapshot.externalAssets * tokenOut,
+            "Buy would dilute NAV"
+        );
 
         // Mark this hand as rebalanced.
         lastRebalanceHandId = handId;
 
-        // Emit with scaled NAV (×1e18) so callers can interpret as wei-per-token-wei.
-        uint256 navBefore = (A * 1e18) / N;
-        uint256 A2 = getExternalAssets(); // A − monIn
-        uint256 N2 = N - tokenOut;
-        uint256 navAfter = N2 > 0 ? (A2 * 1e18) / N2 : 0;
-        emit RebalanceBuy(handId, monIn, tokenOut, navBefore, navAfter);
+        _emitRebalanceBuy(
+            handId,
+            monIn,
+            tokenOut,
+            snapshot.externalAssets,
+            snapshot.outstandingShares
+        );
     }
 
     /**
@@ -265,32 +269,23 @@ contract PlayerVault is IPlayerVault {
     ) external onlyOwner nonReentrant {
         _checkRebalanceEligibility(handId);
         require(tokenIn > 0, "Zero tokenIn");
-
-        address token = agentToken;
-        address router = dexRouter;
-        require(token != address(0), "Agent token not set");
-        require(router != address(0), "Router not set");
-
-        // Snapshot NAV state before trade.
-        uint256 A = getExternalAssets();
-        uint256 B = IERC20(token).balanceOf(address(this));
-        uint256 T = IERC20(token).totalSupply();
-        require(T > B, "No outstanding shares");
-        uint256 N = T - B;
+        RebalanceSnapshot memory snapshot = _loadRebalanceSnapshot();
 
         // Enforce size limit: tokenIn ≤ B × rebalanceMaxTokenBps / MAX_BPS.
-        require(B > 0, "No treasury tokens");
-        require(tokenIn <= (B * rebalanceMaxTokenBps) / MAX_BPS, "Sell exceeds size limit");
-        require(tokenIn <= B, "tokenIn exceeds vault balance");
+        require(snapshot.treasuryBalance > 0, "No treasury tokens");
+        require(
+            tokenIn <= (snapshot.treasuryBalance * rebalanceMaxTokenBps) / MAX_BPS,
+            "Sell exceeds size limit"
+        );
+        require(tokenIn <= snapshot.treasuryBalance, "tokenIn exceeds vault balance");
 
         // Approve router for exact amount, reset first to handle non-standard tokens.
-        IERC20(token).approve(router, 0);
-        IERC20(token).approve(router, tokenIn);
+        _resetAndApproveRouter(snapshot.token, snapshot.router, tokenIn);
 
         // Execute the sell via DEX router.
         uint256 monBefore = address(this).balance;
-        IDexRouter(router).sellTokens(
-            token,
+        IDexRouter(snapshot.router).sellTokens(
+            snapshot.token,
             tokenIn,
             minMonOut,
             block.timestamp + REBALANCE_DEADLINE_BUFFER
@@ -300,20 +295,24 @@ contract PlayerVault is IPlayerVault {
         uint256 monOut = monAfter - monBefore;
 
         // Accretive-only check: monOut × N ≥ A × tokenIn  ↔  q_sell ≥ P.
-        require(monOut * N >= A * tokenIn, "Sell would dilute NAV");
+        require(
+            monOut * snapshot.outstandingShares >= snapshot.externalAssets * tokenIn,
+            "Sell would dilute NAV"
+        );
 
         // Reset approval to zero after use.
-        IERC20(token).approve(router, 0);
+        IERC20(snapshot.token).approve(snapshot.router, 0);
 
         // Mark this hand as rebalanced.
         lastRebalanceHandId = handId;
 
-        // Emit with scaled NAV (×1e18).
-        uint256 navBefore = (A * 1e18) / N;
-        uint256 A2 = getExternalAssets(); // A + monOut
-        uint256 N2 = N + tokenIn;
-        uint256 navAfter = (A2 * 1e18) / N2;
-        emit RebalanceSell(handId, tokenIn, monOut, navBefore, navAfter);
+        _emitRebalanceSell(
+            handId,
+            tokenIn,
+            monOut,
+            snapshot.externalAssets,
+            snapshot.outstandingShares
+        );
     }
 
     // ─── Admin Functions ──────────────────────────────────────────────────────
@@ -361,5 +360,54 @@ contract PlayerVault is IPlayerVault {
         require(lastSnapshotHandId > 0, "No settled hand yet");
         require(handId == lastSnapshotHandId, "Not current settled hand");
         require(handId != lastRebalanceHandId, "Already rebalanced this hand");
+    }
+
+    function _loadRebalanceSnapshot() internal view returns (RebalanceSnapshot memory snapshot) {
+        snapshot.token = agentToken;
+        snapshot.router = dexRouter;
+        require(snapshot.token != address(0), "Agent token not set");
+        require(snapshot.router != address(0), "Router not set");
+
+        snapshot.externalAssets = getExternalAssets();
+        snapshot.treasuryBalance = IERC20(snapshot.token).balanceOf(address(this));
+
+        uint256 totalSupply = IERC20(snapshot.token).totalSupply();
+        require(totalSupply > snapshot.treasuryBalance, "No outstanding shares");
+        snapshot.outstandingShares = totalSupply - snapshot.treasuryBalance;
+    }
+
+    function _resetAndApproveRouter(address token, address router, uint256 amount) internal {
+        IERC20(token).approve(router, 0);
+        IERC20(token).approve(router, amount);
+    }
+
+    function _emitRebalanceBuy(
+        uint256 handId,
+        uint256 monIn,
+        uint256 tokenOut,
+        uint256 externalAssets,
+        uint256 outstandingShares
+    ) internal {
+        uint256 navBefore = (externalAssets * 1e18) / outstandingShares;
+        uint256 nextAssets = getExternalAssets();
+        uint256 nextOutstandingShares = outstandingShares - tokenOut;
+        uint256 navAfter = nextOutstandingShares > 0
+            ? (nextAssets * 1e18) / nextOutstandingShares
+            : 0;
+        emit RebalanceBuy(handId, monIn, tokenOut, navBefore, navAfter);
+    }
+
+    function _emitRebalanceSell(
+        uint256 handId,
+        uint256 tokenIn,
+        uint256 monOut,
+        uint256 externalAssets,
+        uint256 outstandingShares
+    ) internal {
+        uint256 navBefore = (externalAssets * 1e18) / outstandingShares;
+        uint256 nextAssets = getExternalAssets();
+        uint256 nextOutstandingShares = outstandingShares + tokenIn;
+        uint256 navAfter = (nextAssets * 1e18) / nextOutstandingShares;
+        emit RebalanceSell(handId, tokenIn, monOut, navBefore, navAfter);
     }
 }

@@ -20,6 +20,12 @@ interface IPlayerVaultPnl {
  * @dev Abstract — inherited by PokerTable.
  */
 abstract contract SettlementEngine is PokerTableBase {
+    struct ShowdownState {
+        uint256[MAX_SEATS] scoresBySeat;
+        bool[MAX_SEATS] revealedBySeat;
+        uint8[MAX_SEATS] revealedSeats;
+        uint8 revealedCount;
+    }
 
     // ============ AI Decision Transparency ============
 
@@ -256,69 +262,49 @@ abstract contract SettlementEngine is PokerTableBase {
 
     function settleShowdown() external {
         require(gameState == GameState.SHOWDOWN, "SD");
+        ShowdownState memory showdown = _collectShowdownState(currentHandId);
 
-        uint256 handId = currentHandId;
-
-        uint256[MAX_SEATS] memory scoresBySeat;
-        bool[MAX_SEATS] memory revealedBySeat;
-        uint8 revealedCount;
-        uint8[MAX_SEATS] memory revSeats;
-
-        for (uint8 i = 0; i < numSeats; i++) {
-            if (seats[i].isActive && isHoleCardsRevealed[handId][i]) {
-                uint8 c1 = _revealedHoleCards[handId][i][0];
-                uint8 c2 = _revealedHoleCards[handId][i][1];
-                scoresBySeat[i] = HandEvaluator.evaluate(communityCards, c1, c2);
-                revealedBySeat[i] = true;
-                revSeats[revealedCount] = i;
-                revealedCount++;
-            }
-        }
-
-        if (revealedCount == 0) {
-            if (
-                showdownStartTimestamp == 0 ||
-                block.timestamp <= showdownStartTimestamp + SHOWDOWN_TIMEOUT
-            ) revert ShowdownRevealWindowOpen();
-            _settleUnrevealedShowdown();
+        if (showdown.revealedCount == 0) {
+            _handleUnrevealedShowdown();
             return;
         }
 
         if (currentHand.sidePotCount > 0) {
-            _settleShowdownWithSidePots(scoresBySeat, revealedBySeat, revSeats[0]);
+            _settleShowdownWithSidePots(
+                showdown.scoresBySeat,
+                showdown.revealedBySeat,
+                showdown.revealedSeats[0]
+            );
             return;
         }
 
-        uint256[MAX_SEATS] memory seqScores;
-        for (uint8 i = 0; i < revealedCount; i++) {
-            seqScores[i] = scoresBySeat[revSeats[i]];
-        }
-
-        if (revealedCount == 1) {
-            _settleHand(revSeats[0]);
+        if (showdown.revealedCount == 1) {
+            _settleHand(showdown.revealedSeats[0]);
             return;
         }
 
-        uint256 bestScore;
-        for (uint8 i = 0; i < revealedCount; i++) {
-            if (seqScores[i] > bestScore) bestScore = seqScores[i];
-        }
-
-        uint8 winnerCount;
-        for (uint8 i = 0; i < revealedCount; i++) {
-            if (seqScores[i] == bestScore) winnerCount++;
-        }
-
+        uint256[MAX_SEATS] memory seqScores = _buildSequentialScores(
+            showdown.scoresBySeat,
+            showdown.revealedSeats,
+            showdown.revealedCount
+        );
+        (uint256 bestScore, uint8 winnerCount, uint8 uniqueWinnerSeat) = _resolveShowdownOutcome(
+            showdown.revealedSeats,
+            seqScores,
+            showdown.revealedCount
+        );
         if (winnerCount == 1) {
-            for (uint8 i = 0; i < revealedCount; i++) {
-                if (seqScores[i] == bestScore) {
-                    _settleHand(revSeats[i]);
-                    return;
-                }
-            }
+            _settleHand(uniqueWinnerSeat);
+            return;
         }
 
-        _settleHandSplit(revSeats, seqScores, revealedCount, bestScore, winnerCount);
+        _settleHandSplit(
+            showdown.revealedSeats,
+            seqScores,
+            showdown.revealedCount,
+            bestScore,
+            winnerCount
+        );
     }
 
     function _settleShowdownWithSidePots(
@@ -326,54 +312,164 @@ abstract contract SettlementEngine is PokerTableBase {
         bool[MAX_SEATS] memory revealedBySeat,
         uint8 fallbackWinner
     ) internal {
-        uint8 potCount = currentHand.sidePotCount;
-        uint8 firstWinner = numSeats;
+        uint8 firstWinner = _distributeSidePots(scoresBySeat, revealedBySeat, fallbackWinner);
+        _postSettlementCleanup(currentHandId, firstWinner, currentHand.pot);
+    }
 
-        for (uint8 p = 0; p < potCount; p++) {
-            uint256 potAmount = sidePots[p].amount;
-            bool[MAX_SEATS] memory eligible = sidePots[p].eligible;
-
-            uint8 eligCount = 0;
-            uint256 bestScore = 0;
-
-            for (uint8 i = 0; i < numSeats; i++) {
-                if (eligible[i] && revealedBySeat[i]) {
-                    eligCount++;
-                    if (scoresBySeat[i] > bestScore) bestScore = scoresBySeat[i];
-                }
+    function _collectShowdownState(uint256 handId) internal view returns (ShowdownState memory showdown) {
+        for (uint8 i = 0; i < numSeats; i++) {
+            if (!seats[i].isActive || !isHoleCardsRevealed[handId][i]) {
+                continue;
             }
 
-            if (eligCount == 0) continue;
+            uint8 c1 = _revealedHoleCards[handId][i][0];
+            uint8 c2 = _revealedHoleCards[handId][i][1];
+            showdown.scoresBySeat[i] = HandEvaluator.evaluate(communityCards, c1, c2);
+            showdown.revealedBySeat[i] = true;
+            showdown.revealedSeats[showdown.revealedCount] = i;
+            showdown.revealedCount++;
+        }
+    }
 
-            uint8 winnerCount = 0;
-            for (uint8 i = 0; i < numSeats; i++) {
-                if (eligible[i] && revealedBySeat[i] && scoresBySeat[i] == bestScore) winnerCount++;
-            }
+    function _handleUnrevealedShowdown() internal {
+        if (
+            showdownStartTimestamp == 0 ||
+            block.timestamp <= showdownStartTimestamp + SHOWDOWN_TIMEOUT
+        ) revert ShowdownRevealWindowOpen();
 
-            uint256 share = potAmount / winnerCount;
-            uint256 remainder = potAmount % winnerCount;
+        _settleUnrevealedShowdown();
+    }
 
-            uint8 primaryWinner = numSeats;
-            for (uint8 i = 1; i <= numSeats; i++) {
-                uint8 seat = (buttonSeat + i) % numSeats;
-                if (eligible[seat] && revealedBySeat[seat] && scoresBySeat[seat] == bestScore) {
-                    primaryWinner = seat;
-                    break;
-                }
-            }
+    function _buildSequentialScores(
+        uint256[MAX_SEATS] memory scoresBySeat,
+        uint8[MAX_SEATS] memory revealedSeats,
+        uint8 revealedCount
+    ) internal pure returns (uint256[MAX_SEATS] memory seqScores) {
+        for (uint8 i = 0; i < revealedCount; i++) {
+            seqScores[i] = scoresBySeat[revealedSeats[i]];
+        }
+    }
 
-            for (uint8 i = 0; i < numSeats; i++) {
-                if (eligible[i] && revealedBySeat[i] && scoresBySeat[i] == bestScore) {
-                    uint256 amount = share + (i == primaryWinner ? remainder : 0);
-                    seats[i].stack += amount;
-                    if (firstWinner == numSeats) firstWinner = i;
-                    emit SeatUpdated(i, seats[i].owner, seats[i].operator, seats[i].stack);
-                }
+    function _resolveShowdownOutcome(
+        uint8[MAX_SEATS] memory revealedSeats,
+        uint256[MAX_SEATS] memory seqScores,
+        uint8 revealedCount
+    ) internal pure returns (uint256 bestScore, uint8 winnerCount, uint8 uniqueWinnerSeat) {
+        uniqueWinnerSeat = UNDEALT;
+
+        for (uint8 i = 0; i < revealedCount; i++) {
+            if (seqScores[i] > bestScore) {
+                bestScore = seqScores[i];
             }
         }
 
-        if (firstWinner == numSeats) firstWinner = fallbackWinner;
-        _postSettlementCleanup(currentHandId, firstWinner, currentHand.pot);
+        for (uint8 i = 0; i < revealedCount; i++) {
+            if (seqScores[i] == bestScore) {
+                winnerCount++;
+                uniqueWinnerSeat = winnerCount == 1 ? revealedSeats[i] : UNDEALT;
+            }
+        }
+    }
+
+    function _distributeSidePots(
+        uint256[MAX_SEATS] memory scoresBySeat,
+        bool[MAX_SEATS] memory revealedBySeat,
+        uint8 fallbackWinner
+    ) internal returns (uint8 firstWinner) {
+        firstWinner = numSeats;
+
+        for (uint8 p = 0; p < currentHand.sidePotCount; p++) {
+            uint8 potWinner = _distributeSingleSidePot(p, scoresBySeat, revealedBySeat);
+            if (firstWinner == numSeats && potWinner != numSeats) {
+                firstWinner = potWinner;
+            }
+        }
+
+        if (firstWinner == numSeats) {
+            return fallbackWinner;
+        }
+    }
+
+    function _distributeSingleSidePot(
+        uint8 potIndex,
+        uint256[MAX_SEATS] memory scoresBySeat,
+        bool[MAX_SEATS] memory revealedBySeat
+    ) internal returns (uint8 primaryWinner) {
+        bool[MAX_SEATS] memory eligible = sidePots[potIndex].eligible;
+        (uint256 bestScore, uint8 winnerCount) = _resolveEligibleBestScore(
+            eligible,
+            revealedBySeat,
+            scoresBySeat
+        );
+        if (winnerCount == 0) {
+            return numSeats;
+        }
+
+        uint256 potAmount = sidePots[potIndex].amount;
+        uint256 share = potAmount / winnerCount;
+        uint256 remainder = potAmount % winnerCount;
+
+        primaryWinner = _findButtonOrderedWinner(eligible, revealedBySeat, scoresBySeat, bestScore);
+        _paySidePotWinners(
+            eligible,
+            revealedBySeat,
+            scoresBySeat,
+            bestScore,
+            share,
+            remainder,
+            primaryWinner
+        );
+    }
+
+    function _resolveEligibleBestScore(
+        bool[MAX_SEATS] memory eligible,
+        bool[MAX_SEATS] memory revealedBySeat,
+        uint256[MAX_SEATS] memory scoresBySeat
+    ) internal pure returns (uint256 bestScore, uint8 winnerCount) {
+        for (uint8 i = 0; i < MAX_SEATS; i++) {
+            if (eligible[i] && revealedBySeat[i] && scoresBySeat[i] > bestScore) {
+                bestScore = scoresBySeat[i];
+            }
+        }
+
+        for (uint8 i = 0; i < MAX_SEATS; i++) {
+            if (eligible[i] && revealedBySeat[i] && scoresBySeat[i] == bestScore) {
+                winnerCount++;
+            }
+        }
+    }
+
+    function _findButtonOrderedWinner(
+        bool[MAX_SEATS] memory eligible,
+        bool[MAX_SEATS] memory revealedBySeat,
+        uint256[MAX_SEATS] memory scoresBySeat,
+        uint256 bestScore
+    ) internal view returns (uint8 primaryWinner) {
+        primaryWinner = numSeats;
+        for (uint8 i = 1; i <= numSeats; i++) {
+            uint8 seat = (buttonSeat + i) % numSeats;
+            if (eligible[seat] && revealedBySeat[seat] && scoresBySeat[seat] == bestScore) {
+                return seat;
+            }
+        }
+    }
+
+    function _paySidePotWinners(
+        bool[MAX_SEATS] memory eligible,
+        bool[MAX_SEATS] memory revealedBySeat,
+        uint256[MAX_SEATS] memory scoresBySeat,
+        uint256 bestScore,
+        uint256 share,
+        uint256 remainder,
+        uint8 primaryWinner
+    ) internal {
+        for (uint8 i = 0; i < numSeats; i++) {
+            if (eligible[i] && revealedBySeat[i] && scoresBySeat[i] == bestScore) {
+                uint256 amount = share + (i == primaryWinner ? remainder : 0);
+                seats[i].stack += amount;
+                emit SeatUpdated(i, seats[i].owner, seats[i].operator, seats[i].stack);
+            }
+        }
     }
 
     function _settleHandSplit(

@@ -3857,7 +3857,7 @@ contract PlayerRegistryIntegrationTest is Test {
         vm.prank(owner1);
         chipToken.approve(address(pokerTable), BUY_IN);
         vm.prank(owner1);
-        vm.expectRevert("Agent not registered in PlayerRegistry");
+        vm.expectRevert(bytes("S13"));
         pokerTable.registerSeat(0, owner1, operator1, BUY_IN);
     }
 

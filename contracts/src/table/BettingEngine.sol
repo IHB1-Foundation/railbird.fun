@@ -219,16 +219,54 @@ abstract contract BettingEngine is PokerTableBase {
     }
 
     function _buildSidePots() internal {
-        uint256[MAX_SEATS] memory levels;
-        uint8 levelCount = 0;
+        (uint256[MAX_SEATS] memory uniqueLevels, uint8 uniqueCount) = _collectUniqueSidePotLevels();
 
-        for (uint8 i = 0; i < numSeats; i++) {
-            if (seats[i].isActive && seats[i].isAllIn && seats[i].totalHandBet > 0) {
-                levels[levelCount++] = seats[i].totalHandBet;
+        uint256 prevLevel = 0;
+        uint8 potCount = 0;
+
+        for (uint8 i = 0; i < uniqueCount; i++) {
+            (uint256 potAmount, bool[MAX_SEATS] memory eligible) = _describeSidePot(
+                prevLevel,
+                uniqueLevels[i]
+            );
+            if (potAmount > 0) {
+                sidePots[potCount].amount = potAmount;
+                sidePots[potCount].eligible = eligible;
+                potCount++;
             }
+            prevLevel = uniqueLevels[i];
         }
 
-        // Insertion sort ascending
+        currentHand.sidePotCount = potCount;
+    }
+
+    function _collectUniqueSidePotLevels()
+        internal
+        view
+        returns (uint256[MAX_SEATS] memory uniqueLevels, uint8 uniqueCount)
+    {
+        uint256[MAX_SEATS] memory levels;
+        uint8 levelCount = _collectAllInLevels(levels);
+        _sortLevelsAscending(levels, levelCount);
+        uniqueCount = _dedupeLevels(levels, levelCount, uniqueLevels);
+
+        uint256 maxBet = _getMaxTotalHandBet();
+        if (maxBet > 0 && (uniqueCount == 0 || uniqueLevels[uniqueCount - 1] < maxBet)) {
+            uniqueLevels[uniqueCount] = maxBet;
+            uniqueCount++;
+        }
+    }
+
+    function _collectAllInLevels(uint256[MAX_SEATS] memory levels) internal view returns (uint8 levelCount) {
+        for (uint8 i = 0; i < numSeats; i++) {
+            if (seats[i].isActive && seats[i].isAllIn && seats[i].totalHandBet > 0) {
+                levels[levelCount] = seats[i].totalHandBet;
+                levelCount++;
+            }
+        }
+    }
+
+    function _sortLevelsAscending(uint256[MAX_SEATS] memory levels, uint8 levelCount) internal pure {
         for (uint8 i = 1; i < levelCount; i++) {
             uint256 key = levels[i];
             uint8 j = i;
@@ -238,52 +276,44 @@ abstract contract BettingEngine is PokerTableBase {
             }
             levels[j] = key;
         }
+    }
 
-        // Deduplicate
-        uint256[MAX_SEATS] memory uniqueLevels;
-        uint8 uniqueCount = 0;
+    function _dedupeLevels(
+        uint256[MAX_SEATS] memory levels,
+        uint8 levelCount,
+        uint256[MAX_SEATS] memory uniqueLevels
+    ) internal pure returns (uint8 uniqueCount) {
         for (uint8 i = 0; i < levelCount; i++) {
             if (uniqueCount == 0 || uniqueLevels[uniqueCount - 1] != levels[i]) {
-                uniqueLevels[uniqueCount++] = levels[i];
+                uniqueLevels[uniqueCount] = levels[i];
+                uniqueCount++;
             }
         }
+    }
 
-        uint256 maxBet = 0;
+    function _getMaxTotalHandBet() internal view returns (uint256 maxBet) {
         for (uint8 i = 0; i < numSeats; i++) {
-            if (seats[i].totalHandBet > maxBet) maxBet = seats[i].totalHandBet;
-        }
-        if (maxBet > 0 && (uniqueCount == 0 || uniqueLevels[uniqueCount - 1] < maxBet)) {
-            uniqueLevels[uniqueCount++] = maxBet;
-        }
-
-        uint256 prevLevel = 0;
-        uint8 potCount = 0;
-
-        for (uint8 j = 0; j < uniqueCount; j++) {
-            uint256 curLevel = uniqueLevels[j];
-            uint256 potAmount = 0;
-            bool[MAX_SEATS] memory eligible;
-
-            for (uint8 i = 0; i < numSeats; i++) {
-                uint256 bet = seats[i].totalHandBet;
-                if (bet > prevLevel) {
-                    uint256 cap = bet < curLevel ? bet : curLevel;
-                    potAmount += cap - prevLevel;
-                }
-                if (seats[i].isActive && bet >= curLevel) {
-                    eligible[i] = true;
-                }
+            if (seats[i].totalHandBet > maxBet) {
+                maxBet = seats[i].totalHandBet;
             }
-
-            if (potAmount > 0) {
-                sidePots[potCount].amount = potAmount;
-                sidePots[potCount].eligible = eligible;
-                potCount++;
-            }
-            prevLevel = curLevel;
         }
+    }
 
-        currentHand.sidePotCount = potCount;
+    function _describeSidePot(uint256 prevLevel, uint256 curLevel)
+        internal
+        view
+        returns (uint256 potAmount, bool[MAX_SEATS] memory eligible)
+    {
+        for (uint8 i = 0; i < numSeats; i++) {
+            uint256 bet = seats[i].totalHandBet;
+            if (bet > prevLevel) {
+                uint256 cap = bet < curLevel ? bet : curLevel;
+                potAmount += cap - prevLevel;
+            }
+            if (seats[i].isActive && bet >= curLevel) {
+                eligible[i] = true;
+            }
+        }
     }
 
     function _completeBettingRound() internal {

@@ -7,6 +7,7 @@ import "../src/ChipToken.sol";
 import "../src/PlayerRegistry.sol";
 import "../src/PlayerVault.sol";
 import "../src/ProductionVRFAdapter.sol";
+import "../src/SideBetPool.sol";
 
 /**
  * @title DeployHashKey
@@ -67,6 +68,10 @@ contract DeployHashKey is Script {
         vault.initialize();
         console.log("PlayerVault:", address(vault));
 
+        // --- SideBetPool ---
+        SideBetPool sideBetPool = new SideBetPool();
+        console.log("SideBetPool:", address(sideBetPool));
+
         vm.stopBroadcast();
 
         // --- Summary ---
@@ -76,5 +81,6 @@ contract DeployHashKey is Script {
         console.log("PLAYER_REGISTRY_ADDRESS=%s", vm.toString(address(registry)));
         console.log("PLAYER_VAULT_ADDRESS=%s", vm.toString(address(vault)));
         console.log("VRF_ADAPTER_ADDRESS=%s", vm.toString(vrfAdapter));
+        console.log("SIDE_BET_POOL_ADDRESS=%s", vm.toString(address(sideBetPool)));
     }
 }

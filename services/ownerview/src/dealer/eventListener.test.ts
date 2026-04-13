@@ -32,14 +32,16 @@ function buildListenerWithMockClient() {
       rpcUrl: "http://localhost:8545",
       pokerTableAddress: "0x0000000000000000000000000000000000000001",
       trustlessDealerEnabled: false,
+      client: {
+        watchContractEvent: mockClient.watchContractEvent,
+        readContract: async () => {
+          throw new Error("readContract should not be called in watcher lifecycle tests");
+        },
+      },
     },
     dealerService,
-    "table-1"
+    "table-1",
   );
-
-  // Swap out the private client with our mock
-  // @ts-expect-error — accessing private field for testing
-  listener["client"] = mockClient;
 
   return { listener, unwatchCallCounts, getWatchCallCount: () => watchCallCount };
 }
@@ -63,7 +65,11 @@ describe("HandStartedEventListener — watch leak fix", () => {
     listener.stop();
 
     assert.equal(unwatchCallCounts[0], 1, "first watcher should be stopped after stop()");
-    assert.equal(unwatchCallCounts[1], 1, "second watcher (CardIntegrityViolation) should be stopped after stop()");
+    assert.equal(
+      unwatchCallCounts[1],
+      1,
+      "second watcher (CardIntegrityViolation) should be stopped after stop()",
+    );
   });
 
   it("isListening() returns false after stop()", async () => {

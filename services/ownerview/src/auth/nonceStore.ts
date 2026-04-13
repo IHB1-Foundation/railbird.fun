@@ -141,6 +141,7 @@ export class NonceStore {
     if (Date.now() > record.expiresAt) {
       this.nonces.delete(nonce);
       this._removeFromPerAddress(record.address, nonce);
+      this._schedulePersist();
       return null;
     }
     return record;

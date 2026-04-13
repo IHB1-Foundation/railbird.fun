@@ -20,6 +20,8 @@ import { PokerTableABI } from "../chain/pokerTableAbi.js";
 export interface EventListenerConfig {
   rpcUrl: string;
   pokerTableAddress: Address;
+  /** Optional injected client used by tests and non-default runtimes. */
+  client?: Pick<PublicClient, "readContract" | "watchContractEvent">;
   /** Polling interval in milliseconds (default: 2000) */
   pollInterval?: number;
   /**
@@ -40,10 +42,10 @@ export interface EventListenerConfig {
  * HandStarted event ABI
  */
 const HandStartedEventAbi = parseAbiItem(
-  "event HandStarted(uint256 indexed handId, uint256 smallBlind, uint256 bigBlind, uint8 buttonSeat)"
+  "event HandStarted(uint256 indexed handId, uint256 smallBlind, uint256 bigBlind, uint8 buttonSeat)",
 );
 const CardIntegrityViolationAbi = parseAbiItem(
-  "event CardIntegrityViolation(uint256 indexed handId, uint8 indexed seatIndex, uint8 card, uint8 communityIndex)"
+  "event CardIntegrityViolation(uint256 indexed handId, uint8 indexed seatIndex, uint8 card, uint8 communityIndex)",
 );
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
@@ -59,7 +61,7 @@ export type OnHandStartedCallback = (tableId: string, event: HandStartedEvent) =
  * subscriptions for lower latency.
  */
 export class HandStartedEventListener {
-  private client: PublicClient;
+  private client: Pick<PublicClient, "readContract" | "watchContractEvent">;
   private pokerTableAddress: Address;
   private dealerService: DealerService;
   private pollInterval: number;
@@ -69,14 +71,12 @@ export class HandStartedEventListener {
   private tableId: string;
   private onHandStarted?: OnHandStartedCallback;
 
-  constructor(
-    config: EventListenerConfig,
-    dealerService: DealerService,
-    tableId: string
-  ) {
-    this.client = createPublicClient({
-      transport: http(config.rpcUrl),
-    });
+  constructor(config: EventListenerConfig, dealerService: DealerService, tableId: string) {
+    this.client =
+      config.client ??
+      createPublicClient({
+        transport: http(config.rpcUrl),
+      });
     this.pokerTableAddress = config.pokerTableAddress;
     this.dealerService = dealerService;
     this.pollInterval = config.pollInterval ?? 2000;
@@ -102,54 +102,76 @@ export class HandStartedEventListener {
     this.isRunning = true;
 
     // Watch for new HandStarted events
-    this.unwatchers.push(this.client.watchContractEvent({
-      address: this.pokerTableAddress,
-      abi: [HandStartedEventAbi],
-      eventName: "HandStarted",
-      pollingInterval: this.pollInterval,
-      onLogs: (logs) => {
-        void this.handleLogs(logs);
-      },
-      onError: (error) => {
-        logger.error({ tableId: this.tableId, err: error.message }, 'DealerEventListener watch error');
-      },
-    }));
+    this.unwatchers.push(
+      this.client.watchContractEvent({
+        address: this.pokerTableAddress,
+        abi: [HandStartedEventAbi],
+        eventName: "HandStarted",
+        pollingInterval: this.pollInterval,
+        onLogs: (logs) => {
+          void this.handleLogs(logs);
+        },
+        onError: (error) => {
+          logger.error(
+            { tableId: this.tableId, err: error.message },
+            "DealerEventListener watch error",
+          );
+        },
+      }),
+    );
 
     // Watch for CardIntegrityViolation events (dealer integrity monitoring)
-    this.unwatchers.push(this.client.watchContractEvent({
-      address: this.pokerTableAddress,
-      abi: [CardIntegrityViolationAbi],
-      eventName: "CardIntegrityViolation",
-      pollingInterval: this.pollInterval,
-      onLogs: (logs) => {
-        for (const log of logs) {
-          try {
-            const decoded = decodeEventLog({
-              abi: [CardIntegrityViolationAbi],
-              data: log.data,
-              topics: log.topics,
-            });
-            const args = decoded.args as {
-              handId: bigint;
-              seatIndex: number;
-              card: number;
-              communityIndex: number;
-            };
-            logger.error(
-              { tableId: this.tableId, handId: args.handId.toString(), seatIndex: args.seatIndex, card: args.card, communityIndex: args.communityIndex },
-              'DealerIntegrity VIOLATION: dealer dealt a hole card that duplicates a community card'
-            );
-          } catch (_e) { /* ignore decode errors */ }
-        }
-      },
-      onError: (error) => {
-        logger.error({ tableId: this.tableId, err: error.message }, 'DealerIntegrity watch error');
-      },
-    }));
+    this.unwatchers.push(
+      this.client.watchContractEvent({
+        address: this.pokerTableAddress,
+        abi: [CardIntegrityViolationAbi],
+        eventName: "CardIntegrityViolation",
+        pollingInterval: this.pollInterval,
+        onLogs: (logs) => {
+          for (const log of logs) {
+            try {
+              const decoded = decodeEventLog({
+                abi: [CardIntegrityViolationAbi],
+                data: log.data,
+                topics: log.topics,
+              });
+              const args = decoded.args as {
+                handId: bigint;
+                seatIndex: number;
+                card: number;
+                communityIndex: number;
+              };
+              logger.error(
+                {
+                  tableId: this.tableId,
+                  handId: args.handId.toString(),
+                  seatIndex: args.seatIndex,
+                  card: args.card,
+                  communityIndex: args.communityIndex,
+                },
+                "DealerIntegrity VIOLATION: dealer dealt a hole card that duplicates a community card",
+              );
+            } catch {
+              /* ignore decode errors */
+            }
+          }
+        },
+        onError: (error) => {
+          logger.error(
+            { tableId: this.tableId, err: error.message },
+            "DealerIntegrity watch error",
+          );
+        },
+      }),
+    );
 
     logger.info(
-      { tableId: this.tableId, pokerTableAddress: this.pokerTableAddress, trustlessDealer: this.trustlessDealerEnabled },
-      'DealerEventListener started watching HandStarted events'
+      {
+        tableId: this.tableId,
+        pokerTableAddress: this.pokerTableAddress,
+        trustlessDealer: this.trustlessDealerEnabled,
+      },
+      "DealerEventListener started watching HandStarted events",
     );
   }
 
@@ -162,7 +184,7 @@ export class HandStartedEventListener {
     }
     this.unwatchers = [];
     this.isRunning = false;
-    logger.info({ tableId: this.tableId }, 'DealerEventListener stopped');
+    logger.info({ tableId: this.tableId }, "DealerEventListener stopped");
   }
 
   /**
@@ -192,7 +214,10 @@ export class HandStartedEventListener {
 
         await this.handleHandStarted(event);
       } catch (error) {
-        logger.error({ tableId: this.tableId, err: error instanceof Error ? error.message : String(error) }, 'DealerEventListener failed to process log');
+        logger.error(
+          { tableId: this.tableId, err: error instanceof Error ? error.message : String(error) },
+          "DealerEventListener failed to process log",
+        );
       }
     }
   }
@@ -205,13 +230,16 @@ export class HandStartedEventListener {
 
     // Feature flag: skip automatic dealing in legacy mode
     if (!this.trustlessDealerEnabled) {
-      logger.info({ tableId: this.tableId, handId: handIdStr }, 'Trustless dealer disabled, skipping automatic deal — use /dealer API to deal manually');
+      logger.info(
+        { tableId: this.tableId, handId: handIdStr },
+        "Trustless dealer disabled, skipping automatic deal — use /dealer API to deal manually",
+      );
       return;
     }
 
     // Check if already dealt (idempotency)
     if (await this.dealerService.isHandDealt(this.tableId, handIdStr)) {
-      logger.info({ tableId: this.tableId, handId: handIdStr }, 'Hand already dealt, skipping');
+      logger.info({ tableId: this.tableId, handId: handIdStr }, "Hand already dealt, skipping");
       return;
     }
 
@@ -221,14 +249,20 @@ export class HandStartedEventListener {
       // Fetch per-seat encryption keys from on-chain
       const encryptionKeys = await this.getEncryptionKeys(seatIndexes);
       if (encryptionKeys.size === 0) {
-        logger.warn({ tableId: this.tableId, handId: handIdStr }, 'No encryption keys registered — skipping deal');
+        logger.warn(
+          { tableId: this.tableId, handId: handIdStr },
+          "No encryption keys registered — skipping deal",
+        );
         return;
       }
 
       // Fetch hole card VRF randomness from on-chain (stored by fulfillVRF callback)
       const vrfRandomness = await this.getHoleCardVRFRandomness(handIdStr);
       if (vrfRandomness === 0n) {
-        logger.warn({ tableId: this.tableId, handId: handIdStr }, 'Hole card VRF not fulfilled yet — skipping');
+        logger.warn(
+          { tableId: this.tableId, handId: handIdStr },
+          "Hole card VRF not fulfilled yet — skipping",
+        );
         return;
       }
 
@@ -243,14 +277,29 @@ export class HandStartedEventListener {
         encryptionKeys,
       });
 
-      logger.info({ tableId: this.tableId, handId: handIdStr, seats: result.seats.length, commit: result.dealerSeedCommit }, 'Dealt cards for hand');
+      logger.info(
+        {
+          tableId: this.tableId,
+          handId: handIdStr,
+          seats: result.seats.length,
+          commit: result.dealerSeedCommit,
+        },
+        "Dealt cards for hand",
+      );
 
       // Invoke callback if set
       if (this.onHandStarted) {
         this.onHandStarted(this.tableId, event);
       }
     } catch (error) {
-      logger.error({ tableId: this.tableId, handId: handIdStr, err: error instanceof Error ? error.message : String(error) }, 'Failed to deal hand');
+      logger.error(
+        {
+          tableId: this.tableId,
+          handId: handIdStr,
+          err: error instanceof Error ? error.message : String(error),
+        },
+        "Failed to deal hand",
+      );
     }
   }
 
@@ -288,8 +337,8 @@ export class HandStartedEventListener {
           abi: PokerTableABI,
           functionName: "getSeat",
           args: [i],
-        })
-      )
+        }),
+      ),
     );
 
     const occupied: number[] = [];
@@ -325,12 +374,12 @@ export class HandStartedEventListener {
 
     await Promise.all(
       seatIndexes.map(async (seatIndex) => {
-        const keyHex = await this.client.readContract({
+        const keyHex = (await this.client.readContract({
           address: this.pokerTableAddress,
           abi: PokerTableABI,
           functionName: "getEncryptionKey",
           args: [seatIndex],
-        }) as `0x${string}`;
+        })) as `0x${string}`;
 
         if (keyHex && keyHex !== "0x") {
           const hex = keyHex.replace(/^0x/, "");
@@ -338,7 +387,7 @@ export class HandStartedEventListener {
             keys.set(seatIndex, Uint8Array.from(Buffer.from(hex, "hex")));
           }
         }
-      })
+      }),
     );
 
     return keys;

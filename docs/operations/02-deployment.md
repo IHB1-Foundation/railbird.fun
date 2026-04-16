@@ -103,7 +103,7 @@ the repo. The inventory and rotation SLAs are in
 ## Pre-deploy checklist
 
 1. CI green on the commit that will be pushed.
-2. Run `node scripts/openapi/validate.mjs` locally if any API surface changed.
+2. Run `pnpm verify:predeploy` locally on the exact commit being shipped.
 3. Update [`DEPLOY.md`](../../DEPLOY.md) if env vars or service shape changed.
 4. Confirm migrations are idempotent and have a `down/` counterpart (T-1507).
 5. Bump SemVer tag if cutting a release.
@@ -111,11 +111,16 @@ the repo. The inventory and rotation SLAs are in
 
 ## Post-deploy verification
 
-1. Hit each `/health` endpoint with `?deep=1` (T-1405) and confirm `ready`.
-2. Open Grafana indexer dashboard — `railbird_indexer_block_lag` should
+1. Run `pnpm verify:postdeploy` and confirm `pass=18 fail=0 skip=0`.
+2. Hit each `/health` endpoint with `?deep=1` (T-1405) and confirm `ready`.
+3. Open Grafana indexer dashboard — `railbird_indexer_block_lag` should
    stabilise within 60 s of deploy.
-3. Sentry release marker created automatically by the release tag.
-4. Smoke-check `/docs` (T-1801) loads on each service.
+4. Sentry release marker created automatically by the release tag.
+5. Smoke-check `/docs` (T-1801) loads on each service.
+
+On pushes to `main`, CI also runs a retried `production-smoke` job against the
+live web + API surfaces so post-deploy regressions are caught even after the
+branch is already merged.
 
 ## Rollback
 

@@ -49,3 +49,6 @@ fail_on_revert = false
 line_length = 120
 tab_width = 4
 bracket_spacing = true
+
+[lint]
+lint_on_build = false

@@ -1,7 +1,13 @@
 // @playerco/shared - Chain configuration system
 // No hardcoded addresses - all values loaded from environment
 
-import { type ChainEnv, type ChainConfig, type ContractAddresses, ENV_VARS } from "./types.js";
+import {
+  type Address,
+  type ChainEnv,
+  type ChainConfig,
+  type ContractAddresses,
+  ENV_VARS,
+} from "./types.js";
 
 /**
  * Known chain IDs by environment

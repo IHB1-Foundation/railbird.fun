@@ -10,6 +10,7 @@ import { SafeTransfer } from "../lib/SafeTransfer.sol";
  * @notice Shared state, types, events, and modifiers for the PokerTable module family.
  * @dev Abstract base for SeatManager, BettingEngine, and SettlementEngine.
  */
+// solhint-disable-next-line max-states-count
 abstract contract PokerTableBase {
     using SafeTransfer for address;
 

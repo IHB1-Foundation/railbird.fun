@@ -14,6 +14,14 @@ const nextConfig = {
   output: "standalone",
 
   webpack: (config, { isServer, webpack }) => {
+    config.ignoreWarnings = [
+      ...(config.ignoreWarnings ?? []),
+      {
+        module: /@opentelemetry\/instrumentation\/build\/esm\/platform\/node\/instrumentation\.js$/,
+        message: /Critical dependency: the request of a dependency is an expression/,
+      },
+    ];
+
     if (!isServer) {
       // prom-client (from @playerco/shared metrics) uses Node built-ins
       // that don't exist in the browser. Stub them out.

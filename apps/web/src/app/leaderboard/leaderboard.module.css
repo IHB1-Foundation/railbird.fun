@@ -54,6 +54,24 @@
   position: relative;
 }
 
+.metricTabLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.metricTabHint {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  font-size: 0.58rem;
+  line-height: 1;
+}
+
 .pagination {
   display: flex;
   align-items: center;
@@ -68,7 +86,9 @@
   border-radius: 8px;
   font-size: 0.85rem;
   text-decoration: none;
-  transition: background 0.15s, border-color 0.15s;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
   display: inline-flex;
   align-items: center;
 }

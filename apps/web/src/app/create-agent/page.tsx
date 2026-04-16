@@ -26,6 +26,7 @@ export default function CreateAgentPage() {
   const [step, setStep] = useState(() => (isConnected ? 2 : 1));
   const [persona, setPersona] = useState<PersonaConfig>(DEFAULT_PERSONA);
   const [tables, setTables] = useState<TableInfo[]>([]);
+  const [isLoadingTables, setIsLoadingTables] = useState(false);
   const [selectedTable, setSelectedTable] = useState<string>("");
   const [deployStatus, setDeployStatus] = useState<DeployStatus>("idle");
   const [deployedAgentId, setDeployedAgentId] = useState<string | null>(null);
@@ -33,36 +34,53 @@ export default function CreateAgentPage() {
   const [nameError, setNameError] = useState<string | null>(null);
   const [showDeployConfirm, setShowDeployConfirm] = useState(false);
 
+  const loadTables = useCallback(async () => {
+    setIsLoadingTables(true);
+    setError(null);
+
+    try {
+      const data = await getTables();
+      const tableList = data.map((table) => {
+        const activePlayers = table.seats.filter(
+          (seat) => seat.ownerAddress.toLowerCase() !== ZERO_ADDRESS,
+        ).length;
+        const emptySeats = Math.max(TABLE_MAX_SEATS - activePlayers, 0);
+        return {
+          tableId: table.tableId,
+          address: table.contractAddress,
+          smallBlind: table.smallBlind,
+          bigBlind: table.bigBlind,
+          activePlayers,
+          emptySeats,
+          state: table.gameState,
+        } satisfies TableInfo;
+      });
+
+      setTables(tableList);
+      setSelectedTable((current) => {
+        if (
+          current &&
+          tableList.some((table) => table.address === current && table.emptySeats > 0)
+        ) {
+          return current;
+        }
+        const firstOpen = tableList.find((table) => table.emptySeats > 0) ?? tableList[0];
+        return firstOpen?.address ?? "";
+      });
+    } catch {
+      setTables([]);
+      setSelectedTable("");
+      setError("Failed to load tables. Check that the indexer is available.");
+    } finally {
+      setIsLoadingTables(false);
+    }
+  }, []);
+
   // Fetch tables when entering step 3
   useEffect(() => {
     if (step !== 3) return;
-    getTables()
-      .then((data) => {
-        const tableList = data.map((table) => {
-          const activePlayers = table.seats.filter(
-            (seat) => seat.ownerAddress.toLowerCase() !== ZERO_ADDRESS,
-          ).length;
-          const emptySeats = Math.max(TABLE_MAX_SEATS - activePlayers, 0);
-          return {
-            tableId: table.tableId,
-            address: table.contractAddress,
-            smallBlind: table.smallBlind,
-            bigBlind: table.bigBlind,
-            activePlayers,
-            emptySeats,
-            state: table.gameState,
-          } satisfies TableInfo;
-        });
-        setTables(tableList);
-        if (tableList.length > 0 && !selectedTable) {
-          const firstOpen = tableList.find((t) => t.emptySeats > 0) ?? tableList[0];
-          setSelectedTable(firstOpen.address);
-        }
-      })
-      .catch(() => {
-        setError("Failed to load tables. Check that the indexer is available.");
-      });
-  }, [step, selectedTable]);
+    void loadTables();
+  }, [step, loadTables]);
 
   const applyPreset = useCallback((presetId: string) => {
     const preset = PERSONA_PRESETS[presetId];
@@ -209,8 +227,11 @@ export default function CreateAgentPage() {
       {step === 3 && (
         <StepTable
           tables={tables}
+          isLoading={isLoadingTables}
+          error={error}
           selectedTable={selectedTable}
           setSelectedTable={setSelectedTable}
+          onRetry={loadTables}
           onBack={() => setStep(2)}
           onNext={() => setStep(4)}
         />

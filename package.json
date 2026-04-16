@@ -10,6 +10,8 @@
     "test": "turbo run test",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
+    "verify:predeploy": "pnpm lint && pnpm typecheck && pnpm test && pnpm build && node scripts/openapi/validate.mjs",
+    "verify:postdeploy": "pnpm scenario:prod",
     "scenario:prod": "node scripts/scenario-prod-harness.mjs",
     "prepare": "husky"
   },

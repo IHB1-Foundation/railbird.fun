@@ -86,12 +86,12 @@
 
 /* Secondary nav links — slightly dimmer */
 .topNav .navSecondary {
-  opacity: 0.72;
+  color: var(--text-on-card);
   font-size: var(--text-sm);
 }
 
 .topNav .navSecondary:hover {
-  opacity: 1;
+  color: #fff;
 }
 
 /* Active nav link — higher specificity than .topNav a to avoid !important */
@@ -220,11 +220,11 @@
 /* Mobile secondary nav items — slightly smaller */
 .mobileDrawer .mobileNavSecondary {
   font-size: 0.92rem;
-  opacity: 0.75;
+  color: var(--text-on-card);
 }
 
 .mobileDrawer .mobileNavSecondary:hover {
-  opacity: 1;
+  color: #fff;
 }
 
 .mobileDrawerClose {

@@ -61,6 +61,7 @@ export function MobileNav() {
     <>
       <button
         ref={hamburgerRef}
+        type="button"
         className={styles.hamburger}
         onClick={() => setOpen(!open)}
         aria-label="Toggle navigation"
@@ -96,49 +97,55 @@ export function MobileNav() {
       </nav>
 
       {/* Mobile backdrop */}
-      <div
-        className={`${styles.mobileBackdrop} ${open ? styles.visible : ""}`}
-        onClick={close}
-        aria-hidden="true"
-      />
+      {open && (
+        <>
+          <div
+            className={`${styles.mobileBackdrop} ${styles.visible}`}
+            onClick={close}
+            aria-hidden="true"
+          />
 
-      {/* Mobile drawer */}
-      <nav
-        id="mobile-nav-drawer"
-        className={`${styles.mobileDrawer} ${open ? styles.open : ""}`}
-        aria-label="Mobile navigation"
-        aria-hidden={!open}
-      >
-        <button className={styles.mobileDrawerClose} onClick={close} aria-label="Close navigation">
-          ✕
-        </button>
-        {NAV_PRIMARY.map((link, i) => (
-          <Link
-            key={link.href}
-            href={link.href}
-            ref={i === 0 ? firstLinkRef : undefined}
-            onClick={close}
-            tabIndex={open ? 0 : -1}
-            className={isActive(link.href, pathname) ? styles.navLinkActive : ""}
-            aria-current={isActive(link.href, pathname) ? "page" : undefined}
+          {/* Mobile drawer */}
+          <nav
+            id="mobile-nav-drawer"
+            className={`${styles.mobileDrawer} ${styles.open}`}
+            aria-label="Mobile navigation"
           >
-            {link.label}
-          </Link>
-        ))}
-        <div className={styles.mobileNavDivider} aria-hidden="true" />
-        {NAV_SECONDARY.map((link) => (
-          <Link
-            key={link.href}
-            href={link.href}
-            onClick={close}
-            tabIndex={open ? 0 : -1}
-            className={`${styles.mobileNavSecondary} ${isActive(link.href, pathname) ? styles.navLinkActive : ""}`}
-            aria-current={isActive(link.href, pathname) ? "page" : undefined}
-          >
-            {link.label}
-          </Link>
-        ))}
-      </nav>
+            <button
+              type="button"
+              className={styles.mobileDrawerClose}
+              onClick={close}
+              aria-label="Close navigation"
+            >
+              ✕
+            </button>
+            {NAV_PRIMARY.map((link, i) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                ref={i === 0 ? firstLinkRef : undefined}
+                onClick={close}
+                className={isActive(link.href, pathname) ? styles.navLinkActive : ""}
+                aria-current={isActive(link.href, pathname) ? "page" : undefined}
+              >
+                {link.label}
+              </Link>
+            ))}
+            <div className={styles.mobileNavDivider} aria-hidden="true" />
+            {NAV_SECONDARY.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={close}
+                className={`${styles.mobileNavSecondary} ${isActive(link.href, pathname) ? styles.navLinkActive : ""}`}
+                aria-current={isActive(link.href, pathname) ? "page" : undefined}
+              >
+                {link.label}
+              </Link>
+            ))}
+          </nav>
+        </>
+      )}
     </>
   );
 }

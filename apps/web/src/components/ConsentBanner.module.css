@@ -17,19 +17,19 @@
 
 .text {
   font-size: 0.85rem;
-  color: var(--color-text-secondary, #94a3b8);
+  color: var(--text-on-card, #c1c9e2);
   margin: 0;
   flex: 1;
   min-width: 200px;
 }
 
 .text a {
-  color: var(--color-primary, #6366f1);
+  color: var(--accent-soft, #c8a9ff);
   text-decoration: underline;
 }
 
 .btn {
-  background: var(--color-primary, #6366f1);
+  background: #4f46e5;
   color: #fff;
   border: none;
   border-radius: 6px;
@@ -42,5 +42,5 @@
 }
 
 .btn:hover {
-  opacity: 0.85;
+  background: #4338ca;
 }

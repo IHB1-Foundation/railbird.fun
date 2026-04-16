@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, screen, fireEvent, act, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, act, waitFor, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 import type { TableResponse } from "../types";
 
@@ -249,8 +249,6 @@ describe("SCENARIO.md harness", () => {
       render(<CreateAgentPage />);
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /configure persona/i }));
-
     fireEvent.change(screen.getByPlaceholderText(/e\.g\. serpent/i), {
       target: { value: "DeepShark" },
     });
@@ -260,12 +258,15 @@ describe("SCENARIO.md harness", () => {
       timeout: 3000,
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /deploy agent/i }));
+    fireEvent.click(screen.getByRole("button", { name: /review deployment/i }));
     fireEvent.click(screen.getByRole("button", { name: /deploy agent/i }));
 
+    const confirmDialog = await screen.findByRole("dialog");
+    fireEvent.click(within(confirmDialog).getByRole("button", { name: /deploy agent/i }));
+
     await waitFor(() => expect(screen.getByText(/agent live!/i)).toBeTruthy(), { timeout: 3000 });
-    expect(screen.getByText(/Agent ID: agent-123/i)).toBeTruthy();
-    expect(screen.getByRole("link", { name: /watch live/i })).toBeTruthy();
+    expect(screen.getByText(/ID: agent-123/i)).toBeTruthy();
+    expect(screen.getByRole("link", { name: /watch your agent play live/i })).toBeTruthy();
   });
 
   it("covers the table-detail Why? breakdown flow from the action log", async () => {

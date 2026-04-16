@@ -15,8 +15,18 @@ export function AgentCards({ table, lastReasoning }: AgentCardsProps) {
   if (!table) {
     return (
       <div>
-        <p style={{ fontSize: "0.8rem", fontWeight: 700, color: "#9ca3af", marginBottom: "0.5rem" }}>AGENTS</p>
-        <div style={{ color: "var(--muted)", fontSize: "0.8rem" }}>Waiting for table…</div>
+        <p
+          style={{
+            fontSize: "0.8rem",
+            fontWeight: 700,
+            color: "var(--text-on-card)",
+            marginBottom: "0.5rem",
+            letterSpacing: "0.05em",
+          }}
+        >
+          AGENTS
+        </p>
+        <div style={{ color: "var(--text-on-card)", fontSize: "0.8rem" }}>Waiting for table…</div>
       </div>
     );
   }
@@ -25,19 +35,35 @@ export function AgentCards({ table, lastReasoning }: AgentCardsProps) {
 
   return (
     <div>
-      <p style={{ fontSize: "0.8rem", fontWeight: 700, color: "#9ca3af", letterSpacing: "0.05em", marginBottom: "0.5rem" }}>AGENTS</p>
+      <p
+        style={{
+          fontSize: "0.8rem",
+          fontWeight: 700,
+          color: "var(--text-on-card)",
+          letterSpacing: "0.05em",
+          marginBottom: "0.5rem",
+        }}
+      >
+        AGENTS
+      </p>
       <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
         {seats.length === 0 ? (
-          <div style={{ color: "var(--muted)", fontSize: "0.8rem" }}>No agents seated</div>
+          <div style={{ color: "var(--text-on-card)", fontSize: "0.8rem" }}>No agents seated</div>
         ) : (
           seats.map((seat) => {
-            const profile = getAgentProfile(seat.operatorAddress) || getAgentProfile(seat.ownerAddress);
-            const emoji = profile?.accentColor ? (
-              profile.personaId === "maniac" ? "🔥" :
-              profile.personaId === "shark" ? "🦈" :
-              profile.personaId === "rock" ? "🪨" :
-              profile.personaId === "adaptive" ? "🧠" : "🤖"
-            ) : "🤖";
+            const profile =
+              getAgentProfile(seat.operatorAddress) || getAgentProfile(seat.ownerAddress);
+            const emoji = profile?.accentColor
+              ? profile.personaId === "maniac"
+                ? "🔥"
+                : profile.personaId === "shark"
+                  ? "🦈"
+                  : profile.personaId === "rock"
+                    ? "🪨"
+                    : profile.personaId === "adaptive"
+                      ? "🧠"
+                      : "🤖"
+              : "🤖";
 
             return (
               <div key={seat.seatIndex} className={styles.agentCard}>
@@ -46,13 +72,16 @@ export function AgentCards({ table, lastReasoning }: AgentCardsProps) {
                   <div className={styles.agentName}>
                     {profile?.name ?? `Seat ${seat.seatIndex}`}
                   </div>
-                  <div className={styles.agentMeta}>
-                    {seat.isActive ? "▶ Active" : "⏸ Folded"}
-                  </div>
+                  <div className={styles.agentMeta}>{seat.isActive ? "▶ Active" : "⏸ Folded"}</div>
                 </div>
                 <div className={styles.agentStack}>
                   <div className={styles.agentStackNum}>{formatChips(BigInt(seat.stack ?? 0))}</div>
-                  <div className={styles.agentElo} style={{ color: profile?.accentColor ?? "#6b7280" }}>RCHIP</div>
+                  <div
+                    className={styles.agentElo}
+                    style={{ color: profile?.accentColor ?? "#6b7280" }}
+                  >
+                    RCHIP
+                  </div>
                 </div>
               </div>
             );
@@ -62,7 +91,16 @@ export function AgentCards({ table, lastReasoning }: AgentCardsProps) {
 
       {lastReasoning && (
         <div style={{ marginTop: "0.75rem" }}>
-          <p style={{ fontSize: "0.72rem", color: "#6b7280", marginBottom: "0.25rem", letterSpacing: "0.04em" }}>AI THINKING</p>
+          <p
+            style={{
+              fontSize: "0.72rem",
+              color: "var(--text-on-card)",
+              marginBottom: "0.25rem",
+              letterSpacing: "0.04em",
+            }}
+          >
+            AI THINKING
+          </p>
           <div className={styles.thinkingBox}>
             {lastReasoning.split(".").slice(0, 2).join(". ").trim()}.
           </div>

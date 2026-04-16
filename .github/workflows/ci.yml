@@ -221,16 +221,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Lint TypeScript packages
+      - name: Lint workspace
         run: pnpm lint
-
-      - name: Lint Solidity contracts
-        run: |
-          cd contracts
-          npm install --global solhint 2>/dev/null || true
-          forge build --silent
-          # Run solhint; advisory only until rules are tuned
-          solhint 'src/**/*.sol' --ignore-path .solhintignore || true
 
   # ── Docker image builds ───────────────────────────────────────────────────
   docker-builds:
@@ -526,4 +518,63 @@ jobs:
         run: |
           for f in /tmp/e2e-*.log; do
             echo "=== $f ===" && tail -50 "$f" 2>/dev/null || true
+          done
+
+  # ── Production smoke (main branch only) ───────────────────────────────────
+  # Runs after the main CI matrix is green to catch post-deploy regressions on
+  # the live web + API surfaces. Auto-deploy can lag behind CI completion, so
+  # retry the production scenario harness a few times before failing.
+  production-smoke:
+    name: Production Smoke (main only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs:
+      [
+        contracts,
+        contracts-invariant,
+        typecheck,
+        typescript,
+        bundle-size,
+        openapi,
+        lint,
+        docker-builds,
+        service-startup,
+        e2e,
+        coverage,
+        web-e2e,
+        bot-integration,
+        e2e-full,
+      ]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run production smoke with retries
+        run: |
+          attempts=5
+          for attempt in $(seq 1 "$attempts"); do
+            echo "Production smoke attempt $attempt/$attempts"
+            if pnpm verify:postdeploy; then
+              exit 0
+            fi
+
+            if [ "$attempt" -eq "$attempts" ]; then
+              echo "Production smoke failed after $attempts attempts"
+              exit 1
+            fi
+
+            echo "Production deploy may still be propagating; retrying in 45s..."
+            sleep 45
           done

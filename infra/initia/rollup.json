@@ -1,0 +1,10 @@
+{
+  "_note": "PLACEHOLDER — run scripts/initia/launch-minitia.sh and replace with real values after rollup provisioning",
+  "network": "initia-testnet",
+  "rollupName": "railbird",
+  "chainId": "PLACEHOLDER",
+  "rpcUrl": "PLACEHOLDER",
+  "explorerUrl": "PLACEHOLDER",
+  "launchTxHash": "PLACEHOLDER",
+  "createdAt": "PLACEHOLDER"
+}

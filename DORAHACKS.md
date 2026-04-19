@@ -2,64 +2,81 @@
 
 ## One-liner
 
-Gemini-powered AI agents play trustless on-chain Texas Hold'em with verifiable decisions, encrypted cards, and spectator prediction markets on HashKey Chain.
+Gemini-powered AI agents play trustless on-chain Texas Hold'em with verifiable decisions, encrypted cards, and spectator prediction markets — deployed on a Railbird MiniEVM rollup on Initia testnet with InterwovenKit wallet UX.
 
 ---
 
 ## Project Description
 
-Railbird is a fully on-chain poker protocol where autonomous AI agents compete in real-time Texas Hold'em. Every AI decision is auditable, every card shuffle is provably fair, and spectators can bet on outcomes through permissionless on-chain markets.
+Railbird is a fully on-chain poker protocol where autonomous AI agents compete in real-time Texas Hold'em. Every AI decision is auditable, every card shuffle is provably fair, and spectators can bet on outcomes through permissionless on-chain markets. Built on Initia using a dedicated MiniEVM rollup, with InterwovenKit for seamless wallet UX and Auto-sign sessions for frictionless gameplay.
 
 ### Gemini AI Agents
 
 Four agents powered by **Gemini 2.0 Flash**, each with a distinct personality:
 
-- **Aegis** (Tight, 0.15 aggression) — waits for premium hands, rarely bluffs
-- **Maverick** (Balanced, 0.35) — reads opponents and adapts in real-time
+- **Aegis** (Tight, 0.20 aggression) — waits for premium hands, rarely bluffs
+- **Maverick** (Balanced, 0.40) — reads opponents and adapts in real-time
 - **Nova** (Loose, 0.60) — plays many hands, finds unconventional lines
-- **Rex** (Maniac, 0.85) — maximum pressure, constant aggression
+- **Rex** (Maniac, 0.80) — maximum pressure, constant aggression
 
 Each agent evaluates hand strength percentiles, calculates pot odds and equity, and models opponent tendencies (VPIP, PFR, aggression factor, fold-to-bet ratios) from historical data — adapting strategy dynamically every hand.
+
+### InterwovenKit — Native Initia Wallet UX
+
+Railbird integrates `@initia/interwovenkit-react` end-to-end:
+
+- **Wallet connection** — InterwovenKit modal for one-click Initia wallet connect
+- **Auto-sign sessions** — 30-minute sessions eliminate per-action wallet popups during gameplay; users approve once, agents play freely
+- **Session revocation** — revoke at any time from any device; server audit-logs every revocation
+
+### `.init` Username Resolution
+
+Seat owners display as `name.init` in the leaderboard and spectator view — no hex addresses. Resolved via the Initia Names REST API in real-time.
+
+### Interwoven Bridge Deeplink
+
+Agent pages surface a "Bridge via Interwoven" card pre-filled with the rollup chain ID and vault address, letting spectators fund agents in one click.
 
 ### On-Chain AI Audit Trail
 
 Every AI decision is accompanied by a reasoning hash committed on-chain. The `/verify` page allows anyone to inspect and confirm that an agent's action matches the recorded reasoning. Full transparency without trust.
 
-### Deep Explainability
-
-An ESPN-style live commentary mode explains AI decisions in natural language, making complex poker strategy accessible to spectators.
-
 ### Open Agent Registration
 
-Anyone can deploy their own AI agent with custom strategy parameters (aggression, tightness, bluff frequency, position awareness) through a 4-step wizard UI. Fleet Manager handles agent lifecycle and operator wallet pooling.
+Anyone can deploy their own AI agent with custom strategy parameters (aggression, tightness, bluff frequency, position awareness) through a 4-step wizard UI.
 
 ### Trustless Game Protocol
 
-- **VRF + Fisher-Yates shuffle** — deterministic, verified on-chain at showdown
+- **VRF commit-reveal** — deterministic, verifiable on-chain randomness for community card reveals
 - **ECIES encrypted hole cards** — only the seat owner can decrypt
 - **Commit/reveal** — keccak256 commitments guarantee post-hoc integrity
 
 ### Spectator Sidebet Market
 
-SideBetPool lets spectators bet on which AI agent wins a live hand. Pari-mutuel, fully on-chain, no house edge. Any frontend or bot can integrate permissionlessly.
+SideBetPool lets spectators bet on which AI agent wins a live hand. Pari-mutuel, fully on-chain, no house edge.
 
 ---
 
 ## Architecture
 
 ```
-On-Chain (HashKey Chain Testnet, ID: 133)
+On-Chain (Railbird MiniEVM Rollup — Initia testnet, chainId 241167961210297)
 ├── PokerTable         — Game state machine (betting, timeouts, VRF)
 ├── SideBetPool        — Spectator prediction market (pari-mutuel)
 ├── ChipToken (RCHIP)  — ERC-20 poker chip token
 ├── PlayerRegistry     — Agent-to-wallet mapping
-├── PlayerVault        — Treasury with accretive-only rebalancing
-└── VRFAdapter         — Pluggable VRF randomness provider
+├── PlayerVault        — Non-custodial agent treasury
+└── ProductionVRFAdapter — Off-chain commit-reveal VRF
 
 AI Layer
 ├── 4x Gemini Agents   — Autonomous decision-making
 ├── Opponent Tracker    — Real-time opponent modeling
 └── Explainability     — NL reasoning + on-chain audit trail
+
+Initia Native Layer
+├── InterwovenKit       — Wallet connect + Auto-sign sessions
+├── .init Usernames     — Initia Names API resolution
+└── Interwoven Bridge   — Deeplink for L1→rollup funding
 
 Off-Chain
 ├── Indexer            — Events → Postgres → REST + WebSocket
@@ -68,53 +85,45 @@ Off-Chain
 
 ---
 
-## HashKey Chain Integration
+## Initia Integration
 
-| Feature          | Usage                                                |
-| ---------------- | ---------------------------------------------------- |
-| **OP Stack EVM** | Standard Solidity + Foundry, zero modifications      |
-| **VRF**          | On-chain verifiable randomness for trustless shuffle |
-| **Blockscout**   | All contracts source-verified                        |
-| **Native HSK**   | Gas for all operations; RCHIP ERC-20 for stakes      |
-
----
-
-## Deployed Contracts (Testnet)
-
-| Contract       | Address                                                                                                |
-| -------------- | ------------------------------------------------------------------------------------------------------ |
-| ChipToken      | [`0x2210...7865`](https://testnet-explorer.hsk.xyz/address/0x2210b79EC6e40d96072a0c26FfB64731a60d7865) |
-| PokerTable 1   | [`0x9250...e601`](https://testnet-explorer.hsk.xyz/address/0x9250aB833Bb070FBd993aF1b0C103dd2D58ae601) |
-| PokerTable 2   | [`0x9843...4eD3`](https://testnet-explorer.hsk.xyz/address/0x984396E8798f8Fc30F0555FfA21F2bF982e54eD3) |
-| PlayerRegistry | [`0x885b...FF14`](https://testnet-explorer.hsk.xyz/address/0x885b6a72480B264c258ba7167600D0D0Cc2fFF14) |
-| PlayerVault    | [`0xd118...AfB5`](https://testnet-explorer.hsk.xyz/address/0xd11838C992C3393fe3B9493cf4c640EB66b8AfB5) |
-| VRFAdapter     | [`0xdA61...0d3`](https://testnet-explorer.hsk.xyz/address/0xdA613984af7Ae9e3A5834914C25d28c48be8D0d3)  |
+| Feature                | Usage                                                              |
+| ---------------------- | ------------------------------------------------------------------ |
+| **MiniEVM Rollup**     | Dedicated Railbird rollup — chainId 241167961210297, bridgeId 1856 |
+| **InterwovenKit**      | Full wallet UX: connect, sign, Auto-sign session management        |
+| **Auto-sign Sessions** | 30-min sessions for frictionless in-game actions                   |
+| **.init Usernames**    | Names API resolves seat owners to `name.init` in UI                |
+| **Interwoven Bridge**  | Pre-filled deeplink for L1→rollup INIT deposits                    |
+| **Commit-reveal VRF**  | Off-chain operator fulfills randomness on-chain, verifiable        |
 
 ---
 
-## On-Chain Evidence
+## Deployed Contracts (Initia Testnet Rollup)
 
-Full game lifecycle verified on-chain — representative transactions:
+Rollup: `railbird-1` · Chain ID: `241167961210297` · Bridge ID: `1856`
 
-| Action            | Description                      | TX                                                                                                                        |
-| ----------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| startHand         | Begin hand, post blinds          | [`0x95f9...1f7c`](https://testnet-explorer.hsk.xyz/tx/0x95f92a3894ed0be538c853fd32ced61e3c5efec9cfd9afbfda6a7b3553221f7c) |
-| submitHoleCommit  | Dealer commits encrypted cards   | [`0xb2b7...293d`](https://testnet-explorer.hsk.xyz/tx/0xb2b7bdb45b55e0cefe3b18db4cb33b79c9fd42be0a045bfe647123bca57f293d) |
-| fulfillRandomness | VRF provides on-chain randomness | [`0x3dc4...67fa`](https://testnet-explorer.hsk.xyz/tx/0x3dc411ea66fcbd4da24dec08d2587e87d0bc0749b3fabf6646a3b19afed767fa) |
-| raise             | AI agent raises 2x BB            | [`0xbdec...6889`](https://testnet-explorer.hsk.xyz/tx/0xbdecdc9c210dba9dab2640c46f85b0e7fa6192ca95d10706394134537ac66889) |
-| revealHoleCards   | Cards revealed for verification  | [`0x3ba6...963c`](https://testnet-explorer.hsk.xyz/tx/0x3ba6ffc7dcd4c9744c0167c8587434acf6db4f332c13cc7f7f6d13e78283963c) |
-| settleShowdown    | Verify hands + distribute pot    | [`0xd5c2...9ce1`](https://testnet-explorer.hsk.xyz/tx/0xd5c2b0a54af11924b5831a3c58c65c299a77dca9e2d0fd87534516dac4339ce1) |
+Explorer: [scan.testnet.initia.xyz/rollup/railbird-1](https://scan.testnet.initia.xyz/rollup/railbird-1)
+
+| Contract             | Address                                      |
+| -------------------- | -------------------------------------------- |
+| ChipToken (RCHIP)    | `0x2e565620b08297c1cb899154bc9724de0b7c1386` |
+| PokerTable (low)     | `0x5492768668d6bceebd9fbbbc3b29c1b5df6826e0` |
+| PokerTable (high)    | `0xd7ba3356178fd5b7ab9135c5c6f0dca7a94453ac` |
+| PlayerRegistry       | `0x39f1094a1b559adce1d16110c2f050295eb0cb80` |
+| PlayerVault          | `0xbf4b5b92ce64d4fbfd87a0ba9926a8883b7fb299` |
+| ProductionVRFAdapter | `0xfc7b7d4a57204329e6c903df87c9216f0f8182c3` |
+| SideBetPool          | `0x5ae5899e0dff66471c148d6cae879866b5496ef7` |
 
 ---
 
 ## What Makes Railbird Unique
 
-1. **AI agents as first-class on-chain entities** — Agents don't just play; they reason, adapt, model opponents, and explain. Every decision is auditable on-chain.
+1. **Initia-native UX** — InterwovenKit Auto-sign sessions make AI poker feel like a web2 game. Players approve once, agents play for 30 minutes without wallet interruption.
 
-2. **Open agent platform** — Not locked to our 4 agents. Anyone can deploy custom AI agents with their own strategy, creating a competitive ecosystem.
+2. **AI agents as first-class on-chain entities** — Agents don't just play; they reason, adapt, model opponents, and explain. Every decision is auditable on-chain.
 
-3. **Verifiable AI decisions** — Reasoning hashes committed on-chain. No black boxes. Anyone can audit any action at any time.
+3. **Open agent platform** — Not locked to our 4 agents. Anyone can deploy custom AI agents with their own strategy, creating a competitive ecosystem.
 
 4. **Spectating becomes participating** — SideBetPool turns passive viewers into active participants through an on-chain prediction market on AI behavior.
 
-5. **Trustless game infrastructure** — VRF shuffle, ECIES encryption, commit/reveal. The protocol is provably fair — not by policy, but by math.
+5. **Trustless game infrastructure** — Commit-reveal VRF, ECIES encryption. The protocol is provably fair — not by policy, but by math.

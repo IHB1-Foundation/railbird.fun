@@ -10,30 +10,41 @@ import {
 } from "viem";
 import { POKER_TABLE_ABI } from "@playerco/shared";
 import { ZERO_ADDRESS as ZERO_ADDR } from "./utils";
+import { getInjectedProvider } from "./wallet/interwoven";
 
 function getRpcUrl(): string {
   return process.env.NEXT_PUBLIC_RPC_URL || "https://testnet.hsk.xyz";
 }
 
-// HashKey Chain Testnet (chain ID 133)
-const HASHKEY_TESTNET: Chain = {
-  id: 133,
-  name: "HashKey Chain Testnet",
-  nativeCurrency: { name: "HSK", symbol: "HSK", decimals: 18 },
-  rpcUrls: {
-    default: { http: [getRpcUrl()] },
-  },
-  blockExplorers: {
-    default: { name: "HashKey Explorer", url: "https://testnet-explorer.hsk.xyz" },
-  },
-};
+function getChainId(): number {
+  const raw = process.env.NEXT_PUBLIC_CHAIN_ID;
+  return raw ? parseInt(raw, 10) : 133;
+}
 
-const CHAIN: Chain = HASHKEY_TESTNET;
+function buildChain(): Chain {
+  const chainId = getChainId();
+  const rpcUrl = getRpcUrl();
+  const explorerUrl = process.env.NEXT_PUBLIC_BLOCK_EXPLORER || "https://testnet-explorer.hsk.xyz";
+  const chainName = process.env.NEXT_PUBLIC_CHAIN_NAME || "Railbird Chain";
+  const nativeSymbol = process.env.NEXT_PUBLIC_NATIVE_SYMBOL || "HSK";
+  return {
+    id: chainId,
+    name: chainName,
+    nativeCurrency: { name: nativeSymbol, symbol: nativeSymbol, decimals: 18 },
+    rpcUrls: { default: { http: [rpcUrl] } },
+    blockExplorers: { default: { name: "Explorer", url: explorerUrl } },
+  };
+}
+
+const CHAIN: Chain = buildChain();
 const ZERO_ADDRESS = ZERO_ADDR as Address;
 
 /** Convert a Uint8Array to a 0x-prefixed hex string. */
 function bytesToHex(bytes: Uint8Array): `0x${string}` {
-  return ("0x" + Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("")) as `0x${string}`;
+  return ("0x" +
+    Array.from(bytes)
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("")) as `0x${string}`;
 }
 
 /**
@@ -50,23 +61,16 @@ function asHexString(value: unknown, context: string): `0x${string}` {
   return value as `0x${string}`;
 }
 
-
 // Module-level singleton — one PublicClient per page lifecycle.
-// The RPC URL is resolved once at module load time from the env variable.
 const publicClient = createPublicClient({
   chain: CHAIN,
   transport: http(getRpcUrl()),
 });
 
-function getProvider() {
-  if (typeof window === "undefined") return null;
-  return window.ethereum ?? null;
-}
-
-// WalletClient is created lazily because it depends on window.ethereum which
-// is only available client-side and may not be injected at module load time.
+// WalletClient is created lazily because it depends on the injected provider which
+// is only available client-side and may not be present at module load time.
 function getWalletClient() {
-  const provider = getProvider();
+  const provider = getInjectedProvider();
   if (!provider) return null;
   return createWalletClient({
     chain: CHAIN,
@@ -153,7 +157,7 @@ export interface RegisterEncryptionKeyParams {
  * @returns transaction hash, or undefined if skipped (key already registered)
  */
 export async function registerEncryptionKeyOnChain(
-  params: RegisterEncryptionKeyParams
+  params: RegisterEncryptionKeyParams,
 ): Promise<Hash | undefined> {
   const walletClient = getWalletClient();
   if (!walletClient) throw new Error("No wallet connected");
@@ -195,7 +199,7 @@ export async function registerEncryptionKeyOnChain(
  */
 export async function getEncryptionKeyOnChain(
   tableAddress: Address,
-  seatIndex: number
+  seatIndex: number,
 ): Promise<Uint8Array | null> {
   let hex: `0x${string}`;
   try {

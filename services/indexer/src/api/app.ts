@@ -38,7 +38,7 @@ export function createApp(): express.Application {
     createCorsMiddleware(
       parseAllowedOrigins(process.env.CORS_ALLOWED_ORIGINS),
       "GET, POST, OPTIONS",
-      "Content-Type, Authorization, X-Request-ID",
+      "Content-Type, Authorization, X-Request-ID, X-Via",
     ),
   );
 
@@ -51,6 +51,24 @@ export function createApp(): express.Application {
     res.locals["requestId"] = requestId;
     res.setHeader("X-Request-ID", requestId);
     logger.debug({ method: req.method, path: req.path, requestId }, "Incoming request");
+    next();
+  });
+
+  // Autosign audit marker — log requests submitted via InterwovenKit auto-sign sessions.
+  // Clients send X-Via: autosign as a hint; we record it for audit purposes only.
+  app.use((req, _res, next) => {
+    const via = req.headers["x-via"];
+    if (via === "autosign") {
+      logger.info(
+        {
+          method: req.method,
+          path: req.path,
+          address: req.headers["x-wallet-address"] ?? "unknown",
+          via: "autosign",
+        },
+        "autosign-hint: request submitted via InterwovenKit auto-sign session",
+      );
+    }
     next();
   });
 

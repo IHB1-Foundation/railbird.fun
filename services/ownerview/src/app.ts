@@ -24,6 +24,7 @@ import {
   createReasoningRoutes,
   createTreasuryReasoningRouter,
   createCommentaryRoutes,
+  createSessionRoutes,
 } from "./routes/index.js";
 import { logMemoryWarning } from "./routes/reasoning.js";
 
@@ -180,6 +181,9 @@ export async function createApp(config: AppConfig): Promise<AppContext> {
 
   // Auth routes (public)
   app.use("/auth", createAuthRoutes(authService));
+
+  // Session management routes (auto-sign revocation for Initia)
+  app.use("/session", createSessionRoutes(authService));
 
   // Reasoning routes (public — POST requires operator signature in production)
   app.use("/reasoning", createReasoningRoutes());

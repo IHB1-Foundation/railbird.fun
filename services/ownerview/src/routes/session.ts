@@ -1,5 +1,8 @@
 import { Router, type Request, type Response } from "express";
+import { createLogger } from "@playerco/shared";
 import type { AuthService } from "../auth/index.js";
+
+const logger = createLogger({ service: "ownerview", module: "session" });
 
 /**
  * Session revocation routes for auto-sign sessions (Initia-specific).
@@ -63,6 +66,10 @@ export function createSessionRoutes(authService: AuthService): Router {
     };
 
     revokedSessions.set(address.toLowerCase(), record);
+    logger.info(
+      { address: record.address, via: record.via, revokedAt: record.revokedAt },
+      "auto-sign session revoked",
+    );
 
     res.json({
       ok: true,

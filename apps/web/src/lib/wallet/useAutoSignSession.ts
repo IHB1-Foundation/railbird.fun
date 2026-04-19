@@ -87,6 +87,32 @@ export function useAutoSignSession(): UseAutoSignSessionResult {
       setState((prev) => ({ ...prev, error: "Auto-sign is only available on Initia." }));
       return;
     }
+    // Check server-side revocation status before activating.
+    // A user who revoked on another device must re-consent here too.
+    const ownerviewUrl = process.env.NEXT_PUBLIC_OWNERVIEW_URL;
+    if (ownerviewUrl) {
+      const walletAddress = getIWKHandle()?.hexAddress;
+      if (walletAddress) {
+        try {
+          const res = await fetch(
+            `${ownerviewUrl}/session/status?address=${encodeURIComponent(walletAddress)}`,
+            { credentials: "include" },
+          );
+          if (res.ok) {
+            const data = (await res.json()) as { isRevoked?: boolean };
+            if (data.isRevoked) {
+              setState((prev) => ({
+                ...prev,
+                error: "Your auto-sign session was revoked on another device. Please re-consent.",
+              }));
+              return;
+            }
+          }
+        } catch {
+          // Non-fatal — proceed optimistically if server is unreachable.
+        }
+      }
+    }
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
     try {
       const iwk = getIWKHandle();
@@ -122,6 +148,20 @@ export function useAutoSignSession(): UseAutoSignSessionResult {
   }, []);
 
   const revoke = useCallback(async () => {
+    // Notify server first so revocation is audit-logged even if the tab closes.
+    const ownerviewUrl = process.env.NEXT_PUBLIC_OWNERVIEW_URL;
+    if (ownerviewUrl) {
+      try {
+        await fetch(`${ownerviewUrl}/session/revoke`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ via: "manual" }),
+          credentials: "include",
+        });
+      } catch {
+        // Best-effort — don't block local teardown on server error.
+      }
+    }
     try {
       const iwk = getIWKHandle();
       const chainId = process.env.NEXT_PUBLIC_INTERWOVEN_CHAIN_ID ?? "";

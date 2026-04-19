@@ -6,10 +6,16 @@ import { DEFAULT_OWNERVIEW_BASE } from "../api";
 import * as ownerviewApi from "./ownerviewApi";
 import { COOKIE_SESSION_ENABLED } from "./ownerviewApi";
 import { deriveEncryptionKeyPair, clearEncryptionKeyCache } from "./encryptionKey";
+import {
+  getWalletAccounts,
+  requestWalletConnection,
+  walletSignMessage,
+  getInjectedProvider,
+} from "../wallet/interwoven";
 
-// HashKey Chain Testnet chain ID
-const HASHKEY_CHAIN_ID = 133;
-const HASHKEY_CHAIN_ID_HEX = "0x85";
+const EXPECTED_CHAIN_ID = process.env.NEXT_PUBLIC_CHAIN_ID
+  ? parseInt(process.env.NEXT_PUBLIC_CHAIN_ID, 10)
+  : 133;
 
 // Session storage keys
 const STORAGE_KEY_TOKEN = "playerco_auth_token";
@@ -27,104 +33,19 @@ const initialState: AuthState = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-/**
- * Get the MetaMask/EIP-1193 provider (window.ethereum)
- */
-function getProvider(): EthereumProvider | null {
-  if (typeof window === "undefined") return null;
-  return window.ethereum ?? null;
-}
-
-/**
- * Ensure the wallet is on HashKey Chain Testnet.
- * Attempts to switch chain; if the chain is unknown, adds it first.
- */
-async function ensureHashKeyChain(): Promise<void> {
-  const provider = getProvider();
-  if (!provider) return;
-
-  const chainIdHex = (await provider.request({ method: "eth_chainId" })) as string;
-  const chainId = parseInt(chainIdHex, 16);
-
-  if (chainId === HASHKEY_CHAIN_ID) return;
-
-  try {
-    await provider.request({
-      method: "wallet_switchEthereumChain",
-      params: [{ chainId: HASHKEY_CHAIN_ID_HEX }],
-    });
-  } catch (switchError: unknown) {
-    // Chain not added to wallet (error code 4902) — add it
-    if (
-      typeof switchError === "object" &&
-      switchError !== null &&
-      "code" in switchError &&
-      (switchError as { code: number }).code === 4902
-    ) {
-      await provider.request({
-        method: "wallet_addEthereumChain",
-        params: [
-          {
-            chainId: HASHKEY_CHAIN_ID_HEX,
-            chainName: "HashKey Chain Testnet",
-            nativeCurrency: { name: "HSK", symbol: "HSK", decimals: 18 },
-            rpcUrls: ["https://testnet.hsk.xyz"],
-            blockExplorerUrls: ["https://testnet-explorer.hsk.xyz"],
-          },
-        ],
-      });
-    } else {
-      throw new Error("Please switch to HashKey Chain Testnet in your wallet.");
-    }
-  }
-}
-
-/**
- * Get connected accounts from wallet
- */
+/** Returns currently connected accounts without prompting. */
 async function getAccounts(): Promise<string[]> {
-  const provider = getProvider();
-  if (!provider) return [];
-  try {
-    const accounts = await provider.request({
-      method: "eth_accounts",
-    });
-    return accounts as string[];
-  } catch {
-    return [];
-  }
+  return getWalletAccounts();
 }
 
-/**
- * Request wallet connection
- */
+/** Prompts wallet connection and returns connected accounts. */
 async function requestAccounts(): Promise<string[]> {
-  const provider = getProvider();
-  if (!provider) {
-    throw new Error(
-      "No wallet found. Please install MetaMask (or another Web3 wallet) and make sure it is enabled for this site.",
-    );
-  }
-  await ensureHashKeyChain();
-  const accounts = await provider.request({
-    method: "eth_requestAccounts",
-  });
-  return accounts as string[];
+  return requestWalletConnection();
 }
 
-/**
- * Sign a message with the wallet
- */
+/** Signs a message with the connected wallet (InterwovenKit or EIP-1193). */
 async function signMessage(address: string, message: string): Promise<string> {
-  const provider = getProvider();
-  if (!provider) {
-    throw new Error("Wallet not detected.");
-  }
-  const signature = await provider.request({
-    method: "personal_sign",
-    params: [message, address],
-  });
-  return signature as string;
+  return walletSignMessage(address, message);
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -208,8 +129,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     checkExistingSession();
 
-    // Listen for account & chain changes
-    const provider = getProvider();
+    // Listen for account & chain changes (EIP-1193 only; on Initia, getInjectedProvider returns null)
+    const provider = getInjectedProvider();
     if (provider) {
       const clearStoredSession = () => {
         if (!COOKIE_SESSION_ENABLED) {
@@ -238,11 +159,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const handleChainChanged = (chainIdHex: string) => {
         const chainId = parseInt(chainIdHex, 16);
-        if (chainId !== HASHKEY_CHAIN_ID) {
+        if (chainId !== EXPECTED_CHAIN_ID) {
           clearStoredSession();
           setState({
             ...initialState,
-            error: "Please switch to HashKey Chain Testnet.",
+            error: `Please switch to the correct network (chain ID ${EXPECTED_CHAIN_ID}).`,
           });
         }
       };
@@ -349,7 +270,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Capture address and chainId at start of authentication
     const capturedAddress = state.address;
-    const provider = getProvider();
+    const provider = getInjectedProvider();
     let capturedChainId: number | null = null;
     if (provider) {
       try {

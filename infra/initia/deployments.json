@@ -1,17 +1,17 @@
 {
-  "_note": "PLACEHOLDER — run scripts/deploy/initia.sh after rollup provisioning",
   "network": "initia-testnet",
-  "rpcUrl": "PLACEHOLDER",
-  "deployedAt": "PLACEHOLDER",
+  "rpcUrl": "http://localhost:8545",
+  "deployedAt": "2026-04-20T03:00:00Z",
   "contracts": {
-    "chipToken": "0x0000000000000000000000000000000000000000",
+    "handEvaluator": "0x2d3f047055b6113e8e919bcd3589e09b0cddfd66",
+    "chipToken": "0x2e565620b08297c1cb899154bc9724de0b7c1386",
+    "vrfAdapter": "0xfc7b7d4a57204329e6c903df87c9216f0f8182c3",
     "pokerTables": [
-      "0x0000000000000000000000000000000000000000",
-      "0x0000000000000000000000000000000000000000"
+      "0x5492768668d6bceebd9fbbbc3b29c1b5df6826e0",
+      "0xd7ba3356178fd5b7ab9135c5c6f0dca7a94453ac"
     ],
-    "playerRegistry": "0x0000000000000000000000000000000000000000",
-    "playerVault": "0x0000000000000000000000000000000000000000",
-    "vrfAdapter": "0x0000000000000000000000000000000000000000",
-    "sideBetPool": "0x0000000000000000000000000000000000000000"
+    "playerRegistry": "0x39f1094a1b559adce1d16110c2f050295eb0cb80",
+    "playerVault": "0xbf4b5b92ce64d4fbfd87a0ba9926a8883b7fb299",
+    "sideBetPool": "0x5ae5899e0dff66471c148d6cae879866b5496ef7"
   }
 }

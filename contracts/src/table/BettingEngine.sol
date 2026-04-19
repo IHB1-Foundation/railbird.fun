@@ -42,10 +42,7 @@ abstract contract BettingEngine is PokerTableBase {
         withinDeadline
         oneActionPerBlock
     {
-        require(
-            seats[seatIndex].currentBet == currentHand.currentBet,
-            "CK"
-        );
+        if (seats[seatIndex].currentBet != currentHand.currentBet) revert InvalidState();
 
         _recordAction();
         currentHand.hasActed[seatIndex] = true;
@@ -63,7 +60,7 @@ abstract contract BettingEngine is PokerTableBase {
         oneActionPerBlock
     {
         uint256 toCall = currentHand.currentBet - seats[seatIndex].currentBet;
-        require(toCall > 0, "NC");
+        if (toCall == 0) revert InvalidState();
 
         uint256 actualCall = toCall < seats[seatIndex].stack ? toCall : seats[seatIndex].stack;
 
@@ -96,14 +93,14 @@ abstract contract BettingEngine is PokerTableBase {
         bool isAllInRaise = stack <= additional;
 
         if (!isAllInRaise) {
-            require(raiseToAmount > currentHand.currentBet, "R1");
+            if (raiseToAmount <= currentHand.currentBet) revert InvalidParam();
             uint256 minRaise = currentHand.currentBet + currentHand.lastRaiseSize;
-            require(raiseToAmount >= minRaise, "R2");
-            require(stack >= additional, "R3");
+            if (raiseToAmount < minRaise) revert InvalidParam();
+            if (stack < additional) revert InvalidParam();
         } else {
             additional = stack;
             raiseToAmount = seats[seatIndex].currentBet + stack;
-            require(raiseToAmount > currentHand.currentBet, "R1");
+            if (raiseToAmount <= currentHand.currentBet) revert InvalidParam();
         }
 
         _recordAction();
@@ -132,7 +129,7 @@ abstract contract BettingEngine is PokerTableBase {
     }
 
     function forceTimeout() external inBettingState oneActionPerBlock {
-        require(block.timestamp > actionDeadline, "DP");
+        if (block.timestamp <= actionDeadline) revert InvalidState();
 
         uint8 seatIndex = currentHand.actorSeat;
 

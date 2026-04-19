@@ -40,7 +40,7 @@
     }
   ],
   "dependencies": {
-    "@initia/interwovenkit-react": "^0.2.0",
+    "@initia/interwovenkit-react": "^2.6.0",
     "@noble/curves": "^2.0.1",
     "@noble/hashes": "^2.0.1",
     "@playerco/shared": "workspace:*",

@@ -22,7 +22,20 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { UseWalletResult } from "@initia/interwovenkit-react";
+
+/** Minimal shape of the IWK wallet handle set by IWKBridge (populated at runtime). */
+interface IWKWalletHandle {
+  isConnected: boolean;
+  address: string | null;
+  connect: () => Promise<void>;
+  disconnect: () => Promise<void>;
+  signMessage: (message: string) => Promise<string>;
+  sendTransaction: (params: {
+    to: string;
+    data?: string;
+    value?: bigint;
+  }) => Promise<`0x${string}`>;
+}
 
 export type WalletAddress = `0x${string}`;
 
@@ -190,7 +203,7 @@ function useEip1193Wallet(): UseInterwovenWalletResult {
 // ──────────────────────────────────────────────────────────────────────────
 
 function useInitiaWallet(): UseInterwovenWalletResult {
-  const iwkRef = useRef<UseWalletResult | null>(null);
+  const iwkRef = useRef<IWKWalletHandle | null>(null);
   const [state, setState] = useState<WalletState>({
     isConnected: false,
     address: null,

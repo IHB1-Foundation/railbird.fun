@@ -33,6 +33,27 @@ function InitiaProviders({ children }: { children: ReactNode }) {
     );
   }
 
+  const kycAddr = process.env.NEXT_PUBLIC_KYC_SBT_ADDRESS;
+  const zeroAddr = "0x0000000000000000000000000000000000000000";
+  if (kycAddr && kycAddr !== zeroAddr) {
+    return (
+      <div
+        role="alert"
+        style={{
+          padding: "2rem",
+          background: "#fee2e2",
+          color: "#991b1b",
+          fontFamily: "monospace",
+          fontSize: "0.875rem",
+        }}
+      >
+        <strong>Misconfiguration:</strong> NEXT_PUBLIC_KYC_SBT_ADDRESS is set to a non-zero address
+        on Initia. There is no KYC SBT contract on Initia — seat registrations will revert. Unset
+        this variable or set it to 0x0 in <code>.env.local</code>.
+      </div>
+    );
+  }
+
   return (
     <InterwovenKitProvider {...TESTNET} defaultChainId={chainId}>
       <IWKBridge />

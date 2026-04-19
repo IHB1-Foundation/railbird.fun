@@ -204,6 +204,26 @@ export function isInitiaEnv(env: ChainEnv): boolean {
   return env === "initia-testnet";
 }
 
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+
+/**
+ * On Initia, there is no KYC SBT contract. If KYC_SBT_ADDRESS is set to a
+ * non-zero address the contract would reject all seat registrations silently.
+ * Fail fast here so the operator sees the misconfiguration at startup.
+ */
+function validateKycConfig(env: ChainEnv): void {
+  if (env !== "initia-testnet") return;
+  const kycAddr = process.env.KYC_SBT_ADDRESS;
+  if (kycAddr && kycAddr !== ZERO_ADDRESS) {
+    throw new ChainConfigError(
+      `KYC_SBT_ADDRESS must be unset or 0x0 on initia-testnet ` +
+        `(got "${kycAddr}"). There is no KYC SBT contract on Initia; ` +
+        `a non-zero address will cause all seat registrations to revert.`,
+      ["KYC_SBT_ADDRESS"],
+    );
+  }
+}
+
 /**
  * Loads the chain configuration from environment variables.
  * Throws ChainConfigError if required configuration is missing.
@@ -229,6 +249,9 @@ export function getChainConfig(forceReload = false): ChainConfig {
 
   // Validate VRF adapter is production-safe for non-local envs
   validateVRFAdapterConfig(env);
+
+  // Refuse non-zero KYC_SBT_ADDRESS on Initia — no KYC SBT contract exists there.
+  validateKycConfig(env);
 
   cachedConfig = Object.freeze({
     env,

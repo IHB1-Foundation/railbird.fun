@@ -340,6 +340,42 @@ describe("chainConfig", () => {
       assert.ok(!missing.includes(ENV_VARS.VRF_ADAPTER_TYPE));
     });
   });
+
+  describe("KYC guard (I2-4)", () => {
+    function setInitiaEnvVars(): void {
+      process.env[ENV_VARS.CHAIN_ENV] = "initia-testnet";
+      process.env[ENV_VARS.RPC_URL] = "https://rpc.example.com";
+      process.env[ENV_VARS.POKER_TABLE_ADDRESSES] = "0x1111111111111111111111111111111111111111";
+      process.env[ENV_VARS.PLAYER_REGISTRY_ADDRESS] = "0x2222222222222222222222222222222222222222";
+      process.env[ENV_VARS.PLAYER_VAULT_ADDRESS] = "0x3333333333333333333333333333333333333333";
+      process.env[ENV_VARS.VRF_ADAPTER_ADDRESS] = "0x4444444444444444444444444444444444444444";
+      process.env[ENV_VARS.VRF_ADAPTER_TYPE] = "production";
+      process.env.INITIA_CHAIN_ID = "42000";
+    }
+
+    it("throws ChainConfigError when KYC_SBT_ADDRESS is non-zero on initia-testnet", () => {
+      setInitiaEnvVars();
+      process.env.KYC_SBT_ADDRESS = "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef";
+      assert.throws(
+        () => getChainConfig(true),
+        (err) => err instanceof ChainConfigError && err.message.includes("KYC_SBT_ADDRESS"),
+      );
+      delete process.env.KYC_SBT_ADDRESS;
+    });
+
+    it("accepts KYC_SBT_ADDRESS=0x0 on initia-testnet", () => {
+      setInitiaEnvVars();
+      process.env.KYC_SBT_ADDRESS = "0x0000000000000000000000000000000000000000";
+      assert.doesNotThrow(() => getChainConfig(true));
+      delete process.env.KYC_SBT_ADDRESS;
+    });
+
+    it("accepts unset KYC_SBT_ADDRESS on initia-testnet", () => {
+      setInitiaEnvVars();
+      delete process.env.KYC_SBT_ADDRESS;
+      assert.doesNotThrow(() => getChainConfig(true));
+    });
+  });
 });
 
 // Run tests

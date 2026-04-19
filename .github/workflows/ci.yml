@@ -305,6 +305,22 @@ jobs:
         if: always()
         run: docker compose down -v
 
+  # ── Submission validation (I3-1) ──────────────────────────────────────────
+  # Runs scripts/validate-submission.mjs to catch placeholder values and
+  # malformed fields in .initia/submission.json before they reach the portal.
+  submission:
+    name: Submission JSON Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Validate .initia/submission.json
+        run: node scripts/validate-submission.mjs
+
   # ── E2E smoke test (T-R17-01) ─────────────────────────────────────────────
   # Runs a real hand end-to-end: deploy → register → play → verify settlement.
   # Uses 2 agents and 1 hand to keep runtime under 5 minutes.

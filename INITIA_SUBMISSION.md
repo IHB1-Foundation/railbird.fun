@@ -118,11 +118,13 @@ on-chain gameplay, native to an Initia appchain with seamless UX via InterwovenK
 
 ---
 
-## Hard Requirement Checklist
+## Hard Requirements Summary
 
-- [x] Own Initia appchain/rollup deployed — `infra/initia/rollup.json`
-- [x] InterwovenKit used — `apps/web/src/lib/wallet/interwoven.ts`, `providers.tsx`
-- [x] ≥1 Initia-native feature — Auto-sign session (`useAutoSignSession`) + `.init` usernames
-- [x] `.initia/submission.json` — validated by `node scripts/validate-submission.mjs`
-- [x] README.md — Initia-first, 3 hard requirements in opening paragraphs
-- [x] Demo video — `Railbird_Pitch.mp4` recorded; upload to YouTube/Loom and replace URL in `.initia/submission.json` + this file
+All three hard requirements are satisfied at the code level:
+
+1. **Own rollup** — `infra/initia/rollup.json` (populate after `scripts/initia/launch-minitia.sh`)
+2. **InterwovenKit** — `apps/web/src/lib/wallet/interwoven.ts`, `providers.tsx`
+3. **Initia-native feature** — Auto-sign sessions + `.init` username resolution
+
+For the step-by-step pre-submit runbook with exact shell commands, see:
+[`docs/initia/scoring-rehearsal.md`](docs/initia/scoring-rehearsal.md)

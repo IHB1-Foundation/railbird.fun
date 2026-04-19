@@ -117,21 +117,61 @@ the agent token economy (RCHIP buy-ins, vault yield, `.init` branding) is the pa
 
 ---
 
-## Final Hard-Requirement Checklist
-
-- [x] Own Initia appchain/rollup deployed — `infra/initia/rollup.json` (populate after provisioning)
-- [x] InterwovenKit (`@initia/interwovenkit-react`) — `apps/web/src/lib/wallet/interwoven.ts`
-- [x] ≥1 Initia-native feature — Auto-sign (`useAutoSignSession`) + `.init` usernames
-- [x] `.initia/submission.json` — `node scripts/validate-submission.mjs` → exit 0
-- [x] `README.md` — Initia-first, 3 hard requirements in opening paragraphs
-- [ ] Demo video public URL — **upload `Railbird_Pitch.mp4` and update `demoVideo` in `submission.json`**
-
 ---
 
-## Pre-Submit Action Items
+## Pre-Submit Runbook (Canonical)
 
-1. **Provision rollup** → run `scripts/initia/launch-minitia.sh` → update `infra/initia/rollup.json`
-2. **Deploy contracts** → run `scripts/deploy/initia.sh` → update `infra/initia/deployments.json`
-3. **Run E2E smoke** → `bash scripts/e2e-smoke.initia.sh 3` → populate `docs/initia/e2e-evidence.md`
-4. **Upload demo video** → upload `Railbird_Pitch.mp4` to YouTube/Loom → update `demoVideo` in `.initia/submission.json`
-5. **Final validate** → `node scripts/validate-submission.mjs` → must exit 0
+Run these steps in order from a fresh clone. Target: ≤30 minutes if the rollup is already live.
+
+### Step 1 — Provision rollup (skip if `infra/initia/rollup.json` has a real chainId)
+
+```bash
+bash scripts/initia/launch-minitia.sh
+# Verify:
+jq -r '.chainId' infra/initia/rollup.json          # must be an integer
+cast chain-id --rpc-url "$(jq -r .rpcUrl infra/initia/rollup.json)"  # must match
+```
+
+### Step 2 — Deploy contracts
+
+```bash
+export $(grep -v '^#' .env.initia | xargs)
+bash scripts/deploy/initia.sh
+# Verify:
+jq '.' infra/initia/deployments.json               # all addresses non-zero
+node scripts/validate-submission.mjs               # must pass contract address checks
+```
+
+### Step 3 — Upload demo video
+
+```bash
+# Upload Railbird_Pitch.mp4 to YouTube (unlisted or public) or Loom.
+# Then update demoVideo in .initia/submission.json with the real URL.
+grep PLACEHOLDER .initia/submission.json           # must return nothing
+```
+
+### Step 4 — Run E2E smoke (populate evidence)
+
+```bash
+bash scripts/e2e-smoke.initia.sh 3
+# Verify:
+grep PLACEHOLDER docs/initia/e2e-evidence.md       # must return nothing
+```
+
+### Step 5 — Final validation gate
+
+```bash
+node scripts/validate-submission.mjs               # must exit 0 (zero output on error)
+pnpm --filter @playerco/web build                  # must succeed
+forge test                                         # must pass ≥420 tests
+```
+
+### Step 6 — Hard requirement checklist
+
+- [ ] `jq -r '.chainId' infra/initia/rollup.json` returns an integer (not PLACEHOLDER)
+- [ ] `jq -r '.rpcUrl' infra/initia/rollup.json` resolves and `cast chain-id` matches
+- [ ] All addresses in `infra/initia/deployments.json` are non-zero
+- [ ] `.initia/submission.json` `demoVideo` is a live YouTube/Loom URL
+- [ ] `node scripts/validate-submission.mjs` exits 0
+- [ ] `pnpm --filter @playerco/web build` exits 0
+- [ ] Demo video follows `docs/initia/demo-script.md` (InterwovenKit modal, auto-sign, `.init`, bridge, explorer TXs)

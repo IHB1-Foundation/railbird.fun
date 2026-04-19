@@ -22,6 +22,7 @@ export {
   validateChainConfigEnv,
   clearChainConfigCache,
   validateChainIdWithRpc,
+  isInitiaEnv,
   ChainConfigError,
 } from "./chainConfig.js";
 

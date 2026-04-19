@@ -10,25 +10,40 @@ import {
 } from "./types.js";
 
 /**
- * Known chain IDs by environment
- * testnet: HashKey Chain Testnet (133)
- * mainnet: HashKey Chain Mainnet (177)
- * legacy KAIA: testnet=1001, mainnet=8217 (backward compat — set CHAIN_ID=1001 if needed)
+ * Static chain IDs for known environments.
+ * initia-testnet chain ID is dynamic (set via INITIA_CHAIN_ID env var).
  */
-const CHAIN_IDS: Record<ChainEnv, number> = {
+const STATIC_CHAIN_IDS: Record<Exclude<ChainEnv, "initia-testnet">, number> = {
   local: 31337, // Anvil/Hardhat default
   testnet: 133, // HashKey Chain Testnet
   mainnet: 177, // HashKey Chain Mainnet
 };
 
+/** Resolves chain ID for the given environment at call time. */
+function resolveChainId(env: ChainEnv): number {
+  if (env === "initia-testnet") {
+    return parseInt(process.env.INITIA_CHAIN_ID ?? "7777777", 10);
+  }
+  return STATIC_CHAIN_IDS[env];
+}
+
 /**
- * Block explorer URLs by environment
+ * Static block explorer URLs for known environments.
+ * initia-testnet URL is dynamic (set via INITIA_EXPLORER_URL env var).
  */
-const BLOCK_EXPLORERS: Record<ChainEnv, string> = {
+const STATIC_BLOCK_EXPLORERS: Record<Exclude<ChainEnv, "initia-testnet">, string> = {
   local: "http://localhost:8545",
   testnet: "https://testnet-explorer.hsk.xyz",
   mainnet: "https://explorer.hsk.xyz",
 };
+
+/** Resolves block explorer URL for the given environment at call time. */
+function resolveBlockExplorer(env: ChainEnv): string {
+  if (env === "initia-testnet") {
+    return process.env.INITIA_EXPLORER_URL ?? "https://scan.testnet.initia.xyz";
+  }
+  return STATIC_BLOCK_EXPLORERS[env];
+}
 
 /**
  * Error thrown when required configuration is missing
@@ -65,11 +80,16 @@ function requireEnv(name: string): string {
  * Validates the chain environment value
  */
 function parseChainEnv(value: string): ChainEnv {
-  if (value === "local" || value === "testnet" || value === "mainnet") {
+  if (
+    value === "local" ||
+    value === "testnet" ||
+    value === "mainnet" ||
+    value === "initia-testnet"
+  ) {
     return value;
   }
   throw new ChainConfigError(
-    `Invalid CHAIN_ENV: "${value}" - must be one of: local, testnet, mainnet`,
+    `Invalid CHAIN_ENV: "${value}" - must be one of: local, testnet, mainnet, initia-testnet`,
   );
 }
 
@@ -169,6 +189,14 @@ function validateVRFAdapterConfig(env: ChainEnv): void {
 }
 
 /**
+ * Returns true when the current environment is Initia testnet.
+ * Useful for feature-gating Initia-specific behaviour (auto-sign, .init usernames).
+ */
+export function isInitiaEnv(env: ChainEnv): boolean {
+  return env === "initia-testnet";
+}
+
+/**
  * Loads the chain configuration from environment variables.
  * Throws ChainConfigError if required configuration is missing.
  *
@@ -196,9 +224,9 @@ export function getChainConfig(forceReload = false): ChainConfig {
 
   cachedConfig = Object.freeze({
     env,
-    chainId: CHAIN_IDS[env],
+    chainId: resolveChainId(env),
     rpcUrl,
-    blockExplorerUrl: BLOCK_EXPLORERS[env],
+    blockExplorerUrl: resolveBlockExplorer(env),
     contracts: Object.freeze({
       ...contracts,
       pokerTables: Object.freeze([...contracts.pokerTables]),
@@ -231,7 +259,7 @@ export function validateChainConfigEnv(): string[] {
     }
   }
 
-  // VRF_ADAPTER_TYPE is required on non-local environments
+  // VRF_ADAPTER_TYPE is required on non-local environments (including initia-testnet)
   const chainEnv = process.env[ENV_VARS.CHAIN_ENV];
   if (chainEnv && chainEnv !== "local" && !process.env[ENV_VARS.VRF_ADAPTER_TYPE]) {
     missing.push(ENV_VARS.VRF_ADAPTER_TYPE);

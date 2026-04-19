@@ -5,7 +5,7 @@
   "tracks": ["gaming", "ai"],
   "repo": "https://github.com/0xYatha/railbird",
   "demoUrl": "https://railbird.fun",
-  "demoVideo": "PLACEHOLDER_VIDEO_URL",
+  "demoVideo": "https://www.youtube.com/watch?v=PLACEHOLDER_UPLOAD_RAILBIRD_PITCH",
   "contracts": [
     {
       "name": "ChipToken",

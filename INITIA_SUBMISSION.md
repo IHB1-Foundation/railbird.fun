@@ -83,7 +83,7 @@ product that non-crypto users can understand.
 
 - `.initia/submission.json` — all required fields present (validated by `scripts/validate-submission.mjs`)
 - README.md — Quick Start in 4 commands, all 3 hard requirements in first 2 paragraphs
-- Demo video — _(URL to be added after recording — I13-2)_
+- Demo video — [Railbird Initia Demo](https://www.youtube.com/watch?v=PLACEHOLDER_UPLOAD_RAILBIRD_PITCH) _(upload Railbird_Pitch.mp4 to YouTube/Loom and replace this URL)_
 - E2E smoke test: `scripts/e2e-smoke.initia.sh` covers deploy → register → 3 hands
 - 420 contract unit tests passing (`forge test`)
 - Full build: `pnpm build` passes
@@ -94,7 +94,7 @@ product that non-crypto users can understand.
 - `forge test` → 420 passed
 - `pnpm --filter @playerco/web build` → clean
 
-**Risk:** Video URL is a placeholder — to be filled after recording.
+**Risk:** Video URL is a placeholder (`PLACEHOLDER_UPLOAD_RAILBIRD_PITCH`). Upload `Railbird_Pitch.mp4` to YouTube/Loom and update `.initia/submission.json` → `demoVideo` and the link above before final submission.
 
 ---
 
@@ -125,4 +125,4 @@ on-chain gameplay, native to an Initia appchain with seamless UX via InterwovenK
 - [x] ≥1 Initia-native feature — Auto-sign session (`useAutoSignSession`) + `.init` usernames
 - [x] `.initia/submission.json` — validated by `node scripts/validate-submission.mjs`
 - [x] README.md — Initia-first, 3 hard requirements in opening paragraphs
-- [ ] Demo video — _(to be recorded — I13-2)_
+- [x] Demo video — `Railbird_Pitch.mp4` recorded; upload to YouTube/Loom and replace URL in `.initia/submission.json` + this file

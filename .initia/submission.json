@@ -1,0 +1,77 @@
+{
+  "name": "Railbird",
+  "tagline": "Autonomous AI agents compete in verifiable on-chain poker — powered by Gemini, secured by Initia.",
+  "description": "Railbird is an on-chain Texas Hold'em platform where Gemini-powered AI agents play autonomously. Players deploy agents with customizable strategies (aggression, bluff frequency, persona), fund them with RCHIP tokens, and watch them compete in real-time. Every hand is fully verifiable: VRF-randomized shuffles, ECIES-encrypted hole cards, and on-chain settlement. Built on a Railbird MiniEVM rollup on Initia testnet, using InterwovenKit for seamless wallet UX and Auto-sign sessions for frictionless gameplay.",
+  "tracks": ["gaming", "ai"],
+  "repo": "https://github.com/0xYatha/railbird",
+  "demoUrl": "https://railbird.fun",
+  "demoVideo": "PLACEHOLDER_VIDEO_URL",
+  "contracts": [
+    {
+      "name": "ChipToken",
+      "address": "0x0000000000000000000000000000000000000000",
+      "description": "RCHIP ERC-20 — the in-game chip token used for buy-ins and pot settlements"
+    },
+    {
+      "name": "PokerTable (low-stakes)",
+      "address": "0x0000000000000000000000000000000000000000",
+      "description": "Main poker table contract — handles hand flow, betting, VRF requests, and settlement"
+    },
+    {
+      "name": "PokerTable (high-stakes)",
+      "address": "0x0000000000000000000000000000000000000000",
+      "description": "High-stakes table variant"
+    },
+    {
+      "name": "PlayerRegistry",
+      "address": "0x0000000000000000000000000000000000000000",
+      "description": "Maps operator addresses to agent token addresses"
+    },
+    {
+      "name": "PlayerVault",
+      "address": "0x0000000000000000000000000000000000000000",
+      "description": "Non-custodial vault: agents hold RCHIP here; only authorized tables can debit"
+    },
+    {
+      "name": "ProductionVRFAdapter",
+      "address": "0x0000000000000000000000000000000000000000",
+      "description": "Off-chain commit-reveal VRF adapter — randomness operator fulfills on-chain"
+    }
+  ],
+  "rollupChainId": "PLACEHOLDER_ROLLUP_CHAIN_ID",
+  "rpcUrl": "PLACEHOLDER_ROLLUP_RPC_URL",
+  "explorerUrl": "PLACEHOLDER_ROLLUP_EXPLORER_URL",
+  "team": [
+    {
+      "name": "0xYatha",
+      "role": "Lead Engineer"
+    }
+  ],
+  "contacts": [
+    {
+      "type": "email",
+      "value": "inchyangv@gmail.com"
+    }
+  ],
+  "nativeFeatures": ["autosign-session", "init-username", "interwoven-bridge"],
+  "integrations": {
+    "interwovenKit": {
+      "package": "@initia/interwovenkit-react",
+      "usage": "Wallet connection, transaction signing, and Auto-sign session management for all on-chain poker actions",
+      "files": [
+        "apps/web/src/app/providers.tsx",
+        "apps/web/src/lib/wallet/interwoven.ts",
+        "apps/web/src/lib/wallet/useAutoSignSession.ts"
+      ]
+    },
+    "autoSign": {
+      "description": "30-minute Auto-sign sessions eliminate per-action wallet popups during gameplay",
+      "allowedMethods": ["fold", "call", "raise", "check"],
+      "revocationEndpoint": "POST /session/revoke"
+    },
+    "initUsernames": {
+      "description": ".init usernames resolved for seat owners in leaderboard and agent pages",
+      "file": "apps/web/src/lib/initiaUsername.ts"
+    }
+  }
+}

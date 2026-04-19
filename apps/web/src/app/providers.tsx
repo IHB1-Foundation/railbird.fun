@@ -2,6 +2,7 @@
 
 import { type ReactNode, Suspense } from "react";
 import { InterwovenKitProvider, TESTNET } from "@initia/interwovenkit-react";
+import { IWKBridge } from "@/lib/wallet/IWKBridge";
 import { AuthProvider } from "@/lib/auth";
 import { ToastProvider } from "@/components/Toast";
 
@@ -13,6 +14,7 @@ function InitiaProviders({ children }: { children: ReactNode }) {
   const chainId = process.env.NEXT_PUBLIC_INTERWOVEN_CHAIN_ID ?? TESTNET.defaultChainId;
   return (
     <InterwovenKitProvider {...TESTNET} defaultChainId={chainId}>
+      <IWKBridge />
       {children}
     </InterwovenKitProvider>
   );

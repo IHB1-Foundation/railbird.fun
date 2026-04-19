@@ -3,39 +3,18 @@
 /**
  * InterwovenKit wallet adapter for Railbird.
  *
- * This module is the single point of integration with @initia/interwovenkit-react.
- * It exposes:
- *   - useInterwovenWallet()    — React hook: connect/disconnect/sign/sendTx
- *   - getWalletAccounts()      — imperative: get current accounts
- *   - requestWalletConnection()— imperative: prompt connection
- *   - walletSignMessage()      — imperative: sign message
- *   - getInjectedProvider()    — EIP-1193 provider for event listeners (non-Initia only)
- *
  * On Initia (NEXT_PUBLIC_CHAIN_ENV=initia-testnet):
- *   Uses InterwovenKit modal and signer.
+ *   IWKBridge (rendered inside InterwovenKitProvider in providers.tsx) calls
+ *   useInterwovenKit() and writes the result into a module-level store via
+ *   setIWKHandle(). useInitiaWallet() reads the store via useSyncExternalStore
+ *   so any component that calls useInterwovenWallet() reacts to IWK state changes.
  *
- * On other chains (HashKey / local):
+ * On other chains (local):
  *   Falls back to the EIP-1193 injected provider (MetaMask-compatible).
- *
- * All other modules should import from here instead of accessing
- *   the injected provider or InterwovenKit directly.
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
-
-/** Minimal shape of the IWK wallet handle set by IWKBridge (populated at runtime). */
-interface IWKWalletHandle {
-  isConnected: boolean;
-  address: string | null;
-  connect: () => Promise<void>;
-  disconnect: () => Promise<void>;
-  signMessage: (message: string) => Promise<string>;
-  sendTransaction: (params: {
-    to: string;
-    data?: string;
-    value?: bigint;
-  }) => Promise<`0x${string}`>;
-}
+import { useCallback, useSyncExternalStore } from "react";
+import type { useInterwovenKit } from "@initia/interwovenkit-react";
 
 export type WalletAddress = `0x${string}`;
 
@@ -65,7 +44,39 @@ const isInitiaEnv =
   typeof process !== "undefined" && process.env.NEXT_PUBLIC_CHAIN_ENV === "initia-testnet";
 
 // ──────────────────────────────────────────────────────────────────────────
-// EIP-1193 helpers
+// Module-level IWK handle store
+// IWKBridge writes here; hooks read via useSyncExternalStore.
+// ──────────────────────────────────────────────────────────────────────────
+
+type IWKHandle = ReturnType<typeof useInterwovenKit> | null;
+
+let _iwkHandle: IWKHandle = null;
+const _listeners = new Set<() => void>();
+
+/** Called by IWKBridge on every render to keep the store current. */
+export function setIWKHandle(handle: IWKHandle): void {
+  _iwkHandle = handle;
+  _listeners.forEach((fn) => fn());
+}
+
+/** Imperative read of the current IWK handle (for non-hook consumers). */
+export function getIWKHandle(): IWKHandle {
+  return _iwkHandle;
+}
+
+function _subscribeIWKHandle(listener: () => void): () => void {
+  _listeners.add(listener);
+  return () => {
+    _listeners.delete(listener);
+  };
+}
+
+function _getIWKSnapshot(): IWKHandle {
+  return _iwkHandle;
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// EIP-1193 helpers (non-Initia chains)
 // ──────────────────────────────────────────────────────────────────────────
 
 function getEip1193Provider() {
@@ -110,24 +121,23 @@ async function eip1193GetAccounts(): Promise<WalletAddress[]> {
 // Exported wallet primitives (usable outside hooks)
 // ──────────────────────────────────────────────────────────────────────────
 
-/** Returns currently connected accounts without prompting. */
 export async function getWalletAccounts(): Promise<WalletAddress[]> {
   return eip1193GetAccounts();
 }
 
-/** Prompts wallet connection and returns the connected addresses. */
 export async function requestWalletConnection(): Promise<WalletAddress[]> {
   return eip1193Connect();
 }
 
-/** Signs a message with the connected wallet. */
 export async function walletSignMessage(address: string, message: string): Promise<string> {
   return eip1193SignMessage(address, message);
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// useInterwovenWallet — EIP-1193 implementation (non-Initia)
+// useEip1193Wallet — non-Initia implementation
 // ──────────────────────────────────────────────────────────────────────────
+
+import { useEffect, useState } from "react";
 
 function useEip1193Wallet(): UseInterwovenWalletResult {
   const [state, setState] = useState<WalletState>({
@@ -199,89 +209,51 @@ function useEip1193Wallet(): UseInterwovenWalletResult {
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// useInterwovenWallet — InterwovenKit implementation (Initia)
+// useInitiaWallet — InterwovenKit implementation (Initia)
+// Reads from the IWKBridge store via useSyncExternalStore.
 // ──────────────────────────────────────────────────────────────────────────
 
 function useInitiaWallet(): UseInterwovenWalletResult {
-  const iwkRef = useRef<IWKWalletHandle | null>(null);
-  const [state, setState] = useState<WalletState>({
-    isConnected: false,
-    address: null,
-    isLoading: false,
-    error: null,
-  });
-
-  // Lazily import and initialize InterwovenKit wallet hook result via a side-effect.
-  // The actual hook call happens inside InterwovenKitProvider's subtree — this ref
-  // is populated by the IWKBridge component rendered in providers.tsx.
-  useEffect(() => {
-    const ref = iwkRef.current;
-    if (ref) {
-      setState({
-        isConnected: ref.isConnected,
-        address: ref.address as WalletAddress | null,
-        isLoading: false,
-        error: null,
-      });
-    }
-  }, []);
+  const iwk = useSyncExternalStore(_subscribeIWKHandle, _getIWKSnapshot, () => null);
 
   const connect = useCallback(async () => {
-    setState((prev) => ({ ...prev, isLoading: true, error: null }));
-    try {
-      const ref = iwkRef.current;
-      if (ref) {
-        await ref.connect();
-        setState({
-          isConnected: ref.isConnected,
-          address: ref.address as WalletAddress | null,
-          isLoading: false,
-          error: null,
-        });
-      }
-    } catch (err) {
-      setState((prev) => ({
-        ...prev,
-        isLoading: false,
-        error: err instanceof Error ? err.message : "Wallet connection failed.",
-      }));
-    }
-  }, []);
+    iwk?.openConnect();
+  }, [iwk]);
 
   const disconnect = useCallback(async () => {
-    if (iwkRef.current) await iwkRef.current.disconnect();
-    setState({ isConnected: false, address: null, isLoading: false, error: null });
-  }, []);
+    iwk?.disconnect();
+  }, [iwk]);
 
-  const signMessage = useCallback(async (message: string): Promise<string> => {
-    if (!iwkRef.current) throw new Error("InterwovenKit not initialized.");
-    return iwkRef.current.signMessage(message);
+  const signMessage = useCallback(async (_message: string): Promise<string> => {
+    throw new Error("signMessage is not directly available via InterwovenKit.");
   }, []);
 
   const sendTransaction = useCallback(
     async (params: SendTransactionParams): Promise<`0x${string}`> => {
-      if (!iwkRef.current) throw new Error("InterwovenKit not initialized.");
-      return iwkRef.current.sendTransaction({
-        to: params.to,
-        data: params.data,
-        value: params.value,
-      });
+      if (!iwk) throw new Error("InterwovenKit not initialized.");
+      // Route through the IWK sendTransaction added by I0-3.
+      // Falls back to throwing until I0-3 wires the EVM path.
+      throw new Error(`sendTransaction not yet wired for Initia (to=${params.to}).`);
     },
-    [],
+    [iwk],
   );
 
-  return { ...state, connect, disconnect, signMessage, sendTransaction };
+  return {
+    isConnected: iwk?.isConnected ?? false,
+    address: (iwk?.hexAddress ?? null) as WalletAddress | null,
+    isLoading: false,
+    error: null,
+    connect,
+    disconnect,
+    signMessage,
+    sendTransaction,
+  };
 }
 
 // ──────────────────────────────────────────────────────────────────────────
 // Public hook — selects implementation based on chain env
 // ──────────────────────────────────────────────────────────────────────────
 
-/**
- * Main wallet hook for Railbird.
- * On Initia: delegates to InterwovenKit.
- * On other chains: delegates to EIP-1193 injected provider.
- */
 export function useInterwovenWallet(): UseInterwovenWalletResult {
   const eip1193 = useEip1193Wallet();
   const initia = useInitiaWallet();

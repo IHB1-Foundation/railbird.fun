@@ -191,22 +191,23 @@ describe("chainConfig", () => {
       delete process.env.INITIA_CHAIN_ID;
     });
 
-    it("initia-testnet uses default chain ID when INITIA_CHAIN_ID is unset", () => {
+    it("initia-testnet throws when INITIA_CHAIN_ID is unset (no silent 7777777 fallback)", () => {
       setAllEnvVars();
       process.env[ENV_VARS.CHAIN_ENV] = "initia-testnet";
       delete process.env.INITIA_CHAIN_ID;
       clearChainConfigCache();
-      assert.strictEqual(getChainConfig().env, "initia-testnet");
-      assert.ok(typeof getChainConfig().chainId === "number");
+      assert.throws(() => getChainConfig(), /INITIA_CHAIN_ID is required/);
     });
 
     it("initia-testnet uses INITIA_EXPLORER_URL when set", () => {
       setAllEnvVars();
       process.env[ENV_VARS.CHAIN_ENV] = "initia-testnet";
+      process.env.INITIA_CHAIN_ID = "12345";
       process.env.INITIA_EXPLORER_URL = "https://custom-explorer.example.com";
       clearChainConfigCache();
       assert.strictEqual(getChainConfig().blockExplorerUrl, "https://custom-explorer.example.com");
       delete process.env.INITIA_EXPLORER_URL;
+      delete process.env.INITIA_CHAIN_ID;
     });
   });
 

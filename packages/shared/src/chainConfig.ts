@@ -22,7 +22,15 @@ const STATIC_CHAIN_IDS: Record<Exclude<ChainEnv, "initia-testnet">, number> = {
 /** Resolves chain ID for the given environment at call time. */
 function resolveChainId(env: ChainEnv): number {
   if (env === "initia-testnet") {
-    return parseInt(process.env.INITIA_CHAIN_ID ?? "7777777", 10);
+    const raw = process.env.INITIA_CHAIN_ID;
+    if (!raw) {
+      throw new ChainConfigError(
+        "INITIA_CHAIN_ID is required when CHAIN_ENV=initia-testnet. " +
+          "Set it to your rollup chain ID (see infra/initia/rollup.json).",
+        ["INITIA_CHAIN_ID"],
+      );
+    }
+    return parseInt(raw, 10);
   }
   return STATIC_CHAIN_IDS[env];
 }

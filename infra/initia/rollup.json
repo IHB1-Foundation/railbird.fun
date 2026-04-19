@@ -1,10 +1,14 @@
 {
-  "_note": "PLACEHOLDER — run scripts/initia/launch-minitia.sh and replace with real values after rollup provisioning",
   "network": "initia-testnet",
   "rollupName": "railbird",
-  "chainId": "PLACEHOLDER",
-  "rpcUrl": "PLACEHOLDER",
-  "explorerUrl": "PLACEHOLDER",
-  "launchTxHash": "PLACEHOLDER",
-  "createdAt": "PLACEHOLDER"
+  "chainId": "241167961210297",
+  "cosmosChainId": "railbird-1",
+  "bridgeId": "1856",
+  "rpcUrl": "http://localhost:8545",
+  "cosmosRpcUrl": "http://localhost:26657",
+  "explorerUrl": "https://scan.testnet.initia.xyz/rollup/railbird-1",
+  "launchTxHash": "1D7B546C724F49921082CC8ACC305DC03950484C52F5B48F47FF5C9DB73C8652",
+  "bridgeAddr": "init1jxwm89umsmhpksknrjaq35zh65p2tcw4dky6pvk5avg65qla957qfjqw3g",
+  "l1ChainId": "initiation-2",
+  "createdAt": "2026-04-20T01:13:00Z"
 }

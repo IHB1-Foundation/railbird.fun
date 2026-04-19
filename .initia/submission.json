@@ -38,9 +38,9 @@
       "description": "Off-chain commit-reveal VRF adapter — randomness operator fulfills on-chain"
     }
   ],
-  "rollupChainId": "PLACEHOLDER_ROLLUP_CHAIN_ID",
-  "rpcUrl": "PLACEHOLDER_ROLLUP_RPC_URL",
-  "explorerUrl": "PLACEHOLDER_ROLLUP_EXPLORER_URL",
+  "rollupChainId": "241167961210297",
+  "rpcUrl": "http://localhost:8545",
+  "explorerUrl": "https://scan.testnet.initia.xyz/rollup/railbird-1",
   "team": [
     {
       "name": "0xYatha",

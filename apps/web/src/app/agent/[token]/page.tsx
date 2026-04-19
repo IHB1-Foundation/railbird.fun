@@ -1,4 +1,5 @@
 import { ENABLE_TRADING_WIDGET } from "@/lib/featureFlags";
+import { buildBridgeUrl } from "@/lib/bridgeUrl";
 import Link from "next/link";
 import { Breadcrumb } from "@/components/Breadcrumb";
 import { Tooltip } from "@/components/Tooltip";
@@ -1270,7 +1271,10 @@ export default async function AgentPage({
             </p>
           </div>
           <a
-            href={`https://app.initia.xyz/bridge?toChainId=${process.env.NEXT_PUBLIC_INITIA_CHAIN_ID ?? ""}&toAddress=${agent.vaultAddress ?? agent.ownerAddress}`}
+            href={buildBridgeUrl(
+              process.env.NEXT_PUBLIC_CHAIN_ID ?? "",
+              agent.vaultAddress ?? agent.ownerAddress,
+            )}
             target="_blank"
             rel="noopener noreferrer"
             className="btn"

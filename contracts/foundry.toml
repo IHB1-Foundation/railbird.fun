@@ -32,6 +32,8 @@ hashkey-mainnet = "https://mainnet.hsk.xyz"
 kaia-testnet = "https://public-en-kairos.node.kaia.io"
 kaia-mainnet = "https://public-en-kaia.node.kaia.io"
 localhost = "http://localhost:8545"
+# Initia MiniEVM rollup — set RPC_URL in .env.initia after provisioning
+initia-testnet = "${RPC_URL}"
 
 [etherscan]
 # HashKey Chain explorer verification (Blockscout-based)
@@ -39,6 +41,8 @@ hashkey-testnet = { key = "placeholder", url = "https://testnet-explorer.hsk.xyz
 hashkey-mainnet = { key = "placeholder", url = "https://explorer.hsk.xyz/api" }
 # Kaiascan verification (legacy — set KAIASCAN_API_KEY in env when verifying)
 kaia-testnet = { key = "${KAIASCAN_API_KEY}", url = "https://api-kairos.kaiascan.io" }
+# Initia rollup explorer (Blockscout-compatible or Initiascan — update URL after rollup provisioning)
+initia-testnet = { key = "placeholder", url = "${INITIA_EXPLORER_URL}/api" }
 
 [invariant]
 runs  = 256

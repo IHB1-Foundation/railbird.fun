@@ -1,0 +1,17 @@
+{
+  "_note": "PLACEHOLDER — run scripts/deploy/initia.sh after rollup provisioning",
+  "network": "initia-testnet",
+  "rpcUrl": "PLACEHOLDER",
+  "deployedAt": "PLACEHOLDER",
+  "contracts": {
+    "chipToken": "0x0000000000000000000000000000000000000000",
+    "pokerTables": [
+      "0x0000000000000000000000000000000000000000",
+      "0x0000000000000000000000000000000000000000"
+    ],
+    "playerRegistry": "0x0000000000000000000000000000000000000000",
+    "playerVault": "0x0000000000000000000000000000000000000000",
+    "vrfAdapter": "0x0000000000000000000000000000000000000000",
+    "sideBetPool": "0x0000000000000000000000000000000000000000"
+  }
+}

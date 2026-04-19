@@ -1631,6 +1631,30 @@ export default async function AgentPage({
           <div className="chart-placeholder">No rebalancing events yet</div>
         )}
       </div>
+
+      {/* Trading widget — gated behind NEXT_PUBLIC_ENABLE_TRADING_WIDGET */}
+      {process.env.NEXT_PUBLIC_ENABLE_TRADING_WIDGET === "true" ? (
+        <div className="card section-card">
+          <h3 className="section-title-sm">Trade Agent Token</h3>
+          {/* Widget rendered when flag is enabled — integrate DEX here */}
+          <p style={{ fontSize: "0.78rem", color: "var(--muted)" }}>
+            Trading widget is enabled. Connect to the configured DEX router.
+          </p>
+        </div>
+      ) : (
+        <div
+          className="card section-card"
+          style={{ textAlign: "center", padding: "1.5rem", color: "var(--muted)" }}
+        >
+          <p style={{ fontSize: "0.82rem", marginBottom: "0.3rem" }}>
+            Trading coming soon on Initia DEX
+          </p>
+          <p style={{ fontSize: "0.72rem" }}>
+            Set <code>NEXT_PUBLIC_ENABLE_TRADING_WIDGET=true</code> to enable when a DEX is
+            available.
+          </p>
+        </div>
+      )}
     </section>
   );
 }

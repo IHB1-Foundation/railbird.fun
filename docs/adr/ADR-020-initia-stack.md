@@ -92,8 +92,8 @@ Initia MiniEVM blocks are ~100ms vs HashKey's ~2-3s. This requires tuning:
 | KYC SBT (`IHumanSBT`)     | Default off (`KYC_SBT_ADDRESS = 0x0`)                           | HashKey-specific contract; no equivalent on Initia |
 | nad.fun trading widget    | Feature-flagged off (`NEXT_PUBLIC_ENABLE_TRADING_WIDGET=false`) | Monad-specific DEX; no Initia equivalent at launch |
 | Treasury auto-rebalancing | Disabled (`ENABLE_REBALANCING=false`)                           | Requires nad.fun/DEX integration                   |
-| HashKey RPC/Explorer URLs | Moved to `legacy/hashkey/`                                      | No longer the active deployment target             |
-| `DeployHashKey.s.sol`     | Moved to `legacy/hashkey/`                                      | Replaced by `DeployInitia.s.sol`                   |
+| HashKey RPC/Explorer URLs | Moved to `contracts/script/deprecated/`                         | No longer the active deployment target             |
+| `DeployHashKey.s.sol`     | Moved to `contracts/script/deprecated/`                         | Replaced by `DeployInitia.s.sol`                   |
 
 ---
 

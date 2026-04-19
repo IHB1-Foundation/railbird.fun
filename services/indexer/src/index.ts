@@ -121,8 +121,17 @@ async function main(): Promise<void> {
       playerVaultAddress: process.env.PLAYER_VAULT_ADDRESS as Address | undefined,
       startBlock: process.env.START_BLOCK ? BigInt(process.env.START_BLOCK) : undefined,
       replayOnStart: parseBooleanEnv(process.env.INDEXER_REPLAY_ON_START, false),
-      pollIntervalMs: parseInt(process.env.POLL_INTERVAL_MS || "2000", 10),
-      logBlockRange: parseInt(process.env.LOG_BLOCK_RANGE || "90", 10),
+      // Initia MiniEVM blocks are ~100ms; default to 250ms poll on initia-testnet.
+      pollIntervalMs: parseInt(
+        process.env.POLL_INTERVAL_MS ||
+          (process.env.CHAIN_ENV === "initia-testnet" ? "250" : "2000"),
+        10,
+      ),
+      // Initia: scan 50 blocks per poll (~5 sec window at 100ms/block).
+      logBlockRange: parseInt(
+        process.env.LOG_BLOCK_RANGE || (process.env.CHAIN_ENV === "initia-testnet" ? "50" : "90"),
+        10,
+      ),
     });
 
     // Graceful shutdown — defined before starting the listener so the error

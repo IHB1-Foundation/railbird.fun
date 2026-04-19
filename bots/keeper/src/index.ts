@@ -20,10 +20,11 @@ const logger = createLogger({ service: "keeper-bot" });
 const VERSION = "0.0.1";
 
 async function main() {
-  logger.info({ version: VERSION }, 'Keeper bot starting');
+  logger.info({ version: VERSION }, "Keeper bot starting");
   logAbiVersions(logger, ["POKER_TABLE", "PLAYER_REGISTRY", "PLAYER_VAULT"]);
   const rpcUrl = requireEnv("RPC_URL");
-  const defaultPollIntervalMs = 2000;
+  // Initia MiniEVM: 100ms blocks — use 250ms default poll to stay near tip.
+  const defaultPollIntervalMs = process.env.CHAIN_ENV === "initia-testnet" ? 250 : 2000;
 
   const allTableAddresses = parseTableAddresses();
   const actionJitterMs = parsePositiveInt("KEEPER_ACTION_JITTER_MS", 0);
@@ -33,12 +34,13 @@ async function main() {
   // Example: 2 processes → process 0 gets even-indexed tables, process 1 gets odd.
   const totalShards = parsePositiveInt("KEEPER_TOTAL_SHARDS", 1);
   const shardId = parsePositiveInt("KEEPER_SHARD_ID", 0);
-  const tableAddresses = totalShards > 1
-    ? allTableAddresses.filter((_, i) => i % totalShards === shardId)
-    : allTableAddresses;
+  const tableAddresses =
+    totalShards > 1
+      ? allTableAddresses.filter((_, i) => i % totalShards === shardId)
+      : allTableAddresses;
 
   if (tableAddresses.length === 0) {
-    logger.info({ shardId, totalShards }, 'No tables assigned to shard, exiting');
+    logger.info({ shardId, totalShards }, "No tables assigned to shard, exiting");
     return;
   }
 
@@ -50,13 +52,19 @@ async function main() {
   if (treasuryAdvisorEnabled) {
     const geminiApiKey = process.env.GEMINI_API_KEY;
     if (!geminiApiKey) {
-      logger.warn({}, "TREASURY_ADVISOR_ENABLED=true but GEMINI_API_KEY missing — AI advisor disabled");
+      logger.warn(
+        {},
+        "TREASURY_ADVISOR_ENABLED=true but GEMINI_API_KEY missing — AI advisor disabled",
+      );
     } else {
       treasuryAdvisor = new TreasuryAdvisor({
         apiKey: geminiApiKey,
         model: process.env.GEMINI_MODEL || "gemini-2.0-flash",
       });
-      logger.info({ model: process.env.GEMINI_MODEL || "gemini-2.0-flash" }, "AI treasury advisor enabled");
+      logger.info(
+        { model: process.env.GEMINI_MODEL || "gemini-2.0-flash" },
+        "AI treasury advisor enabled",
+      );
     }
   }
 
@@ -65,7 +73,10 @@ async function main() {
   const autoRefillMinStackRaw = process.env.AUTO_REFILL_MIN_STACK;
 
   if (autoRefillEnabled && !autoRefillBuyInRaw) {
-    logger.warn({}, "AUTO_REFILL_ENABLED=true but AUTO_REFILL_BUY_IN_AMOUNT is not set — auto-refill disabled");
+    logger.warn(
+      {},
+      "AUTO_REFILL_ENABLED=true but AUTO_REFILL_BUY_IN_AMOUNT is not set — auto-refill disabled",
+    );
   }
 
   const baseConfig = {
@@ -87,23 +98,36 @@ async function main() {
 
   // Validate that RPC_URL returns the expected chain ID before proceeding.
   await validateChainIdWithRpc(baseConfig.rpcUrl, baseConfig.chainId).catch((err: unknown) => {
-    logger.error({ err: err instanceof Error ? err.message : String(err) }, 'Chain ID validation failed');
+    logger.error(
+      { err: err instanceof Error ? err.message : String(err) },
+      "Chain ID validation failed",
+    );
     process.exit(1);
   });
 
-  logger.info({
-    rpcUrl: baseConfig.rpcUrl,
-    tables: tableAddresses,
-    chainId: baseConfig.chainId,
-    pollIntervalMs: baseConfig.pollIntervalMs,
-    actionJitterMs,
-    ...(totalShards > 1 ? { shardId, totalShards, assignedTables: tableAddresses.length, totalTables: allTableAddresses.length } : {}),
-    dealerIntegration: !!(baseConfig.ownerviewUrl && baseConfig.dealerApiKey),
-  }, 'Configuration');
+  logger.info(
+    {
+      rpcUrl: baseConfig.rpcUrl,
+      tables: tableAddresses,
+      chainId: baseConfig.chainId,
+      pollIntervalMs: baseConfig.pollIntervalMs,
+      actionJitterMs,
+      ...(totalShards > 1
+        ? {
+            shardId,
+            totalShards,
+            assignedTables: tableAddresses.length,
+            totalTables: allTableAddresses.length,
+          }
+        : {}),
+      dealerIntegration: !!(baseConfig.ownerviewUrl && baseConfig.dealerApiKey),
+    },
+    "Configuration",
+  );
 
   // Create one KeeperBot per table
   const bots = tableAddresses.map(
-    (pokerTableAddress) => new KeeperBot({ ...baseConfig, pokerTableAddress })
+    (pokerTableAddress) => new KeeperBot({ ...baseConfig, pokerTableAddress }),
   );
 
   const healthPort = parseInt(process.env.HEALTH_PORT || process.env.PORT || "9101", 10);
@@ -127,7 +151,19 @@ async function main() {
           apiErrors: acc.apiErrors + s.apiErrors,
           txErrors: acc.txErrors + s.txErrors,
         }),
-        { timeoutsForced: 0, handsStarted: 0, showdownsSettled: 0, vrfReRequests: 0, errors: 0, rebalancesTriggered: 0, autoRefillsTriggered: 0, coordinationSkips: 0, rpcErrors: 0, apiErrors: 0, txErrors: 0 }
+        {
+          timeoutsForced: 0,
+          handsStarted: 0,
+          showdownsSettled: 0,
+          vrfReRequests: 0,
+          errors: 0,
+          rebalancesTriggered: 0,
+          autoRefillsTriggered: 0,
+          coordinationSkips: 0,
+          rpcErrors: 0,
+          apiErrors: 0,
+          txErrors: 0,
+        },
       );
       // Last activity: latest across all bots
       const lastActivityMs = Math.max(...allStats.map((s) => s.lastActionTime ?? 0));
@@ -146,17 +182,17 @@ async function main() {
       };
     },
   });
-  logger.info({ healthEndpoint: `http://0.0.0.0:${healthPort}/health` }, 'Health server started');
+  logger.info({ healthEndpoint: `http://0.0.0.0:${healthPort}/health` }, "Health server started");
 
   // Handle shutdown
   let shutdownRequested = false;
   const shutdown = () => {
     if (shutdownRequested) {
-      logger.info({}, 'Force shutdown');
+      logger.info({}, "Force shutdown");
       process.exit(1);
     }
     shutdownRequested = true;
-    logger.info({}, 'Shutdown requested, stopping keepers');
+    logger.info({}, "Shutdown requested, stopping keepers");
     for (const bot of bots) {
       bot.stop();
     }
@@ -172,21 +208,24 @@ async function main() {
   // Print final stats for each bot
   for (let i = 0; i < bots.length; i++) {
     const stats = bots[i].getStats();
-    logger.info({
-      table: tableAddresses[i],
-      timeoutsForced: stats.timeoutsForced,
-      handsStarted: stats.handsStarted,
-      showdownsSettled: stats.showdownsSettled,
-      errors: stats.errors,
-      coordinationSkips: stats.coordinationSkips,
-      lastAction: stats.lastAction,
-      lastActionTime: new Date(stats.lastActionTime).toISOString(),
-    }, 'Final statistics');
+    logger.info(
+      {
+        table: tableAddresses[i],
+        timeoutsForced: stats.timeoutsForced,
+        handsStarted: stats.handsStarted,
+        showdownsSettled: stats.showdownsSettled,
+        errors: stats.errors,
+        coordinationSkips: stats.coordinationSkips,
+        lastAction: stats.lastAction,
+        lastActionTime: new Date(stats.lastActionTime).toISOString(),
+      },
+      "Final statistics",
+    );
   }
 }
 
 main().catch((error) => {
-  logger.error({ err: error instanceof Error ? error.message : String(error) }, 'Fatal error');
+  logger.error({ err: error instanceof Error ? error.message : String(error) }, "Fatal error");
   process.exit(1);
 });
 

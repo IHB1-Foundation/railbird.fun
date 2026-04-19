@@ -12,7 +12,8 @@ const mockWaitForTransactionReceipt = vi.fn().mockResolvedValue({});
 const mockGetAddresses = vi.fn().mockResolvedValue(["0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"]);
 
 vi.mock("viem", async (importOriginal) => {
-  const actual = await importOriginal();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const actual = (await importOriginal()) as Record<string, unknown>;
   return {
     ...actual,
     createWalletClient: vi.fn().mockReturnValue({

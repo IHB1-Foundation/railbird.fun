@@ -12,15 +12,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { getIWKHandle } from "./interwoven";
+import { ENABLE_AUTOSIGN as isAutoSignEnabled } from "../featureFlags";
 
 const SESSION_DURATION_MS = 30 * 60 * 1000; // 30 minutes
 
 const ALLOWED_METHODS = ["fold", "call", "raise", "check", "forceTimeout"];
-
-const isInitiaEnv =
-  typeof process !== "undefined" && process.env.NEXT_PUBLIC_CHAIN_ENV === "initia-testnet";
-
-const isAutoSignEnabled = isInitiaEnv && process.env.NEXT_PUBLIC_ENABLE_AUTOSIGN !== "false";
 
 export interface AutoSignSessionState {
   isActive: boolean;

@@ -1,5 +1,6 @@
 /**
  * .init username utilities — usable in both server and client contexts.
+ * Guarded by the NEXT_PUBLIC_ENABLE_INIT_USERNAMES feature flag.
  *
  * Usernames are stored in the Initia Move usernames module and queried via
  * the Move view-function REST endpoint, NOT the /initia/usernames/v1/ path
@@ -27,6 +28,8 @@ function getCached(addr: string): string | null | undefined {
   return e.name;
 }
 
+const FEATURE_ENABLED = process.env.NEXT_PUBLIC_ENABLE_INIT_USERNAMES !== "false";
+
 const REST_URL = process.env.NEXT_PUBLIC_INITIA_NAMES_API_URL ?? "https://rest.testnet.initia.xyz";
 
 // Testnet module address (from @initia/interwovenkit-react TESTNET config)
@@ -42,6 +45,7 @@ function padAddress(address: string): string {
 
 /** Fetch a .init username for an address via Move view function. Returns null if not registered. */
 export async function fetchInitUsername(address: string): Promise<string | null> {
+  if (!FEATURE_ENABLED) return null;
   const cached = getCached(address);
   if (cached !== undefined) return cached;
 

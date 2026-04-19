@@ -1,3 +1,4 @@
+import { ENABLE_TRADING_WIDGET } from "@/lib/featureFlags";
 import Link from "next/link";
 import { Breadcrumb } from "@/components/Breadcrumb";
 import { Tooltip } from "@/components/Tooltip";
@@ -1633,7 +1634,7 @@ export default async function AgentPage({
       </div>
 
       {/* Trading widget — gated behind NEXT_PUBLIC_ENABLE_TRADING_WIDGET */}
-      {process.env.NEXT_PUBLIC_ENABLE_TRADING_WIDGET === "true" ? (
+      {ENABLE_TRADING_WIDGET ? (
         <div className="card section-card">
           <h3 className="section-title-sm">Trade Agent Token</h3>
           {/* Widget rendered when flag is enabled — integrate DEX here */}

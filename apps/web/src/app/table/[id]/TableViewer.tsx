@@ -1,5 +1,6 @@
 "use client";
 
+import { ENABLE_AUTOSIGN } from "@/lib/featureFlags";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { isAddress, type Address } from "viem";
 import { useAuth } from "@/lib/auth";
@@ -347,7 +348,7 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
   return (
     <div>
       {/* Auto-sign session banner (Initia only) */}
-      {process.env.NEXT_PUBLIC_ENABLE_AUTOSIGN === "true" && (
+      {ENABLE_AUTOSIGN && (
         <div
           role="status"
           className={cn(

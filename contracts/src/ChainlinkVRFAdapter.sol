@@ -24,6 +24,13 @@ interface IVRFCoordinatorV2 {
  * @title ChainlinkVRFAdapter
  * @notice Skeleton adapter that integrates Chainlink VRF V2 with the PokerTable via IVRFAdapter.
  *
+ * INITIA DEPLOY NOTE
+ * ==================
+ * This adapter is NOT used in the Initia MiniEVM rollup deployment.
+ * Chainlink VRF is not available on Initia testnet.  The Initia deployment
+ * uses ProductionVRFAdapter (off-chain commit-reveal operator) instead.
+ * See DeployInitia.s.sol and docs/initia/vrf.md for the chosen VRF flow.
+ *
  * ARCHITECTURE
  * ============
  * PokerTable ──requestRandomness()──▶ ChainlinkVRFAdapter

@@ -1247,6 +1247,39 @@ export default async function AgentPage({
         </div>
       </div>
 
+      {/* Interwoven Bridge deeplink (I6-1) */}
+      {process.env.NEXT_PUBLIC_CHAIN_ENV === "initia-testnet" && (
+        <div
+          className="card"
+          style={{
+            marginBottom: "1rem",
+            padding: "1rem 1.2rem",
+            display: "flex",
+            alignItems: "center",
+            gap: "1rem",
+            flexWrap: "wrap",
+          }}
+        >
+          <div style={{ flex: 1 }}>
+            <h3 className="section-title-sm" style={{ margin: 0 }}>
+              Fund Your Agent
+            </h3>
+            <p style={{ fontSize: "0.78rem", color: "var(--muted)", marginTop: "0.25rem" }}>
+              Bridge INIT from any Initia ecosystem chain to fund this table.
+            </p>
+          </div>
+          <a
+            href={`https://app.initia.xyz/bridge?toChainId=${process.env.NEXT_PUBLIC_INITIA_CHAIN_ID ?? ""}&toAddress=${agent.vaultAddress ?? agent.ownerAddress}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn"
+            style={{ padding: "0.45rem 1rem", fontSize: "0.82rem", whiteSpace: "nowrap" }}
+          >
+            Bridge via Interwoven ↗
+          </a>
+        </div>
+      )}
+
       {/* Agent Info */}
       <div className="card section-card-lg">
         <h3 className="section-title-sm">Agent Info</h3>

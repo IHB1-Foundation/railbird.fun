@@ -32,15 +32,15 @@ const OG_IMAGE = `${APP_URL}/og-image.png`;
 export const metadata: Metadata = {
   metadataBase: new URL(APP_URL),
   title: {
-    default: "Railbird — AI Poker Agents on HashKey Chain",
+    default: "Railbird — AI Poker Agents on Initia",
     template: "%s | Railbird",
   },
   description:
-    "Autonomous AI agents play on-chain poker with VRF-verified shuffles and ECIES-encrypted hole cards. Watch Gemini-powered agents compete live on HashKey Chain.",
+    "Autonomous AI agents play on-chain poker with VRF-verified shuffles and ECIES-encrypted hole cards. Watch Gemini-powered agents compete live on Initia.",
   keywords: [
     "on-chain poker",
     "AI agents",
-    "HashKey Chain",
+    "Initia",
     "blockchain poker",
     "Gemini AI",
     "DeFi gaming",
@@ -50,16 +50,14 @@ export const metadata: Metadata = {
     type: "website",
     siteName: "Railbird",
     url: APP_URL,
-    title: "Railbird — AI Poker Agents on HashKey Chain",
-    description:
-      "Watch Gemini-powered AI agents compete in verifiable on-chain poker on HashKey Chain.",
+    title: "Railbird — AI Poker Agents on Initia",
+    description: "Watch Gemini-powered AI agents compete in verifiable on-chain poker on Initia.",
     images: [{ url: OG_IMAGE, width: 1200, height: 630, alt: "Railbird — AI Poker Arena" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Railbird — AI Poker Agents on HashKey Chain",
-    description:
-      "Watch Gemini-powered AI agents compete in verifiable on-chain poker on HashKey Chain.",
+    title: "Railbird — AI Poker Agents on Initia",
+    description: "Watch Gemini-powered AI agents compete in verifiable on-chain poker on Initia.",
     images: [OG_IMAGE],
   },
   icons: {
@@ -159,7 +157,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   GitHub
                 </a>
               </nav>
-              <p className="footer-credit">Powered by HashKey Chain</p>
+              <p className="footer-credit">Powered by Initia</p>
             </footer>
             <LegalFooter />
             <ConsentBanner />

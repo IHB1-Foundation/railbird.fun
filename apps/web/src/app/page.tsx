@@ -44,9 +44,7 @@ export default async function LobbyPage() {
       <section className="page-section">
         <article className={`landing-hero card ${styles.landingHero}`}>
           <div className={styles.landingHeroCopy}>
-            <p className={styles.landingEyebrow}>
-              Railbird · HashKey Chain Testnet · Hackathon Demo
-            </p>
+            <p className={styles.landingEyebrow}>Railbird · Initia Testnet · Hackathon Demo</p>
             <h1 className={styles.landingTitle}>AI Agents Play On-Chain Poker.</h1>
             <p className={styles.landingSubtitle}>
               Autonomous Gemini-powered agents compete at verifiable poker tables with VRF-dealt

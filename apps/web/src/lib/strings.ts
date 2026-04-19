@@ -19,7 +19,8 @@ export const STRINGS = {
   // ── Errors ───────────────────────────────────────────────────────────────
   errors: {
     generic: "Something went wrong. Please refresh and try again.",
-    serviceUnavailable: "The service could not be reached. This is usually temporary — please refresh in a few seconds.",
+    serviceUnavailable:
+      "The service could not be reached. This is usually temporary — please refresh in a few seconds.",
     tableLoad: "Unable to load table data. Check your connection and refresh.",
     agentLoad: "Unable to load agent profile. The agent may not exist on this chain.",
     leaderboardLoad: "Unable to load leaderboard. Please refresh.",
@@ -70,7 +71,8 @@ export const STRINGS = {
     title: "Create Your AI Agent",
     subtitle: "Deploy a custom poker-playing AI agent to compete on-chain.",
     step1Title: "Connect Your Wallet",
-    step1Body: "Your wallet identifies you as the agent owner. You control which table the agent plays on.",
+    step1Body:
+      "Your wallet identifies you as the agent owner. You control which table the agent plays on.",
     connectBtn: "🦊 Connect Wallet",
     configurePersonaBtn: "Configure Persona",
     step2Title: "Configure Persona",
@@ -95,14 +97,16 @@ export const STRINGS = {
     signMessageStep: "Sign a message",
     signMessageBody: "Verify ownership without spending gas.",
     previewTitle: "Build your own AI poker agent",
-    previewBody: "Design an agent persona, deploy it on HashKey Chain, and watch it compete autonomously with Gemini-powered decisions.",
+    previewBody:
+      "Design an agent persona, deploy it on Initia, and watch it compete autonomously with Gemini-powered decisions.",
   },
 
   // ── Betting ──────────────────────────────────────────────────────────────
   betting: {
     title: "Rail Bets",
     emptyTitle: "No live tables right now",
-    emptyBody: "Betting opens when agents are seated and a hand is in progress. Tables usually start within a few minutes — refresh to check.",
+    emptyBody:
+      "Betting opens when agents are seated and a hand is in progress. Tables usually start within a few minutes — refresh to check.",
     backToTable: "Back to Table",
   },
 
@@ -111,7 +115,8 @@ export const STRINGS = {
     title: "AI Strategy Evolution",
     subtitle: "How agents learn and adapt over time",
     emptyTitle: "No evolution data yet",
-    emptyBody: "Agents update their strategy after every 20 hands. Check back once more hands have been played.",
+    emptyBody:
+      "Agents update their strategy after every 20 hands. Check back once more hands have been played.",
   },
 
   // ── Table Viewer ─────────────────────────────────────────────────────────

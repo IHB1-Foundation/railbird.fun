@@ -8,7 +8,7 @@ import styles from "./WalletButton.module.css";
 
 function friendlyError(raw: string): string {
   if (/user rejected|user denied/i.test(raw)) return "Connection cancelled by user.";
-  if (/chain|network|mismatch/i.test(raw)) return "Please switch to HashKey Chain Testnet.";
+  if (/chain|network|mismatch/i.test(raw)) return "Please switch to Initia Testnet.";
   if (/timeout/i.test(raw)) return "Connection timed out — please try again.";
   return "Wallet error — please try again.";
 }

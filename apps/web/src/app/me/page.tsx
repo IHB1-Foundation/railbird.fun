@@ -114,8 +114,8 @@ export default function MyAgentsPage() {
           </span>
           <h3 className={styles.previewCtaTitle}>Build your own AI poker agent</h3>
           <p className="text-muted">
-            Design an agent persona, deploy it on HashKey Chain, and watch it compete autonomously
-            with Gemini-powered decisions.
+            Design an agent persona, deploy it on Initia, and watch it compete autonomously with
+            Gemini-powered decisions.
           </p>
           <div className={styles.previewCtaActions}>
             <Link href="/create-agent" className="btn">

@@ -38,31 +38,40 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   const dismiss = useCallback((id: number) => {
     // Set exiting state, then remove after animation
-    setToasts((prev) => prev.map((t) => t.id === id ? { ...t, exiting: true } : t));
+    setToasts((prev) => prev.map((t) => (t.id === id ? { ...t, exiting: true } : t)));
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
     }, 260);
   }, []);
 
-  const add = useCallback((type: ToastType, message: string, action?: ToastAction) => {
-    const id = ++nextId;
-    setToasts((prev) => {
-      const updated = [...prev, { id, type, message, action, exiting: false }];
-      return updated.slice(-3); // max 3
-    });
-    // Error toasts without actions auto-dismiss; with actions stay until dismissed
-    if (type !== "error" && !action) {
-      setTimeout(() => dismiss(id), 5000);
-    } else if (type !== "error" && action) {
-      setTimeout(() => dismiss(id), 8000);
-    }
-  }, [dismiss]);
+  const add = useCallback(
+    (type: ToastType, message: string, action?: ToastAction) => {
+      const id = ++nextId;
+      setToasts((prev) => {
+        const updated = [...prev, { id, type, message, action, exiting: false }];
+        return updated.slice(-3); // max 3
+      });
+      // Error toasts without actions auto-dismiss; with actions stay until dismissed
+      if (type !== "error" && !action) {
+        setTimeout(() => dismiss(id), 5000);
+      } else if (type !== "error" && action) {
+        setTimeout(() => dismiss(id), 8000);
+      }
+    },
+    [dismiss],
+  );
 
-  const success = useCallback((msg: string, action?: ToastAction) => add("success", msg, action), [add]);
-  const error = useCallback((msg: string, action?: ToastAction) => add("error", msg, action), [add]);
+  const success = useCallback(
+    (msg: string, action?: ToastAction) => add("success", msg, action),
+    [add],
+  );
+  const error = useCallback(
+    (msg: string, action?: ToastAction) => add("error", msg, action),
+    [add],
+  );
   const info = useCallback((msg: string, action?: ToastAction) => add("info", msg, action), [add]);
 
-  const EXPLORER = process.env.NEXT_PUBLIC_BLOCK_EXPLORER || "https://testnet-explorer.hsk.xyz";
+  const EXPLORER = process.env.NEXT_PUBLIC_BLOCK_EXPLORER || "https://scan.testnet.initia.xyz";
 
   const srStyle: React.CSSProperties = {
     position: "absolute",
@@ -118,14 +127,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 t.type === "success"
                   ? "rgba(22, 101, 52, 0.92)"
                   : t.type === "error"
-                  ? "rgba(127, 29, 29, 0.92)"
-                  : "rgba(30, 58, 138, 0.92)",
+                    ? "rgba(127, 29, 29, 0.92)"
+                    : "rgba(30, 58, 138, 0.92)",
               border: `1px solid ${
                 t.type === "success"
                   ? "rgba(74, 222, 128, 0.4)"
                   : t.type === "error"
-                  ? "rgba(248, 113, 113, 0.4)"
-                  : "rgba(96, 165, 250, 0.4)"
+                    ? "rgba(248, 113, 113, 0.4)"
+                    : "rgba(96, 165, 250, 0.4)"
               }`,
               backdropFilter: "blur(8px)",
               boxShadow: "0 8px 24px rgba(0,0,0,0.3)",
@@ -141,14 +150,17 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               dangerouslySetInnerHTML={{
                 __html: t.message.replace(
                   /tx=(0x[a-fA-F0-9]+)/g,
-                  `tx=<a href="${EXPLORER}/tx/$1" target="_blank" rel="noopener" style="color:#93c5fd;text-decoration:underline">$1</a>`
+                  `tx=<a href="${EXPLORER}/tx/$1" target="_blank" rel="noopener" style="color:#93c5fd;text-decoration:underline">$1</a>`,
                 ),
               }}
             />
             <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexShrink: 0 }}>
               {t.action && (
                 <button
-                  onClick={() => { t.action!.onClick(); dismiss(t.id); }}
+                  onClick={() => {
+                    t.action!.onClick();
+                    dismiss(t.id);
+                  }}
                   style={{
                     background: "rgba(255,255,255,0.12)",
                     border: "1px solid rgba(255,255,255,0.25)",

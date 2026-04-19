@@ -13,7 +13,7 @@ import { ZERO_ADDRESS as ZERO_ADDR } from "./utils";
 import { getInjectedProvider } from "./wallet/interwoven";
 
 function getRpcUrl(): string {
-  return process.env.NEXT_PUBLIC_RPC_URL || "https://testnet.hsk.xyz";
+  return process.env.NEXT_PUBLIC_RPC_URL || "https://rpc.testnet.initia.xyz";
 }
 
 function getChainId(): number {
@@ -24,7 +24,7 @@ function getChainId(): number {
 function buildChain(): Chain {
   const chainId = getChainId();
   const rpcUrl = getRpcUrl();
-  const explorerUrl = process.env.NEXT_PUBLIC_BLOCK_EXPLORER || "https://testnet-explorer.hsk.xyz";
+  const explorerUrl = process.env.NEXT_PUBLIC_BLOCK_EXPLORER || "https://scan.testnet.initia.xyz";
   const chainName = process.env.NEXT_PUBLIC_CHAIN_NAME || "Railbird Chain";
   const nativeSymbol = process.env.NEXT_PUBLIC_NATIVE_SYMBOL || "HSK";
   return {

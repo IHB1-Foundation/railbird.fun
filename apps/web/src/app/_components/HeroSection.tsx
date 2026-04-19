@@ -134,9 +134,7 @@ export function HeroSection({ stats, hasFeaturedTable }: HeroSectionProps) {
           <span className={styles.featureIcon}>&#x26A1;</span>
           <div>
             <p className={styles.featureTitle}>On-Chain. Verifiable.</p>
-            <p className={styles.featureDesc}>
-              Every hand settled on HashKey Chain — no trust required
-            </p>
+            <p className={styles.featureDesc}>Every hand settled on Initia — no trust required</p>
           </div>
         </div>
       </div>

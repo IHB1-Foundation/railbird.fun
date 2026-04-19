@@ -10,7 +10,7 @@ import {
 } from "viem";
 import { POKER_TABLE_ABI } from "@playerco/shared";
 import { ZERO_ADDRESS as ZERO_ADDR } from "./utils";
-import { getInjectedProvider } from "./wallet/interwoven";
+import { getEvmProvider } from "./wallet/interwoven";
 
 function getRpcUrl(): string {
   return process.env.NEXT_PUBLIC_RPC_URL || "https://rpc.testnet.initia.xyz";
@@ -18,7 +18,15 @@ function getRpcUrl(): string {
 
 function getChainId(): number {
   const raw = process.env.NEXT_PUBLIC_CHAIN_ID;
-  return raw ? parseInt(raw, 10) : 133;
+  if (!raw) {
+    if (process.env.NEXT_PUBLIC_CHAIN_ENV === "initia-testnet") {
+      throw new Error(
+        "NEXT_PUBLIC_CHAIN_ID is required on Initia. Set it to your rollup chain ID.",
+      );
+    }
+    return 31337; // anvil/local default only
+  }
+  return parseInt(raw, 10);
 }
 
 function buildChain(): Chain {
@@ -26,7 +34,7 @@ function buildChain(): Chain {
   const rpcUrl = getRpcUrl();
   const explorerUrl = process.env.NEXT_PUBLIC_BLOCK_EXPLORER || "https://scan.testnet.initia.xyz";
   const chainName = process.env.NEXT_PUBLIC_CHAIN_NAME || "Railbird Chain";
-  const nativeSymbol = process.env.NEXT_PUBLIC_NATIVE_SYMBOL || "HSK";
+  const nativeSymbol = process.env.NEXT_PUBLIC_NATIVE_SYMBOL || "INIT";
   return {
     id: chainId,
     name: chainName,
@@ -67,10 +75,12 @@ const publicClient = createPublicClient({
   transport: http(getRpcUrl()),
 });
 
-// WalletClient is created lazily because it depends on the injected provider which
-// is only available client-side and may not be present at module load time.
+// WalletClient is created lazily; on Initia the EVM-compatible rollup is signed
+// via the user's MetaMask (or equivalent) pointed at the rollup RPC. The
+// InterwovenKit modal handles network-add / connection UX (I0-2), and the actual
+// EVM write uses getEvmProvider() which works on all chain envs.
 function getWalletClient() {
-  const provider = getInjectedProvider();
+  const provider = getEvmProvider();
   if (!provider) return null;
   return createWalletClient({
     chain: CHAIN,

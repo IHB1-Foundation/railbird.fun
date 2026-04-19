@@ -87,10 +87,24 @@ function getEip1193Provider() {
 
 /**
  * Returns the injected EIP-1193 provider for event subscription.
- * On Initia this returns null — InterwovenKit manages wallet state internally.
+ * On Initia this returns null — InterwovenKit manages wallet state via the
+ * modal. For EVM write transactions on the rollup, use getEvmProvider().
  */
 export function getInjectedProvider(): EthereumProvider | null {
   if (isInitiaEnv) return null;
+  return getEip1193Provider() as EthereumProvider | null;
+}
+
+/**
+ * Returns the raw EIP-1193 provider for EVM transaction signing.
+ * Unlike getInjectedProvider(), this works on Initia too — the Initia
+ * MiniEVM rollup is EVM-compatible and the user's MetaMask (or equivalent)
+ * signs EVM contract calls after connecting via InterwovenKit's modal.
+ *
+ * All EVM write-path callers (pokerTableClient, etc.) should use this
+ * instead of getInjectedProvider() or window.ethereum directly.
+ */
+export function getEvmProvider(): EthereumProvider | null {
   return getEip1193Provider() as EthereumProvider | null;
 }
 

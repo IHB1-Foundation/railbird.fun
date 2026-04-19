@@ -247,9 +247,13 @@ export class AgentBot {
     const configHash = keccak256(new TextEncoder().encode(configData) as unknown as `0x${string}`);
 
     const chain: Chain = {
-      id: this.config.chainId || 133,
-      name: "HashKey Chain Testnet",
-      nativeCurrency: { name: "HashKey", symbol: "HSK", decimals: 18 },
+      id: this.config.chainId || 31337,
+      name: process.env.CHAIN_NAME || "Localhost",
+      nativeCurrency: {
+        name: process.env.NATIVE_CURRENCY_NAME || process.env.NATIVE_SYMBOL || "ETH",
+        symbol: process.env.NATIVE_SYMBOL || "ETH",
+        decimals: 18,
+      },
       rpcUrls: { default: { http: [this.config.rpcUrl] } },
     };
 

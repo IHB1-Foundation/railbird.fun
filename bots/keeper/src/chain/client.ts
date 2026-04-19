@@ -15,7 +15,13 @@ import {
   type Hash,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { GameState, NonceManager, POKER_TABLE_ABI, PLAYER_VAULT_ABI, SIDE_BET_POOL_ABI } from "@playerco/shared";
+import {
+  GameState,
+  NonceManager,
+  POKER_TABLE_ABI,
+  PLAYER_VAULT_ABI,
+  SIDE_BET_POOL_ABI,
+} from "@playerco/shared";
 
 // Minimal ERC20 ABI for reading token balances (treasury shares)
 const ERC20_BALANCE_ABI = [
@@ -47,7 +53,7 @@ const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 const ZERO_BYTES32 = `0x${"0".repeat(64)}` as const;
 const HOLE_CARD_VRF_LOG_LOOKBACK = BigInt(process.env.HOLE_CARD_VRF_LOG_LOOKBACK || "200000");
 const RANDOMNESS_FULFILLED_EVENT = parseAbiItem(
-  "event RandomnessFulfilled(uint256 indexed requestId, address indexed table, uint256 randomness)"
+  "event RandomnessFulfilled(uint256 indexed requestId, address indexed table, uint256 randomness)",
 );
 
 export interface Seat {
@@ -102,12 +108,25 @@ export class ChainClient {
   private nonceManager: NonceManager;
 
   constructor(config: ChainClientConfig) {
+    const chainEnv = process.env.CHAIN_ENV ?? "local";
+    const isLocal = chainEnv === "local";
+    if (!config.chainId && !isLocal) {
+      throw new Error(`CHAIN_ID is required when CHAIN_ENV=${chainEnv}`);
+    }
+    const chainName = process.env.CHAIN_NAME;
+    if (!chainName && !isLocal) {
+      throw new Error(`CHAIN_NAME is required when CHAIN_ENV=${chainEnv}`);
+    }
+    const nativeSymbol = process.env.NATIVE_SYMBOL;
+    if (!nativeSymbol && !isLocal) {
+      throw new Error(`NATIVE_SYMBOL is required when CHAIN_ENV=${chainEnv}`);
+    }
     this.chain = {
-      id: config.chainId || 133,
-      name: process.env.CHAIN_NAME || "HashKey Chain Testnet",
+      id: config.chainId || 31337,
+      name: chainName || "Localhost",
       nativeCurrency: {
-        name: process.env.NATIVE_CURRENCY_NAME || "HashKey",
-        symbol: process.env.NATIVE_SYMBOL || "HSK",
+        name: process.env.NATIVE_CURRENCY_NAME || nativeSymbol || "ETH",
+        symbol: nativeSymbol || "ETH",
         decimals: 18,
       },
       rpcUrls: {
@@ -234,11 +253,11 @@ export class ChainClient {
       // Some deployed table versions do not expose a stable canStartHand()
       // view. Fall back to the on-chain startHand() preconditions that are
       // readable off-chain so the keeper can still start ready tables.
-      canStartHand = await this.deriveCanStartHand((gameStateRaw as number) as GameState);
+      canStartHand = await this.deriveCanStartHand(gameStateRaw as number as GameState);
     }
 
     return {
-      gameState: (gameStateRaw as number) as GameState,
+      gameState: gameStateRaw as number as GameState,
       currentHandId: currentHandId as bigint,
       actionDeadline: actionDeadline as bigint,
       lastActionBlock: lastActionBlock as bigint,
@@ -273,11 +292,11 @@ export class ChainClient {
 
       const numSeats = Number(numSeatsRaw);
       const seats = await Promise.all(
-        Array.from({ length: numSeats }, (_, seatIndex) => this.getSeat(seatIndex))
+        Array.from({ length: numSeats }, (_, seatIndex) => this.getSeat(seatIndex)),
       );
 
       const playableSeatCount = seats.filter(
-        (seat) => seat.owner !== ZERO_ADDRESS && seat.stack > 0n
+        (seat) => seat.owner !== ZERO_ADDRESS && seat.stack > 0n,
       ).length;
 
       return playableSeatCount >= 2;
@@ -387,7 +406,11 @@ export class ChainClient {
     });
   }
 
-  async submitHoleCommit(handId: bigint, seatIndex: number, commitment: `0x${string}`): Promise<Hash> {
+  async submitHoleCommit(
+    handId: bigint,
+    seatIndex: number,
+    commitment: `0x${string}`,
+  ): Promise<Hash> {
     return this.nonceManager.withNonce(async (nonce) => {
       const hash = await this.walletClient.writeContract({
         chain: this.chain,
@@ -440,7 +463,7 @@ export class ChainClient {
     seatIndex: number,
     card1: number,
     card2: number,
-    salt: `0x${string}`
+    salt: `0x${string}`,
   ): Promise<Hash> {
     return this.nonceManager.withNonce(async (nonce) => {
       const hash = await this.walletClient.writeContract({
@@ -498,11 +521,11 @@ export class ChainClient {
 
   async getVaultTreasuryShares(): Promise<bigint> {
     if (!this.vaultAddress) throw new Error("No vault address configured");
-    const agentToken = await this.publicClient.readContract({
+    const agentToken = (await this.publicClient.readContract({
       address: this.vaultAddress,
       abi: PLAYER_VAULT_ABI,
       functionName: "agentToken",
-    }) as Address;
+    })) as Address;
     if (!agentToken || agentToken === "0x0000000000000000000000000000000000000000") {
       return 0n;
     }
@@ -596,20 +619,28 @@ export class ChainClient {
 
   async getSeat(seatIndex: number): Promise<Seat> {
     try {
-      const result = await this.publicClient.readContract({
+      const result = (await this.publicClient.readContract({
         address: this.pokerTableAddress,
         abi: POKER_TABLE_ABI,
         functionName: "getSeat",
         args: [seatIndex],
-      }) as { owner: Address; operator: Address; stack: bigint; isActive: boolean; currentBet: bigint; isAllIn: boolean; totalHandBet: bigint };
+      })) as {
+        owner: Address;
+        operator: Address;
+        stack: bigint;
+        isActive: boolean;
+        currentBet: bigint;
+        isAllIn: boolean;
+        totalHandBet: bigint;
+      };
       return result as Seat;
     } catch {
-      const result = await this.publicClient.readContract({
+      const result = (await this.publicClient.readContract({
         address: this.pokerTableAddress,
         abi: POKER_TABLE_ABI,
         functionName: "seats",
         args: [BigInt(seatIndex)],
-      }) as readonly [Address, Address, bigint, boolean, bigint, boolean, bigint];
+      })) as readonly [Address, Address, bigint, boolean, bigint, boolean, bigint];
       const [owner, operator, stack, isActive, currentBet, isAllIn, totalHandBet] = result;
       return { owner, operator, stack, isActive, currentBet, isAllIn, totalHandBet };
     }
@@ -644,11 +675,11 @@ export class ChainClient {
       return 0n;
     }
 
-    const vrfAdapter = await this.publicClient.readContract({
+    const vrfAdapter = (await this.publicClient.readContract({
       address: this.pokerTableAddress,
       abi: POKER_TABLE_ABI,
       functionName: "vrfAdapter",
-    }) as Address;
+    })) as Address;
 
     if (vrfAdapter === ZERO_ADDRESS) {
       throw new Error("VRF adapter is not configured for this table");
@@ -656,9 +687,7 @@ export class ChainClient {
 
     const latestBlock = await this.publicClient.getBlockNumber();
     const fromBlock =
-      latestBlock > HOLE_CARD_VRF_LOG_LOOKBACK
-        ? latestBlock - HOLE_CARD_VRF_LOG_LOOKBACK
-        : 0n;
+      latestBlock > HOLE_CARD_VRF_LOG_LOOKBACK ? latestBlock - HOLE_CARD_VRF_LOG_LOOKBACK : 0n;
 
     const fulfilledLogs = await this.publicClient.getLogs({
       address: vrfAdapter,
@@ -681,7 +710,7 @@ export class ChainClient {
     }
 
     throw new Error(
-      `Unable to resolve hole card VRF randomness for hand ${handId.toString()} within the last ${HOLE_CARD_VRF_LOG_LOOKBACK.toString()} blocks`
+      `Unable to resolve hole card VRF randomness for hand ${handId.toString()} within the last ${HOLE_CARD_VRF_LOG_LOOKBACK.toString()} blocks`,
     );
   }
 
@@ -711,7 +740,12 @@ export class ChainClient {
     });
   }
 
-  async registerSeat(seatIndex: number, owner: Address, operator: Address, buyIn: bigint): Promise<Hash> {
+  async registerSeat(
+    seatIndex: number,
+    owner: Address,
+    operator: Address,
+    buyIn: bigint,
+  ): Promise<Hash> {
     return this.nonceManager.withNonce(async (nonce) => {
       const hash = await this.walletClient.writeContract({
         chain: this.chain,

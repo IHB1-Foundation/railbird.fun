@@ -47,12 +47,25 @@ export class ChainClient {
   private readonly vrfAdapterAddress: Address;
 
   constructor(config: ChainClientConfig) {
+    const chainEnv = process.env.CHAIN_ENV ?? "local";
+    const isLocal = chainEnv === "local";
+    if (!config.chainId && !isLocal) {
+      throw new Error(`CHAIN_ID is required when CHAIN_ENV=${chainEnv}`);
+    }
+    const chainName = process.env.CHAIN_NAME;
+    if (!chainName && !isLocal) {
+      throw new Error(`CHAIN_NAME is required when CHAIN_ENV=${chainEnv}`);
+    }
+    const nativeSymbol = process.env.NATIVE_SYMBOL;
+    if (!nativeSymbol && !isLocal) {
+      throw new Error(`NATIVE_SYMBOL is required when CHAIN_ENV=${chainEnv}`);
+    }
     this.chain = {
-      id: config.chainId || 133,
-      name: process.env.CHAIN_NAME || "HashKey Chain Testnet",
+      id: config.chainId || 31337,
+      name: chainName || "Localhost",
       nativeCurrency: {
-        name: process.env.NATIVE_CURRENCY_NAME || "HashKey",
-        symbol: process.env.NATIVE_SYMBOL || "HSK",
+        name: process.env.NATIVE_CURRENCY_NAME || nativeSymbol || "ETH",
+        symbol: nativeSymbol || "ETH",
         decimals: 18,
       },
       rpcUrls: {

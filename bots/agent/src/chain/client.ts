@@ -85,12 +85,25 @@ export class ChainClient {
   private nonceManager: NonceManager;
 
   constructor(config: ChainClientConfig) {
+    const chainEnv = process.env.CHAIN_ENV ?? "local";
+    const isLocal = chainEnv === "local";
+    if (!config.chainId && !isLocal) {
+      throw new Error(`CHAIN_ID is required when CHAIN_ENV=${chainEnv}`);
+    }
+    const chainName = process.env.CHAIN_NAME;
+    if (!chainName && !isLocal) {
+      throw new Error(`CHAIN_NAME is required when CHAIN_ENV=${chainEnv}`);
+    }
+    const nativeSymbol = process.env.NATIVE_SYMBOL;
+    if (!nativeSymbol && !isLocal) {
+      throw new Error(`NATIVE_SYMBOL is required when CHAIN_ENV=${chainEnv}`);
+    }
     this.chain = {
-      id: config.chainId || 133,
-      name: process.env.CHAIN_NAME || "HashKey Chain Testnet",
+      id: config.chainId || 31337,
+      name: chainName || "Localhost",
       nativeCurrency: {
-        name: process.env.NATIVE_CURRENCY_NAME || "HashKey",
-        symbol: process.env.NATIVE_SYMBOL || "HSK",
+        name: process.env.NATIVE_CURRENCY_NAME || nativeSymbol || "ETH",
+        symbol: nativeSymbol || "ETH",
         decimals: 18,
       },
       rpcUrls: {
@@ -128,7 +141,15 @@ export class ChainClient {
 
   private parseSeat(raw: unknown): Seat {
     if (Array.isArray(raw)) {
-      const seatTuple = raw as unknown as readonly [Address, Address, bigint, boolean, bigint, boolean, bigint];
+      const seatTuple = raw as unknown as readonly [
+        Address,
+        Address,
+        bigint,
+        boolean,
+        bigint,
+        boolean,
+        bigint,
+      ];
       return {
         owner: seatTuple[0] ?? ZERO_ADDRESS,
         operator: seatTuple[1] ?? ZERO_ADDRESS,
@@ -194,7 +215,16 @@ export class ChainClient {
         functionName: "currentHand",
       });
 
-      const hand = currentHand as readonly [bigint, bigint, bigint, bigint, number, number, number, number];
+      const hand = currentHand as readonly [
+        bigint,
+        bigint,
+        bigint,
+        bigint,
+        number,
+        number,
+        number,
+        number,
+      ];
       return {
         handId: hand[0],
         pot: hand[1],
@@ -221,8 +251,8 @@ export class ChainClient {
             abi: POKER_TABLE_ABI,
             functionName: "communityCards",
             args: [BigInt(index)],
-          })
-        )
+          }),
+        ),
       );
       return communityCards.map((card) => Number(card));
     }
@@ -274,7 +304,7 @@ export class ChainClient {
       this.getSeatWithFallback(seatIndex),
     ]);
 
-    const hand = await this.getHandInfoWithFallback((gameStateRaw as number) as GameState);
+    const hand = await this.getHandInfoWithFallback(gameStateRaw as number as GameState);
     return {
       handCurrentBet: hand.currentBet,
       seatCurrentBet: seat.currentBet,
@@ -330,37 +360,32 @@ export class ChainClient {
   async getTableState(mySeatIndex: number | null = null): Promise<TableState> {
     await this.ensureStaticState();
 
-    const [
-      gameStateRaw,
-      currentHandId,
-      actionDeadline,
-      lastActionBlock,
-      buttonSeat,
-    ] = await Promise.all([
-      this.publicClient.readContract({
-        address: this.pokerTableAddress,
-        abi: POKER_TABLE_ABI,
-        functionName: "gameState",
-      }),
-      this.publicClient.readContract({
-        address: this.pokerTableAddress,
-        abi: POKER_TABLE_ABI,
-        functionName: "currentHandId",
-      }),
-      this.publicClient.readContract({
-        address: this.pokerTableAddress,
-        abi: POKER_TABLE_ABI,
-        functionName: "actionDeadline",
-      }),
-      this.publicClient.readContract({
-        address: this.pokerTableAddress,
-        abi: POKER_TABLE_ABI,
-        functionName: "lastActionBlock",
-      }),
-      this.getButtonSeatWithFallback(),
-    ]);
+    const [gameStateRaw, currentHandId, actionDeadline, lastActionBlock, buttonSeat] =
+      await Promise.all([
+        this.publicClient.readContract({
+          address: this.pokerTableAddress,
+          abi: POKER_TABLE_ABI,
+          functionName: "gameState",
+        }),
+        this.publicClient.readContract({
+          address: this.pokerTableAddress,
+          abi: POKER_TABLE_ABI,
+          functionName: "currentHandId",
+        }),
+        this.publicClient.readContract({
+          address: this.pokerTableAddress,
+          abi: POKER_TABLE_ABI,
+          functionName: "actionDeadline",
+        }),
+        this.publicClient.readContract({
+          address: this.pokerTableAddress,
+          abi: POKER_TABLE_ABI,
+          functionName: "lastActionBlock",
+        }),
+        this.getButtonSeatWithFallback(),
+      ]);
 
-    const gameState = (gameStateRaw as number) as GameState;
+    const gameState = gameStateRaw as number as GameState;
     const [handInfo, communityCards] = await Promise.all([
       this.getHandInfoWithFallback(gameState),
       this.getCommunityCardsWithFallback(),
@@ -369,9 +394,7 @@ export class ChainClient {
     let seats: Seat[];
     if (mySeatIndex === null || mySeatIndex < 0 || mySeatIndex >= this.maxSeatsCache!) {
       const seatResults = await Promise.all(
-        Array.from({ length: this.maxSeatsCache! }, (_, i) =>
-          this.getSeatWithFallback(i)
-        )
+        Array.from({ length: this.maxSeatsCache! }, (_, i) => this.getSeatWithFallback(i)),
       );
       seats = seatResults;
     } else {
@@ -558,19 +581,23 @@ export class ChainClient {
 
     let existing: `0x${string}` | null = null;
     try {
-      existing = await this.publicClient.readContract({
+      existing = (await this.publicClient.readContract({
         address: this.pokerTableAddress,
         abi: ENCRYPTION_ABI,
         functionName: "getEncryptionKey",
         args: [seatIndex],
-      }) as `0x${string}`;
+      })) as `0x${string}`;
     } catch {
       // Legacy table deployments may not expose encryption key views reliably.
       // Off-chain ownerview registration is enough for dealing, so skip on-chain sync.
       return null;
     }
 
-    const newKeyHex = "0x" + Array.from(pubKey).map(b => b.toString(16).padStart(2, "0")).join("");
+    const newKeyHex =
+      "0x" +
+      Array.from(pubKey)
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
     if (existing && existing !== "0x" && existing.toLowerCase() === newKeyHex.toLowerCase()) {
       return null; // already registered
     }
@@ -623,8 +650,13 @@ export class ChainClient {
    * commitHash = keccak256(abi.encode(handId, seatIndex, action, reasoning, salt))
    * Returns the tx hash, or null if the call reverts (non-fatal).
    */
-  async commitDecision(seatIndex: number, commitHash: `0x${string}`, reasoningHash?: `0x${string}`): Promise<string | null> {
-    const ZERO_BYTES32 = "0x0000000000000000000000000000000000000000000000000000000000000000" as `0x${string}`;
+  async commitDecision(
+    seatIndex: number,
+    commitHash: `0x${string}`,
+    reasoningHash?: `0x${string}`,
+  ): Promise<string | null> {
+    const ZERO_BYTES32 =
+      "0x0000000000000000000000000000000000000000000000000000000000000000" as `0x${string}`;
     return this.nonceManager.withNonce(async (nonce) => {
       const hash = await this.walletClient.writeContract({
         chain: this.chain,
@@ -649,7 +681,7 @@ export class ChainClient {
     seatIndex: number,
     action: string,
     reasoning: string,
-    salt: `0x${string}`
+    salt: `0x${string}`,
   ): Promise<string> {
     return this.nonceManager.withNonce(async (nonce) => {
       const hash = await this.walletClient.writeContract({

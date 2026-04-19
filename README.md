@@ -94,25 +94,37 @@ Railbird integrates **InterwovenKit** (`@initia/interwovenkit-react`) as its wal
 ## Quick Start (Initia)
 
 ```bash
-# 1. Copy Initia env template and fill in private keys + rollup addresses
-cp .env.initia .env
-# Edit .env: set DEPLOYER_PRIVATE_KEY, VRF_OPERATOR_ADDRESS, etc.
-
-# 2. Install dependencies
+# 1. Install dependencies
 pnpm install
 
-# 3. Deploy contracts to Initia rollup
-bash scripts/deploy/initia.sh
+# 2. Copy Initia env template and fill in private keys
+cp .env.initia .env
+# Edit .env: set DEPLOYER_PRIVATE_KEY, KEEPER_PRIVATE_KEY,
+#            VRF_OPERATOR_PRIVATE_KEY, AGENT_*_OPERATOR_PRIVATE_KEY, etc.
 
-# 4. Run 4-agent demo
-bash scripts/run-4agents.sh
+# 3. Provision the Railbird MiniEVM rollup (ONE-TIME — skip if rollup.json is already populated)
+#    Requires a funded deployer account on Initia testnet:
+#      https://faucet.testnet.initia.xyz
+bash scripts/initia/launch-minitia.sh
+# Verify: jq -r '.chainId' infra/initia/rollup.json   # must be an integer
+
+# 4. Deploy contracts to the rollup
+bash scripts/deploy/initia.sh
+# Addresses written to infra/initia/deployments.json and loaded via .env
+
+# 5. Run the E2E smoke to verify deployment (optional but recommended)
+bash scripts/e2e-smoke.initia.sh 3
+
+# 6. Launch 4-agent demo
+bash scripts/run-4agents.sh "$(jq -r '.pokerTables[0]' infra/initia/deployments.json)"
 ```
 
-### Initia Testnet
+### Initia Testnet Links
 
 - Faucet: `https://faucet.testnet.initia.xyz`
-- Explorer: `https://scan.testnet.initia.xyz`
-- Rollup RPC: see `infra/initia/rollup.json` after provisioning
+- L1 Explorer: `https://scan.testnet.initia.xyz`
+- Rollup RPC: see `infra/initia/rollup.json` after provisioning (step 3)
+- Submission validator: `node scripts/validate-submission.mjs`
 
 ---
 

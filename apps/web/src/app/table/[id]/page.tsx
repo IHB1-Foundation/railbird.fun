@@ -9,8 +9,12 @@ export const dynamic = "force-dynamic";
 /** Allow hex addresses (with or without 0x) and numeric IDs only. */
 const VALID_TABLE_ID = /^(0x[a-fA-F0-9]{1,40}|\d+)$/;
 
-export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
-  const { id } = params;
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
   return {
     title: `Table #${id}`,
     description: `Live table view, hand replay, and decision breakdown for table ${id}.`,
@@ -21,7 +25,7 @@ export default async function TablePage({
   params,
   searchParams,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
   searchParams: Promise<{ hand?: string; view?: string }>;
 }) {
   const { id } = await params;

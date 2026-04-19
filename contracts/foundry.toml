@@ -56,3 +56,14 @@ bracket_spacing = true
 
 [lint]
 lint_on_build = false
+
+[profile.deploy-initia]
+src = "src"
+out = "out-initia"
+libs = ["lib"]
+solc = "0.8.24"
+via_ir = false
+optimizer = true
+optimizer_runs = 1
+test = "no_tests"
+script = "no_scripts"

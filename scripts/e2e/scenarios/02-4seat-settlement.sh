@@ -18,6 +18,7 @@ e2e_register_seats 4
 
 # 4. Services
 e2e_start_ownerview 13092
+e2e_seed_encryption_keys 4
 e2e_start_keeper
 for i in 0 1 2 3; do
   e2e_start_agent $i 2

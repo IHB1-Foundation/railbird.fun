@@ -19,11 +19,12 @@ e2e_register_seats 2
 
 # 4. Services — start both agents, max 2 hands
 e2e_start_ownerview 13094
+e2e_seed_encryption_keys 2
 e2e_start_keeper
 e2e_start_agent 0 2
-AGENT0_PID="${PIDS[-1]}"
+AGENT0_PID="${PIDS[${#PIDS[@]}-1]}"
 e2e_start_agent 1 2
-AGENT1_PID="${PIDS[-1]}"
+AGENT1_PID="${PIDS[${#PIDS[@]}-1]}"
 
 # 5. Wait a few seconds so the first hand starts
 sleep 8
@@ -50,6 +51,9 @@ CHAIN_ID="$CHAIN_ID" \
 POLL_INTERVAL_MS=300 \
 MAX_HANDS=2 \
 TURN_ACTION_DELAY_MS=0 \
+PORT=13294 \
+HEALTH_PORT=13294 \
+RAG_PERSIST_PATH="/tmp/e2e-agent-rag-18548-0-restart.json" \
   node --import tsx "$ROOT_DIR/bots/agent/src/index.ts" \
   >> /tmp/e2e-agent0.log 2>&1 &
 RESTARTED_PID=$!
@@ -63,7 +67,8 @@ e2e_wait_hands 1 150
 e2e_assert_settlements 1
 
 # 10. Verify logs: no "Fatal error" that wasn't recovered
-CRASH_ERRORS=$(grep -c "Fatal error\|Unrecoverable" /tmp/e2e-agent0.log 2>/dev/null || echo "0")
+CRASH_ERRORS=$(grep -E -c "Fatal error|Unrecoverable" /tmp/e2e-agent0.log 2>/dev/null || true)
+CRASH_ERRORS=${CRASH_ERRORS:-0}
 if [ "$CRASH_ERRORS" = "0" ]; then
   pass "No fatal errors in agent-0 log after restart"
 else

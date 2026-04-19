@@ -10,7 +10,7 @@
 import { test, describe, before, after } from "node:test";
 import assert from "node:assert";
 import { execSync } from "node:child_process";
-import { TestHarness, DEPLOYER_KEY } from "../../agent/test/integration/harness.js";
+import { TestHarness, DEPLOYER_KEY } from "../../../agent/test/integration/harness.js";
 
 // Only run if forge/anvil is available
 const AVAILABLE = TestHarness.isAvailable();
@@ -19,11 +19,11 @@ describe(
   "Keeper integration: forceTimeout",
   { skip: !AVAILABLE ? "forge/anvil not installed" : false },
   () => {
-    // Short action timeout so the timeout fires in a few seconds during tests
+    // Use the contract minimums, then fast-forward Anvil time inside the test.
     const harness = new TestHarness({
       numSeats: 2,
-      actionTimeoutSecs: 10, // 10s action timeout — fires quickly for testing
-      vrfTimeoutSecs: 5,
+      actionTimeoutSecs: 60,
+      vrfTimeoutSecs: 30,
       ownerviewPort: 19092,
       anvilPort: 19542,
     });
@@ -31,9 +31,9 @@ describe(
     before(
       async () => {
         await harness.setup();
-        // NO agents started — keeper will detect timeout and call forceTimeout
         harness.startOwnerView();
         await harness.waitForOwnerView(10_000);
+        await harness.seedOwnerViewEncryptionKeys();
         harness.startKeeper();
       },
       { timeout: 60_000 },
@@ -60,38 +60,13 @@ describe(
           ].join(" "),
         );
 
-        // Fulfill VRF so preflop begins (otherwise we're stuck in WAITING_VRF_HOLECARDS)
-        await new Promise((r) => setTimeout(r, 2000));
-        try {
-          const lastReqOut = execSync(
-            `cast call ${harness.vrfAddr} "lastRequestId()(uint256)" --rpc-url ${harness.rpcUrl}`,
-          )
-            .toString()
-            .trim();
-          const reqId = BigInt(lastReqOut);
-          if (reqId > 0n) {
-            execSync(
-              [
-                "cast",
-                "send",
-                harness.vrfAddr,
-                `"fulfillRandomness(uint256,uint256)"`,
-                String(reqId),
-                "12345678",
-                "--rpc-url",
-                harness.rpcUrl,
-                "--private-key",
-                DEPLOYER_KEY,
-              ].join(" "),
-            );
-          }
-        } catch {
-          /* VRF might not be pending — continue */
-        }
+        await harness.waitForGameState(2, 20_000);
 
-        // Wait up to 30s for keeper to detect and call forceTimeout
-        // (action timeout = 10s, keeper polls every 300ms → should fire in ~12s)
-        const deadline = Date.now() + 30_000;
+        execSync(`cast rpc --rpc-url ${harness.rpcUrl} evm_increaseTime 61`);
+        execSync(`cast rpc --rpc-url ${harness.rpcUrl} evm_mine`);
+
+        // Wait up to 15s for keeper to detect and call forceTimeout after time warp.
+        const deadline = Date.now() + 15_000;
         let resolved = false;
 
         while (Date.now() < deadline) {
@@ -106,10 +81,10 @@ describe(
 
         assert.ok(
           resolved,
-          `Keeper did not call forceTimeout within 30s. Final state: ${await harness.getGameState()}`,
+          `Keeper did not call forceTimeout after deadline. Final state: ${await harness.getGameState()}`,
         );
       },
-      { timeout: 40_000 },
+      { timeout: 25_000 },
     );
 
     test(

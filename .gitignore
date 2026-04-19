@@ -37,8 +37,14 @@ dist/
 
 # Foundry
 contracts/out/
+contracts/out-initia/
 contracts/cache/
 contracts/broadcast/
+
+# Large binary assets (store externally)
+*.mp4
+*.pptx
+pitch-video/
 
 # Deployment manifests (generated, not committed)
 deployments/*.json

@@ -1,92 +1,110 @@
-# HashKey Chain On-Chain Horizon Hackathon
+INITIATE: The Initia Hackathon (Season 1)
+Focus on building the app. The chain part just got easy.
 
-## Build New Financial Infrastructure
+Most developers don’t wake up dreaming of running a blockchain. They wake up dreaming of building something people actually use, and making money from it.
 
-- 🗓 **Hackathon Period:** Mar 10 - Apr 23, 2026
-- 📝 **Registration Deadline:** Apr 15
-- 💰 **Prize Pool:** 40,000 USDT
-- 🏁 **Tracks:** DeFi | PayFi | AI | ZKID
+Initia exists for that exact reason.
 
-When the intelligent decision-making capabilities of artificial intelligence meet the open and inclusive nature of decentralized finance, a technological wave that disrupts the boundaries of financial innovation has arrived. The On-Chain Horizon Hackathon is officially launched, inviting global geek developers, entrepreneurs, university teams, and industry practitioners to join this grand event. In Hong Kong, a leading city for technology and finance, we explore the infinite possibilities of the deep integration of AI and DeFi.
+Ship a profitable app in days, not months.
 
-Under the core theme of "Technology Empowers Finance, Innovation Reconstructs Ecosystem," this event focuses on the practical implementation of AI technologies in DeFi scenarios. During the hackathon, participants will form cross-disciplinary teams to develop projects around key tracks, including AI-driven intelligent trading strategies, on-chain financial infrastructure, and AI-automated operation and maintenance for DeFi protocols.
+The Initia Stack gives you 100ms block times, instant bridging and deposits, social logins, and more, so you focus on your app. Every transaction your users make? That's revenue you keep, not value you leak.
 
-For the winning projects, we will provide further support and incubation. We will introduce HashKey Group's internal marketing department, investment department, and security compliance department. At the same time, our partners within the ecosystem, including exchanges, security audit institutions, and VCs, will also participate in the construction of the winning projects to ensure that the project teams have good resources for development.
+This hackathon isn’t about “launching another chain.”
 
-## Helpful Links
+It’s about launching apps with real revenue and real ownership while the chain runs quietly in the background like invisible infrastructure magic.
 
-- **Developer Resources & Community:** https://hashfans.io/ (You can find everything you need here)
-- **Developer Group:** https://t.me/HashKeyChainHSK/95285
-- **Updates via Telegram:** https://t.co/gSHGZQwoYF
+What This Hackathon Is About
+Most builders want to focus on product, UX, and distribution, not infrastructure or chain operations. Initia gives you the tooling and support to launch and run an appchain without needing deep blockchain infra expertise.
 
-## Timeline
+Why build on Initia?
+More revenue and value capture No gas tax paid to someone else, no sequencer cut, no unnecessary value leakage.
+Distribution across ecosystems Onboard users from anywhere, without forcing them to bridge, swap, or move across chains themselves.
+Own your stack and economics Customize your setup, control your fee model, and evolve your chain as your app grows.
+And yes, the bar to entry is lower than ever.
 
-- 🗓 **Event Window:** Mar 10 - Apr 23, 2026
-- 📝 **Registration Deadline:** Apr 15
+With the right tools, you can even use AI to help deploy your chain and turn your app into a high-potential, revenue-generating business.
 
-### Key Milestones
+Step-by-Step Guide: https://docs.initia.xyz/hackathon
 
-- AMA Series: Mar 19 / Mar 26 / Apr 2 / Apr 9
-- Online Panel (Tech + Docs): Apr 5
-- Project Pre-screening: Apr 14
-- Demo Submission Opens: Apr 14
-- Official Pitch Schedule Release: Apr 16
+What Builders Get
+During the Hackathon
+Access to Initia documentation and starter templates
+Direct mentorship from Initia team members and ecosystem builders
+Infrastructure support for deployment and scaling on testnet / mainnet
+Guidance on go-to-market, product positioning, and launch strategy
+Mid-Hackathon
+Prove your idea early. Win big. Keep building.
 
-### Offline Events
+Halfway through the hackathon, we host a dedicated MVP Demo Day where teams showcase their product (should we live on testnet with smart contracts, backend, and basic frontend), where the 2 strongest teams win Mac Mini hardware awards, before final judging even begins.
+Post-Hackathon Opportunities (for selected projects)
+Potential onboarding as an Entrepreneur in Residence (EIR)
+Support with fundraising conversations and investor introductions
+Anvil Credits for the first 2-3 months for the chain deployment on Mainnet
+Continued technical and ecosystem support
+Help transitioning from developer to long-term builder or founder
+Rewards
+Total Rewards Pool: $25,000 USD equivalent
 
-- Apr 22 (Day 1): Demo Showcase - AWS Office
-- Apr 23 (Day 2): Final Pitch & Awards - Web3 Festival
+Rewards may include:
 
-## Prize for Each Track (DeFi, AI, PayFi, ZKID)
+Mac Mini hardware awards
+Cash grants
+Sponsored trips to the Network School
+Ecosystem growth and distribution support
+Exact rewards breakdown link).](https://initia-xyz.notion.site/INITIATE-Reward-Structure-32c86c34856f80b582d2f188ebdd5dbb).)
 
-- 1st: 5k USDT
-- 2nd: 3k USDT
-- 3rd: 2k USDT
+Note: All rewards are subject to the quality and eligibility of submissions. Initia reserves the right to revise, reduce, or withhold rewards if entries do not meet the expected standards.
 
-We will announce the winning projects and teams on April 23rd, and the prize money will be distributed within 14 working days.
+Timeline
+Hackathon Start: 16th March, 2026 (11:00 AM UTC)
 
-## Submission Requirements
+Submission Deadline: 15th April, 2026 (11:00 PM UTC)
 
-- Open to individuals and teams worldwide.
-- Projects must be original and built or rebuilt during the hackathon period.
-- Projects should be built on HashKey Chain and align with one of the hackathon tracks: DeFi, AI, PayFi, ZKID.
-- Using officially recommended products and frameworks will earn extra points.
+Workshops, mentor sessions, and community calls will be scheduled throughout the hackathon period. Final judging and demo day dates will be announced during the event.
 
-For the PayFi track, please use HSP (you can find the user manual in the top navigation bar of https://hashfans.io/).
+Support and Resources
+Participants will have access to:
 
-For the ZK track, please use NexaID: https://nexaid.gitbook.io/nexaid-docs/
+Technical documentation and starter kits
+Community support channels
+Mentor office hours and technical guidance
+Collaboration and networking opportunities with other builders
+Developer Hackthon Documentation
+Main Website
+X
+Discord
+Eligibility & Requirements
+Open to individuals and teams worldwide
+No prior Initia experience required
+Projects must be original and built during the hackathon period
+Projects should be built on Initia and align with one of the hackathon tracks: DeFi, AI, or Gaming
+The submission must be deployed as its own Initia appchain / rollup. Required evidence: A valid rollup chain ID or a txn link, or a deployment link.
+The project must use InterwovenKit (@initia/interwovenkit-react) for wallet connection and/or transaction handling. This requirement exists to ensure the app is actually integrated into the Initia UX stack.
+The project must implement at least one Initia-native feature: Auto-signing / Session UX, Interwoven Bridge, Initia Usernames (.init)
+Every submission repository must include: Required file path:.initia/submission.json , a human-readable summary in: README.md, and a demo video.
+Full submission requirements and technical guidelines can be found in the docs.
 
-## Submission Deadline
+Got any questions? Ask here.
 
-The final submission deadline is **April 15, 23:59 (GMT+8)**.
+Scoring Criteria
+Scoring criteria Originality & Track Fit (20%)
+Is the idea fresh and clearly defined within its chosen track? Does it bring something meaningfully distinct to the space, with a clear point of view on the problem it's trying to solve?
 
-Please ensure all materials are submitted on time. The system will be closed automatically after the deadline, and no late submissions will be accepted. Thank you for your cooperation.
+Technical Execution & Initia Integration (30%)
 
-## Judges
+Is the appchain correctly deployed (locally or on testnet), core logic implemented well, and Initia-native functionality integrated in a meaningful way?
 
-To ensure fairness and impartiality of the competition, as well as to obtain a comprehensive evaluation of the participating projects, our judges come from different roles within the industry, including but not limited to members of HashKey Chain team, EAG, SNZ, AWS, Kraken, Dorahacks, HashKey Capital, SeeGrowth, and DGrid AI.
+Product Value & UX (20%)
 
-## Extra Info
+Is the product understandable, functional, and improved by the Initia experience?
 
-All participating teams are eligible for comprehensive post-event support beyond cash prizes.
+Working Demo & Completeness (20%)
 
-Winning teams will receive end-to-end resource backing, including:
+Does the submission run end-to-end, and is the demo/README sufficient for judges to verify it quickly?
 
-- Technical development support from the HashKey Chain engineering team
-- Investment opportunities and funding support from HashKey Capital
-- Professional compliance consulting from our in-house legal team
-- Ecosystem co-building resources from our strategic partners, covering security audit, top-tier VCs, media exposure, and exchange collaboration
+Market Understanding (10%)
 
-Notably, non-winning teams are not excluded from these benefits. We will review all high-potential projects and reach out via email with the same suite of ecosystem and institutional resources for further incubation and cooperation. Please keep an eye on your inbox for follow-up communications.
+Is the target user clearly defined and the go-to-market credible? Does the team demonstrate awareness of the competitive landscape and a clear sense of where their product fits?
 
-Given a large volume of submissions, our jury will conduct a thorough review of every project. Due to limited slots, not all teams will be selected for the final demo pitch. Please ensure your project demonstrates strong completeness, technical maturity, and innovation.
-
-The Official Pitch Schedule will be released on Apr 16. Please stay tuned for updates.
-
-High-potential projects without a demo slot will still be contacted via your registered information for follow-up incubation, resource support, and future collaboration opportunities.
-
-For online demo participants: you must follow the official time slot strictly. Failure to attend on time will be regarded as automatic forfeiture of your demo right.
-
-## Disclaimer
-
-The organizer and partners will never charge any fees in any form, including registration, review, deposit, service, or handling fees. All official communications will only be sent via our public email/DM and official channels. Please ignore any private messages, unknown links, or payment requests to avoid fraud risks.
+Goal
+Initiate is the Initia Hackathon with an objective to support builders in launching functional applications with real users, high-revenue potential, clear utility, and long-term collaboration within the Initia ecosystem.

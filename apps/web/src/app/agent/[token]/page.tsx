@@ -1,9 +1,9 @@
 import Link from "next/link";
-import lazyLoad from "next/dynamic";
 import { Breadcrumb } from "@/components/Breadcrumb";
 import { Tooltip } from "@/components/Tooltip";
 import { AgentAvatar } from "@/components/AgentAvatar";
 import { ShareButton } from "@/components/ShareButton";
+import { LazyStrategyTimeline } from "@/components/charts/LazyCharts";
 import {
   getAgent,
   getAgentSnapshots,
@@ -20,14 +20,6 @@ import {
   type EvolutionAgentTimeline,
 } from "@/lib/api";
 import type { HandResponse } from "@/lib/types";
-
-// T-1903: chart is below the fold and adds ~12 KB to the agent route bundle.
-// Lazy-load it so the initial JS payload stays under the perf budget.
-const StrategyTimeline = lazyLoad(
-  () =>
-    import("@/components/charts/StrategyTimeline").then((m) => ({ default: m.StrategyTimeline })),
-  { ssr: false, loading: () => null },
-);
 
 interface AgentHealthRag {
   totalHands: number;
@@ -75,6 +67,7 @@ import {
   formatTime,
   explorerAddressUrl,
 } from "@/lib/utils";
+import { fetchInitUsername } from "@/lib/initiaUsername";
 import styles from "./page.module.css";
 export const dynamic = "force-dynamic";
 
@@ -82,7 +75,7 @@ export default async function AgentPage({
   params,
   searchParams,
 }: {
-  params: { token: string };
+  params: Promise<{ token: string }>;
   searchParams: Promise<{ view?: string }>;
 }) {
   const { token } = await params;
@@ -175,6 +168,9 @@ export default async function AgentPage({
 
   const agentDisplayName = profile ? profile.name : shortenAddress(token);
   const persona = getPersonaSummary(profile?.personaId);
+  const ownerInitName = agent
+    ? await fetchInitUsername(agent.ownerAddress).catch(() => null)
+    : null;
 
   // Performance summary for header
   const wins = hands.filter((h) => h.winnerSeat !== null && h.winnerSeat !== undefined).length;
@@ -269,6 +265,36 @@ export default async function AgentPage({
         ) : null}
         <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap" }}>
           <span className={styles.agentToken}>{token}</span>
+          {ownerInitName ? (
+            <span
+              style={{
+                fontSize: "0.72rem",
+                fontWeight: 700,
+                background: "rgba(139,92,246,0.15)",
+                color: "#A78BFA",
+                border: "1px solid rgba(139,92,246,0.35)",
+                borderRadius: "9999px",
+                padding: "0.2rem 0.55rem",
+              }}
+              title={`Initia username: ${ownerInitName}`}
+            >
+              {ownerInitName}
+            </span>
+          ) : (
+            <a
+              href="https://app.initia.xyz/profile"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                fontSize: "0.68rem",
+                color: "var(--muted)",
+                textDecoration: "underline dotted",
+              }}
+              title="Register a .init username on Initia"
+            >
+              Claim your .init
+            </a>
+          )}
           <ShareButton />
           {auditSummary.totalCount >= 5 && (
             <Link
@@ -927,7 +953,11 @@ export default async function AgentPage({
                   <p style={{ fontSize: "0.72rem", color: "var(--muted)", marginBottom: "0.4rem" }}>
                     Aggression evolution
                   </p>
-                  <StrategyTimeline agents={[agentTimeline]} metric="aggressionBps" height={80} />
+                  <LazyStrategyTimeline
+                    agents={[agentTimeline]}
+                    metric="aggressionBps"
+                    height={80}
+                  />
                 </div>
               );
             })()}
@@ -1230,7 +1260,8 @@ export default async function AgentPage({
               className="text-mono"
               title={agent.ownerAddress}
             >
-              {shortenAddress(agent.ownerAddress)} <span aria-hidden="true">↗</span>
+              {ownerInitName ?? shortenAddress(agent.ownerAddress)}{" "}
+              <span aria-hidden="true">↗</span>
             </a>
           </div>
           <div className={styles.infoRow}>

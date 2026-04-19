@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { shortenAddress, formatPercent, formatMon } from "@/lib/utils";
 import { getAgentProfile } from "@/lib/agentProfiles";
+import { fetchInitUsername } from "@/lib/useInitiaUsername";
 import type { LeaderboardResponse } from "@/lib/types";
 import { Tooltip } from "@/components/Tooltip";
 import { AgentAvatar } from "@/components/AgentAvatar";
@@ -84,6 +85,15 @@ export function LeaderboardTable({ data }: LeaderboardTableProps) {
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [initNames, setInitNames] = useState<Map<string, string | null>>(new Map());
+
+  // Batch-resolve .init usernames for all owner addresses
+  useEffect(() => {
+    const addresses = [...new Set(entries.map((e) => e.ownerAddress).filter(Boolean))];
+    Promise.all(addresses.map(async (addr) => [addr, await fetchInitUsername(addr)] as const)).then(
+      (pairs) => setInitNames(new Map(pairs.map(([a, n]) => [a.toLowerCase(), n]))),
+    );
+  }, [entries]);
   const [hasOverflow, setHasOverflow] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -185,7 +195,8 @@ export function LeaderboardTable({ data }: LeaderboardTableProps) {
             if (!entry) return null;
             const place = [2, 1, 3][podiumIdx]; // 2nd left, 1st center, 3rd right
             const profile = getAgentProfile(entry.ownerAddress);
-            const name = profile ? profile.name : shortenAddress(entry.tokenAddress);
+            const dotInit = initNames.get(entry.ownerAddress.toLowerCase());
+            const name = profile ? profile.name : (dotInit ?? shortenAddress(entry.tokenAddress));
             const primaryValue = getPrimaryValue(entry, metric);
             const isGold = place === 1;
             const podiumClasses = [
@@ -251,6 +262,7 @@ export function LeaderboardTable({ data }: LeaderboardTableProps) {
           const primaryValue = getPrimaryValue(entry, metric);
           const isPositive = isPrimaryPositive(entry, metric);
           const profile = getAgentProfile(entry.ownerAddress);
+          const cardDotInit = initNames.get(entry.ownerAddress.toLowerCase());
           return (
             <Link
               key={entry.tokenAddress}
@@ -262,7 +274,7 @@ export function LeaderboardTable({ data }: LeaderboardTableProps) {
               </div>
               <div className={styles.agentCardInfo}>
                 <div className={styles.agentCardName}>
-                  {profile ? profile.name : shortenAddress(entry.tokenAddress)}
+                  {profile ? profile.name : (cardDotInit ?? shortenAddress(entry.tokenAddress))}
                 </div>
                 <div className={styles.agentCardMeta}>
                   {entry.totalHands} hands · {entry.winningHands}W/{entry.losingHands}L
@@ -365,6 +377,7 @@ export function LeaderboardTable({ data }: LeaderboardTableProps) {
               const primaryValue = getPrimaryValue(entry, metric);
               const isPositive = isPrimaryPositive(entry, metric);
               const profile = getAgentProfile(entry.ownerAddress);
+              const rowDotInit = initNames.get(entry.ownerAddress.toLowerCase());
               const isExpanded = expandedRows.has(entry.tokenAddress);
 
               return (
@@ -397,7 +410,9 @@ export function LeaderboardTable({ data }: LeaderboardTableProps) {
                           colorHex={profile?.colorHex}
                           size={24}
                         />
-                        {profile ? profile.name : shortenAddress(entry.tokenAddress)}
+                        {profile
+                          ? profile.name
+                          : (rowDotInit ?? shortenAddress(entry.tokenAddress))}
                       </Link>
                       {entry.elo && (
                         <span
@@ -421,7 +436,7 @@ export function LeaderboardTable({ data }: LeaderboardTableProps) {
                       className={`text-mono text-muted ${styles.addressCell} ${styles.colOwner} ${styles.hideMobile}`}
                       title={entry.ownerAddress}
                     >
-                      {shortenAddress(entry.ownerAddress)}
+                      {rowDotInit ?? shortenAddress(entry.ownerAddress)}
                     </td>
                     <td
                       className={`${styles.alignRight} ${styles.metricValue} ${styles.colMetric} ${isPositive ? "positive" : "negative"}`}

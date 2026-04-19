@@ -106,6 +106,14 @@ export type { RpcRetryOptions } from "./chain/rpcRetry.js";
 export { buildPgPoolConfig, pgDeepHealthCheck } from "./db/pool.js";
 export type { PgPoolOptions } from "./db/pool.js";
 
+// Initia username resolution
+export {
+  resolveInitUsername,
+  resolveInitUsernames,
+  formatInitAddress,
+  clearInitUsernameCache,
+} from "./initiaUsername.js";
+
 // Observability
 export { initSentry } from "./observability/sentry.js";
 export type { SentryInitOptions } from "./observability/sentry.js";

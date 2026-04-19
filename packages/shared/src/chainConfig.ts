@@ -15,8 +15,8 @@ import {
  */
 const STATIC_CHAIN_IDS: Record<Exclude<ChainEnv, "initia-testnet">, number> = {
   local: 31337, // Anvil/Hardhat default
-  testnet: 133, // HashKey Chain Testnet
-  mainnet: 177, // HashKey Chain Mainnet
+  testnet: 133, // legacy testnet chain (not active deployment target)
+  mainnet: 177, // legacy mainnet chain (not active deployment target)
 };
 
 /** Resolves chain ID for the given environment at call time. */

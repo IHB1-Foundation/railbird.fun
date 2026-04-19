@@ -11,5 +11,5 @@ export const ENABLE_AUTOSIGN =
   process.env.NEXT_PUBLIC_CHAIN_ENV === "initia-testnet" &&
   process.env.NEXT_PUBLIC_ENABLE_AUTOSIGN !== "false";
 
-/** In-app nad.fun / DEX trading widget. Disabled on Initia until a DEX is live. */
+/** In-app DEX trading widget. Disabled on Initia until a DEX integration is live. */
 export const ENABLE_TRADING_WIDGET = process.env.NEXT_PUBLIC_ENABLE_TRADING_WIDGET === "true";

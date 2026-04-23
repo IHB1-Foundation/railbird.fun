@@ -109,13 +109,13 @@ git commit -m "feat(contracts): deploy Railbird contracts to Initia MiniEVM roll
 # Railbird_Pitch.mp4 → YouTube(비공개 or 공개) 또는 Loom 업로드
 
 # 업로드 후 URL을 세 곳에 반영
-URL="https://www.youtube.com/watch?v=실제_VIDEO_ID"
+URL="https://www.youtube.com/watch?v=ylTicxzWggQ"
 
 # a) .initia/submission.json
 jq --arg u "$URL" '.demoVideo = $u' .initia/submission.json > /tmp/sub.json \
   && mv /tmp/sub.json .initia/submission.json
 
-# b) INITIA_SUBMISSION.md 안의 placeholder도 수동 교체
+# b) INITIA_SUBMISSION.md 링크도 동일 URL로 맞춤
 
 # c) README.md Demo 테이블 링크도 수동 교체
 

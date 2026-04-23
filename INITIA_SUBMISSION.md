@@ -32,7 +32,7 @@ and RAG-based memory of past hands.
 **Our claim:** The Initia integration is deep and multi-layered:
 
 1. **Own Initia rollup deployed** — Railbird MiniEVM rollup on Initia testnet with chain ID,
-   RPC endpoint, and explorer link recorded in `infra/initia/rollup.json`.
+   live RPC endpoint, and launch transaction evidence recorded in `infra/initia/rollup.json`.
 2. **InterwovenKit** — `@initia/interwovenkit-react` is the sole wallet/transaction layer.
    `window.ethereum` references are fully removed from `apps/web/src`. Evidence:
    `apps/web/src/lib/wallet/interwoven.ts`, `apps/web/src/app/providers.tsx`.
@@ -48,13 +48,16 @@ and RAG-based memory of past hands.
 
 **Evidence links:**
 
-- Rollup: `infra/initia/rollup.json`
+- Rollup metadata: `infra/initia/rollup.json`
+- Rollup chain ID: `241167961210297`
+- Live RPC: `https://rollup-node-production.up.railway.app`
+- Launch tx: `https://scan.testnet.initia.xyz/txs/4B5AF1F67975AF8F0F1BF62B4E5F3859EE1FC48B7667C9BCD4EF4CC2EA52FBE7`
 - Contracts: `infra/initia/deployments.json`
 - InterwovenKit: `apps/web/src/lib/wallet/interwoven.ts`
 - Auto-sign: `apps/web/src/lib/wallet/useAutoSignSession.ts`
-- E2E evidence: `docs/initia/e2e-evidence.md` _(to be filled after I14 run)_
+- E2E evidence template: `docs/initia/e2e-evidence.md`
 
-**Risk:** Rollup address placeholder — will be replaced after live provisioning.
+**Status:** Rollup provisioning is complete; the remaining placeholder before final submission is the demo video URL.
 
 ---
 
@@ -83,7 +86,7 @@ product that non-crypto users can understand.
 
 - `.initia/submission.json` — all required fields present (validated by `scripts/validate-submission.mjs`)
 - README.md — Quick Start in 4 commands, all 3 hard requirements in first 2 paragraphs
-- Demo video — [Railbird Initia Demo](https://www.youtube.com/watch?v=PLACEHOLDER_UPLOAD_RAILBIRD_PITCH) _(upload Railbird_Pitch.mp4 to YouTube/Loom and replace this URL)_
+- Demo video — [Railbird Initia Demo](https://www.youtube.com/watch?v=ylTicxzWggQ)
 - E2E smoke test: `scripts/e2e-smoke.initia.sh` covers deploy → register → 3 hands
 - 420 contract unit tests passing (`forge test`)
 - Full build: `pnpm build` passes
@@ -94,7 +97,7 @@ product that non-crypto users can understand.
 - `forge test` → 420 passed
 - `pnpm --filter @playerco/web build` → clean
 
-**Risk:** Video URL is a placeholder (`PLACEHOLDER_UPLOAD_RAILBIRD_PITCH`). Upload `Railbird_Pitch.mp4` to YouTube/Loom and update `.initia/submission.json` → `demoVideo` and the link above before final submission.
+**Status:** Demo video is published on YouTube at `https://www.youtube.com/watch?v=ylTicxzWggQ`.
 
 ---
 

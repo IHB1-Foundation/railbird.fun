@@ -1,9 +1,8 @@
-# Railbird — Hackathon Pitch Script (6-minute)
+# Railbird — Hackathon Pitch Script (6 minutes)
 
-> Target: On-Chain Horizon Hackathon Final Pitch (Apr 22–23, 2026)
-> Track: AI
-> Format: 슬라이드별 발표 스크립트 — 총 6분
-> Tone: 자신감 있게, 왜 되는지 설명, 기술 나열 아닌 서사 중심
+> Target: INITIATE final pitch
+> Track: Gaming first, AI second
+> Goal: prove this is a live product on its own Initia rollup, not a concept deck
 
 ---
 
@@ -11,179 +10,141 @@
 
 Hi everyone. We're Railbird.
 
-One sentence: **AI agents playing real poker, fully on-chain, with zero trust required.**
-
-Not a concept. Not a whitepaper. Live right now on HashKey Chain at railbird.fun.
+Railbird is autonomous AI poker running on its own Initia appchain. Four Gemini-powered agents play real Texas Hold'em on-chain, and anyone can watch the game live at `railbird.fun`.
 
 ---
 
-## Slide 2: Problem (35s)
+## Slide 2: Problem (30s)
 
-Let's talk about the elephant in the room.
+Poker and AI both have the same trust problem.
 
-Crypto poker has been around for years. And it's all fake. Every single platform runs a server-side deck. The house sees every card before you do. They _can_ manipulate outcomes — and you have absolutely no way to prove they didn't. You're just... trusting them. In crypto. The irony writes itself.
+In most online poker, the deck lives on a private server. The operator sees every card before the players do, and users have no way to prove the game was fair.
 
-And then there's the bigger problem. AI agents are making autonomous decisions everywhere now — managing funds, executing strategies, playing games. But nobody can verify what they're actually thinking. Nobody can audit whether their decisions are honest. It's a black box operating with real assets, and you're just supposed to trust it.
+At the same time, AI agents are now making more real decisions on-chain, but most of them are still black boxes. You can see the output, but you cannot inspect why the agent acted.
 
-So we asked a simple question: **what if the dealer literally cannot cheat, and every AI decision is permanently recorded on-chain?**
+We wanted to remove both trust assumptions at the same time.
 
 ---
 
-## Slide 3: Solution (40s)
+## Slide 3: Solution (35s)
 
-That's what we built. Railbird is a fully on-chain poker protocol where AI agents play real Texas Hold'em against each other — and everything is verifiable.
+Railbird combines three things into one live protocol.
 
-Three pillars. This is what makes it work.
+First, the table is on-chain. Hand state, betting flow, settlement, and table progression all come from smart contracts.
 
-**One — the dealer can't cheat.** We use VRF randomness combined with a dealer pre-commit seed to run a deterministic Fisher-Yates shuffle. The result is hashed and stored on-chain. At showdown, anyone can verify the shuffle was fair. This isn't "trust us" — this is math.
+Second, the cards stay private during the hand. Hole cards are encrypted for each seat owner and only revealed later through commit and reveal.
 
-**Two — nobody can see your cards.** Each player's hole cards are encrypted with ECIES using their wallet-derived public key. Only the seat owner can decrypt. Not us. Not the server. Not even the other agents.
-
-**Three — every AI decision is auditable.** When an agent folds, calls, or raises, the reasoning behind that decision is hashed and committed on-chain. You can go to our verify page right now and check any action from any hand. Full transparency, zero trust.
+Third, the AI layer is observable. Agents act autonomously, but the game history and decision trail are exposed through the app and indexer so the behavior is inspectable instead of hidden.
 
 ---
 
 ## Slide 4: Architecture (35s)
 
-Here's how it all fits together.
+The system has four layers.
 
-On-chain layer: six smart contracts on HashKey Chain. PokerTable runs the full game state machine — betting rounds, timeouts, VRF triggers. SideBetPool is the spectator betting market. VRFAdapter provides provable randomness. ChipToken is our ERC-20. PlayerRegistry maps agents to wallets. PlayerVault handles the treasury.
+At the base is our dedicated Initia MiniEVM rollup. Core contracts include `PokerTable`, `SideBetPool`, `ChipToken`, `PlayerRegistry`, `PlayerVault`, and `ProductionVRFAdapter`.
 
-Off-chain: an Indexer that streams every contract event into Postgres and serves it via REST and WebSocket. And the OwnerView service that handles encrypted hole card delivery with wallet-signature auth.
+On top of that we run the service layer: the indexer, OwnerView, and fleet services that keep the live product synchronized with on-chain state.
 
-AI layer: four Gemini 2.0 Flash agents making autonomous decisions in real-time — evaluating hand strength, calculating pot odds, modeling opponents. Every decision hash goes on-chain.
+Then the AI layer runs four Gemini agents with different personalities and aggression profiles.
 
-The key insight: **the on-chain layer is the source of truth for everything.** Off-chain services are just read-optimized views. If our servers go down, the game state is still on-chain, still verifiable, still correct.
-
----
-
-## Slide 5: AI Agents (30s)
-
-Now let's talk about the brains.
-
-We didn't build one generic AI. We built **four distinct personalities**, each powered by Gemini 2.0 Flash.
-
-**Aegis** — the rock. Patient, disciplined, waits for premium hands. You're not bluffing this guy.
-
-**Maverick** — the grinder. Reads opponents, adapts mid-game, mixes value bets and bluffs. Solid fundamentals.
-
-**Nova** — the creative. Plays a lot of hands, finds unconventional lines, keeps opponents guessing.
-
-**Rex** — the maniac. Pure pressure. Relentless aggression. Forces everyone into impossible decisions.
-
-And here's what makes this interesting: each agent tracks opponent behavior in real-time — VPIP, aggression factor, fold-to-bet ratios — and **adapts its strategy dynamically**. These aren't bots running a fixed script. They're learning and adjusting every hand.
+The important point is that the chain is the source of truth. The web app is just the public viewing surface on top of it.
 
 ---
 
-## Slide 6: HashKey Chain (20s)
+## Slide 5: Product (30s)
 
-Quick note on why we chose HashKey Chain — because this wasn't arbitrary.
+This is not a dashboard for developers. It is already a public spectator product.
 
-We needed four things no other chain bundles together.
+On the live table page you can see the current hand, pot, seats, and action log in real time.
 
-**Wallet-based identity** — all authentication through wallet signatures. No emails, no passwords. On-chain ownership equals authorization. Clean.
+The verify surface lets you inspect action history and reasoning hashes. The leaderboard ranks agents by ROI, PnL, win rate, and drawdown. Agent pages show persona, recent hands, and strategy evolution.
 
-**OP Stack EVM equivalence** — standard Solidity, standard Foundry. We didn't have to modify a single line for deployment.
-
-**VRF** — on-chain verifiable randomness. This is literally the backbone of our trustless dealer. Without this, the whole protocol doesn't work.
-
-**Blockscout** — all six contracts are source-verified. Anyone can read the code, inspect the state. Nothing is hidden.
+And users can deploy their own agent from the create-agent flow instead of just watching ours.
 
 ---
 
-## Slide 7: Live Demo (30s)
+## Slide 6: Why Initia (25s)
 
-Let me show you what this actually looks like.
+This product fits Initia unusually well.
 
-At railbird.fun, you see the live table — community cards, pot size, chip stacks for all four agents updating in real-time, and a complete action log with on-chain block numbers. You can verify every single action on Blockscout.
+We needed our own appchain because poker is a constant game loop, not a one-off contract interaction. We wanted dedicated execution, our own chain identity, and an experience that feels like a coherent product instead of a contract demo.
 
-There's a VRF status widget showing exactly when randomness was requested and fulfilled — so you know the deck is fair.
-
-When a hand reaches showdown, you see the card flip, the winner highlight, and pot distribution — all settled and verified on-chain in the same transaction.
-
-The leaderboard ranks agents by ROI, PnL, win rate, and max drawdown. Click into any agent and you see vault metrics, NAV history, and a token trading widget.
-
-**This isn't a mockup. Every pixel maps to an on-chain state.**
+MiniEVM let us keep the Solidity stack. Initia also gives us native distribution surfaces like bridge routing, appchain identity, and wallet UX hooks that match how users discover and move into an app-specific chain.
 
 ---
 
-## Slide 8: AI Prediction Market (40s)
+## Slide 7: Rollup Evidence (30s)
 
-Now this is where it gets really interesting. This is the part that turns spectating into participation.
+The key requirement in this hackathon is having your own Initia appchain, so here is the evidence directly.
 
-You're watching AI agents play poker. You've been observing their patterns — Aegis plays tight, Rex bluffs constantly, Nova finds creative lines. You think you know who's going to win this hand. So you put your RCHIP on it. The bet goes through our SideBetPool smart contract. When the hand settles on-chain, the contract reads the winner directly from PokerTable. If you called it right, you claim your proportional share of the entire pool.
+Railbird is live on rollup chain ID `241167961210297`.
 
-**Why this matters for AI.**
+The public RPC is `https://rollup-node-production.up.railway.app`.
 
-**First — it creates a real evaluation layer for AI agents.** People aren't just watching — they're actively assessing which AI strategy performs best. This is crowd-sourced AI evaluation with real stakes.
+The public launch transaction is:
+`https://scan.testnet.initia.xyz/txs/4B5AF1F67975AF8F0F1BF62B4E5F3859EE1FC48B7667C9BCD4EF4CC2EA52FBE7`
 
-**Second — it's fully transparent.** Pari-mutuel, on-chain. No house edge. No manipulation. Odds are dynamic, payouts are purely proportional. The math is in the contract.
+So judges can verify three things quickly: the live app, the live demo video, and the live rollup evidence.
 
-**Third — it's an open platform.** SideBetPool is a permissionless contract. Anyone can build prediction interfaces, analysis bots, or strategy trackers on top. **We're not just building a game — we're building infrastructure for evaluating autonomous AI agents.**
+---
+
+## Slide 8: AI Agents (30s)
+
+We run four distinct personalities, not one generic bot.
+
+Aegis is tight and disciplined. Maverick is balanced and adaptive. Nova plays wider and finds unusual lines. Rex is aggressively pressuring the table.
+
+That personality spread makes the game more interesting to watch, but it also turns Railbird into an open arena for comparing AI behavior under the same on-chain rules.
 
 ---
 
 ## Slide 9: Security (25s)
 
-Security isn't a feature we added. It's the design principle everything was built on.
+The product is designed around verifiability and liveness.
 
-**Commit-reveal for hole cards** — keccak256 commitments on-chain, verified at showdown. Post-hoc integrity is mathematically guaranteed.
+Hole cards use commit and reveal integrity. Turn order is constrained on-chain to reduce ordering games. Timeouts allow the protocol to move forward instead of freezing if one actor stalls. Treasury and vault logic are contract-enforced rather than policy-based.
 
-**One action per block per table** — this prevents front-running and MEV. Period. Deterministic ordering enforced at the contract level.
-
-**Thirty-minute turn timeouts with keeper incentives** — any address can call forceTimeout to advance the game. The protocol never gets stuck. There's no single point of failure.
-
-**Non-dilutive treasury** — the vault reverts if any trade would reduce NAV per share. Existing holders cannot be diluted. It's not a policy. It's a require statement.
+The result is that the system keeps moving and the trust assumptions stay explicit.
 
 ---
 
-## Slide 10: Ecosystem Impact (35s)
+## Slide 10: Ecosystem Impact (30s)
 
-Let me tell you what Railbird brings to HashKey Chain — because this is bigger than poker.
+Railbird is bigger than a poker table.
 
-**An open AI arena.** Anyone can deploy their own AI agent with custom strategy through our web wizard. That means this isn't locked to our four agents. It's a competitive ecosystem where different AI strategies compete, adapt, and evolve — all on-chain, all verifiable.
+It creates a public AI arena on Initia where spectators can follow agent performance, evaluate styles, and move from passive viewing into active participation. The prediction and side-bet layer turns watching into decision-making, and the agent creation flow opens the system to outside builders instead of keeping it closed.
 
-**Natural user onboarding.** Spectating is free — no wallet needed. But the moment you want to predict outcomes or deploy an agent, you need a wallet. You go from "this is fun to watch" to "I'm an on-chain user" in one click.
-
-**Composable AI infrastructure.** Everything is permissionless. The agent registry, the prediction market, the game protocol — any team can build on top. Strategy analyzers, agent performance dashboards, AI tournament platforms. **We're building the rails for on-chain AI competition.**
+This is a gaming product, but it is also infrastructure for observing and evaluating autonomous on-chain agents.
 
 ---
 
 ## Slide 11: Traction & Roadmap (25s)
 
-Where we are right now.
+Today, the live stack is already running: contracts deployed, indexer live, fleet live, public app up, public demo video published, and submission metadata validated.
 
-**Six contracts** deployed and source-verified on HashKey Chain Testnet. **Four AI agents** playing autonomously. Full spectating and sidebet UI live at railbird.fun. Real-time indexer with WebSocket streaming. Built in five weeks.
+Next, we want to tighten the cryptographic guarantees further, expand into tournament structures, improve mobile spectating, and push the prediction market deeper into the product.
 
-Where we're going.
-
-**ZK proofs** — fully trustless dealing. Remove the dealer trust assumption entirely. **Multi-table tournaments** with progressive elimination. **Mobile-optimized spectating** with push notifications. And **mainnet deployment** — where sidebet markets create real economic activity on HashKey Chain.
+The immediate milestone was proving the full loop on an Initia rollup. That milestone is complete.
 
 ---
 
 ## Slide 12: Closing (15s)
 
-Railbird proves that autonomous AI can operate transparently — every decision verifiable, every action auditable, fully on-chain.
+Railbird shows that autonomous AI gameplay can be public, inspectable, and appchain-native.
 
-Every card is provably fair. Every AI decision is recorded. Every prediction settles on-chain.
-
-Built on HashKey Chain. Live at railbird.fun.
+Own Initia rollup. Live product. Verifiable on-chain poker.
 
 We're Railbird. Thank you.
 
 ---
 
-## Q&A Cheat Sheet
+## Judge Quick Path
 
-| Question                                      | Answer                                                                                                                                                                                                                                             |
-| --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| "How is randomness verified?"                 | VRF seed + dealer pre-commit + deterministic Fisher-Yates shuffle. On-chain verification at showdown. Anyone can replay the shuffle.                                                                                                               |
-| "Can the dealer cheat?"                       | Current model: commit/reveal provides post-hoc integrity — the dealer commits before reveal, so manipulation is detectable. Roadmap: ZK proofs for full trustlessness with no trust assumption at all.                                             |
-| "Why HashKey Chain?"                          | Only chain that bundles OP Stack EVM, VRF, Blockscout, and wallet-based identity together. We needed all four.                                                                                                                                     |
-| "How do agents decide?"                       | Gemini 2.0 Flash evaluates hand strength percentile, pot odds, equity, and opponent modeling from historical aggression data. Outputs structured JSON with full reasoning.                                                                         |
-| "How does sidebet payout work?"               | Pari-mutuel: (your bet × total pool) / total bets on winner seat. Fully proportional, no house edge. Settlement reads winner directly from PokerTable contract.                                                                                    |
-| "What drives transaction volume?"             | Poker lifecycle (~20+ txs/hand) + sidebet lifecycle (bet + settle + claim per bettor). AI plays 24/7. No idle periods.                                                                                                                             |
-| "Can humans play?"                            | Architecture supports it — the contracts are player-agnostic. MVP focuses on AI-vs-AI to demonstrate the protocol. Human seats are a roadmap item.                                                                                                 |
-| "Why is this an AI project, not just gaming?" | The core innovation is verifiable autonomous AI decision-making. Poker is the proving ground — four AI agents reasoning, adapting, and competing with full on-chain auditability. The prediction market evaluates AI performance with real stakes. |
-| "What about regulatory risk?"                 | No yield/dividend language. Tokens framed as experimental agent-associated assets. Wallet-based identity only. No custodial model.                                                                                                                 |
-| "What if an agent disconnects?"               | 30-minute turn timeout. Any address can call forceTimeout() with keeper incentives. Auto-check/fold on timeout. The game always progresses.                                                                                                        |
+If time is short, show these in order:
+
+1. `https://www.railbird.fun`
+2. `https://www.railbird.fun/live`
+3. `https://www.youtube.com/watch?v=ylTicxzWggQ`
+4. `https://scan.testnet.initia.xyz/txs/4B5AF1F67975AF8F0F1BF62B4E5F3859EE1FC48B7667C9BCD4EF4CC2EA52FBE7`
+5. RPC `eth_chainId` result `241167961210297`

@@ -1,7 +1,7 @@
 # Railbird
 
-![Invariant Tests](https://github.com/0xYatha/railbird/actions/workflows/ci.yml/badge.svg?label=invariant)
-[![codecov](https://codecov.io/gh/0xYatha/railbird/branch/main/graph/badge.svg)](https://codecov.io/gh/0xYatha/railbird)
+![Invariant Tests](https://github.com/IHB1-Foundation/railbird.fun/actions/workflows/ci.yml/badge.svg?label=invariant)
+[![codecov](https://codecov.io/gh/IHB1-Foundation/railbird.fun/branch/main/graph/badge.svg)](https://codecov.io/gh/IHB1-Foundation/railbird.fun)
 
 > **INITIATE: The Initia Hackathon (Season 1)** — Gaming (primary) + AI (secondary)
 > Deployed on a **Railbird MiniEVM rollup** on Initia testnet · Wallet powered by **InterwovenKit** · Native features: **Auto-sign session UX** + **`.init` Usernames**
@@ -184,11 +184,9 @@ MIT
 
 ---
 
-## Legacy / Previous Submission (HashKey Chain)
+## Architecture Notes
 
-This project was previously submitted to the On-Chain Horizon Hackathon targeting HashKey Chain
-(Chain ID 133). The HashKey deployment scripts, env template, and contract addresses are preserved
-in git history. The active deployment target is now the Railbird MiniEVM rollup on Initia testnet.
+The active deployment target is the Railbird MiniEVM rollup on Initia testnet.
 
 Design decisions are recorded in [`docs/adr/`](./docs/adr/README.md), including
 [ADR-020](./docs/adr/ADR-020-initia-stack.md) (Initia stack decision).

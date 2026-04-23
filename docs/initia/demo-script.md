@@ -1,117 +1,132 @@
 # Railbird — Initia Demo Video Script
 
-**Target length:** 3–5 minutes
-**Format:** Screen recording + voiceover (OBS / Loom)
+**Target length:** 3 to 4 minutes  
+**Format:** screen recording + voiceover  
+**Goal:** prove the live product and the live Initia rollup evidence fast
 
 ---
 
-## Scene-by-Scene Outline
+## Scene 1 — Landing Page (20s)
 
-### 00:00 — Hook (15s)
+1. Open `https://www.railbird.fun`.
+2. Show the hero, live stats, and primary CTA.
+3. Pause on `SEASON 1 · INITIA TESTNET`.
 
-> "What if 4 AI agents played poker on a blockchain — no humans, no trusted server, no cheating
-> possible? That's Railbird."
+Voiceover:
 
-Show the landing page title + animated hero card graphics.
-
----
-
-### 00:15 — Connect Wallet via InterwovenKit (30s)
-
-1. Click "Connect Wallet" button.
-2. **InterwovenKit modal** opens — show the Initia-native wallet list.
-3. Select wallet → approve → wallet connected banner shows address (or `.init` name if registered).
-
-> "We use InterwovenKit, Initia's native wallet layer, so players sign in once and the app handles
-> everything from there."
-
-**Highlight:** InterwovenKit modal, `.init` username in nav bar.
+> "Railbird is autonomous AI poker running on its own Initia rollup. This is the live product, not a mockup."
 
 ---
 
-### 00:45 — `.init` Username in Leaderboard (20s)
+## Scene 2 — Live Dashboard (35s)
 
-1. Navigate to `/leaderboard`.
-2. Point out that owner column shows `yourname.init` instead of `0xabcd…`.
-3. Show podium with `.init` names on top-3 entries.
+1. Open `https://www.railbird.fun/live`.
+2. Show the featured table, active hand state, stacks, and latest actions.
+3. Scroll just enough to show the live cards area and stats ticker.
 
-> "On-chain addresses are resolved to Initia `.init` usernames everywhere in the UI."
+Voiceover:
 
----
-
-### 01:05 — Join a Table + Auto-sign Session (60s)
-
-1. Navigate to `/table/<TABLE_ID>`.
-2. Click "Add Player" → approve RCHIP → `registerSeat` transaction confirmed.
-3. **Auto-sign toggle** appears in the table header. Click "Auto-sign: ON".
-4. InterwovenKit auto-sign session activation prompt → approve.
-5. Session timer shows "29:58 remaining".
-
-> "Poker has 10–50 actions per hand. Auto-sign sessions let players fold, call, and raise with
-> one click — no wallet popup every single time."
-
-6. Simulate 3 consecutive actions (fold → new hand → call → raise) — no popup, instant.
-7. Session timer decrements in real time.
-
-**Highlight:** Auto-sign ON/OFF toggle, session countdown, instant action execution.
+> "The live dashboard is driven from on-chain game state through the indexer. You can see which agents are seated, what hand is running, and how the table is progressing in real time."
 
 ---
 
-### 02:05 — VRF → Community Cards Reveal (30s)
+## Scene 3 — Table View (45s)
 
-1. Show hand in progress — hole cards dealt (face-down for opponents).
-2. Flop is revealed — community cards animate in.
-3. Show explorer TX for the VRF fulfill call.
+1. Open a real table page from the live view.
+2. Show community cards, pot, seat states, and the action log.
+3. Expand a recent action if available.
+4. If a hand is close to showdown, wait long enough to capture the reveal.
 
-> "Shuffles are randomized by our VRF adapter — the random value is committed on-chain before
-> being used, so nobody, not even the dealer service, can predict the cards."
+Voiceover:
 
----
-
-### 02:35 — Hand Settlement (20s)
-
-1. Showdown: hole cards flip → winner announced.
-2. Pot transferred on-chain → TX appears in the live feed.
-3. Agent profile page shows updated NAV, win rate, and strategy evolution.
+> "At the table level, every hand is visible as structured state. You can follow cards, betting flow, and settlement. The UI is a spectator surface on top of the chain, so the game keeps existing even if the frontend disappears."
 
 ---
 
-### 02:55 — Vault Deposit via Interwoven Bridge (20s)
+## Scene 4 — Verify Surface (30s)
 
-1. Navigate to an agent's profile page.
-2. Show the "Bridge via Interwoven" card.
-3. Click — Interwoven Bridge opens with destination chain and vault address pre-filled.
+1. Open `/verify` with an existing table or hand if available.
+2. Show the audit trail and the verification input.
+3. Point out the reasoning hash verification flow.
 
-> "Players can fund their vault directly from any Initia ecosystem chain in one click."
+Voiceover:
 
----
-
-### 03:15 — Explorer Verification (25s)
-
-1. Open `https://scan.testnet.initia.xyz/rollup/<CHAIN_ID>`.
-2. Show the most recent PokerTable transactions: `startHand`, `recordAction`, `settle`.
-3. Click one TX — show input data decoded.
-
-> "Every hand, every action, every settlement — all verifiable on-chain, right here."
+> "Railbird is not just about watching AI output. The app includes a verification surface for inspecting the decision trail against on-chain evidence."
 
 ---
 
-### 03:40 — Closing (20s)
+## Scene 5 — Leaderboard and Agent Page (35s)
 
-> "Railbird: autonomous AI poker, provably fair, powered by Initia. Gaming meets AI on-chain."
+1. Open `https://www.railbird.fun/leaderboard`.
+2. Show ranking metrics like ROI, PnL, and win rate.
+3. Click into one agent page.
+4. Show persona summary, recent hands, and strategy-related sections.
 
-Show: landing page + leaderboard + table side by side.
+Voiceover:
+
+> "Every agent becomes a trackable on-chain competitor. The leaderboard and agent pages make performance legible instead of hiding it inside a bot process."
+
+---
+
+## Scene 6 — Create-Agent Flow (20s)
+
+1. Open `https://www.railbird.fun/create-agent`.
+2. Show the persona selection and table selection steps.
+3. Stop before any wallet-only step if recording from a spectator environment.
+
+Voiceover:
+
+> "Railbird is not limited to the house bots. The create-agent flow turns the app into an open arena where outside users can deploy their own AI agents into live tables."
+
+---
+
+## Scene 7 — Rollup Evidence (35s)
+
+1. Open the launch transaction:
+   `https://scan.testnet.initia.xyz/txs/4B5AF1F67975AF8F0F1BF62B4E5F3859EE1FC48B7667C9BCD4EF4CC2EA52FBE7`
+2. Show the public RPC in terminal or Postman:
+
+```json
+{ "jsonrpc": "2.0", "method": "eth_chainId", "params": [], "id": 1 }
+```
+
+3. Show the result `0xdb574aa8bdb9`.
+4. Say that this equals decimal `241167961210297`.
+
+Voiceover:
+
+> "This is the core hackathon proof point. Railbird is running on its own Initia appchain. The live RPC returns chain ID 241167961210297, and the rollup launch transaction is public."
+
+---
+
+## Scene 8 — Closing (15s)
+
+1. Return to `https://www.railbird.fun`.
+2. Hold on the hero and CTA.
+
+Voiceover:
+
+> "Railbird combines autonomous AI, live spectatorship, and on-chain poker on a dedicated Initia rollup. Live app, live demo, live chain evidence."
+
+---
+
+## Optional Appendix — Wallet UX Recording
+
+Only record this if the production environment being captured has the Initia wallet path enabled.
+
+1. Show wallet connect through the Initia flow.
+2. Show `.init` resolution if visible in the session.
+3. Show bridge or deposit surfaces only if they are active in the current build.
+
+Do not make this the main body of the demo. The main proof is the live app plus the live rollup evidence.
 
 ---
 
 ## Recording Checklist
 
-- [ ] Screen at 1920×1080, 30fps
-- [ ] InterwovenKit wallet modal clearly visible
-- [ ] Auto-sign session timer visible during action sequence
-- [ ] `.init` username visible in leaderboard
-- [ ] Interwoven Bridge pre-filled destination shown
-- [ ] Rollup explorer TX list shown (not empty)
-- [ ] Total length 3–5 minutes
-- [ ] Upload to YouTube (unlisted or public) or Loom
-- [ ] Paste URL into `.initia/submission.json` `demoVideo` field and `INITIA_SUBMISSION.md`
+- [ ] `https://www.railbird.fun` returns `200`
+- [ ] `https://www.railbird.fun/live` returns `200`
+- [ ] Demo video URL remains `https://www.youtube.com/watch?v=ylTicxzWggQ`
+- [ ] Launch tx page loads publicly
+- [ ] RPC `eth_chainId` matches decimal `241167961210297`
+- [ ] No placeholder links or local URLs appear on screen

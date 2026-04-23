@@ -3,44 +3,44 @@
   "tagline": "Autonomous AI agents compete in verifiable on-chain poker — powered by Gemini, secured by Initia.",
   "description": "Railbird is an on-chain Texas Hold'em platform where Gemini-powered AI agents play autonomously. Players deploy agents with customizable strategies (aggression, bluff frequency, persona), fund them with RCHIP tokens, and watch them compete in real-time. Every hand is fully verifiable: VRF-randomized shuffles, ECIES-encrypted hole cards, and on-chain settlement. Built on a Railbird MiniEVM rollup on Initia testnet, using InterwovenKit for seamless wallet UX and Auto-sign sessions for frictionless gameplay.",
   "tracks": ["gaming", "ai"],
-  "repo": "https://github.com/0xYatha/railbird",
-  "demoUrl": "https://railbird.fun",
-  "demoVideo": "https://www.youtube.com/watch?v=PLACEHOLDER_UPLOAD_RAILBIRD_PITCH",
+  "repo": "https://github.com/IHB1-Foundation/railbird.fun",
+  "demoUrl": "https://www.railbird.fun",
+  "demoVideo": "https://www.youtube.com/watch?v=ylTicxzWggQ",
   "contracts": [
     {
       "name": "ChipToken",
-      "address": "0x2e565620b08297c1cb899154bc9724de0b7c1386",
+      "address": "0x356524f2c8233ee28f0d11eb57906a46aafb3017",
       "description": "RCHIP ERC-20 — the in-game chip token used for buy-ins and pot settlements"
     },
     {
       "name": "PokerTable (low-stakes)",
-      "address": "0x5492768668d6bceebd9fbbbc3b29c1b5df6826e0",
+      "address": "0xcdd2ad6dfc1191beb395a157d42fb6983103c713",
       "description": "Main poker table contract — handles hand flow, betting, VRF requests, and settlement"
     },
     {
       "name": "PokerTable (high-stakes)",
-      "address": "0xd7ba3356178fd5b7ab9135c5c6f0dca7a94453ac",
+      "address": "0xd4c0a9dbaa1247f9074ce32d03ff31491deb6b21",
       "description": "High-stakes table variant"
     },
     {
       "name": "PlayerRegistry",
-      "address": "0x39f1094a1b559adce1d16110c2f050295eb0cb80",
+      "address": "0x2d3f047055b6113e8e919bcd3589e09b0cddfd66",
       "description": "Maps operator addresses to agent token addresses"
     },
     {
       "name": "PlayerVault",
-      "address": "0xbf4b5b92ce64d4fbfd87a0ba9926a8883b7fb299",
+      "address": "0x2e565620b08297c1cb899154bc9724de0b7c1386",
       "description": "Non-custodial vault: agents hold RCHIP here; only authorized tables can debit"
     },
     {
       "name": "ProductionVRFAdapter",
-      "address": "0xfc7b7d4a57204329e6c903df87c9216f0f8182c3",
+      "address": "0xd966b352766d01323f84574335029ecf76392110",
       "description": "Off-chain commit-reveal VRF adapter — randomness operator fulfills on-chain"
     }
   ],
   "rollupChainId": "241167961210297",
-  "rpcUrl": "http://localhost:8545",
-  "explorerUrl": "https://scan.testnet.initia.xyz/rollup/railbird-1",
+  "rpcUrl": "https://rollup-node-production.up.railway.app",
+  "explorerUrl": "https://scan.testnet.initia.xyz/txs/4B5AF1F67975AF8F0F1BF62B4E5F3859EE1FC48B7667C9BCD4EF4CC2EA52FBE7",
   "team": [
     {
       "name": "0xYatha",

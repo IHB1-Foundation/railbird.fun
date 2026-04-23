@@ -46,10 +46,9 @@ Three hard requirements fully satisfied. Six Initia integration layers:
 - `scripts/e2e-smoke.initia.sh` — full E2E harness
 - `docs/initia/e2e-evidence.md` — TX evidence (run harness to populate)
 
-**Risk:**  
-Contract addresses and rollup metadata are placeholders pending live provisioning.
-Run `scripts/deploy/initia.sh` and `scripts/initia/launch-minitia.sh`, then update
-`infra/initia/deployments.json` and `infra/initia/rollup.json`.
+**Status:**  
+Rollup metadata and deployment manifests are live and aligned with the current submission.
+Use the published RPC, launch transaction, and public app/video links as the judge-facing proof set.
 
 ---
 
@@ -80,7 +79,7 @@ Submission is complete and machine-verifiable:
 
 - `.initia/submission.json` — all required fields (validated by `node scripts/validate-submission.mjs`)
 - `README.md` — Quick Start in 4 commands, all 3 hard requirements in opening paragraphs
-- Demo video — `Railbird_Pitch.mp4` (upload to YouTube/Loom and update `submission.json → demoVideo`)
+- Demo video — `https://www.youtube.com/watch?v=ylTicxzWggQ`
 - E2E smoke: `scripts/e2e-smoke.initia.sh` covers deploy → 4 seats → 3 hand settlements
 - 420+ contract unit tests: `forge test`
 - Full build: `pnpm build`
@@ -91,9 +90,11 @@ Submission is complete and machine-verifiable:
 - `forge test` → ≥420 passed
 - `pnpm --filter @playerco/web build` → clean
 
-**Risk:**  
-Demo video URL is a placeholder. **Action required:** upload `Railbird_Pitch.mp4` to YouTube/Loom
-and update `.initia/submission.json` → `demoVideo` before final submission.
+**Status:**  
+Demo video is published on YouTube at `https://www.youtube.com/watch?v=ylTicxzWggQ`.
+If the pitch video is regenerated, re-upload to the same YouTube video (replace) or
+publish a new video and update the URL in `.initia/submission.json`, `DORAHACKS.md`,
+`INITIA_SUBMISSION.md`, and the submission form.
 
 ---
 
@@ -108,7 +109,7 @@ reduces onboarding friction versus EVM-only competitors.
 **Evidence:**
 
 - `HACKATHON.md` — competitive context and market framing
-- `docs/adr/ADR-020-initia-stack.md` — why Initia over Monad/HashKey for distribution
+- `docs/adr/ADR-020-initia-stack.md` — why Initia fits the current distribution strategy
 - `INITIA_SUBMISSION.md` §5 — competitive landscape
 
 **Risk:**  
@@ -142,12 +143,15 @@ jq '.' infra/initia/deployments.json               # all addresses non-zero
 node scripts/validate-submission.mjs               # must pass contract address checks
 ```
 
-### Step 3 — Upload demo video
+### Step 3 — Refresh demo video if you cut a new version
 
 ```bash
-# Upload Railbird_Pitch.mp4 to YouTube (unlisted or public) or Loom.
-# Then update demoVideo in .initia/submission.json with the real URL.
-grep PLACEHOLDER .initia/submission.json           # must return nothing
+# Re-upload to YouTube (replace existing video or publish a new one).
+# If URL changes, update these in a single commit:
+#   - .initia/submission.json (.demoVideo)
+#   - DORAHACKS.md, INITIA_SUBMISSION.md, README.md, .initia/SUBMISSION_PACK.txt
+#   - DoraHacks submission form Q4
+# Current URL: https://www.youtube.com/watch?v=ylTicxzWggQ
 ```
 
 ### Step 4 — Run E2E smoke (populate evidence)
@@ -171,7 +175,7 @@ forge test                                         # must pass ≥420 tests
 - [ ] `jq -r '.chainId' infra/initia/rollup.json` returns an integer (not PLACEHOLDER)
 - [ ] `jq -r '.rpcUrl' infra/initia/rollup.json` resolves and `cast chain-id` matches
 - [ ] All addresses in `infra/initia/deployments.json` are non-zero
-- [ ] `.initia/submission.json` `demoVideo` is a live YouTube/Loom URL
+- [ ] `.initia/submission.json` `demoVideo` is a live public video URL
 - [ ] `node scripts/validate-submission.mjs` exits 0
 - [ ] `pnpm --filter @playerco/web build` exits 0
 - [ ] Demo video follows `docs/initia/demo-script.md` (InterwovenKit modal, auto-sign, `.init`, bridge, explorer TXs)

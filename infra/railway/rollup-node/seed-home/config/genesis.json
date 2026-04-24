@@ -1,0 +1,1856 @@
+{
+  "app_name": "minitiad",
+  "app_version": "v1.2.15",
+  "genesis_time": "2026-04-19T18:56:24.338171Z",
+  "chain_id": "railbird-1",
+  "initial_height": 1,
+  "app_hash": null,
+  "app_state": {
+    "06-solomachine": null,
+    "07-tendermint": null,
+    "auction": {
+      "params": {
+        "max_bundle_size": 2,
+        "escrow_account_address": "lUgrolt78Xjd4S2z/yDwDpD60Ak=",
+        "reserve_fee": {
+          "denom": "uinit",
+          "amount": "1"
+        },
+        "min_bid_increment": {
+          "denom": "uinit",
+          "amount": "1"
+        },
+        "front_running_protection": true,
+        "proposer_fee": "0.000000000000000000"
+      }
+    },
+    "auth": {
+      "params": {
+        "max_memo_characters": "256",
+        "tx_sig_limit": "7",
+        "tx_size_cost_per_byte": "10",
+        "sig_verify_cost_ed25519": "590",
+        "sig_verify_cost_secp256k1": "1000"
+      },
+      "accounts": [
+        {
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "address": "init1hmp9yekwzhxu8ye9ryknm4zr9jap9ss8vsusac",
+          "pub_key": null,
+          "account_number": "0",
+          "sequence": "0"
+        },
+        {
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "address": "init1qq2ecf42khh8eshvrm3gaclcnvmm6dp2uqs4u2",
+          "pub_key": null,
+          "account_number": "1",
+          "sequence": "0"
+        },
+        {
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "address": "init1qqdr39un64ck9zuwv32newwtefumykdwfhcu4n",
+          "pub_key": null,
+          "account_number": "2",
+          "sequence": "0"
+        },
+        {
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "address": "init1lhmn5h82p0pfglr8jf92vyj55phsavrzu05t5q",
+          "pub_key": null,
+          "account_number": "3",
+          "sequence": "0"
+        },
+        {
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "address": "init132587vu89d0an9aznd8v52gf0wqv46l4a96yjq",
+          "pub_key": null,
+          "account_number": "4",
+          "sequence": "0"
+        },
+        {
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "address": "init1spw3zjssehxxlugn4amrzjl37gp08cf5zvvygg",
+          "pub_key": null,
+          "account_number": "5",
+          "sequence": "0"
+        },
+        {
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "address": "init1yer3829rhdufzsgnc77t5pygpejmykfa4cmxuf",
+          "pub_key": null,
+          "account_number": "6",
+          "sequence": "0"
+        },
+        {
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "address": "init1jdtgnamvrgeen3c8gppq99fnw0qtjte8wwfyxr",
+          "pub_key": null,
+          "account_number": "7",
+          "sequence": "0"
+        },
+        {
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "address": "init1f57xyjcw7trv0xp80ntg0246arsdwvndv0q988",
+          "pub_key": null,
+          "account_number": "8",
+          "sequence": "0"
+        },
+        {
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "address": "init15dcwyxyahumdpd8ggxy5ytypm64shkd22llgkz",
+          "pub_key": null,
+          "account_number": "9",
+          "sequence": "0"
+        },
+        {
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "address": "init1hlhhjd4nyphg5uxgphnxq0p40a3r72gxkcvwk6",
+          "pub_key": null,
+          "account_number": "10",
+          "sequence": "0"
+        },
+        {
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "address": "init1xesfxw6e6yrn60wnkjrv2rzu9jars5wpf2ccpk",
+          "pub_key": null,
+          "account_number": "11",
+          "sequence": "0"
+        },
+        {
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "address": "init19ta6gvrpzuwlp48q6uu57j7xj3rrkglylp6q38",
+          "pub_key": null,
+          "account_number": "12",
+          "sequence": "0"
+        }
+      ]
+    },
+    "authz": {
+      "authorization": []
+    },
+    "bank": {
+      "params": {
+        "send_enabled": [],
+        "default_send_enabled": true
+      },
+      "balances": [
+        {
+          "address": "init1qq2ecf42khh8eshvrm3gaclcnvmm6dp2uqs4u2",
+          "coins": [
+            {
+              "denom": "uinit",
+              "amount": "100000000"
+            }
+          ]
+        },
+        {
+          "address": "init1qqdr39un64ck9zuwv32newwtefumykdwfhcu4n",
+          "coins": [
+            {
+              "denom": "uinit",
+              "amount": "20000000"
+            }
+          ]
+        },
+        {
+          "address": "init1yer3829rhdufzsgnc77t5pygpejmykfa4cmxuf",
+          "coins": [
+            {
+              "denom": "uinit",
+              "amount": "20000000"
+            }
+          ]
+        },
+        {
+          "address": "init19ta6gvrpzuwlp48q6uu57j7xj3rrkglylp6q38",
+          "coins": []
+        },
+        {
+          "address": "init1xesfxw6e6yrn60wnkjrv2rzu9jars5wpf2ccpk",
+          "coins": []
+        },
+        {
+          "address": "init1f57xyjcw7trv0xp80ntg0246arsdwvndv0q988",
+          "coins": []
+        },
+        {
+          "address": "init1spw3zjssehxxlugn4amrzjl37gp08cf5zvvygg",
+          "coins": [
+            {
+              "denom": "uinit",
+              "amount": "20000000"
+            }
+          ]
+        },
+        {
+          "address": "init132587vu89d0an9aznd8v52gf0wqv46l4a96yjq",
+          "coins": [
+            {
+              "denom": "uinit",
+              "amount": "20000000"
+            }
+          ]
+        },
+        {
+          "address": "init1jdtgnamvrgeen3c8gppq99fnw0qtjte8wwfyxr",
+          "coins": [
+            {
+              "denom": "uinit",
+              "amount": "20000000"
+            }
+          ]
+        },
+        {
+          "address": "init15dcwyxyahumdpd8ggxy5ytypm64shkd22llgkz",
+          "coins": []
+        },
+        {
+          "address": "init1hmp9yekwzhxu8ye9ryknm4zr9jap9ss8vsusac",
+          "coins": [
+            {
+              "denom": "uinit",
+              "amount": "100000000"
+            }
+          ]
+        },
+        {
+          "address": "init1hlhhjd4nyphg5uxgphnxq0p40a3r72gxkcvwk6",
+          "coins": []
+        },
+        {
+          "address": "init1lhmn5h82p0pfglr8jf92vyj55phsavrzu05t5q",
+          "coins": [
+            {
+              "denom": "uinit",
+              "amount": "20000000"
+            }
+          ]
+        }
+      ],
+      "supply": [],
+      "denom_metadata": [],
+      "send_enabled": []
+    },
+    "capability": {
+      "index": "1",
+      "owners": []
+    },
+    "consensus": null,
+    "crisis": {
+      "constant_fee": {
+        "denom": "stake",
+        "amount": "1000"
+      }
+    },
+    "evm": {
+      "params": {
+        "extra_eips": [],
+        "allowed_publishers": [],
+        "allow_custom_erc20": true,
+        "allowed_custom_erc20s": [],
+        "fee_denom": "uinit",
+        "gas_refund_ratio": "0.500000000000000000",
+        "num_retain_block_hashes": "256",
+        "gas_enforcement": null
+      },
+      "key_values": [],
+      "erc20s": [],
+      "erc20_stores": [],
+      "denom_traces": [],
+      "class_traces": [],
+      "evm_block_hashes": [],
+      "erc20_factory": null,
+      "erc20_wrapper": null,
+      "connect_oracle": null
+    },
+    "feegrant": {
+      "allowances": []
+    },
+    "feeibc": {
+      "identified_fees": [],
+      "fee_enabled_channels": [],
+      "registered_payees": [],
+      "registered_counterparty_payees": [],
+      "forward_relayers": []
+    },
+    "forwarding": {
+      "allowed_denoms": [],
+      "num_of_accounts": {},
+      "num_of_forwards": {},
+      "total_forwarded": {}
+    },
+    "group": {
+      "group_seq": "0",
+      "groups": [],
+      "group_members": [],
+      "group_policy_seq": "0",
+      "group_policies": [],
+      "proposal_seq": "0",
+      "proposals": [],
+      "votes": []
+    },
+    "ibc": {
+      "client_genesis": {
+        "clients": [],
+        "clients_consensus": [],
+        "clients_metadata": [],
+        "params": {
+          "allowed_clients": ["*"]
+        },
+        "create_localhost": false,
+        "next_client_sequence": "0"
+      },
+      "connection_genesis": {
+        "connections": [],
+        "client_connection_paths": [],
+        "next_connection_sequence": "0",
+        "params": {
+          "max_expected_time_per_block": "30000000000"
+        }
+      },
+      "channel_genesis": {
+        "channels": [],
+        "acknowledgements": [],
+        "commitments": [],
+        "receipts": [],
+        "send_sequences": [],
+        "recv_sequences": [],
+        "ack_sequences": [],
+        "next_channel_sequence": "0",
+        "params": {
+          "upgrade_timeout": {
+            "height": {
+              "revision_number": "0",
+              "revision_height": "0"
+            },
+            "timestamp": "600000000000"
+          }
+        }
+      }
+    },
+    "ibchooks": {
+      "params": {
+        "default_allowed": false
+      },
+      "acls": []
+    },
+    "interchainaccounts": {
+      "controller_genesis_state": {
+        "active_channels": [],
+        "interchain_accounts": [],
+        "ports": [],
+        "params": {
+          "controller_enabled": true
+        }
+      },
+      "host_genesis_state": {
+        "active_channels": [],
+        "interchain_accounts": [],
+        "port": "icahost",
+        "params": {
+          "host_enabled": true,
+          "allow_messages": [
+            "/cosmos.authz.v1beta1.MsgExec",
+            "/cosmos.authz.v1beta1.MsgGrant",
+            "/cosmos.authz.v1beta1.MsgRevoke",
+            "/cosmos.bank.v1beta1.MsgSend",
+            "/cosmos.bank.v1beta1.MsgMultiSend",
+            "/cosmos.feegrant.v1beta1.MsgGrantAllowance",
+            "/cosmos.feegrant.v1beta1.MsgRevokeAllowance",
+            "/cosmos.group.v1.MsgCreateGroup",
+            "/cosmos.group.v1.MsgCreateGroupPolicy",
+            "/cosmos.group.v1.MsgExec",
+            "/cosmos.group.v1.MsgLeaveGroup",
+            "/cosmos.group.v1.MsgSubmitProposal",
+            "/cosmos.group.v1.MsgUpdateGroupAdmin",
+            "/cosmos.group.v1.MsgUpdateGroupMember",
+            "/cosmos.group.v1.MsgUpdateGroupPolicyAdmin",
+            "/cosmos.group.v1.MsgUpdateGroupPolicyDecisionPolicy",
+            "/cosmos.group.v1.MsgVote",
+            "/cosmos.group.v1.MsgWithdrawProposal",
+            "/ibc.applications.transfer.v1.MsgTransfer",
+            "/ibc.applications.nft_transfer.v1.MsgNftTransfer",
+            "/ibc.applications.sft_transfer.v1.MsgSftTransfer",
+            "/initia.move.v1.MsgPublish",
+            "/initia.move.v1.MsgExecute",
+            "/initia.move.v1.MsgScript"
+          ]
+        }
+      }
+    },
+    "intertx": null,
+    "marketmap": {
+      "market_map": {
+        "markets": {
+          "APT/USD": {
+            "ticker": {
+              "currency_pair": {
+                "Base": "APT",
+                "Quote": "USD"
+              },
+              "decimals": "9",
+              "min_provider_count": "3",
+              "enabled": true,
+              "metadata_JSON": ""
+            },
+            "provider_configs": [
+              {
+                "name": "binance_api",
+                "off_chain_ticker": "APTUSDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "bybit_ws",
+                "off_chain_ticker": "APTUSDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "coinbase_api",
+                "off_chain_ticker": "APT-USD",
+                "normalize_by_pair": null,
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "gate_ws",
+                "off_chain_ticker": "APT_USDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "huobi_ws",
+                "off_chain_ticker": "aptusdt",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "kucoin_ws",
+                "off_chain_ticker": "APT-USDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "mexc_ws",
+                "off_chain_ticker": "APTUSDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "okx_ws",
+                "off_chain_ticker": "APT-USDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              }
+            ]
+          },
+          "ARB/USD": {
+            "ticker": {
+              "currency_pair": {
+                "Base": "ARB",
+                "Quote": "USD"
+              },
+              "decimals": "9",
+              "min_provider_count": "3",
+              "enabled": true,
+              "metadata_JSON": ""
+            },
+            "provider_configs": [
+              {
+                "name": "binance_api",
+                "off_chain_ticker": "ARBUSDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "bybit_ws",
+                "off_chain_ticker": "ARBUSDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "coinbase_api",
+                "off_chain_ticker": "ARB-USD",
+                "normalize_by_pair": null,
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "gate_ws",
+                "off_chain_ticker": "ARB_USDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "huobi_ws",
+                "off_chain_ticker": "arbusdt",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "kucoin_ws",
+                "off_chain_ticker": "ARB-USDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "mexc_ws",
+                "off_chain_ticker": "ARBUSDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "okx_ws",
+                "off_chain_ticker": "ARB-USDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              }
+            ]
+          },
+          "ATOM/USD": {
+            "ticker": {
+              "currency_pair": {
+                "Base": "ATOM",
+                "Quote": "USD"
+              },
+              "decimals": "9",
+              "min_provider_count": "3",
+              "enabled": true,
+              "metadata_JSON": ""
+            },
+            "provider_configs": [
+              {
+                "name": "binance_api",
+                "off_chain_ticker": "ATOMUSDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "bybit_ws",
+                "off_chain_ticker": "ATOMUSDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "coinbase_api",
+                "off_chain_ticker": "ATOM-USD",
+                "normalize_by_pair": null,
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "gate_ws",
+                "off_chain_ticker": "ATOM_USDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "kraken_api",
+                "off_chain_ticker": "ATOMUSD",
+                "normalize_by_pair": null,
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "kucoin_ws",
+                "off_chain_ticker": "ATOM-USDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "mexc_ws",
+                "off_chain_ticker": "ATOMUSDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "okx_ws",
+                "off_chain_ticker": "ATOM-USDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              }
+            ]
+          },
+          "BERA/USD": {
+            "ticker": {
+              "currency_pair": {
+                "Base": "BERA",
+                "Quote": "USD"
+              },
+              "decimals": "8",
+              "min_provider_count": "3",
+              "enabled": true,
+              "metadata_JSON": ""
+            },
+            "provider_configs": [
+              {
+                "name": "binance_api",
+                "off_chain_ticker": "BERAUSDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "bybit_ws",
+                "off_chain_ticker": "BERAUSDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "coinbase_api",
+                "off_chain_ticker": "BERA-USD",
+                "normalize_by_pair": null,
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "huobi_ws",
+                "off_chain_ticker": "berausdt",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "kraken_api",
+                "off_chain_ticker": "BERAUSD",
+                "normalize_by_pair": null,
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "kucoin_ws",
+                "off_chain_ticker": "BERA-USDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "mexc_ws",
+                "off_chain_ticker": "BERAUSDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "okx_ws",
+                "off_chain_ticker": "BERA-USDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              }
+            ]
+          },
+          "BNB/USD": {
+            "ticker": {
+              "currency_pair": {
+                "Base": "BNB",
+                "Quote": "USD"
+              },
+              "decimals": "7",
+              "min_provider_count": "3",
+              "enabled": true,
+              "metadata_JSON": ""
+            },
+            "provider_configs": [
+              {
+                "name": "okx_ws",
+                "off_chain_ticker": "BNB-USDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "kucoin_ws",
+                "off_chain_ticker": "BNB-USDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "mexc_ws",
+                "off_chain_ticker": "BNBUSDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "binance_api",
+                "off_chain_ticker": "BNBUSDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "bybit_ws",
+                "off_chain_ticker": "BNBUSDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "gate_ws",
+                "off_chain_ticker": "BNB_USDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              }
+            ]
+          },
+          "BTC/USD": {
+            "ticker": {
+              "currency_pair": {
+                "Base": "BTC",
+                "Quote": "USD"
+              },
+              "decimals": "5",
+              "min_provider_count": "3",
+              "enabled": true,
+              "metadata_JSON": ""
+            },
+            "provider_configs": [
+              {
+                "name": "binance_api",
+                "off_chain_ticker": "BTCUSDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "bybit_ws",
+                "off_chain_ticker": "BTCUSDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "coinbase_api",
+                "off_chain_ticker": "BTC-USD",
+                "normalize_by_pair": null,
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "huobi_ws",
+                "off_chain_ticker": "btcusdt",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "kraken_api",
+                "off_chain_ticker": "XXBTZUSD",
+                "normalize_by_pair": null,
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "kucoin_ws",
+                "off_chain_ticker": "BTC-USDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "mexc_ws",
+                "off_chain_ticker": "BTCUSDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "okx_ws",
+                "off_chain_ticker": "BTC-USDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              }
+            ]
+          },
+          "ENA/USD": {
+            "ticker": {
+              "currency_pair": {
+                "Base": "ENA",
+                "Quote": "USD"
+              },
+              "decimals": "8",
+              "min_provider_count": "3",
+              "enabled": true,
+              "metadata_JSON": ""
+            },
+            "provider_configs": [
+              {
+                "name": "binance_api",
+                "off_chain_ticker": "ENAUSDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "bybit_ws",
+                "off_chain_ticker": "ENAUSDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "coinbase_api",
+                "off_chain_ticker": "ENA-USD",
+                "normalize_by_pair": null,
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "huobi_ws",
+                "off_chain_ticker": "enausdt",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "kraken_api",
+                "off_chain_ticker": "ENAUSD",
+                "normalize_by_pair": null,
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "kucoin_ws",
+                "off_chain_ticker": "ENA-USDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "mexc_ws",
+                "off_chain_ticker": "ENAUSDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "okx_ws",
+                "off_chain_ticker": "ENA-USDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              }
+            ]
+          },
+          "ETH/USD": {
+            "ticker": {
+              "currency_pair": {
+                "Base": "ETH",
+                "Quote": "USD"
+              },
+              "decimals": "6",
+              "min_provider_count": "3",
+              "enabled": true,
+              "metadata_JSON": ""
+            },
+            "provider_configs": [
+              {
+                "name": "binance_api",
+                "off_chain_ticker": "ETHUSDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "bybit_ws",
+                "off_chain_ticker": "ETHUSDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "coinbase_api",
+                "off_chain_ticker": "ETH-USD",
+                "normalize_by_pair": null,
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "huobi_ws",
+                "off_chain_ticker": "ethusdt",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "kraken_api",
+                "off_chain_ticker": "XETHZUSD",
+                "normalize_by_pair": null,
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "kucoin_ws",
+                "off_chain_ticker": "ETH-USDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "mexc_ws",
+                "off_chain_ticker": "ETHUSDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "okx_ws",
+                "off_chain_ticker": "ETH-USDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              }
+            ]
+          },
+          "NTRN/USD": {
+            "ticker": {
+              "currency_pair": {
+                "Base": "NTRN",
+                "Quote": "USD"
+              },
+              "decimals": "8",
+              "min_provider_count": "2",
+              "enabled": true,
+              "metadata_JSON": ""
+            },
+            "provider_configs": [
+              {
+                "name": "binance_api",
+                "off_chain_ticker": "NTRNUSDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "gate_ws",
+                "off_chain_ticker": "NTRN_USDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "kucoin_ws",
+                "off_chain_ticker": "NTRN-USDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "okx_ws",
+                "off_chain_ticker": "NTRN-USDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              }
+            ]
+          },
+          "OSMO/USD": {
+            "ticker": {
+              "currency_pair": {
+                "Base": "OSMO",
+                "Quote": "USD"
+              },
+              "decimals": "9",
+              "min_provider_count": "3",
+              "enabled": true,
+              "metadata_JSON": ""
+            },
+            "provider_configs": [
+              {
+                "name": "binance_api",
+                "off_chain_ticker": "OSMOUSDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "coinbase_api",
+                "off_chain_ticker": "OSMO-USD",
+                "normalize_by_pair": null,
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "gate_ws",
+                "off_chain_ticker": "OSMO_USDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "kraken_api",
+                "off_chain_ticker": "OSMOUSD",
+                "normalize_by_pair": null,
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "kucoin_ws",
+                "off_chain_ticker": "OSMO-USDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "mexc_ws",
+                "off_chain_ticker": "OSMOUSDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "okx_ws",
+                "off_chain_ticker": "OSMO-USDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              }
+            ]
+          },
+          "SOL/USD": {
+            "ticker": {
+              "currency_pair": {
+                "Base": "SOL",
+                "Quote": "USD"
+              },
+              "decimals": "8",
+              "min_provider_count": "3",
+              "enabled": true,
+              "metadata_JSON": ""
+            },
+            "provider_configs": [
+              {
+                "name": "binance_api",
+                "off_chain_ticker": "SOLUSDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "bybit_ws",
+                "off_chain_ticker": "SOLUSDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "coinbase_api",
+                "off_chain_ticker": "SOL-USD",
+                "normalize_by_pair": null,
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "huobi_ws",
+                "off_chain_ticker": "solusdt",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "kraken_api",
+                "off_chain_ticker": "SOLUSD",
+                "normalize_by_pair": null,
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "kucoin_ws",
+                "off_chain_ticker": "SOL-USDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "mexc_ws",
+                "off_chain_ticker": "SOLUSDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "okx_ws",
+                "off_chain_ticker": "SOL-USDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              }
+            ]
+          },
+          "SUI/USD": {
+            "ticker": {
+              "currency_pair": {
+                "Base": "SUI",
+                "Quote": "USD"
+              },
+              "decimals": "10",
+              "min_provider_count": "3",
+              "enabled": true,
+              "metadata_JSON": ""
+            },
+            "provider_configs": [
+              {
+                "name": "binance_api",
+                "off_chain_ticker": "SUIUSDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "bybit_ws",
+                "off_chain_ticker": "SUIUSDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "coinbase_api",
+                "off_chain_ticker": "SUI-USD",
+                "normalize_by_pair": null,
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "gate_ws",
+                "off_chain_ticker": "SUI_USDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "huobi_ws",
+                "off_chain_ticker": "suiusdt",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "kucoin_ws",
+                "off_chain_ticker": "SUI-USDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "mexc_ws",
+                "off_chain_ticker": "SUIUSDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "okx_ws",
+                "off_chain_ticker": "SUI-USDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              }
+            ]
+          },
+          "TIA/USD": {
+            "ticker": {
+              "currency_pair": {
+                "Base": "TIA",
+                "Quote": "USD"
+              },
+              "decimals": "8",
+              "min_provider_count": "3",
+              "enabled": true,
+              "metadata_JSON": ""
+            },
+            "provider_configs": [
+              {
+                "name": "binance_api",
+                "off_chain_ticker": "TIAUSDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "bybit_ws",
+                "off_chain_ticker": "TIAUSDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "coinbase_api",
+                "off_chain_ticker": "TIA-USD",
+                "normalize_by_pair": null,
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "huobi_ws",
+                "off_chain_ticker": "tiausdt",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "kraken_api",
+                "off_chain_ticker": "TIAUSD",
+                "normalize_by_pair": null,
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "kucoin_ws",
+                "off_chain_ticker": "TIA-USDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "mexc_ws",
+                "off_chain_ticker": "TIAUSDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "okx_ws",
+                "off_chain_ticker": "TIA-USDT",
+                "normalize_by_pair": {
+                  "Base": "USDT",
+                  "Quote": "USD"
+                },
+                "invert": false,
+                "metadata_JSON": ""
+              }
+            ]
+          },
+          "USDC/USD": {
+            "ticker": {
+              "currency_pair": {
+                "Base": "USDC",
+                "Quote": "USD"
+              },
+              "decimals": "9",
+              "min_provider_count": "1",
+              "enabled": true,
+              "metadata_JSON": ""
+            },
+            "provider_configs": [
+              {
+                "name": "binance_api",
+                "off_chain_ticker": "USDCUSDT",
+                "normalize_by_pair": null,
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "bybit_ws",
+                "off_chain_ticker": "USDCUSDT",
+                "normalize_by_pair": null,
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "coinbase_api",
+                "off_chain_ticker": "USDC-USD",
+                "normalize_by_pair": null,
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "huobi_ws",
+                "off_chain_ticker": "ethusdc",
+                "normalize_by_pair": {
+                  "Base": "ETH",
+                  "Quote": "USD"
+                },
+                "invert": true,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "kraken_api",
+                "off_chain_ticker": "USDCZUSD",
+                "normalize_by_pair": null,
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "kucoin_ws",
+                "off_chain_ticker": "BTC-USDC",
+                "normalize_by_pair": {
+                  "Base": "BTC",
+                  "Quote": "USD"
+                },
+                "invert": true,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "okx_ws",
+                "off_chain_ticker": "USDC-USDT",
+                "normalize_by_pair": null,
+                "invert": false,
+                "metadata_JSON": ""
+              }
+            ]
+          },
+          "USDT/USD": {
+            "ticker": {
+              "currency_pair": {
+                "Base": "USDT",
+                "Quote": "USD"
+              },
+              "decimals": "9",
+              "min_provider_count": "1",
+              "enabled": true,
+              "metadata_JSON": ""
+            },
+            "provider_configs": [
+              {
+                "name": "binance_api",
+                "off_chain_ticker": "USDCUSDT",
+                "normalize_by_pair": null,
+                "invert": true,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "bybit_ws",
+                "off_chain_ticker": "USDCUSDT",
+                "normalize_by_pair": null,
+                "invert": true,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "coinbase_api",
+                "off_chain_ticker": "USDT-USD",
+                "normalize_by_pair": null,
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "huobi_ws",
+                "off_chain_ticker": "ethusdt",
+                "normalize_by_pair": {
+                  "Base": "ETH",
+                  "Quote": "USD"
+                },
+                "invert": true,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "kraken_api",
+                "off_chain_ticker": "USDTZUSD",
+                "normalize_by_pair": null,
+                "invert": false,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "kucoin_ws",
+                "off_chain_ticker": "BTC-USDT",
+                "normalize_by_pair": {
+                  "Base": "BTC",
+                  "Quote": "USD"
+                },
+                "invert": true,
+                "metadata_JSON": ""
+              },
+              {
+                "name": "okx_ws",
+                "off_chain_ticker": "USDC-USDT",
+                "normalize_by_pair": null,
+                "invert": true,
+                "metadata_JSON": ""
+              }
+            ]
+          }
+        }
+      },
+      "last_updated": "0",
+      "params": {
+        "market_authorities": ["init12xufazw43lanl8dkvf3l7y9zzm8n3zsw0xafeg"],
+        "admin": "init12xufazw43lanl8dkvf3l7y9zzm8n3zsw0xafeg"
+      }
+    },
+    "nonfungibletokentransfer": {
+      "port_id": "nft-transfer",
+      "class_traces": [],
+      "class_data": [],
+      "token_data": [],
+      "params": {
+        "send_enabled": true,
+        "receive_enabled": true
+      }
+    },
+    "opchild": {
+      "params": {
+        "max_validators": 100,
+        "historical_entries": 10000,
+        "min_gas_prices": [],
+        "bridge_executors": ["init15dcwyxyahumdpd8ggxy5ytypm64shkd22llgkz"],
+        "admin": "init1f57xyjcw7trv0xp80ntg0246arsdwvndv0q988",
+        "fee_whitelist": [
+          "init1f57xyjcw7trv0xp80ntg0246arsdwvndv0q988",
+          "init1f57xyjcw7trv0xp80ntg0246arsdwvndv0q988",
+          "init15dcwyxyahumdpd8ggxy5ytypm64shkd22llgkz",
+          "init1xesfxw6e6yrn60wnkjrv2rzu9jars5wpf2ccpk"
+        ],
+        "hook_max_gas": "3000000"
+      },
+      "last_validator_powers": [],
+      "validators": [
+        {
+          "moniker": "operator",
+          "operator_address": "initvaloper17f5t95pmlam826fyaw5yysxx4q0cqgr2mv3qqr",
+          "consensus_pubkey": {
+            "@type": "/cosmos.crypto.ed25519.PubKey",
+            "key": "zoxYDltbNjmnSf41ugLemO/rFPKqKW+p7syYljlyZSI="
+          },
+          "cons_power": "1"
+        }
+      ],
+      "next_l2_sequence": "1",
+      "next_l1_sequence": "1",
+      "bridge_info": null,
+      "exported": false,
+      "denom_pairs": [],
+      "migration_infos": []
+    },
+    "oracle": {
+      "currency_pair_genesis": [
+        {
+          "currency_pair": {
+            "Base": "TIMESTAMP",
+            "Quote": "NANOSECOND"
+          },
+          "currency_pair_price": null,
+          "nonce": "0",
+          "id": "0"
+        },
+        {
+          "currency_pair": {
+            "Base": "ATOM",
+            "Quote": "USD"
+          },
+          "currency_pair_price": null,
+          "nonce": "0",
+          "id": "1"
+        },
+        {
+          "currency_pair": {
+            "Base": "OSMO",
+            "Quote": "USD"
+          },
+          "currency_pair_price": null,
+          "nonce": "0",
+          "id": "2"
+        },
+        {
+          "currency_pair": {
+            "Base": "BNB",
+            "Quote": "USD"
+          },
+          "currency_pair_price": null,
+          "nonce": "0",
+          "id": "3"
+        },
+        {
+          "currency_pair": {
+            "Base": "BTC",
+            "Quote": "USD"
+          },
+          "currency_pair_price": null,
+          "nonce": "0",
+          "id": "4"
+        },
+        {
+          "currency_pair": {
+            "Base": "NTRN",
+            "Quote": "USD"
+          },
+          "currency_pair_price": null,
+          "nonce": "0",
+          "id": "5"
+        },
+        {
+          "currency_pair": {
+            "Base": "USDT",
+            "Quote": "USD"
+          },
+          "currency_pair_price": null,
+          "nonce": "0",
+          "id": "6"
+        },
+        {
+          "currency_pair": {
+            "Base": "USDC",
+            "Quote": "USD"
+          },
+          "currency_pair_price": null,
+          "nonce": "0",
+          "id": "7"
+        },
+        {
+          "currency_pair": {
+            "Base": "SUI",
+            "Quote": "USD"
+          },
+          "currency_pair_price": null,
+          "nonce": "0",
+          "id": "8"
+        },
+        {
+          "currency_pair": {
+            "Base": "SOL",
+            "Quote": "USD"
+          },
+          "currency_pair_price": null,
+          "nonce": "0",
+          "id": "9"
+        },
+        {
+          "currency_pair": {
+            "Base": "TIA",
+            "Quote": "USD"
+          },
+          "currency_pair_price": null,
+          "nonce": "0",
+          "id": "10"
+        },
+        {
+          "currency_pair": {
+            "Base": "BERA",
+            "Quote": "USD"
+          },
+          "currency_pair_price": null,
+          "nonce": "0",
+          "id": "11"
+        },
+        {
+          "currency_pair": {
+            "Base": "ENA",
+            "Quote": "USD"
+          },
+          "currency_pair_price": null,
+          "nonce": "0",
+          "id": "12"
+        },
+        {
+          "currency_pair": {
+            "Base": "APT",
+            "Quote": "USD"
+          },
+          "currency_pair_price": null,
+          "nonce": "0",
+          "id": "13"
+        },
+        {
+          "currency_pair": {
+            "Base": "ARB",
+            "Quote": "USD"
+          },
+          "currency_pair_price": null,
+          "nonce": "0",
+          "id": "14"
+        },
+        {
+          "currency_pair": {
+            "Base": "ETH",
+            "Quote": "USD"
+          },
+          "currency_pair_price": null,
+          "nonce": "0",
+          "id": "15"
+        }
+      ],
+      "next_id": "16"
+    },
+    "packetfowardmiddleware": {
+      "in_flight_packets": {}
+    },
+    "transfer": {
+      "port_id": "transfer",
+      "denom_traces": [],
+      "params": {
+        "send_enabled": true,
+        "receive_enabled": true
+      },
+      "total_escrowed": []
+    },
+    "upgrade": {}
+  },
+  "consensus": {
+    "params": {
+      "block": {
+        "max_bytes": "22020096",
+        "max_gas": "100000000"
+      },
+      "evidence": {
+        "max_age_num_blocks": "100000",
+        "max_age_duration": "172800000000000",
+        "max_bytes": "1048576"
+      },
+      "validator": {
+        "pub_key_types": ["ed25519"]
+      },
+      "version": {
+        "app": "0"
+      },
+      "abci": {
+        "vote_extensions_enable_height": "0"
+      }
+    }
+  }
+}

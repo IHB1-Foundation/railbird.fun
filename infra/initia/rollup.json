@@ -3,12 +3,12 @@
   "rollupName": "railbird",
   "chainId": "241167961210297",
   "cosmosChainId": "railbird-1",
-  "bridgeId": "1856",
-  "rpcUrl": "http://localhost:8545",
-  "cosmosRpcUrl": "http://localhost:26657",
-  "explorerUrl": "https://scan.testnet.initia.xyz/rollup/railbird-1",
-  "launchTxHash": "1D7B546C724F49921082CC8ACC305DC03950484C52F5B48F47FF5C9DB73C8652",
-  "bridgeAddr": "init1jxwm89umsmhpksknrjaq35zh65p2tcw4dky6pvk5avg65qla957qfjqw3g",
+  "bridgeId": "1858",
+  "rpcUrl": "https://rollup-node-production.up.railway.app",
+  "cosmosRpcUrl": null,
+  "explorerUrl": "https://scan.testnet.initia.xyz/txs/4B5AF1F67975AF8F0F1BF62B4E5F3859EE1FC48B7667C9BCD4EF4CC2EA52FBE7",
+  "launchTxHash": "4B5AF1F67975AF8F0F1BF62B4E5F3859EE1FC48B7667C9BCD4EF4CC2EA52FBE7",
+  "bridgeAddr": "init18juskwcj58ld5msxk0pxe086pazyhm74t2fkrv7amm0cqd0z76aqrrhmv9",
   "l1ChainId": "initiation-2",
-  "createdAt": "2026-04-20T01:13:00Z"
+  "createdAt": "2026-04-19T18:58:00Z"
 }

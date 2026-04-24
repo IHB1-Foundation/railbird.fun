@@ -54,6 +54,7 @@ echo "[DEPLOY] Broadcasting to Initia rollup..."
 FOUNDRY_PROFILE=deploy forge script script/DeployInitia.s.sol \
   --rpc-url initia-testnet \
   --broadcast \
+  --gas-estimate-multiplier 300 \
   --private-key "$DEPLOYER_PRIVATE_KEY" \
   -vvv 2>&1 | tee /tmp/railbird-deploy-initia.log
 

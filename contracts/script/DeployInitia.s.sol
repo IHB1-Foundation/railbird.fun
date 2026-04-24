@@ -16,10 +16,10 @@ import "../src/SideBetPool.sol";
  * @title DeployInitia
  * @notice Deploy Railbird on a MiniEVM rollup on Initia testnet.
  *
- * Differences from DeployHashKey:
+ * Deployment notes:
  *   - KYC_SBT_ADDRESS defaults to address(0) — no KYC gate on Initia.
- *   - Chain ID is the Railbird MiniEVM rollup (not 133 / HashKey).
- *   - Native currency is INIT instead of HSK.
+ *   - Chain ID is the Railbird MiniEVM rollup provisioned for this environment.
+ *   - Native currency is INIT.
  *
  * Tables:
  *   Table 1 (low-stakes):  SB = 0.1 INIT, BB = 0.2 INIT

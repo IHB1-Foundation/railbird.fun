@@ -62,7 +62,14 @@ Results are written to `infra/initia/deployments.json`.
 
 ## Rollup Metadata
 
-See `infra/initia/rollup.json` for current chain ID, RPC URL, and explorer URL.
+Current deployed rollup metadata:
+
+- Chain ID: `241167961210297`
+- Cosmos chain ID: `railbird-1`
+- EVM RPC: `https://rollup-node-production.up.railway.app`
+- Launch tx: `https://scan.testnet.initia.xyz/txs/4B5AF1F67975AF8F0F1BF62B4E5F3859EE1FC48B7667C9BCD4EF4CC2EA52FBE7`
+
+Use the launch transaction URL as the public evidence link if Initia Scan does not expose a dedicated rollup overview page.
 
 ## Useful Links
 

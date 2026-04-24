@@ -13,7 +13,7 @@
 #   RPC_URL              - RPC endpoint (default: http://localhost:8545)
 #   OWNERVIEW_URL        - OwnerView service (default: http://localhost:3001)
 #   MAX_HANDS            - Stop after N hands (default: 0, unlimited)
-#   POLL_INTERVAL_MS     - Polling interval (default: 500 local, 3000 on KAIA RPC)
+#   POLL_INTERVAL_MS     - Polling interval (default: 500 local, 3000 on remote RPC)
 #   TURN_ACTION_DELAY_MS - Delay from turn start to action (default: 0)
 
 set -e
@@ -44,7 +44,7 @@ GEMINI_TEMPERATURE=${GEMINI_TEMPERATURE:-0.2}
 GEMINI_TIMEOUT_MS=${GEMINI_TIMEOUT_MS:-8000}
 
 if [ -z "${POLL_INTERVAL_MS:-}" ]; then
-  if [[ "$RPC_URL" == *"kaia.io"* ]] || [[ "$RPC_URL" == *"node.real.io"* ]]; then
+  if [[ "$RPC_URL" != http://localhost:* && "$RPC_URL" != http://127.0.0.1:* ]]; then
     POLL_INTERVAL_MS=3000
   else
     POLL_INTERVAL_MS=500

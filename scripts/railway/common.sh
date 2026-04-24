@@ -17,15 +17,34 @@ require_env() {
   fi
 }
 
+hydrate_chain_id_env() {
+  if [ "${CHAIN_ENV:-}" = "initia-testnet" ]; then
+    if [ -z "${CHAIN_ID:-}" ] && [ -n "${INITIA_CHAIN_ID:-}" ]; then
+      export CHAIN_ID="$INITIA_CHAIN_ID"
+    fi
+    if [ -z "${INITIA_CHAIN_ID:-}" ] && [ -n "${CHAIN_ID:-}" ]; then
+      export INITIA_CHAIN_ID="$CHAIN_ID"
+    fi
+  fi
+}
+
 print_runtime_header() {
   local service="$1"
+  hydrate_chain_id_env
   echo "[railway] service=$service"
   echo "[railway] chain_env=${CHAIN_ENV:-unset} chain_id=${CHAIN_ID:-unset}"
   echo "[railway] rpc_url=${RPC_URL:-unset}"
 }
 
-is_public_kaia_rpc() {
-  [[ "${RPC_URL:-}" == *"kaia.io"* ]] || [[ "${RPC_URL:-}" == *"node.real.io"* ]]
+is_remote_rpc() {
+  case "${RPC_URL:-}" in
+    ""|http://localhost:*|http://127.0.0.1:*|ws://localhost:*|ws://127.0.0.1:*)
+      return 1
+      ;;
+    *)
+      return 0
+      ;;
+  esac
 }
 
 ##
@@ -72,7 +91,7 @@ default_poll_interval_ms() {
     echo "$POLL_INTERVAL_MS"
     return
   fi
-  if is_public_kaia_rpc; then
+  if is_remote_rpc; then
     echo "$remote_default"
     return
   fi
@@ -117,5 +136,5 @@ default_ownerview_url() {
     return
   fi
 
-  printf '%s\n' "https://ownerview-production.up.railway.app"
+  printf '%s\n' "https://ownerview-production-496d.up.railway.app"
 }

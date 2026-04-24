@@ -2,7 +2,7 @@ import { Router, type Request, type Response } from "express";
 import { createLogger } from "@playerco/shared";
 import type { AuthService } from "../auth/index.js";
 
-const logger = createLogger({ service: "ownerview", module: "session" });
+const logger = createLogger({ service: "ownerview:session" });
 
 /**
  * Session revocation routes for auto-sign sessions (Initia-specific).

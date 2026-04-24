@@ -165,7 +165,7 @@ async function main() {
     privateKey: operatorKey,
     pokerTableAddress: tableAddress as `0x${string}`,
     ownerviewUrl: optionalEnv("OWNERVIEW_URL", "http://localhost:3001"),
-    chainId: parseInt(optionalEnv("CHAIN_ID", "31337")),
+    chainId: parseInt(process.env.CHAIN_ID || process.env.INITIA_CHAIN_ID || "31337", 10),
     pollIntervalMs: parsePositiveInt("POLL_INTERVAL_MS", defaultPollIntervalMs),
     turnActionDelayMs,
     strategy,

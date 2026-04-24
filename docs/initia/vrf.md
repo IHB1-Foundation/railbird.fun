@@ -46,11 +46,11 @@ Community cards revealed at hand: PLACEHOLDER
 
 ## Key Contracts
 
-| Contract                   | Role                                                    |
-| -------------------------- | ------------------------------------------------------- |
-| `ProductionVRFAdapter.sol` | Receives VRF requests, stores fulfilled randomness      |
-| `PokerTable.sol`           | Calls `requestVRF()` at hand start, reads fulfilled RNG |
-| `ChainlinkVRFAdapter.sol`  | **Not deployed on Initia** — HashKey only               |
+| Contract                   | Role                                                      |
+| -------------------------- | --------------------------------------------------------- |
+| `ProductionVRFAdapter.sol` | Receives VRF requests, stores fulfilled randomness        |
+| `PokerTable.sol`           | Calls `requestVRF()` at hand start, reads fulfilled RNG   |
+| `ChainlinkVRFAdapter.sol`  | Legacy adapter kept for reference; not deployed on Initia |
 
 ## Environment Variables
 

@@ -202,7 +202,7 @@ describe("handleHandStarted", () => {
     assert.strictEqual(handId, 1n);
     assert.strictEqual(pot, 30n); // 10 + 20
     assert.strictEqual(buttonSeat, 0);
-    assert.strictEqual(state, "BETTING_PRE");
+    assert.strictEqual(state, "WAITING_VRF_HOLECARDS");
 
     assert.strictEqual(db.updateTableState.mock.calls.length, 1);
     assert.strictEqual(ws.broadcastHandStarted.mock.calls.length, 1);
@@ -410,9 +410,9 @@ describe("handleAgentRegistered", () => {
 
   test("upserts agent with correct field order (token, owner, operator, vault, table, meta)", async () => {
     const log = makeLog({ blockNumber: 700n, logIndex: 0 });
-    // Handler expects: { token, owner, vault, table, operator, metaURI }
+    // Handler expects: { agent, owner, vault, table, operator, metaURI }
     const args = {
-      token: "0xtoken",
+      agent: "0xtoken",
       vault: "0xvault",
       table: "0xtable",
       owner: "0xowner",
@@ -439,7 +439,7 @@ describe("handleAgentRegistered", () => {
     isEventProcessedImpl = async () => true;
 
     await handlers.handleAgentRegistered(makeLog(), {
-      token: "0xtoken",
+      agent: "0xtoken",
       vault: "0xvault",
       table: "0xtable",
       owner: "0xowner",

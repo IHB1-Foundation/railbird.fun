@@ -40,15 +40,30 @@
     }
   ],
   "dependencies": {
+    "@cosmjs/amino": "0.36.2",
+    "@cosmjs/crypto": "0.36.2",
+    "@cosmjs/encoding": "0.36.2",
+    "@cosmjs/math": "0.36.2",
+    "@cosmjs/proto-signing": "0.36.2",
+    "@cosmjs/stargate": "0.36.2",
+    "@cosmjs/tendermint-rpc": "0.36.2",
+    "@initia/amino-converter": "1.0.16",
+    "@initia/utils": "2.0.0",
+    "@mysten/bcs": "1.8.0",
+    "@tanstack/react-query": "^5.90.7",
     "@initia/interwovenkit-react": "^2.6.0",
+    "ky": "1.14.3",
+    "cosmjs-types": "0.10.1",
     "@noble/curves": "^2.0.1",
-    "@noble/hashes": "^2.0.1",
+    "@noble/hashes": "1.8.0",
     "@playerco/shared": "workspace:*",
     "@vercel/analytics": "^2.0.1",
+    "nanoid": "5.1.6",
     "next": "15.5.15",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "viem": "^2.21.0"
+    "viem": "^2.21.0",
+    "wagmi": "2.17.2"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.11.1",

@@ -91,7 +91,7 @@ function getWalletClient() {
 export interface RegisterSeatParams {
   tableAddress: Address;
   seatIndex: number;
-  buyInKaia: string;
+  buyInAmount: string;
   operator?: Address;
   /**
    * If provided, the encryption public key will be registered on-chain
@@ -125,7 +125,7 @@ export async function registerSeat(params: RegisterSeatParams): Promise<Register
     throw new Error("No account available");
   }
 
-  const buyIn = parseUnits(params.buyInKaia, 18);
+  const buyIn = parseUnits(params.buyInAmount, 18);
   if (buyIn <= 0n) {
     throw new Error("Buy-in must be greater than 0");
   }

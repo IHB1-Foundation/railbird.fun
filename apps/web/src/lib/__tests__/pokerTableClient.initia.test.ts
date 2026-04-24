@@ -70,7 +70,7 @@ describe("pokerTableClient — Initia branch", () => {
     await registerSeat({
       tableAddress: "0x1111111111111111111111111111111111111111",
       seatIndex: 0,
-      buyInKaia: "1.0",
+      buyInAmount: "1.0",
     });
 
     // createWalletClient was called (EVM path wired), not null

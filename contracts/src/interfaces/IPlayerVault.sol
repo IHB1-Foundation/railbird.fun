@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 /**
  * @title IPlayerVault
- * @notice Interface for player vault that holds native KAIA and participates in table settlement.
+ * @notice Interface for the player vault that holds the chain's native asset and settles tables.
  */
 interface IPlayerVault {
     event VaultInitialized(address indexed owner, uint256 initialAssets);

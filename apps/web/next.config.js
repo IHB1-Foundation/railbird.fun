@@ -6,8 +6,63 @@ import bundleAnalyzer from "@next/bundle-analyzer";
 
 const isDev = process.env.NODE_ENV !== "production";
 const withBundleAnalyzer = bundleAnalyzer({ enabled: process.env.ANALYZE === "true" });
-const DEFAULT_INDEXER_URL = "https://indexer-production-4bb1.up.railway.app";
-const DEFAULT_OWNERVIEW_URL = "https://ownerview-production.up.railway.app";
+const DEFAULT_PUBLIC_APP_URL = "https://www.railbird.fun";
+const DEFAULT_INDEXER_URL = "https://indexer-production-7498.up.railway.app";
+const DEFAULT_OWNERVIEW_URL = "https://ownerview-production-496d.up.railway.app";
+const DEFAULT_RPC_URL = isDev
+  ? process.env.RPC_URL || "http://localhost:8545"
+  : "https://rollup-node-production.up.railway.app";
+const DEFAULT_CHAIN_ID = isDev
+  ? process.env.INITIA_CHAIN_ID || process.env.CHAIN_ID || "31337"
+  : "241167961210297";
+const DEFAULT_CHAIN_ENV = isDev ? "local" : "initia-testnet";
+const DEFAULT_CHAIN_NAME = "Railbird Rollup (Initia)";
+const DEFAULT_NATIVE_SYMBOL = "INIT";
+const DEFAULT_CHIP_SYMBOL = "RCHIP";
+const DEFAULT_INTERWOVEN_CHAIN_ID = process.env.INITIA_COSMOS_CHAIN_ID || "railbird-1";
+const DEFAULT_TABLE_MAX_SEATS = "9";
+const DEFAULT_BLOCK_EXPLORER = "https://scan.testnet.initia.xyz";
+
+const publicEnv = {
+  NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || DEFAULT_PUBLIC_APP_URL,
+  NEXT_PUBLIC_CHAIN_ENV: process.env.NEXT_PUBLIC_CHAIN_ENV || DEFAULT_CHAIN_ENV,
+  // Indexer API — default to localhost in development to prevent
+  // accidentally hitting production APIs when env vars are omitted.
+  NEXT_PUBLIC_INDEXER_URL:
+    process.env.NEXT_PUBLIC_INDEXER_URL || (isDev ? "http://localhost:3002" : DEFAULT_INDEXER_URL),
+  NEXT_PUBLIC_OWNERVIEW_URL:
+    process.env.NEXT_PUBLIC_OWNERVIEW_URL ||
+    (isDev ? "http://localhost:3001" : DEFAULT_OWNERVIEW_URL),
+  // Chain config
+  NEXT_PUBLIC_RPC_URL: process.env.NEXT_PUBLIC_RPC_URL || DEFAULT_RPC_URL,
+  NEXT_PUBLIC_CHAIN_ID: process.env.NEXT_PUBLIC_CHAIN_ID || DEFAULT_CHAIN_ID,
+  NEXT_PUBLIC_INTERWOVEN_CHAIN_ID:
+    process.env.NEXT_PUBLIC_INTERWOVEN_CHAIN_ID || DEFAULT_INTERWOVEN_CHAIN_ID,
+  NEXT_PUBLIC_CHAIN_NAME: process.env.NEXT_PUBLIC_CHAIN_NAME || DEFAULT_CHAIN_NAME,
+  NEXT_PUBLIC_NATIVE_SYMBOL: process.env.NEXT_PUBLIC_NATIVE_SYMBOL || DEFAULT_NATIVE_SYMBOL,
+  NEXT_PUBLIC_BLOCK_EXPLORER: process.env.NEXT_PUBLIC_BLOCK_EXPLORER || DEFAULT_BLOCK_EXPLORER,
+  NEXT_PUBLIC_CHIP_SYMBOL: process.env.NEXT_PUBLIC_CHIP_SYMBOL || DEFAULT_CHIP_SYMBOL,
+  NEXT_PUBLIC_TABLE_MAX_SEATS: process.env.NEXT_PUBLIC_TABLE_MAX_SEATS || DEFAULT_TABLE_MAX_SEATS,
+  NEXT_PUBLIC_ENABLE_TRADING_WIDGET: process.env.NEXT_PUBLIC_ENABLE_TRADING_WIDGET || "false",
+  NEXT_PUBLIC_ENABLE_AUTOSIGN: process.env.NEXT_PUBLIC_ENABLE_AUTOSIGN || "false",
+  NEXT_PUBLIC_ENABLE_INTERWOVEN_KIT: process.env.NEXT_PUBLIC_ENABLE_INTERWOVEN_KIT || "false",
+  NEXT_PUBLIC_ENABLE_INIT_USERNAMES: process.env.NEXT_PUBLIC_ENABLE_INIT_USERNAMES || "true",
+};
+
+if (!isDev && publicEnv.NEXT_PUBLIC_CHAIN_ENV === "initia-testnet") {
+  const requiredPublicEnv = [
+    "NEXT_PUBLIC_INDEXER_URL",
+    "NEXT_PUBLIC_OWNERVIEW_URL",
+    "NEXT_PUBLIC_RPC_URL",
+    "NEXT_PUBLIC_CHAIN_ID",
+  ];
+  const missing = requiredPublicEnv.filter((name) => !publicEnv[name]);
+  if (missing.length > 0) {
+    throw new Error(
+      `Missing required Initia public env vars for production build: ${missing.join(", ")}`,
+    );
+  }
+}
 
 const nextConfig = {
   reactStrictMode: true,
@@ -21,6 +76,12 @@ const nextConfig = {
         message: /Critical dependency: the request of a dependency is an expression/,
       },
     ];
+
+    config.plugins.push(
+      new webpack.NormalModuleReplacementPlugin(/^cosmjs-types\/(.+)\.js$/, (resource) => {
+        resource.request = resource.request.replace(/\.js$/, "");
+      }),
+    );
 
     if (!isServer) {
       // prom-client (from @playerco/shared metrics) uses Node built-ins
@@ -83,21 +144,7 @@ const nextConfig = {
     return config;
   },
   // Environment variables for client-side use
-  env: {
-    // Indexer API — default to localhost in development to prevent
-    // accidentally hitting production APIs when env vars are omitted.
-    NEXT_PUBLIC_INDEXER_URL:
-      process.env.NEXT_PUBLIC_INDEXER_URL ||
-      (isDev ? "http://localhost:3001" : DEFAULT_INDEXER_URL),
-    NEXT_PUBLIC_OWNERVIEW_URL:
-      process.env.NEXT_PUBLIC_OWNERVIEW_URL ||
-      (isDev ? "http://localhost:4000" : DEFAULT_OWNERVIEW_URL),
-    // Chain config
-    NEXT_PUBLIC_RPC_URL: process.env.NEXT_PUBLIC_RPC_URL || "https://testnet.hsk.xyz",
-    NEXT_PUBLIC_CHAIN_ID: process.env.NEXT_PUBLIC_CHAIN_ID || "133",
-    NEXT_PUBLIC_BLOCK_EXPLORER:
-      process.env.NEXT_PUBLIC_BLOCK_EXPLORER || "https://testnet-explorer.hsk.xyz",
-  },
+  env: publicEnv,
 
   async headers() {
     return [

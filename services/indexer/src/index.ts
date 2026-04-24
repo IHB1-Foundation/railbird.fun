@@ -154,17 +154,12 @@ async function main(): Promise<void> {
 
     // Start event listener — on fatal error, perform graceful cleanup before exit
     setListenerStatus("starting");
-    listener
-      .start()
-      .then(() => {
-        setListenerStatus("running");
-      })
-      .catch((err: unknown) => {
-        const reason = err instanceof Error ? err.message : String(err);
-        logger.error({ reason }, "Event listener encountered a fatal error — shutting down");
-        setListenerStatus("failed", reason);
-        void shutdown(1);
-      });
+    void listener.start().catch((err: unknown) => {
+      const reason = err instanceof Error ? err.message : String(err);
+      logger.error({ reason }, "Event listener encountered a fatal error — shutting down");
+      setListenerStatus("failed", reason);
+      void shutdown(1);
+    });
   } else {
     // Only reachable in local mode (non-local already exited above)
     logger.info("Chain config not provided - event listener disabled (local dev mode)");

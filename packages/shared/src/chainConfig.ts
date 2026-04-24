@@ -22,12 +22,12 @@ const STATIC_CHAIN_IDS: Record<Exclude<ChainEnv, "initia-testnet">, number> = {
 /** Resolves chain ID for the given environment at call time. */
 function resolveChainId(env: ChainEnv): number {
   if (env === "initia-testnet") {
-    const raw = process.env.INITIA_CHAIN_ID;
+    const raw = process.env.INITIA_CHAIN_ID ?? process.env.CHAIN_ID;
     if (!raw) {
       throw new ChainConfigError(
         "INITIA_CHAIN_ID is required when CHAIN_ENV=initia-testnet. " +
-          "Set it to your rollup chain ID (see infra/initia/rollup.json).",
-        ["INITIA_CHAIN_ID"],
+          "Set it (or CHAIN_ID) to your rollup EVM chain ID (see infra/initia/rollup.json).",
+        ["INITIA_CHAIN_ID", "CHAIN_ID"],
       );
     }
     return parseInt(raw, 10);
@@ -41,8 +41,9 @@ function resolveChainId(env: ChainEnv): number {
  */
 const STATIC_BLOCK_EXPLORERS: Record<Exclude<ChainEnv, "initia-testnet">, string> = {
   local: "http://localhost:8545",
-  testnet: "https://testnet-explorer.hsk.xyz",
-  mainnet: "https://explorer.hsk.xyz",
+  // Legacy env aliases still resolve to Initia explorers to avoid leaking old branding.
+  testnet: "https://scan.testnet.initia.xyz",
+  mainnet: "https://scan.initia.xyz",
 };
 
 /** Resolves block explorer URL for the given environment at call time. */

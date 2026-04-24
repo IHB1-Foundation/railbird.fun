@@ -17,9 +17,10 @@ A staging tag is cut by pushing to `staging`.
 
 ## Staging environment
 
-Staging mirrors production but targets HSK testnet and uses isolated
-Railway + Vercel projects. It deploys automatically on every push to
-`main` so that integration is always verified before manual promotion.
+Staging mirrors production but targets an isolated Initia testnet rollup
+and uses separate Railway + Vercel projects. It deploys automatically on
+every push to `main` so that integration is always verified before manual
+promotion.
 
 ### One-time Railway staging setup
 
@@ -72,13 +73,13 @@ Add `RAILWAY_STAGING_TOKEN` as a GitHub Actions secret.
 
 ### Staging vs production independence
 
-| Dimension | Staging                | Production              |
-| --------- | ---------------------- | ----------------------- |
-| Chain     | HSK Testnet (133)      | HSK Mainnet (177)       |
-| Contracts | Separate deploy        | Live contracts          |
-| Database  | Isolated Railway DB    | Production Railway DB   |
-| Web URL   | `staging.railbird.xyz` | `railbird.xyz`          |
-| Analytics | Vercel Analytics (dev) | Vercel Analytics (prod) |
+| Dimension | Staging                        | Production              |
+| --------- | ------------------------------ | ----------------------- |
+| Chain     | Separate Initia testnet rollup | Live Railbird rollup    |
+| Contracts | Separate deploy                | Live contracts          |
+| Database  | Isolated Railway DB            | Production Railway DB   |
+| Web URL   | `staging.railbird.xyz`         | `railbird.xyz`          |
+| Analytics | Vercel Analytics (dev)         | Vercel Analytics (prod) |
 
 ## Required env per service
 

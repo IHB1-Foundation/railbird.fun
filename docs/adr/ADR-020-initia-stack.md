@@ -8,7 +8,7 @@
 
 ## Context
 
-Railbird is pivoting its hackathon submission target from **HashKey Chain (OP Stack)** to the **INITIATE: The Initia Hackathon (Season 1)**, Track: Gaming (primary) + AI (secondary).
+Railbird is pivoting its hackathon submission target from a previous OP Stack-style EVM rollout to the **INITIATE: The Initia Hackathon (Season 1)**, Track: Gaming (primary) + AI (secondary).
 
 Hard requirements for submission:
 
@@ -78,7 +78,7 @@ See `docs/initia/vrf.md` for operator trust model documentation.
 
 ### Block Time Impact (100ms blocks)
 
-Initia MiniEVM blocks are ~100ms vs HashKey's ~2-3s. This requires tuning:
+Initia MiniEVM blocks are ~100ms versus the team's prior slower EVM deployment cadence. This requires tuning:
 
 - Indexer poll interval: 250ms (down from 2000ms)
 - Bot poll intervals: 250ms
@@ -87,13 +87,13 @@ Initia MiniEVM blocks are ~100ms vs HashKey's ~2-3s. This requires tuning:
 
 ### Items Removed / Disabled for Initia
 
-| Item                      | Action                                                          | Reason                                             |
-| ------------------------- | --------------------------------------------------------------- | -------------------------------------------------- |
-| KYC SBT (`IHumanSBT`)     | Default off (`KYC_SBT_ADDRESS = 0x0`)                           | HashKey-specific contract; no equivalent on Initia |
-| nad.fun trading widget    | Feature-flagged off (`NEXT_PUBLIC_ENABLE_TRADING_WIDGET=false`) | Monad-specific DEX; no Initia equivalent at launch |
-| Treasury auto-rebalancing | Disabled (`ENABLE_REBALANCING=false`)                           | Requires nad.fun/DEX integration                   |
-| HashKey RPC/Explorer URLs | Moved to `contracts/script/deprecated/`                         | No longer the active deployment target             |
-| `DeployHashKey.s.sol`     | Moved to `contracts/script/deprecated/`                         | Replaced by `DeployInitia.s.sol`                   |
+| Item                      | Action                                                          | Reason                                                  |
+| ------------------------- | --------------------------------------------------------------- | ------------------------------------------------------- |
+| KYC SBT (`IHumanSBT`)     | Default off (`KYC_SBT_ADDRESS = 0x0`)                           | Legacy chain-specific contract; no equivalent on Initia |
+| nad.fun trading widget    | Feature-flagged off (`NEXT_PUBLIC_ENABLE_TRADING_WIDGET=false`) | Monad-specific DEX; no Initia equivalent at launch      |
+| Treasury auto-rebalancing | Disabled (`ENABLE_REBALANCING=false`)                           | Requires nad.fun/DEX integration                        |
+| Legacy RPC/Explorer URLs  | Removed from active config                                      | No longer the active deployment target                  |
+| Legacy deploy scripts     | Removed from the repo's active path                             | Replaced by `DeployInitia.s.sol`                        |
 
 ---
 

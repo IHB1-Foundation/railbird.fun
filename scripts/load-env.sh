@@ -7,8 +7,6 @@
 # TARGET options:
 #   (empty)         — load root .env (default)
 #   initia          — load .env.initia  (Initia testnet rollup)
-#   hashkey         — load .env.hashkey (HashKey Chain testnet)
-#   hashkey-example — load .env.hashkey.example (dry-run / review)
 #
 # Example:
 #   source scripts/load-env.sh initia
@@ -26,15 +24,9 @@ case "$TARGET" in
   initia)
     ENV_FILE="$REPO_ROOT/.env.initia"
     ;;
-  hashkey)
-    ENV_FILE="$REPO_ROOT/.env.hashkey"
-    ;;
-  hashkey-example)
-    ENV_FILE="$REPO_ROOT/.env.hashkey.example"
-    ;;
   *)
     echo "load-env.sh: unknown target '$TARGET'" >&2
-    echo "  Valid: (empty) | initia | hashkey | hashkey-example" >&2
+    echo "  Valid: (empty) | initia" >&2
     return 1 2>/dev/null || exit 1
     ;;
 esac

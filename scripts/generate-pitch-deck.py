@@ -11,6 +11,8 @@ from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
 from pptx.enum.shapes import MSO_SHAPE
 import os
 
+from pitch_snapshot import load_pitch_snapshot
+
 # ── Railbird Brand Palette (from globals.css) ────────────────
 BG_DEEP     = RGBColor(0x06, 0x07, 0x0B)   # --background
 BG_SOFT     = RGBColor(0x0D, 0x10, 0x20)   # --background-soft
@@ -39,6 +41,16 @@ SLIDE_H = Inches(7.5)
 prs = Presentation()
 prs.slide_width = SLIDE_W
 prs.slide_height = SLIDE_H
+
+SNAPSHOT = load_pitch_snapshot()
+APP_URL = SNAPSHOT.app_url.replace("https://", "")
+DEMO_VIDEO_URL = SNAPSHOT.demo_video_url.replace("https://", "")
+ROLLUP_CHAIN_ID = SNAPSHOT.rollup_chain_id
+COSMOS_CHAIN_ID = SNAPSHOT.cosmos_chain_id
+BRIDGE_ID = SNAPSHOT.bridge_id
+RPC_URL = SNAPSHOT.rpc_url
+LAUNCH_TX_URL = SNAPSHOT.launch_tx_url
+LAUNCH_TX_SHORT = SNAPSHOT.short_launch_tx
 
 # ── Layout margins ────────────────────────────────────────────
 L_MARGIN = Inches(1.2)
@@ -192,18 +204,18 @@ write_para(tf, "RAILBIRD", size=60, color=FG, bold=True,
 
 # Subtitle
 tf = make_textbox(s, Inches(1.6), Inches(3.4), Inches(9), Inches(0.7))
-write_para(tf, "The World's First Trustless AI Poker Protocol",
+write_para(tf, "Autonomous AI Poker on Its Own Initia Appchain",
            size=24, color=ACCENT_SOFT, bold=False, font=FONT_DISPLAY,
            first=True)
 
 # Context line
 tf = make_textbox(s, Inches(1.6), Inches(4.5), Inches(9), Inches(0.5))
-write_para(tf, "On-Chain Horizon Hackathon  \u2502  AI Track  \u2502  HashKey Chain",
+write_para(tf, f"INITIA TESTNET  \u2502  Gaming + AI  \u2502  Chain ID {ROLLUP_CHAIN_ID}",
            size=14, color=MUTED, font=FONT_BODY, first=True)
 
 # URL
 tf = make_textbox(s, Inches(1.6), Inches(5.3), Inches(4), Inches(0.4))
-write_para(tf, "railbird.fun", size=18, color=NEON_CYAN, bold=True,
+write_para(tf, APP_URL, size=18, color=NEON_CYAN, bold=True,
            font=FONT_MONO, first=True)
 
 
@@ -262,7 +274,7 @@ pillars = [
       "\u2022  keccak256 commit / reveal integrity",
       "\u2022  Not even our servers can read your hand"]),
     ("Verifiable AI", NEON_VIOLET,
-     ["\u2022  Gemini 2.0 Flash reasoning engine",
+     ["\u2022  Gemini-based reasoning engine",
       "\u2022  Decision hash committed on-chain",
       "\u2022  Anyone can audit any action, any time",
       "\u2022  Full transparency without trust"]),
@@ -282,14 +294,14 @@ for i, (title, color, bullets) in enumerate(pillars):
 # ═══════════════════════════════════════════════════════════════
 s = prs.slides.add_slide(prs.slide_layouts[6])
 set_slide_bg(s)
-slide_header(s, "Architecture", "Three layers on HashKey Chain")
+slide_header(s, "Architecture", "Three layers on Initia")
 
 # Full-width on-chain bar
 add_rect(s, L_MARGIN, Inches(2.2), CONTENT_W, Inches(0.45), ACCENT,
          radius=False)
 tf = make_textbox(s, L_MARGIN, Inches(2.2), CONTENT_W, Inches(0.45),
                   margin_left=Inches(0.2))
-write_para(tf, "ON-CHAIN  \u2014  HashKey Chain Testnet (ID: 133)", size=13,
+write_para(tf, "ON-CHAIN  \u2014  Railbird MiniEVM Rollup on Initia", size=13,
            color=BG_DEEP, bold=True, font=FONT_MONO, first=True)
 
 # On-chain contracts row
@@ -338,7 +350,7 @@ add_rect(s, L_MARGIN, Inches(6.5), CONTENT_W, Inches(0.4), NEON_VIOLET,
          radius=False)
 tf = make_textbox(s, L_MARGIN, Inches(6.5), CONTENT_W, Inches(0.4),
                   margin_left=Inches(0.2))
-write_para(tf, "AI LAYER  \u2014  4 Gemini 2.0 Flash agents  \u2502  hand strength + pot odds + opponent modeling  \u2502  on-chain decision hash",
+write_para(tf, "AI LAYER  \u2014  4 Gemini agents  \u2502  hand strength + pot odds + opponent modeling  \u2502  decision trail",
            size=12, color=BG_DEEP, bold=True, font=FONT_MONO, first=True)
 
 
@@ -347,7 +359,7 @@ write_para(tf, "AI LAYER  \u2014  4 Gemini 2.0 Flash agents  \u2502  hand streng
 # ═══════════════════════════════════════════════════════════════
 s = prs.slides.add_slide(prs.slide_layouts[6])
 set_slide_bg(s)
-slide_header(s, "AI Agents", "Four Gemini-powered personalities")
+slide_header(s, "AI Agents", "Four autonomous personalities")
 
 agents = [
     ("Aegis",    "Tight",     "0.2",
@@ -414,29 +426,29 @@ for i, (name, style, aggr, desc, color) in enumerate(agents):
 
 
 # ═══════════════════════════════════════════════════════════════
-# SLIDE 6 — HashKey Chain (2x2 grid instead of 4 narrow cards)
+# SLIDE 6 — Initia (2x2 grid instead of 4 narrow cards)
 # ═══════════════════════════════════════════════════════════════
 s = prs.slides.add_slide(prs.slide_layouts[6])
 set_slide_bg(s)
-slide_header(s, "HashKey Chain", "Why we chose this chain", tag_color=NEON_CYAN)
+slide_header(s, "Initia", "Why this belongs on its own appchain", tag_color=NEON_CYAN)
 
 features = [
-    ("Wallet-Based Identity", NEON_VIOLET,
-     ["All auth via wallet signatures",
-      "No email/password accounts needed",
-      "On-chain ownership = authorization"]),
-    ("OP Stack EVM Equivalence", NEON_LIME,
-     ["Standard Solidity + Foundry tooling",
-      "Zero contract modifications needed",
-      "Low gas costs, familiar dev experience"]),
-    ("VRF On-Chain Randomness", NEON_CYAN,
-     ["Backbone of the trustless dealer",
-      "Provably fair community card shuffles",
-      "Verifiable on-chain at showdown"]),
-    ("Blockscout Explorer", NEON_GOLD,
-     ["All 6 contracts source-verified",
-      "Public code inspection by anyone",
-      "Full on-chain state transparency"]),
+    ("Own Appchain Identity", NEON_VIOLET,
+     ["Dedicated Railbird rollup on Initia testnet",
+      f"Rollup chain ID {ROLLUP_CHAIN_ID}",
+      "Product and chain move as one surface"]),
+    ("MiniEVM Fast Path", NEON_LIME,
+     ["Standard Solidity and Foundry workflow",
+      "No VM rewrite to prove the idea",
+      "Fast path from contracts to live chain"]),
+    ("Bridge + Ecosystem Surface", NEON_CYAN,
+     [f"Bridge ID {BRIDGE_ID} on {COSMOS_CHAIN_ID}",
+      "Appchain-native discovery and routing",
+      "Better fit than a generic shared chain"]),
+    ("Public Chain Evidence", NEON_GOLD,
+     ["Live RPC and launch transaction are public",
+      "Judges can verify chain identity directly",
+      "Submission metadata points to real links"]),
 ]
 
 half_w = Inches(5.2)
@@ -458,7 +470,7 @@ for i, (title, color, bullets) in enumerate(features):
 
 # Footer
 tf = make_textbox(s, L_MARGIN, Inches(6.6), CONTENT_W, Inches(0.4))
-write_para(tf, "6 contracts deployed & source-verified on HashKey Chain Testnet (Chain ID: 133)",
+write_para(tf, f"RPC {RPC_URL}  \u2502  Launch tx {LAUNCH_TX_SHORT}",
            size=13, color=MUTED, font=FONT_MONO, align=PP_ALIGN.CENTER,
            first=True)
 
@@ -468,22 +480,22 @@ write_para(tf, "6 contracts deployed & source-verified on HashKey Chain Testnet 
 # ═══════════════════════════════════════════════════════════════
 s = prs.slides.add_slide(prs.slide_layouts[6])
 set_slide_bg(s)
-slide_header(s, "Live Demo", "railbird.fun")
+slide_header(s, "Live Product", APP_URL)
 
 # Large URL
 tf = make_textbox(s, L_MARGIN, Inches(2.0), CONTENT_W, Inches(0.5))
-write_para(tf, "Everything on-chain. Everything verifiable.",
+write_para(tf, "Public app. Public video. Public chain evidence.",
            size=18, color=ACCENT_SOFT, font=FONT_DISPLAY, first=True)
 
 demo_items = [
-    ("\u2660  Live Table Viewer",
-     "Real-time community cards, pot, chip stacks  \u2502  Action log with block numbers  \u2502  VRF status widget"),
-    ("\U0001F916  AI Decision Transparency",
-     "Hand strength + pot odds breakdown per action  \u2502  On-chain reasoning hash verification  \u2502  Confidence gauge"),
-    ("\u2728  Showdown & Settlement",
-     "Card flip animation  \u2502  Winner highlight + pot distribution  \u2502  Commit/reveal verified on-chain"),
-    ("\U0001F3C6  Leaderboard & Agent Pages",
-     "ROI / PnL / Win Rate / MDD rankings  \u2502  Vault metrics (A/B/N/P)  \u2502  Token trading widget"),
+    ("\u2660  Landing + Live Dashboard",
+     "Season banner  \u2502  live stats  \u2502  featured table entrypoint"),
+    ("\U0001F916  Table + Verify Surface",
+     "Community cards, pot, action log  \u2502  audit trail and reasoning hash flow"),
+    ("\u2728  Leaderboard + Agent Pages",
+     "ROI, PnL, win rate, drawdown  \u2502  persona and recent hand detail"),
+    ("\U0001F3C6  Create-Agent + Demo Video",
+     f"Open deployment flow  \u2502  public walkthrough video at {DEMO_VIDEO_URL}"),
 ]
 
 row_h = Inches(0.9)
@@ -509,22 +521,22 @@ for i, (title, desc) in enumerate(demo_items):
 
 
 # ═══════════════════════════════════════════════════════════════
-# SLIDE 8 — Sidebet Market (the economic engine)
+# SLIDE 8 — Rollup Evidence
 # ═══════════════════════════════════════════════════════════════
 s = prs.slides.add_slide(prs.slide_layouts[6])
 set_slide_bg(s)
-slide_header(s, "AI Prediction Market", "Spectating becomes evaluating", tag_color=NEON_GOLD)
+slide_header(s, "Rollup Evidence", "Judge quick path", tag_color=NEON_GOLD)
 
-# ── Left half: How it works ──
+# ── Left half: public links ──
 tf = make_textbox(s, L_MARGIN, Inches(2.1), Inches(5.5), Inches(0.4))
-write_para(tf, "HOW IT WORKS", size=12, color=NEON_GOLD, bold=True,
+write_para(tf, "PUBLIC LINKS", size=12, color=NEON_GOLD, bold=True,
            font=FONT_MONO, first=True)
 
 flow_steps = [
-    ("1.  Watch", "Spectators watch AI agents play poker in real-time."),
-    ("2.  Bet", "Pick which agent wins the hand. Place RCHIP on that seat."),
-    ("3.  Settle", "Hand settles on-chain. SideBetPool reads the winner from PokerTable."),
-    ("4.  Claim", "Winners claim proportional payout: (your bet \u00d7 total pool) / winner-seat total."),
+    ("1.  App", APP_URL),
+    ("2.  Live", f"{APP_URL}/live"),
+    ("3.  Video", DEMO_VIDEO_URL),
+    ("4.  Launch TX", LAUNCH_TX_SHORT),
 ]
 
 for i, (step, desc) in enumerate(flow_steps):
@@ -538,21 +550,17 @@ for i, (step, desc) in enumerate(flow_steps):
     write_para(tf, desc, size=13, color=MUTED_SOFT, font=FONT_BODY,
                first=True)
 
-# ── Right half: Why it matters (DeFi angle) ──
+# ── Right half: rollup facts ──
 right_x = Inches(7)
 tf = make_textbox(s, right_x, Inches(2.1), Inches(5.5), Inches(0.4))
-write_para(tf, "WHY IT MATTERS FOR AI", size=12, color=ACCENT, bold=True,
+write_para(tf, "ROLLUP FACTS", size=12, color=ACCENT, bold=True,
            font=FONT_MONO, first=True)
 
 defi_points = [
-    ("AI Evaluation Layer", ACCENT,
-     "Spectators actively assess which AI strategy performs best. Crowd-sourced AI evaluation with real stakes."),
-    ("Transparent & On-Chain", NEON_CYAN,
-     "Pari-mutuel, fully on-chain. No house edge. Dynamic odds from agent skill profiles \u2014 purely proportional."),
-    ("Open Platform", NEON_LIME,
-     "SideBetPool.sol is permissionless. Anyone can build prediction interfaces, analysis bots, or trackers."),
-    ("Auto Settlement", NEON_VIOLET,
-     "KeeperBot auto-settles after showdown. Winner recorded on-chain. Claims are permissionless."),
+    ("Chain ID", ACCENT, ROLLUP_CHAIN_ID),
+    ("Cosmos Chain", NEON_CYAN, COSMOS_CHAIN_ID),
+    ("Bridge ID", NEON_LIME, BRIDGE_ID),
+    ("RPC", NEON_VIOLET, RPC_URL),
 ]
 
 for i, (title, color, desc) in enumerate(defi_points):
@@ -599,11 +607,11 @@ for i, (title, color, desc) in enumerate(sec_items):
 
 
 # ═══════════════════════════════════════════════════════════════
-# SLIDE 10 — Ecosystem Impact (why this matters for HashKey Chain)
+# SLIDE 10 — Ecosystem Impact (why this matters for Initia)
 # ═══════════════════════════════════════════════════════════════
 s = prs.slides.add_slide(prs.slide_layouts[6])
 set_slide_bg(s)
-slide_header(s, "Ecosystem Impact", "An open AI arena on HashKey Chain", tag_color=NEON_CYAN)
+slide_header(s, "Ecosystem Impact", "An open AI arena on Initia", tag_color=NEON_CYAN)
 
 # ── Left: flywheel narrative ──
 tf = make_textbox(s, L_MARGIN, Inches(2.1), Inches(5.5), Inches(0.4))
@@ -633,18 +641,18 @@ for i, (title, desc) in enumerate(flywheel):
     write_para(tf, desc, size=11, color=MUTED_SOFT, font=FONT_BODY,
                space_before=Pt(3))
 
-# ── Right: concrete numbers / projections ──
+# ── Right: live product surfaces ──
 right_x = Inches(7)
 tf = make_textbox(s, right_x, Inches(2.1), Inches(5), Inches(0.4))
-write_para(tf, "MAINNET PROJECTION", size=12, color=NEON_GOLD, bold=True,
+write_para(tf, "LIVE SURFACES", size=12, color=NEON_GOLD, bold=True,
            font=FONT_MONO, first=True)
 
 # Metric cards
 metrics = [
-    ("20+",  "txs per hand",     "Poker actions + VRF + settlement + sidebet lifecycle", ACCENT),
-    ("4\u00d7",   "multiplier",       "Each sidebet bettor adds bet + claim txs on top of base poker volume", NEON_GOLD),
-    ("24/7", "autonomous",       "AI agents play continuously \u2014 no human scheduling, no downtime", NEON_LIME),
-    ("0",    "cold start cost",  "Spectating is free, no wallet needed. Wallet connects only when betting", NEON_VIOLET),
+    ("4", "AI agents", "Autonomous personalities running on the live rollup", ACCENT),
+    ("2", "poker tables", "Two deployed table contracts on the dedicated chain", NEON_GOLD),
+    ("1", "public app", f"Live spectator surface at {APP_URL}", NEON_LIME),
+    ("1", "demo video", "Published walkthrough linked in submission metadata", NEON_VIOLET),
 ]
 
 for i, (num, label, desc, color) in enumerate(metrics):
@@ -666,7 +674,7 @@ for i, (num, label, desc, color) in enumerate(metrics):
 # ═══════════════════════════════════════════════════════════════
 s = prs.slides.add_slide(prs.slide_layouts[6])
 set_slide_bg(s)
-slide_header(s, "Traction", "Built and deployed in 5 weeks")
+slide_header(s, "Traction", "Live now on Initia")
 
 # ── TODAY section (left half) ──
 tf = make_textbox(s, L_MARGIN, Inches(2.2), Inches(5), Inches(0.35))
@@ -674,10 +682,10 @@ write_para(tf, "TODAY", size=12, color=ACCENT, bold=True,
            font=FONT_MONO, first=True)
 
 stats = [
-    ("6",    "Contracts Deployed", ACCENT),
-    ("4",    "Autonomous AI Agents", NEON_VIOLET),
-    ("100%", "Source Verified", NEON_LIME),
-    ("Live", "railbird.fun", NEON_CYAN),
+    ("1", "Dedicated Rollup", ACCENT),
+    ("4", "Autonomous AI Agents", NEON_VIOLET),
+    ("2", "Live Table Contracts", NEON_LIME),
+    ("Live", APP_URL, NEON_CYAN),
 ]
 
 for i, (num, label, color) in enumerate(stats):
@@ -698,10 +706,10 @@ write_para(tf, "ROADMAP", size=12, color=NEON_GOLD, bold=True,
            font=FONT_MONO, first=True)
 
 roadmap = [
-    ("ZK Proofs",    "Fully trustless dealing \u2014 remove dealer trust entirely"),
-    ("Tournaments",  "Multi-table brackets with progressive elimination"),
-    ("Mobile",       "Optimized spectating UX with push notifications"),
-    ("Mainnet",      "Real economic stakes on HashKey Chain mainnet"),
+    ("Harder Crypto Guarantees", "Tighten the dealing and evidence story further"),
+    ("Tournaments", "Multi-table brackets with progressive elimination"),
+    ("Mobile Spectating", "Faster glanceable viewing and notifications"),
+    ("Broader Participation", "Push prediction and agent deployment deeper into the product"),
 ]
 
 for i, (title, desc) in enumerate(roadmap):
@@ -732,21 +740,38 @@ write_para(tf, "RAILBIRD", size=56, color=FG, bold=True,
 
 # Tagline
 tf = make_textbox(s, Inches(1.6), Inches(3.4), Inches(9), Inches(0.6))
-write_para(tf, "Trustless AI Poker. Fully On-Chain.",
+write_para(tf, "Own Initia Rollup. Live AI Poker.",
            size=22, color=ACCENT_SOFT, font=FONT_DISPLAY, first=True)
 
 # Three pillars
 tf = make_textbox(s, Inches(1.6), Inches(4.4), Inches(9), Inches(2))
-write_para(tf, "Every card provably fair.", size=16, color=NEON_LIME,
+write_para(tf, "Live app.", size=16, color=NEON_LIME,
            bold=True, font=FONT_BODY, first=True, space_after=Pt(6))
-write_para(tf, "Every AI decision verifiable.", size=16, color=NEON_CYAN,
+write_para(tf, "Live demo video.", size=16, color=NEON_CYAN,
            bold=True, font=FONT_BODY, space_after=Pt(6))
-write_para(tf, "Every prediction settles on-chain.", size=16, color=NEON_VIOLET,
+write_para(tf, "Live rollup evidence.", size=16, color=NEON_VIOLET,
            bold=True, font=FONT_BODY, space_after=Pt(20))
-write_para(tf, "railbird.fun", size=18, color=NEON_CYAN, bold=True,
+write_para(tf, APP_URL, size=18, color=NEON_CYAN, bold=True,
            font=FONT_MONO, space_after=Pt(4))
-write_para(tf, "Built on HashKey Chain", size=13, color=MUTED,
+write_para(tf, "Built on Initia", size=13, color=MUTED,
            font=FONT_BODY)
+
+
+# ── Narration / sync reference ─────────────────────────────────
+NARRATIONS = [
+    "Hi everyone. We're Railbird. Railbird is autonomous AI poker on its own Initia appchain, and the live product is already running at railbird dot fun.",
+    "Poker and AI both have the same trust problem. In most poker, the deck lives on a private server. In most AI products, you only see outputs, not accountable behavior. We wanted to remove both trust assumptions at once.",
+    "Railbird brings three things together. The table runs on-chain. Private cards stay private during the hand through encrypted delivery and reveal flow. And the AI layer becomes observable through public game history and verification surfaces.",
+    "The stack has four layers. A dedicated Initia MiniEVM rollup at the base. Core poker contracts above it. Services like the indexer, OwnerView, and fleet in the middle. And four Gemini agents acting on top of that. The chain is the source of truth for the whole product.",
+    "We run four distinct personalities, not one generic bot. Aegis is tight. Maverick is balanced. Nova plays wider lines. Rex applies constant pressure. That spread turns the table into a live arena for comparing autonomous behavior.",
+    f"Initia is a real product fit here, not a logo choice. Railbird has its own appchain identity, keeps the Solidity and Foundry workflow through MiniEVM, and exposes public chain evidence like RPC, bridge identity, and launch transaction that judges can verify directly.",
+    f"The product surface is already public. The landing page, live dashboard, table pages, verification flow, leaderboard, agent pages, and create-agent flow are all live at {APP_URL}.",
+    f"This is the critical proof slide for the hackathon. Rollup chain ID {ROLLUP_CHAIN_ID}. Cosmos chain {COSMOS_CHAIN_ID}. Bridge ID {BRIDGE_ID}. Public RPC at {RPC_URL}. Public launch transaction at {LAUNCH_TX_URL}.",
+    "Security and liveness are built into the protocol. Commit and reveal keeps private state checkable after the fact. Table progression is constrained on-chain. And timeout paths keep the game moving instead of depending on one trusted operator staying online.",
+    "Railbird also creates an open AI arena on Initia. Spectators can follow agent performance, outside builders can deploy their own agents, and the surrounding product surfaces make AI behavior legible instead of opaque.",
+    "Today the important milestone is already complete. There is a live app, a live demo video, and a live dedicated rollup backing the submission. Next we tighten the cryptographic guarantees, expand the game structure, and deepen public participation.",
+    "Railbird is simple to summarize. Live app. Live demo. Live rollup evidence. Autonomous AI poker on Initia. Thank you.",
+]
 
 
 # ── Save ──────────────────────────────────────────────────────

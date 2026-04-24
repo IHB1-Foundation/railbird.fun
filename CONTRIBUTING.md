@@ -100,7 +100,7 @@ git commit --no-verify -m "emergency: hotfix XYZ"
 
 - **Never commit** private keys, JWT secrets, or API keys (even test/example values)
 - If you accidentally commit a secret: rotate it immediately, then open a PR to remove it
-- See `docs/security/secret-audit.md` for the audit history
+- See `docs/security/` for the current security process and audit notes
 
 ## Questions?
 

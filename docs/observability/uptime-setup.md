@@ -7,13 +7,14 @@ Alert channel: Discord webhook.
 
 ## Endpoints to Monitor
 
-| Service | URL | Expected response |
-|---------|-----|-------------------|
-| Web app | `https://railbird.fun/` | 200 OK |
-| Indexer health | `https://indexer.railbird.fun/health` | `{"status":"ok"}` |
-| OwnerView health | `https://ownerview.railbird.fun/health` | `{"status":"ok"}` |
-| Fleet health | `https://fleet.railbird.fun/health` | `{"status":"ok"}` |
-| Chain RPC | `https://testnet.hsk.xyz` | 200 (JSON-RPC endpoint) |
+| Service          | URL                                                         | Expected response                           |
+| ---------------- | ----------------------------------------------------------- | ------------------------------------------- |
+| Web app          | `https://www.railbird.fun/`                                 | 200 OK                                      |
+| Apex redirect    | `https://railbird.fun/`                                     | 308 redirect to `https://www.railbird.fun/` |
+| Indexer health   | `https://indexer-production-7498.up.railway.app/api/health` | `{"status":"ok"}`                           |
+| OwnerView health | `https://ownerview-production-496d.up.railway.app/health`   | `{"status":"ok"}`                           |
+| Fleet health     | `https://fleet-production-1bbe.up.railway.app/health`       | `{"status":"ok"}`                           |
+| Chain RPC        | `<your-rollup-rpc-url>`                                     | 200 (JSON-RPC endpoint)                     |
 
 ## Better Stack Uptime Setup
 
@@ -35,7 +36,7 @@ Services support `?deep=1` for comprehensive checks:
 
 ```bash
 # Check ownerview with DB + chain connectivity
-curl https://ownerview.railbird.fun/health?deep=1
+curl https://ownerview-production-496d.up.railway.app/health?deep=1
 
 # Example response:
 # { "status": "ok", "deep": { "db": true, "chain": true } }

@@ -109,11 +109,16 @@ export async function handleHandStarted(
     args.buttonSeat,
     args.smallBlind,
     args.bigBlind,
-    "BETTING_PRE",
+    "WAITING_VRF_HOLECARDS",
   );
+  await updateHand(ctx.tableId, args.handId, {
+    pot,
+    currentBet: args.bigBlind,
+    gameState: "WAITING_VRF_HOLECARDS",
+  });
 
   // Update table state
-  await updateTableState(ctx.tableId, "BETTING_PRE", args.handId, args.buttonSeat);
+  await updateTableState(ctx.tableId, "WAITING_VRF_HOLECARDS", args.handId, args.buttonSeat);
 
   await markEventProcessed(meta.blockNumber, meta.logIndex, meta.txHash, "HandStarted");
   logger.info(
@@ -237,6 +242,7 @@ export async function handleVRFRequested(
 
   // Just track the state transition - VRF request details are handled elsewhere
   const streetStr = gameStateToString(args.street);
+  await updateHand(ctx.tableId, args.handId, { gameState: streetStr });
   await updateTableState(ctx.tableId, streetStr);
 
   await markEventProcessed(meta.blockNumber, meta.logIndex, meta.txHash, "VRFRequested");
@@ -247,6 +253,56 @@ export async function handleVRFRequested(
 
   // Broadcast to WebSocket clients
   broadcastVRFRequested(ctx.tableId, args.handId, args.street, args.requestId);
+}
+
+export async function handleHoleCardVRFFulfilled(
+  log: Log,
+  args: { handId: bigint; randomnessHash: `0x${string}` },
+  ctx: EventContext,
+): Promise<void> {
+  const meta = getLogMeta(log);
+  if (!meta) return;
+
+  if (await isEventProcessed(meta.blockNumber, meta.logIndex)) return;
+
+  await updateHand(ctx.tableId, args.handId, { gameState: "WAITING_FOR_HOLECARDS" });
+  await updateTableState(ctx.tableId, "WAITING_FOR_HOLECARDS");
+
+  await markEventProcessed(meta.blockNumber, meta.logIndex, meta.txHash, "HoleCardVRFFulfilled");
+  logger.info(
+    { handId: args.handId.toString(), randomnessHash: args.randomnessHash },
+    "HoleCardVRFFulfilled",
+  );
+}
+
+export async function handlePreflopStarted(
+  log: Log,
+  args: { handId: bigint; actorSeat: number; actionDeadline: bigint },
+  ctx: EventContext,
+): Promise<void> {
+  const meta = getLogMeta(log);
+  if (!meta) return;
+
+  if (await isEventProcessed(meta.blockNumber, meta.logIndex)) return;
+
+  const actionDeadline =
+    args.actionDeadline > 0n ? new Date(Number(args.actionDeadline) * 1000) : null;
+
+  await updateHand(ctx.tableId, args.handId, {
+    actorSeat: args.actorSeat,
+    gameState: "BETTING_PRE",
+  });
+  await updateTableState(ctx.tableId, "BETTING_PRE", undefined, undefined, actionDeadline);
+
+  await markEventProcessed(meta.blockNumber, meta.logIndex, meta.txHash, "PreflopStarted");
+  logger.info(
+    {
+      handId: args.handId.toString(),
+      actorSeat: args.actorSeat,
+      actionDeadline: args.actionDeadline.toString(),
+    },
+    "PreflopStarted",
+  );
 }
 
 export async function handleCommunityCardsDealt(
@@ -375,7 +431,7 @@ export async function handleForceTimeout(
 export async function handleAgentRegistered(
   log: Log,
   args: {
-    token: string;
+    agent: string;
     owner: string;
     vault: string;
     table: string;
@@ -388,97 +444,97 @@ export async function handleAgentRegistered(
 
   if (await isEventProcessed(meta.blockNumber, meta.logIndex)) return;
 
-  await upsertAgent(args.token, args.owner, args.operator, args.vault, args.table, args.metaURI);
+  await upsertAgent(args.agent, args.owner, args.operator, args.vault, args.table, args.metaURI);
 
   await markEventProcessed(meta.blockNumber, meta.logIndex, meta.txHash, "AgentRegistered");
-  logger.info({ token: args.token, owner: args.owner }, "AgentRegistered");
+  logger.info({ agent: args.agent, owner: args.owner }, "AgentRegistered");
 }
 
 export async function handleOperatorUpdated(
   log: Log,
-  args: { token: string; oldOperator: string; newOperator: string },
+  args: { agent: string; oldOperator: string; newOperator: string },
 ): Promise<void> {
   const meta = getLogMeta(log);
   if (!meta) return;
 
   if (await isEventProcessed(meta.blockNumber, meta.logIndex)) return;
 
-  await updateAgentOperator(args.token, args.newOperator);
+  await updateAgentOperator(args.agent, args.newOperator);
 
   await markEventProcessed(meta.blockNumber, meta.logIndex, meta.txHash, "OperatorUpdated");
   logger.info(
-    { token: args.token, oldOperator: args.oldOperator, newOperator: args.newOperator },
+    { agent: args.agent, oldOperator: args.oldOperator, newOperator: args.newOperator },
     "OperatorUpdated",
   );
 }
 
 export async function handleOwnerUpdated(
   log: Log,
-  args: { token: string; oldOwner: string; newOwner: string },
+  args: { agent: string; oldOwner: string; newOwner: string },
 ): Promise<void> {
   const meta = getLogMeta(log);
   if (!meta) return;
 
   if (await isEventProcessed(meta.blockNumber, meta.logIndex)) return;
 
-  await updateAgentOwner(args.token, args.newOwner);
+  await updateAgentOwner(args.agent, args.newOwner);
 
   await markEventProcessed(meta.blockNumber, meta.logIndex, meta.txHash, "OwnerUpdated");
   logger.info(
-    { token: args.token, oldOwner: args.oldOwner, newOwner: args.newOwner },
+    { agent: args.agent, oldOwner: args.oldOwner, newOwner: args.newOwner },
     "OwnerUpdated",
   );
 }
 
 export async function handleVaultUpdated(
   log: Log,
-  args: { token: string; oldVault: string; newVault: string },
+  args: { agent: string; oldVault: string; newVault: string },
 ): Promise<void> {
   const meta = getLogMeta(log);
   if (!meta) return;
 
   if (await isEventProcessed(meta.blockNumber, meta.logIndex)) return;
 
-  await updateAgentVault(args.token, args.newVault);
+  await updateAgentVault(args.agent, args.newVault);
 
   await markEventProcessed(meta.blockNumber, meta.logIndex, meta.txHash, "VaultUpdated");
   logger.info(
-    { token: args.token, oldVault: args.oldVault, newVault: args.newVault },
+    { agent: args.agent, oldVault: args.oldVault, newVault: args.newVault },
     "VaultUpdated",
   );
 }
 
 export async function handleTableUpdated(
   log: Log,
-  args: { token: string; oldTable: string; newTable: string },
+  args: { agent: string; oldTable: string; newTable: string },
 ): Promise<void> {
   const meta = getLogMeta(log);
   if (!meta) return;
 
   if (await isEventProcessed(meta.blockNumber, meta.logIndex)) return;
 
-  await updateAgentTable(args.token, args.newTable);
+  await updateAgentTable(args.agent, args.newTable);
 
   await markEventProcessed(meta.blockNumber, meta.logIndex, meta.txHash, "TableUpdated");
   logger.info(
-    { token: args.token, oldTable: args.oldTable, newTable: args.newTable },
+    { agent: args.agent, oldTable: args.oldTable, newTable: args.newTable },
     "TableUpdated",
   );
 }
 
 export async function handleMetaURIUpdated(
   log: Log,
-  args: { token: string; oldMetaURI: string; newMetaURI: string },
+  args: { agent: string; oldMetaURI: string; newMetaURI: string },
 ): Promise<void> {
   const meta = getLogMeta(log);
   if (!meta) return;
 
   if (await isEventProcessed(meta.blockNumber, meta.logIndex)) return;
 
-  await updateAgentMetaUri(args.token, args.newMetaURI);
+  await updateAgentMetaUri(args.agent, args.newMetaURI);
 
   await markEventProcessed(meta.blockNumber, meta.logIndex, meta.txHash, "MetaURIUpdated");
-  logger.info({ token: args.token }, "MetaURIUpdated");
+  logger.info({ agent: args.agent }, "MetaURIUpdated");
 }
 
 // ============ PlayerVault Event Handlers ============

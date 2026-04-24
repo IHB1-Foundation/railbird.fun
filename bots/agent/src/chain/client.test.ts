@@ -14,7 +14,13 @@ function createClient() {
 describe("ChainClient.getTableState legacy fallbacks", () => {
   test("falls back from getHandInfo/getCommunityCards/getSeat to legacy reads", async () => {
     const client = createClient();
-    const readContract = async ({ functionName, args }: { functionName: string; args?: unknown[] }) => {
+    const readContract = async ({
+      functionName,
+      args,
+    }: {
+      functionName: string;
+      args?: unknown[];
+    }) => {
       switch (functionName) {
         case "tableId":
           return 1n;
@@ -72,14 +78,16 @@ describe("ChainClient.getTableState legacy fallbacks", () => {
       }
     };
 
-    (client as unknown as {
-      publicClient: { readContract: typeof readContract };
-      tableIdCache: bigint | null;
-      smallBlindCache: bigint | null;
-      bigBlindCache: bigint | null;
-      actionTimeoutCache: bigint | null;
-      maxSeatsCache: number | null;
-    }).publicClient = { readContract };
+    (
+      client as unknown as {
+        publicClient: { readContract: typeof readContract };
+        tableIdCache: bigint | null;
+        smallBlindCache: bigint | null;
+        bigBlindCache: bigint | null;
+        actionTimeoutCache: bigint | null;
+        maxSeatsCache: number | null;
+      }
+    ).publicClient = { readContract };
 
     const state = await client.getTableState();
 
@@ -97,10 +105,18 @@ describe("ChainClient.getTableState legacy fallbacks", () => {
 
   test("falls back from canCheck/getAmountToCall to derived seat and hand values", async () => {
     const client = createClient();
-    const readContract = async ({ functionName, args }: { functionName: string; args?: unknown[] }) => {
+    const readContract = async ({
+      functionName,
+      args,
+    }: {
+      functionName: string;
+      args?: unknown[];
+    }) => {
       switch (functionName) {
         case "gameState":
           return GameState.BETTING_PRE;
+        case "currentHandId":
+          return 7n;
         case "currentHand":
           return [7n, 150n, 40n, 20n, 3, 2, 1, 0] as const;
         case "canCheck":
@@ -124,13 +140,248 @@ describe("ChainClient.getTableState legacy fallbacks", () => {
       }
     };
 
-    (client as unknown as {
-      publicClient: { readContract: typeof readContract };
-    }).publicClient = { readContract };
+    (
+      client as unknown as {
+        publicClient: { readContract: typeof readContract };
+      }
+    ).publicClient = { readContract };
 
     assert.equal(await client.canCheck(3), true);
     assert.equal(await client.canCheck(0), false);
     assert.equal(await client.getAmountToCall(3), 0n);
     assert.equal(await client.getAmountToCall(0), 20n);
+  });
+
+  test("derives canCheck/getAmountToCall from storage when helper views are unavailable", async () => {
+    const client = createClient();
+    const readContract = async ({
+      functionName,
+      args,
+    }: {
+      functionName: string;
+      args?: unknown[];
+    }) => {
+      switch (functionName) {
+        case "gameState":
+          return GameState.BETTING_PRE;
+        case "currentHandId":
+          return 7n;
+        case "canCheck":
+        case "getAmountToCall":
+        case "currentHand":
+        case "getHandInfo":
+        case "getSeat":
+          throw new Error(`legacy revert: ${functionName}`);
+        case "seats": {
+          const seatIndex = Number(args?.[0] ?? 0);
+          return [
+            `0x${String(seatIndex + 1).padStart(40, "0")}`,
+            `0x${String(seatIndex + 2).padStart(40, "0")}`,
+            1000n,
+            true,
+            seatIndex === 3 ? 0n : 20n,
+            false,
+            seatIndex === 3 ? 0n : 20n,
+          ] as const;
+        }
+        default:
+          throw new Error(`Unexpected function ${functionName}`);
+      }
+    };
+    const getStorageAt = async ({ slot }: { slot: `0x${string}` }) => {
+      switch (slot) {
+        case "0x45":
+          return "0x0000000000000000000000000000000000000000000000000000000000000007";
+        case "0x46":
+          return "0x0000000000000000000000000000000000000000000000000000000000000096";
+        case "0x47":
+          return "0x0000000000000000000000000000000000000000000000000000000000000028";
+        case "0x49":
+          return "0x0000000000000000000000000000000000000000000000000000000000000203";
+        default:
+          return null;
+      }
+    };
+
+    (
+      client as unknown as {
+        publicClient: {
+          readContract: typeof readContract;
+          getStorageAt: typeof getStorageAt;
+        };
+      }
+    ).publicClient = { readContract, getStorageAt };
+
+    assert.equal(await client.canCheck(3), false);
+    assert.equal(await client.getAmountToCall(3), 40n);
+    assert.equal(await client.canCheck(0), false);
+    assert.equal(await client.getAmountToCall(0), 20n);
+  });
+
+  test("returns an empty hand snapshot when no active hand exists", async () => {
+    const client = createClient();
+    const readContract = async ({
+      functionName,
+      args,
+    }: {
+      functionName: string;
+      args?: unknown[];
+    }) => {
+      switch (functionName) {
+        case "tableId":
+          return 1n;
+        case "smallBlind":
+          return 10n;
+        case "bigBlind":
+          return 20n;
+        case "ACTION_TIMEOUT":
+          return 60n;
+        case "MAX_SEATS":
+          return 9n;
+        case "gameState":
+          return GameState.SETTLED;
+        case "currentHandId":
+          return 12n;
+        case "actionDeadline":
+          return 0n;
+        case "lastActionBlock":
+          return 555n;
+        case "buttonSeat":
+          throw new Error("buttonSeat reverted");
+        case "getHandInfo":
+        case "currentHand":
+          throw new Error(`no active hand: ${functionName}`);
+        case "getCommunityCards":
+          return [255, 255, 255, 255, 255] as const;
+        case "getSeat":
+          return [
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            0n,
+            false,
+            0n,
+            false,
+            0n,
+          ] as const;
+        default:
+          throw new Error(`Unexpected function ${functionName} ${String(args ?? [])}`);
+      }
+    };
+
+    (
+      client as unknown as {
+        publicClient: { readContract: typeof readContract };
+      }
+    ).publicClient = { readContract };
+
+    const state = await client.getTableState();
+
+    assert.equal(state.gameState, GameState.SETTLED);
+    assert.equal(state.currentHandId, 12n);
+    assert.equal(state.hand.handId, 12n);
+    assert.equal(state.hand.pot, 0n);
+    assert.equal(state.hand.currentBet, 0n);
+    assert.equal(state.hand.actorSeat, 0);
+    assert.equal(state.hand.state, GameState.SETTLED);
+    assert.deepEqual(state.communityCards, [255, 255, 255, 255, 255]);
+    assert.equal(state.buttonSeat, 0);
+  });
+
+  test("falls back to currentHand storage when helper hand views are unavailable", async () => {
+    const client = createClient();
+    const readContract = async ({
+      functionName,
+      args,
+    }: {
+      functionName: string;
+      args?: unknown[];
+    }) => {
+      switch (functionName) {
+        case "tableId":
+          return 1n;
+        case "smallBlind":
+          return 10n;
+        case "bigBlind":
+          return 20n;
+        case "ACTION_TIMEOUT":
+          return 60n;
+        case "MAX_SEATS":
+          return 9n;
+        case "gameState":
+          return GameState.BETTING_PRE;
+        case "currentHandId":
+          return 1n;
+        case "actionDeadline":
+          return 1000n;
+        case "lastActionBlock":
+          return 120n;
+        case "buttonSeat":
+          return 0;
+        case "getHandInfo":
+        case "currentHand":
+        case "getSeat":
+        case "getCommunityCards":
+          throw new Error(`revert: ${functionName}`);
+        case "communityCards":
+          return [255, 255, 255, 255, 255][Number(args?.[0] ?? 0)];
+        case "seats": {
+          const seatIndex = Number(args?.[0] ?? 0);
+          if (seatIndex === 3) {
+            return [
+              "0x935689f76c1a3399c707404202953373c0b92f27",
+              "0x935689f76c1a3399c707404202953373c0b92f27",
+              20000000000000000000n,
+              true,
+              0n,
+              false,
+              0n,
+            ] as const;
+          }
+          return [
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000",
+            0n,
+            false,
+            0n,
+            false,
+            0n,
+          ] as const;
+        }
+        default:
+          throw new Error(`Unexpected function ${functionName}`);
+      }
+    };
+
+    const getStorageAt = async ({ slot }: { slot: `0x${string}` }) => {
+      switch (slot) {
+        case "0x45":
+          return "0x0000000000000000000000000000000000000000000000000000000000000001";
+        case "0x46":
+          return "0x0000000000000000000000000000000000000000000000000429d069189e0000";
+        case "0x47":
+          return "0x00000000000000000000000000000000000000000000000002c68af0bb140000";
+        case "0x49":
+          return "0x0000000000000000000000000000000000000000000000000000000000000203";
+        default:
+          return null;
+      }
+    };
+
+    (
+      client as unknown as {
+        publicClient: {
+          readContract: typeof readContract;
+          getStorageAt: typeof getStorageAt;
+        };
+      }
+    ).publicClient = { readContract, getStorageAt };
+
+    const state = await client.getTableState(0);
+
+    assert.equal(state.hand.handId, 1n);
+    assert.equal(state.hand.pot, 300000000000000000n);
+    assert.equal(state.hand.currentBet, 200000000000000000n);
+    assert.equal(state.hand.actorSeat, 3);
+    assert.equal(state.seats[3].owner, "0x935689f76c1a3399c707404202953373c0b92f27");
   });
 });

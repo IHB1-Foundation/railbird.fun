@@ -333,7 +333,7 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
       const { registerTxHash } = await registerSeat({
         tableAddress: table.contractAddress as Address,
         seatIndex: joinSeatIndex,
-        buyInKaia: joinBuyIn,
+        buyInAmount: joinBuyIn,
         operator,
       });
       setJoinStatus(`Seat joined. tx=${registerTxHash}`);

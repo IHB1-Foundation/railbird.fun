@@ -5,6 +5,8 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
+  cosmjs-types: 0.10.1
+  ky: 1.14.3
   next: 15.5.15
   path-to-regexp: 0.1.13
   qs: 6.14.2
@@ -19,7 +21,7 @@ importers:
     devDependencies:
       '@commitlint/cli':
         specifier: ^20.5.0
-        version: 20.5.0(@types/node@20.19.31)(conventional-commits-parser@6.4.0)(typescript@5.9.3)
+        version: 20.5.0(@types/node@22.7.5)(conventional-commits-parser@6.4.0)(typescript@5.9.3)
       '@commitlint/config-conventional':
         specifier: ^20.5.0
         version: 20.5.0
@@ -68,21 +70,63 @@ importers:
 
   apps/web:
     dependencies:
+      '@cosmjs/amino':
+        specifier: 0.36.2
+        version: 0.36.2
+      '@cosmjs/crypto':
+        specifier: 0.36.2
+        version: 0.36.2
+      '@cosmjs/encoding':
+        specifier: 0.36.2
+        version: 0.36.2
+      '@cosmjs/math':
+        specifier: 0.36.2
+        version: 0.36.2
+      '@cosmjs/proto-signing':
+        specifier: 0.36.2
+        version: 0.36.2
+      '@cosmjs/stargate':
+        specifier: 0.36.2
+        version: 0.36.2(bufferutil@4.1.0)(utf-8-validate@5.0.10)
+      '@cosmjs/tendermint-rpc':
+        specifier: 0.36.2
+        version: 0.36.2(bufferutil@4.1.0)(utf-8-validate@5.0.10)
+      '@initia/amino-converter':
+        specifier: 1.0.16
+        version: 1.0.16(@cosmjs/cosmwasm-stargate@0.38.1(bufferutil@4.1.0)(utf-8-validate@5.0.10))(@cosmjs/proto-signing@0.36.2)(@cosmjs/stargate@0.36.2(bufferutil@4.1.0)(utf-8-validate@5.0.10))(@initia/initia.proto@1.0.6(google-protobuf@3.21.4))(@initia/opinit.proto@1.0.3(google-protobuf@3.21.4))
       '@initia/interwovenkit-react':
         specifier: ^2.6.0
-        version: 2.6.0(hthqexrgfxikjjrzbefb6t4jwy)
+        version: 2.6.0(box5ngsfhon7tappkq6yweuhyu)
+      '@initia/utils':
+        specifier: 2.0.0
+        version: 2.0.0(@cosmjs/encoding@0.36.2)(@mysten/bcs@1.8.0)(@noble/hashes@1.8.0)(bignumber.js@11.0.0)(ky@1.14.3)(viem@2.45.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.22.4))
+      '@mysten/bcs':
+        specifier: 1.8.0
+        version: 1.8.0
       '@noble/curves':
         specifier: ^2.0.1
         version: 2.0.1
       '@noble/hashes':
-        specifier: ^2.0.1
-        version: 2.0.1
+        specifier: 1.8.0
+        version: 1.8.0
       '@playerco/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@tanstack/react-query':
+        specifier: ^5.90.7
+        version: 5.99.1(react@18.3.1)
       '@vercel/analytics':
         specifier: ^2.0.1
         version: 2.0.1(next@15.5.15(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+      cosmjs-types:
+        specifier: 0.10.1
+        version: 0.10.1
+      ky:
+        specifier: 1.14.3
+        version: 1.14.3
+      nanoid:
+        specifier: 5.1.6
+        version: 5.1.6
       next:
         specifier: 15.5.15
         version: 15.5.15(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -95,6 +139,9 @@ importers:
       viem:
         specifier: ^2.21.0
         version: 2.45.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.22.4)
+      wagmi:
+        specifier: 2.17.2
+        version: 2.17.2(@tanstack/query-core@5.99.1)(@tanstack/react-query@5.99.1(react@18.3.1))(@types/react@18.3.27)(bufferutil@4.1.0)(ioredis@5.10.1)(react@18.3.1)(typescript@5.9.3)(utf-8-validate@5.0.10)(viem@2.45.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.22.4))(zod@3.22.4)
     devDependencies:
       '@axe-core/playwright':
         specifier: ^4.11.1
@@ -131,7 +178,7 @@ importers:
         version: 15.5.15(eslint@8.57.1)(typescript@5.9.3)
       jsdom:
         specifier: ^29.0.1
-        version: 29.0.1(@noble/hashes@2.0.1)
+        version: 29.0.1(@noble/hashes@1.8.0)
       size-limit:
         specifier: ^11.2.0
         version: 11.2.0
@@ -143,7 +190,7 @@ importers:
         version: 6.4.2(@types/node@20.19.31)(jiti@2.6.1)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3)
       vitest:
         specifier: 4.1.4
-        version: 4.1.4(@opentelemetry/api@1.9.1)(@types/node@20.19.31)(@vitest/coverage-v8@4.1.4)(jsdom@29.0.1(@noble/hashes@2.0.1))(vite@6.4.2(@types/node@20.19.31)(jiti@2.6.1)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
+        version: 4.1.4(@opentelemetry/api@1.9.1)(@types/node@20.19.31)(@vitest/coverage-v8@4.1.4)(jsdom@29.0.1(@noble/hashes@1.8.0))(vite@6.4.2(@types/node@20.19.31)(jiti@2.6.1)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
 
   bots/agent:
     dependencies:
@@ -1275,8 +1322,8 @@ packages:
     peerDependencies:
       google-protobuf: ^3.14.0
 
-  '@initia/amino-converter@1.0.18':
-    resolution: {integrity: sha512-+rjdEPv7Zsp+6PCY1U0uD5AP3GCbrWs8ro2TuW5+vUWUSwnrwNEXxQiYAwO3MYC8zHwTvcnYbMqtYpa9bMthtQ==}
+  '@initia/amino-converter@1.0.16':
+    resolution: {integrity: sha512-zs0uUZAuBLQP6gj8UMnUTXQt1wy10XqBkcvSbxLd9odgmiVKbU4cOQ2XCEW7nXmaqdOIKkQoKaC7M0KiNzZYFw==}
     peerDependencies:
       '@cosmjs/cosmwasm-stargate': '>=0.36.0'
       '@cosmjs/proto-signing': '>=0.36.0'
@@ -1318,11 +1365,11 @@ packages:
       bignumber.js: '>=9.0.0'
       change-case: '>=5.0.0'
       clsx: '>=2.0.0'
-      cosmjs-types: '>=0.10.0'
+      cosmjs-types: 0.10.1
       date-fns: '>=4.0.0'
       ethers: '>=6.0.0'
       jotai: '>=2.0.0'
-      ky: '>=1.0.0'
+      ky: 1.14.3
       nanoid: '>=5.0.0'
       psl: '>=1.15.0'
       qr-code-styling: '>=1.0.0'
@@ -1349,7 +1396,7 @@ packages:
       '@mysten/bcs': '>=1.0.0'
       '@noble/hashes': '>=1.0.0'
       bignumber.js: '>=9.0.0'
-      ky: '>=1.0.0'
+      ky: 1.14.3
       viem: '>=2.0.0'
 
   '@ioredis/commands@1.5.1':
@@ -4182,10 +4229,6 @@ packages:
   cosmjs-types@0.10.1:
     resolution: {integrity: sha512-CENXb4O5GN+VyB68HYXFT2SOhv126Z59631rZC56m8uMWa6/cSlFeai8BwZGT1NMepw0Ecf+U8XSOnBzZUWh9Q==}
 
-  cosmjs-types@0.11.0:
-    resolution: {integrity: sha512-kDSkgHpRTrg1413jCNehT3P21+EBxZWFMBr9JEzVfmPiNdtuwAoLAkCYo7c7i/pTakAwyHsXbxOg8kkD+AN33w==}
-    engines: {node: '>=20.19'}
-
   crc-32@1.2.2:
     resolution: {integrity: sha512-ROmzCKrTnOwybPcJApAA6WBWij23HVfGVNKqqrZpuyZOHqK2CwHSvpGuyt/UNNvaIjEd8X5IFGp4Mh+Ie1IHJQ==}
     engines: {node: '>=0.8'}
@@ -5439,9 +5482,9 @@ packages:
   keyvaluestorage-interface@1.0.0:
     resolution: {integrity: sha512-8t6Q3TclQ4uZynJY9IGr2+SsIGwK9JHcO6ootkHCGA0CrQCRy+VkouYNO2xicET6b9al7QKzpebNow+gkpCL8g==}
 
-  ky@2.0.1:
-    resolution: {integrity: sha512-HJPEjEpQPZQ5M3G5eu90/LWZDwysCnvqcfbLvq9FUvfizBZRi58WEixswyyI32LOLcFQd43w7kcfgkCPFxDt/Q==}
-    engines: {node: '>=22'}
+  ky@1.14.3:
+    resolution: {integrity: sha512-9zy9lkjac+TR1c2tG+mkNSVlyOpInnWdSMiue4F+kq8TwJSgv6o8jhLRg8Ho6SnZ9wOYUq/yozts9qQCfk7bIw==}
+    engines: {node: '>=18'}
 
   language-subtag-registry@0.3.23:
     resolution: {integrity: sha512-0K65Lea881pHotoGEa5gDlMxt3pctLi2RplBb7Ezh4rRdLEOtgi7n4EwK9lamnUCkKBqaeKRVebTq6BAxSkpXQ==}
@@ -5771,6 +5814,11 @@ packages:
   nanoid@3.3.11:
     resolution: {integrity: sha512-N8SpfPUnUp1bK+PMYW8qSWdl9U+wwNWI4QKxOYDy9JAro3WMX7p2OeVRF9v+347pnakNevPmiHhNmZ2HbFA76w==}
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
+    hasBin: true
+
+  nanoid@5.1.6:
+    resolution: {integrity: sha512-c7+7RQ+dMB5dPwwCp4ee1/iV/q2P6aK1mTZcfr1BTuVlyW9hJYiMPybJCcnBlQtuSmTIWNeazm/zqNoZSSElBg==}
+    engines: {node: ^18 || >=20}
     hasBin: true
 
   nanospinner@1.2.2:
@@ -7900,11 +7948,11 @@ snapshots:
       - utf-8-validate
       - zod
 
-  '@commitlint/cli@20.5.0(@types/node@20.19.31)(conventional-commits-parser@6.4.0)(typescript@5.9.3)':
+  '@commitlint/cli@20.5.0(@types/node@22.7.5)(conventional-commits-parser@6.4.0)(typescript@5.9.3)':
     dependencies:
       '@commitlint/format': 20.5.0
       '@commitlint/lint': 20.5.0
-      '@commitlint/load': 20.5.0(@types/node@20.19.31)(typescript@5.9.3)
+      '@commitlint/load': 20.5.0(@types/node@22.7.5)(typescript@5.9.3)
       '@commitlint/read': 20.5.0(conventional-commits-parser@6.4.0)
       '@commitlint/types': 20.5.0
       tinyexec: 1.1.1
@@ -7953,14 +8001,14 @@ snapshots:
       '@commitlint/rules': 20.5.0
       '@commitlint/types': 20.5.0
 
-  '@commitlint/load@20.5.0(@types/node@20.19.31)(typescript@5.9.3)':
+  '@commitlint/load@20.5.0(@types/node@22.7.5)(typescript@5.9.3)':
     dependencies:
       '@commitlint/config-validator': 20.5.0
       '@commitlint/execute-rule': 20.0.0
       '@commitlint/resolve-extends': 20.5.0
       '@commitlint/types': 20.5.0
       cosmiconfig: 9.0.1(typescript@5.9.3)
-      cosmiconfig-typescript-loader: 6.3.0(@types/node@20.19.31)(cosmiconfig@9.0.1(typescript@5.9.3))(typescript@5.9.3)
+      cosmiconfig-typescript-loader: 6.3.0(@types/node@22.7.5)(cosmiconfig@9.0.1(typescript@5.9.3))(typescript@5.9.3)
       is-plain-obj: 4.1.0
       lodash.mergewith: 4.6.2
       picocolors: 1.1.1
@@ -8053,7 +8101,7 @@ snapshots:
       '@cosmjs/stargate': 0.38.1(bufferutil@4.1.0)(utf-8-validate@5.0.10)
       '@cosmjs/tendermint-rpc': 0.38.1(bufferutil@4.1.0)(utf-8-validate@5.0.10)
       '@cosmjs/utils': 0.38.1
-      cosmjs-types: 0.11.0
+      cosmjs-types: 0.10.1
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
@@ -8121,7 +8169,7 @@ snapshots:
       '@cosmjs/encoding': 0.38.1
       '@cosmjs/math': 0.38.1
       '@cosmjs/utils': 0.38.1
-      cosmjs-types: 0.11.0
+      cosmjs-types: 0.10.1
 
   '@cosmjs/socket@0.36.2(bufferutil@4.1.0)(utf-8-validate@5.0.10)':
     dependencies:
@@ -8166,7 +8214,7 @@ snapshots:
       '@cosmjs/stream': 0.38.1
       '@cosmjs/tendermint-rpc': 0.38.1(bufferutil@4.1.0)(utf-8-validate@5.0.10)
       '@cosmjs/utils': 0.38.1
-      cosmjs-types: 0.11.0
+      cosmjs-types: 0.10.1
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
@@ -8460,9 +8508,9 @@ snapshots:
       ethereum-cryptography: 2.2.1
       micro-ftch: 0.3.1
 
-  '@exodus/bytes@1.15.0(@noble/hashes@2.0.1)':
+  '@exodus/bytes@1.15.0(@noble/hashes@1.8.0)':
     optionalDependencies:
-      '@noble/hashes': 2.0.1
+      '@noble/hashes': 1.8.0
 
   '@fastify/otel@0.18.0(@opentelemetry/api@1.9.1)':
     dependencies:
@@ -8615,7 +8663,7 @@ snapshots:
       browser-headers: 0.4.1
       google-protobuf: 3.21.4
 
-  '@initia/amino-converter@1.0.18(@cosmjs/cosmwasm-stargate@0.38.1(bufferutil@4.1.0)(utf-8-validate@5.0.10))(@cosmjs/proto-signing@0.36.2)(@cosmjs/stargate@0.36.2(bufferutil@4.1.0)(utf-8-validate@5.0.10))(@initia/initia.proto@1.0.6(google-protobuf@3.21.4))(@initia/opinit.proto@1.0.3(google-protobuf@3.21.4))':
+  '@initia/amino-converter@1.0.16(@cosmjs/cosmwasm-stargate@0.38.1(bufferutil@4.1.0)(utf-8-validate@5.0.10))(@cosmjs/proto-signing@0.36.2)(@cosmjs/stargate@0.36.2(bufferutil@4.1.0)(utf-8-validate@5.0.10))(@initia/initia.proto@1.0.6(google-protobuf@3.21.4))(@initia/opinit.proto@1.0.3(google-protobuf@3.21.4))':
     dependencies:
       '@cosmjs/cosmwasm-stargate': 0.38.1(bufferutil@4.1.0)(utf-8-validate@5.0.10)
       '@cosmjs/proto-signing': 0.36.2
@@ -8638,7 +8686,7 @@ snapshots:
     transitivePeerDependencies:
       - google-protobuf
 
-  '@initia/interwovenkit-react@2.6.0(hthqexrgfxikjjrzbefb6t4jwy)':
+  '@initia/interwovenkit-react@2.6.0(box5ngsfhon7tappkq6yweuhyu)':
     dependencies:
       '@amplitude/analytics-browser': 2.40.0
       '@base-ui/react': 1.0.0(@types/react@18.3.27)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -8649,14 +8697,14 @@ snapshots:
       '@cosmjs/proto-signing': 0.36.2
       '@cosmjs/stargate': 0.36.2(bufferutil@4.1.0)(utf-8-validate@5.0.10)
       '@cosmjs/tendermint-rpc': 0.36.2(bufferutil@4.1.0)(utf-8-validate@5.0.10)
-      '@initia/amino-converter': 1.0.18(@cosmjs/cosmwasm-stargate@0.38.1(bufferutil@4.1.0)(utf-8-validate@5.0.10))(@cosmjs/proto-signing@0.36.2)(@cosmjs/stargate@0.36.2(bufferutil@4.1.0)(utf-8-validate@5.0.10))(@initia/initia.proto@1.0.6(google-protobuf@3.21.4))(@initia/opinit.proto@1.0.3(google-protobuf@3.21.4))
+      '@initia/amino-converter': 1.0.16(@cosmjs/cosmwasm-stargate@0.38.1(bufferutil@4.1.0)(utf-8-validate@5.0.10))(@cosmjs/proto-signing@0.36.2)(@cosmjs/stargate@0.36.2(bufferutil@4.1.0)(utf-8-validate@5.0.10))(@initia/initia.proto@1.0.6(google-protobuf@3.21.4))(@initia/opinit.proto@1.0.3(google-protobuf@3.21.4))
       '@initia/icons-react': 2.1.0(react-native@0.85.1(@babel/core@7.29.0)(@types/react@18.3.27)(bufferutil@4.1.0)(react@18.3.1)(utf-8-validate@5.0.10))(react@18.3.1)
       '@initia/initia.proto': 1.0.6(google-protobuf@3.21.4)
       '@initia/opinit.proto': 1.0.3(google-protobuf@3.21.4)
-      '@initia/utils': 2.0.0(@cosmjs/encoding@0.36.2)(@mysten/bcs@1.8.0)(@noble/hashes@2.0.1)(bignumber.js@11.0.0)(ky@2.0.1)(viem@2.45.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.22.4))
+      '@initia/utils': 2.0.0(@cosmjs/encoding@0.36.2)(@mysten/bcs@1.8.0)(@noble/hashes@1.8.0)(bignumber.js@11.0.0)(ky@1.14.3)(viem@2.45.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.22.4))
       '@lukemorales/query-key-factory': 1.3.4(@tanstack/query-core@5.99.1)(@tanstack/react-query@5.99.1(react@18.3.1))
       '@mysten/bcs': 1.8.0
-      '@noble/hashes': 2.0.1
+      '@noble/hashes': 1.8.0
       '@privy-io/cross-app-connect': 0.2.3(@rainbow-me/rainbowkit@2.2.10(@tanstack/react-query@5.99.1(react@18.3.1))(@types/react@18.3.27)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.9.3)(viem@2.45.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.22.4))(wagmi@2.17.2(@tanstack/query-core@5.99.1)(@tanstack/react-query@5.99.1(react@18.3.1))(@types/react@18.3.27)(bufferutil@4.1.0)(ioredis@5.10.1)(react@18.3.1)(typescript@5.9.3)(utf-8-validate@5.0.10)(viem@2.45.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.22.4))(zod@3.22.4)))(@wagmi/core@2.21.1(@tanstack/query-core@5.99.1)(@types/react@18.3.27)(react@18.3.1)(typescript@5.9.3)(use-sync-external-store@1.4.0(react@18.3.1))(viem@2.45.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.22.4)))(viem@2.45.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.22.4))
       '@rainbow-me/rainbowkit': 2.2.10(@tanstack/react-query@5.99.1(react@18.3.1))(@types/react@18.3.27)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.9.3)(viem@2.45.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.22.4))(wagmi@2.17.2(@tanstack/query-core@5.99.1)(@tanstack/react-query@5.99.1(react@18.3.1))(@types/react@18.3.27)(bufferutil@4.1.0)(ioredis@5.10.1)(react@18.3.1)(typescript@5.9.3)(utf-8-validate@5.0.10)(viem@2.45.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.22.4))(zod@3.22.4))
       '@react-spring/web': 10.0.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -8664,12 +8712,12 @@ snapshots:
       bignumber.js: 11.0.0
       change-case: 5.4.4
       clsx: 2.1.1
-      cosmjs-types: 0.11.0
+      cosmjs-types: 0.10.1
       date-fns: 4.1.0
       ethers: 6.16.0(bufferutil@4.1.0)(utf-8-validate@5.0.10)
       jotai: 2.19.1(@babel/core@7.29.0)(@babel/template@7.28.6)(@types/react@18.3.27)(react@18.3.1)
-      ky: 2.0.1
-      nanoid: 3.3.11
+      ky: 1.14.3
+      nanoid: 5.1.6
       psl: 1.15.0
       qr-code-styling: 1.9.2
       radix-ui: 1.4.3(@types/react-dom@18.3.7(@types/react@18.3.27))(@types/react@18.3.27)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -8696,13 +8744,13 @@ snapshots:
     transitivePeerDependencies:
       - google-protobuf
 
-  '@initia/utils@2.0.0(@cosmjs/encoding@0.36.2)(@mysten/bcs@1.8.0)(@noble/hashes@2.0.1)(bignumber.js@11.0.0)(ky@2.0.1)(viem@2.45.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.22.4))':
+  '@initia/utils@2.0.0(@cosmjs/encoding@0.36.2)(@mysten/bcs@1.8.0)(@noble/hashes@1.8.0)(bignumber.js@11.0.0)(ky@1.14.3)(viem@2.45.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.22.4))':
     dependencies:
       '@cosmjs/encoding': 0.36.2
       '@mysten/bcs': 1.8.0
-      '@noble/hashes': 2.0.1
+      '@noble/hashes': 1.8.0
       bignumber.js: 11.0.0
-      ky: 2.0.1
+      ky: 1.14.3
       viem: 2.45.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.22.4)
 
   '@ioredis/commands@1.5.1': {}
@@ -9340,7 +9388,7 @@ snapshots:
 
   '@privy-io/cross-app-connect@0.2.3(@rainbow-me/rainbowkit@2.2.10(@tanstack/react-query@5.99.1(react@18.3.1))(@types/react@18.3.27)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.9.3)(viem@2.45.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.22.4))(wagmi@2.17.2(@tanstack/query-core@5.99.1)(@tanstack/react-query@5.99.1(react@18.3.1))(@types/react@18.3.27)(bufferutil@4.1.0)(ioredis@5.10.1)(react@18.3.1)(typescript@5.9.3)(utf-8-validate@5.0.10)(viem@2.45.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.22.4))(zod@3.22.4)))(@wagmi/core@2.21.1(@tanstack/query-core@5.99.1)(@types/react@18.3.27)(react@18.3.1)(typescript@5.9.3)(use-sync-external-store@1.4.0(react@18.3.1))(viem@2.45.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.22.4)))(viem@2.45.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.22.4))':
     dependencies:
-      '@noble/curves': 1.9.1
+      '@noble/curves': 1.9.7
       '@noble/hashes': 1.3.2
       '@scure/base': 1.1.9
       fflate: 0.8.2
@@ -11257,7 +11305,7 @@ snapshots:
       obug: 2.1.1
       std-env: 4.1.0
       tinyrainbow: 3.1.0
-      vitest: 4.1.4(@opentelemetry/api@1.9.1)(@types/node@20.19.31)(@vitest/coverage-v8@4.1.4)(jsdom@29.0.1(@noble/hashes@2.0.1))(vite@6.4.2(@types/node@20.19.31)(jiti@2.6.1)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
+      vitest: 4.1.4(@opentelemetry/api@1.9.1)(@types/node@20.19.31)(@vitest/coverage-v8@4.1.4)(jsdom@29.0.1(@noble/hashes@1.8.0))(vite@6.4.2(@types/node@20.19.31)(jiti@2.6.1)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
 
   '@vitest/expect@4.1.4':
     dependencies:
@@ -12477,9 +12525,9 @@ snapshots:
 
   core-util-is@1.0.3: {}
 
-  cosmiconfig-typescript-loader@6.3.0(@types/node@20.19.31)(cosmiconfig@9.0.1(typescript@5.9.3))(typescript@5.9.3):
+  cosmiconfig-typescript-loader@6.3.0(@types/node@22.7.5)(cosmiconfig@9.0.1(typescript@5.9.3))(typescript@5.9.3):
     dependencies:
-      '@types/node': 20.19.31
+      '@types/node': 22.7.5
       cosmiconfig: 9.0.1(typescript@5.9.3)
       jiti: 2.6.1
       typescript: 5.9.3
@@ -12503,8 +12551,6 @@ snapshots:
       typescript: 5.9.3
 
   cosmjs-types@0.10.1: {}
-
-  cosmjs-types@0.11.0: {}
 
   crc-32@1.2.2: {}
 
@@ -12566,10 +12612,10 @@ snapshots:
 
   damerau-levenshtein@1.0.8: {}
 
-  data-urls@7.0.0(@noble/hashes@2.0.1):
+  data-urls@7.0.0(@noble/hashes@1.8.0):
     dependencies:
       whatwg-mimetype: 5.0.0
-      whatwg-url: 16.0.1(@noble/hashes@2.0.1)
+      whatwg-url: 16.0.1(@noble/hashes@1.8.0)
     transitivePeerDependencies:
       - '@noble/hashes'
 
@@ -12965,8 +13011,8 @@ snapshots:
       '@typescript-eslint/parser': 8.58.1(eslint@8.57.1)(typescript@5.9.3)
       eslint: 8.57.1
       eslint-import-resolver-node: 0.3.10
-      eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0)(eslint@8.57.1)
-      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.58.1(eslint@8.57.1)(typescript@5.9.3))(eslint-import-resolver-typescript@3.10.1)(eslint@8.57.1)
+      eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.58.1(eslint@8.57.1)(typescript@5.9.3))(eslint@8.57.1))(eslint@8.57.1)
+      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.58.1(eslint@8.57.1)(typescript@5.9.3))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.58.1(eslint@8.57.1)(typescript@5.9.3))(eslint@8.57.1))(eslint@8.57.1))(eslint@8.57.1)
       eslint-plugin-jsx-a11y: 6.10.2(eslint@8.57.1)
       eslint-plugin-react: 7.37.5(eslint@8.57.1)
       eslint-plugin-react-hooks: 5.2.0(eslint@8.57.1)
@@ -12985,7 +13031,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0)(eslint@8.57.1):
+  eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.58.1(eslint@8.57.1)(typescript@5.9.3))(eslint@8.57.1))(eslint@8.57.1):
     dependencies:
       '@nolyfill/is-core-module': 1.0.39
       debug: 4.4.3
@@ -12996,22 +13042,22 @@ snapshots:
       tinyglobby: 0.2.15
       unrs-resolver: 1.11.1
     optionalDependencies:
-      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.58.1(eslint@8.57.1)(typescript@5.9.3))(eslint-import-resolver-typescript@3.10.1)(eslint@8.57.1)
+      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.58.1(eslint@8.57.1)(typescript@5.9.3))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.58.1(eslint@8.57.1)(typescript@5.9.3))(eslint@8.57.1))(eslint@8.57.1))(eslint@8.57.1)
     transitivePeerDependencies:
       - supports-color
 
-  eslint-module-utils@2.12.1(@typescript-eslint/parser@8.58.1(eslint@8.57.1)(typescript@5.9.3))(eslint-import-resolver-node@0.3.10)(eslint-import-resolver-typescript@3.10.1)(eslint@8.57.1):
+  eslint-module-utils@2.12.1(@typescript-eslint/parser@8.58.1(eslint@8.57.1)(typescript@5.9.3))(eslint-import-resolver-node@0.3.10)(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.58.1(eslint@8.57.1)(typescript@5.9.3))(eslint@8.57.1))(eslint@8.57.1))(eslint@8.57.1):
     dependencies:
       debug: 3.2.7
     optionalDependencies:
       '@typescript-eslint/parser': 8.58.1(eslint@8.57.1)(typescript@5.9.3)
       eslint: 8.57.1
       eslint-import-resolver-node: 0.3.10
-      eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0)(eslint@8.57.1)
+      eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.58.1(eslint@8.57.1)(typescript@5.9.3))(eslint@8.57.1))(eslint@8.57.1)
     transitivePeerDependencies:
       - supports-color
 
-  eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.58.1(eslint@8.57.1)(typescript@5.9.3))(eslint-import-resolver-typescript@3.10.1)(eslint@8.57.1):
+  eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.58.1(eslint@8.57.1)(typescript@5.9.3))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.58.1(eslint@8.57.1)(typescript@5.9.3))(eslint@8.57.1))(eslint@8.57.1))(eslint@8.57.1):
     dependencies:
       '@rtsao/scc': 1.1.0
       array-includes: 3.1.9
@@ -13022,7 +13068,7 @@ snapshots:
       doctrine: 2.1.0
       eslint: 8.57.1
       eslint-import-resolver-node: 0.3.10
-      eslint-module-utils: 2.12.1(@typescript-eslint/parser@8.58.1(eslint@8.57.1)(typescript@5.9.3))(eslint-import-resolver-node@0.3.10)(eslint-import-resolver-typescript@3.10.1)(eslint@8.57.1)
+      eslint-module-utils: 2.12.1(@typescript-eslint/parser@8.58.1(eslint@8.57.1)(typescript@5.9.3))(eslint-import-resolver-node@0.3.10)(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.58.1(eslint@8.57.1)(typescript@5.9.3))(eslint@8.57.1))(eslint@8.57.1))(eslint@8.57.1)
       hasown: 2.0.2
       is-core-module: 2.16.1
       is-glob: 4.0.3
@@ -13559,9 +13605,9 @@ snapshots:
     dependencies:
       hermes-estree: 0.35.0
 
-  html-encoding-sniffer@6.0.0(@noble/hashes@2.0.1):
+  html-encoding-sniffer@6.0.0(@noble/hashes@1.8.0):
     dependencies:
-      '@exodus/bytes': 1.15.0(@noble/hashes@2.0.1)
+      '@exodus/bytes': 1.15.0(@noble/hashes@1.8.0)
     transitivePeerDependencies:
       - '@noble/hashes'
 
@@ -13919,17 +13965,17 @@ snapshots:
 
   jsc-safe-url@0.2.4: {}
 
-  jsdom@29.0.1(@noble/hashes@2.0.1):
+  jsdom@29.0.1(@noble/hashes@1.8.0):
     dependencies:
       '@asamuzakjp/css-color': 5.1.5
       '@asamuzakjp/dom-selector': 7.0.6
       '@bramus/specificity': 2.4.2
       '@csstools/css-syntax-patches-for-csstree': 1.1.2(css-tree@3.2.1)
-      '@exodus/bytes': 1.15.0(@noble/hashes@2.0.1)
+      '@exodus/bytes': 1.15.0(@noble/hashes@1.8.0)
       css-tree: 3.2.1
-      data-urls: 7.0.0(@noble/hashes@2.0.1)
+      data-urls: 7.0.0(@noble/hashes@1.8.0)
       decimal.js: 10.6.0
-      html-encoding-sniffer: 6.0.0(@noble/hashes@2.0.1)
+      html-encoding-sniffer: 6.0.0(@noble/hashes@1.8.0)
       is-potential-custom-element-name: 1.0.1
       lru-cache: 11.2.7
       parse5: 8.0.0
@@ -13940,7 +13986,7 @@ snapshots:
       w3c-xmlserializer: 5.0.0
       webidl-conversions: 8.0.1
       whatwg-mimetype: 5.0.0
-      whatwg-url: 16.0.1(@noble/hashes@2.0.1)
+      whatwg-url: 16.0.1(@noble/hashes@1.8.0)
       xml-name-validator: 5.0.0
     transitivePeerDependencies:
       - '@noble/hashes'
@@ -13991,7 +14037,7 @@ snapshots:
 
   keyvaluestorage-interface@1.0.0: {}
 
-  ky@2.0.1: {}
+  ky@1.14.3: {}
 
   language-subtag-registry@0.3.23: {}
 
@@ -14395,6 +14441,8 @@ snapshots:
 
   nanoid@3.3.11: {}
 
+  nanoid@5.1.6: {}
+
   nanospinner@1.2.2:
     dependencies:
       picocolors: 1.1.1
@@ -14618,7 +14666,7 @@ snapshots:
   ox@0.6.7(typescript@5.9.3)(zod@3.22.4):
     dependencies:
       '@adraffy/ens-normalize': 1.11.1
-      '@noble/curves': 1.9.1
+      '@noble/curves': 1.9.7
       '@noble/hashes': 1.8.0
       '@scure/bip32': 1.7.0
       '@scure/bip39': 1.6.0
@@ -14632,7 +14680,7 @@ snapshots:
   ox@0.6.9(typescript@5.9.3)(zod@3.22.4):
     dependencies:
       '@adraffy/ens-normalize': 1.11.1
-      '@noble/curves': 1.9.1
+      '@noble/curves': 1.9.7
       '@noble/hashes': 1.8.0
       '@scure/bip32': 1.7.0
       '@scure/bip39': 1.6.0
@@ -16106,7 +16154,7 @@ snapshots:
       tsx: 4.21.0
       yaml: 2.8.3
 
-  vitest@4.1.4(@opentelemetry/api@1.9.1)(@types/node@20.19.31)(@vitest/coverage-v8@4.1.4)(jsdom@29.0.1(@noble/hashes@2.0.1))(vite@6.4.2(@types/node@20.19.31)(jiti@2.6.1)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3)):
+  vitest@4.1.4(@opentelemetry/api@1.9.1)(@types/node@20.19.31)(@vitest/coverage-v8@4.1.4)(jsdom@29.0.1(@noble/hashes@1.8.0))(vite@6.4.2(@types/node@20.19.31)(jiti@2.6.1)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3)):
     dependencies:
       '@vitest/expect': 4.1.4
       '@vitest/mocker': 4.1.4(vite@6.4.2(@types/node@20.19.31)(jiti@2.6.1)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
@@ -16132,7 +16180,7 @@ snapshots:
       '@opentelemetry/api': 1.9.1
       '@types/node': 20.19.31
       '@vitest/coverage-v8': 4.1.4(vitest@4.1.4)
-      jsdom: 29.0.1(@noble/hashes@2.0.1)
+      jsdom: 29.0.1(@noble/hashes@1.8.0)
     transitivePeerDependencies:
       - msw
 
@@ -16257,9 +16305,9 @@ snapshots:
 
   whatwg-mimetype@5.0.0: {}
 
-  whatwg-url@16.0.1(@noble/hashes@2.0.1):
+  whatwg-url@16.0.1(@noble/hashes@1.8.0):
     dependencies:
-      '@exodus/bytes': 1.15.0(@noble/hashes@2.0.1)
+      '@exodus/bytes': 1.15.0(@noble/hashes@1.8.0)
       tr46: 6.0.0
       webidl-conversions: 8.0.1
     transitivePeerDependencies:

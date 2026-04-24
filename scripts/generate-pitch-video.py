@@ -1,28 +1,48 @@
 #!/usr/bin/env python3
-"""Generate Railbird pitch video: slide images + Gemini TTS + ffmpeg.
+"""Generate Railbird pitch video: slide images + TTS + ffmpeg.
 
 Usage:
     python3 scripts/generate-pitch-video.py
 """
 
-import os, sys, wave, subprocess, textwrap, time
+import os, sys, wave, subprocess, textwrap, time, shutil, hashlib
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
-from google import genai
-from google.genai import types
+from pitch_snapshot import load_pitch_snapshot
+
+try:
+    from google import genai
+    from google.genai import types
+except ImportError:  # pragma: no cover - optional when using local macOS TTS
+    genai = None
+    types = None
 
 # ── Config ───────────────────────────────────────────────────────
-GEMINI_API_KEY = os.environ.get(
-    "GEMINI_API_KEY", "AIzaSyCLjS_gpyJ028wSsAp6PwYBkgzpVcgtkx8"
-)
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 VOICE_NAME = "Fenrir"
 TTS_MODEL = "gemini-2.5-flash-preview-tts"
+SAY_VOICE = os.environ.get("PITCH_SAY_VOICE", "Samantha")
+TTS_BACKEND = os.environ.get(
+    "PITCH_TTS_BACKEND",
+    "say" if shutil.which("say") else "gemini",
+).strip().lower()
+FORCE_REGEN_AUDIO = os.environ.get("PITCH_FORCE_REGEN_AUDIO") == "true"
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT_DIR = ROOT / "pitch-video"
 SLIDES_DIR = OUT_DIR / "slides"
 AUDIO_DIR = OUT_DIR / "audio"
 FINAL_VIDEO = ROOT / "Railbird_Pitch.mp4"
+
+SNAPSHOT = load_pitch_snapshot(ROOT)
+APP_URL = SNAPSHOT.app_url.replace("https://", "")
+DEMO_VIDEO_URL = SNAPSHOT.demo_video_url.replace("https://", "")
+ROLLUP_CHAIN_ID = SNAPSHOT.rollup_chain_id
+COSMOS_CHAIN_ID = SNAPSHOT.cosmos_chain_id
+BRIDGE_ID = SNAPSHOT.bridge_id
+RPC_URL = SNAPSHOT.rpc_url
+LAUNCH_TX_URL = SNAPSHOT.launch_tx_url
+LAUNCH_TX_SHORT = SNAPSHOT.short_launch_tx
 
 W, H = 1920, 1080
 
@@ -126,13 +146,13 @@ def slide_01_title():
     # RAILBIRD
     draw.text((160, 310), "RAILBIRD", fill=FG, font=font(80, bold=True))
     # Subtitle
-    draw.text((160, 420), "The World's First Trustless AI Poker Protocol",
+    draw.text((160, 420), "Autonomous AI Poker on Its Own Initia Appchain",
               fill=ACC_SOFT, font=font(28))
     # Context
-    draw.text((160, 500), "On-Chain Horizon Hackathon  |  AI Track  |  HashKey Chain",
+    draw.text((160, 500), f"INITIA TESTNET  |  Gaming + AI  |  Chain ID {ROLLUP_CHAIN_ID}",
               fill=MUTED, font=font(16))
     # URL
-    draw.text((160, 580), "railbird.fun", fill=CYAN, font=font(22, mono=True))
+    draw.text((160, 580), APP_URL, fill=CYAN, font=font(22, mono=True))
     return img
 
 
@@ -188,7 +208,7 @@ def slide_03_solution():
           "keccak256 commit / reveal integrity",
           "Not even our servers can read cards"]),
         ("Verifiable AI", VIOLET,
-         ["Gemini 2.0 Flash reasoning engine",
+         ["Gemini-based reasoning engine",
           "Decision hash committed on-chain",
           "Anyone can audit any action",
           "Full transparency without trust"]),
@@ -207,12 +227,12 @@ def slide_04_architecture():
     img = Image.new("RGB", (W, H), BG)
     draw = ImageDraw.Draw(img)
     cy = draw_tag_title(draw, "Architecture",
-                        "Three layers on HashKey Chain")
+                        "Three layers on Initia")
     cy += 10
     # On-chain band
     draw.rectangle((120, cy, W - 120, cy + 40), fill=ACCENT)
     draw.text((140, cy + 8),
-              "ON-CHAIN — HashKey Chain Testnet (ID: 133)",
+              "ON-CHAIN — Railbird MiniEVM Rollup on Initia",
               fill=BG, font=font(14, mono=True))
     # Contract boxes
     contracts = ["PokerTable", "SideBetPool", "VRFAdapter",
@@ -258,7 +278,7 @@ def slide_05_agents():
     img = Image.new("RGB", (W, H), BG)
     draw = ImageDraw.Draw(img)
     cy = draw_tag_title(draw, "AI Agents",
-                        "Four Gemini-powered personalities")
+                        "Four autonomous personalities")
     cy += 20
     agents = [
         ("Aegis", "Tight", "0.2",
@@ -305,29 +325,29 @@ def slide_05_agents():
     return img
 
 
-def slide_06_hashkey():
+def slide_06_initia():
     img = Image.new("RGB", (W, H), BG)
     draw = ImageDraw.Draw(img)
-    cy = draw_tag_title(draw, "HashKey Chain",
-                        "Why we chose this chain", tag_color=CYAN)
+    cy = draw_tag_title(draw, "Initia",
+                        "Why this belongs on its own appchain", tag_color=CYAN)
     cy += 20
     features = [
-        ("Wallet-Based Identity", VIOLET,
-         ["All auth via wallet signatures",
-          "No email/password needed",
-          "On-chain ownership = authorization"]),
-        ("OP Stack EVM Equivalence", LIME,
+        ("Own Appchain Identity", VIOLET,
+         ["Dedicated Railbird rollup",
+          f"Chain ID {ROLLUP_CHAIN_ID}",
+          "Product and chain move together"]),
+        ("MiniEVM Fast Path", LIME,
          ["Standard Solidity + Foundry",
-          "Zero contract modifications",
-          "Low gas, familiar DX"]),
-        ("VRF On-Chain Randomness", CYAN,
-         ["Backbone of trustless dealer",
-          "Provably fair shuffles",
-          "Verifiable at showdown"]),
-        ("Blockscout Explorer", GOLD,
-         ["All 6 contracts source-verified",
-          "Public code inspection",
-          "Full state transparency"]),
+          "No VM rewrite to prove the stack",
+          "Fast path from contracts to live chain"]),
+        ("Bridge + Ecosystem Surface", CYAN,
+         [f"Bridge ID {BRIDGE_ID}",
+          f"Cosmos chain {COSMOS_CHAIN_ID}",
+          "Appchain-native discovery surface"]),
+        ("Public Chain Evidence", GOLD,
+         ["Live RPC and launch tx are public",
+          "Judges can verify directly",
+          "Submission metadata points to real links"]),
     ]
     hw, hh = 780, 210
     for i, (title, color, bullets) in enumerate(features):
@@ -340,7 +360,7 @@ def slide_06_hashkey():
                   title_color=color, title_size=19, bullet_size=14)
     # Footer
     fy = cy + 2 * (hh + 30) + 10
-    ftxt = "6 contracts deployed & source-verified on HashKey Chain Testnet (Chain ID: 133)"
+    ftxt = f"RPC {RPC_URL}  |  Launch tx {LAUNCH_TX_SHORT}"
     fb = draw.textbbox((0, 0), ftxt, font=font(13, mono=True))
     fx = (W - (fb[2] - fb[0])) // 2
     draw.text((fx, fy), ftxt, fill=MUTED, font=font(13, mono=True))
@@ -350,20 +370,20 @@ def slide_06_hashkey():
 def slide_07_demo():
     img = Image.new("RGB", (W, H), BG)
     draw = ImageDraw.Draw(img)
-    cy = draw_tag_title(draw, "Live Demo", "railbird.fun")
+    cy = draw_tag_title(draw, "Live Product", APP_URL)
     draw.text((120, cy - 10),
-              "Everything on-chain. Everything verifiable.",
+              "Public app. Public video. Public chain evidence.",
               fill=ACC_SOFT, font=font(20))
     cy += 30
     items = [
-        ("Live Table Viewer",
-         "Real-time cards, pot, chip stacks  |  Action log with block numbers  |  VRF status"),
-        ("AI Decision Transparency",
-         "Hand strength + pot odds per action  |  On-chain reasoning hash  |  Confidence gauge"),
-        ("Showdown & Settlement",
-         "Card flip animation  |  Winner highlight + pot distribution  |  Commit/reveal verified"),
-        ("Leaderboard & Agent Pages",
-         "ROI / PnL / Win Rate / MDD  |  Vault metrics  |  Token trading widget"),
+        ("Landing + Live Dashboard",
+         "Season banner  |  live stats  |  featured table entrypoint"),
+        ("Table + Verify Surface",
+         "Community cards, pot, action log  |  audit trail and reasoning hash flow"),
+        ("Leaderboard + Agent Pages",
+         "ROI, PnL, win rate, drawdown  |  persona and recent hand detail"),
+        ("Create-Agent + Demo Video",
+         f"Open deployment flow  |  public walkthrough at {DEMO_VIDEO_URL}"),
     ]
     for i, (title, desc) in enumerate(items):
         y = cy + i * 115
@@ -378,18 +398,18 @@ def slide_07_demo():
 def slide_08_sidebet():
     img = Image.new("RGB", (W, H), BG)
     draw = ImageDraw.Draw(img)
-    cy = draw_tag_title(draw, "AI Prediction Market",
-                        "Spectating becomes evaluating",
+    cy = draw_tag_title(draw, "Rollup Evidence",
+                        "Judge quick path",
                         tag_color=GOLD)
     cy += 10
     # Left: How it works
-    draw.text((120, cy), "HOW IT WORKS", fill=GOLD,
+    draw.text((120, cy), "PUBLIC LINKS", fill=GOLD,
               font=font(13, mono=True))
     steps = [
-        ("1. Watch", "Observe AI agent patterns in real-time"),
-        ("2. Predict", "Pick which agent wins. Place RCHIP on that seat"),
-        ("3. Settle", "Hand settles on-chain. Contract reads the winner"),
-        ("4. Claim", "Winners claim proportional payout from the pool"),
+        ("1. App", APP_URL),
+        ("2. Live", f"{APP_URL}/live"),
+        ("3. Video", "railbird.fun/videos/...mp4"),
+        ("4. Launch TX", LAUNCH_TX_SHORT),
     ]
     sy = cy + 35
     for step_title, step_desc in steps:
@@ -400,17 +420,13 @@ def slide_08_sidebet():
 
     # Right: Why it matters
     rx = 960
-    draw.text((rx, cy), "WHY IT MATTERS FOR AI", fill=ACCENT,
+    draw.text((rx, cy), "ROLLUP FACTS", fill=ACCENT,
               font=font(13, mono=True))
     defi = [
-        ("AI Evaluation Layer", ACCENT,
-         "Crowd-sourced AI assessment with real stakes."),
-        ("Fully Transparent", CYAN,
-         "Pari-mutuel, on-chain. No house edge."),
-        ("Open Platform", LIME,
-         "Permissionless. Build prediction UIs or analysis bots."),
-        ("Auto Settlement", VIOLET,
-         "Auto-settle after showdown. Permissionless claims."),
+        ("Chain ID", ACCENT, ROLLUP_CHAIN_ID),
+        ("Cosmos Chain", CYAN, COSMOS_CHAIN_ID),
+        ("Bridge ID", LIME, BRIDGE_ID),
+        ("RPC", VIOLET, RPC_URL.replace("https://", "")),
     ]
     dy = cy + 35
     for title, color, desc in defi:
@@ -459,7 +475,7 @@ def slide_10_ecosystem():
     img = Image.new("RGB", (W, H), BG)
     draw = ImageDraw.Draw(img)
     cy = draw_tag_title(draw, "Ecosystem Impact",
-                        "An open AI arena on HashKey Chain",
+                        "An open AI arena on Initia",
                         tag_color=CYAN)
     cy += 10
     # Left: flywheel
@@ -481,15 +497,15 @@ def slide_10_ecosystem():
         draw.text((120, fy + 28), desc, fill=MUT_SOFT, font=font(14))
         fy += 90
 
-    # Right: metrics
+    # Right: live surfaces
     rx = 960
-    draw.text((rx, cy), "WHAT TEAMS CAN BUILD", fill=GOLD,
+    draw.text((rx, cy), "LIVE SURFACES", fill=GOLD,
               font=font(13, mono=True))
     metrics = [
-        ("Agents", "Custom AI strategies", ACCENT),
-        ("Dashboards", "Performance analytics", GOLD),
-        ("Bots", "Prediction & arbitrage", LIME),
-        ("Tournaments", "Multi-table competition", VIOLET),
+        ("4", "AI agents", ACCENT),
+        ("2", "poker tables", GOLD),
+        ("1", "public app", LIME),
+        ("1", "demo video", VIOLET),
     ]
     my = cy + 35
     for title, label, color in metrics:
@@ -504,15 +520,15 @@ def slide_11_traction():
     img = Image.new("RGB", (W, H), BG)
     draw = ImageDraw.Draw(img)
     cy = draw_tag_title(draw, "Traction",
-                        "Built and deployed in 5 weeks")
+                        "Live now on Initia")
     cy += 20
     # Left: TODAY
     draw.text((120, cy), "TODAY", fill=ACCENT, font=font(13, mono=True))
     stats = [
-        ("6", "Contracts Deployed", ACCENT),
+        ("1", "Dedicated Rollup", ACCENT),
         ("4", "Autonomous AI Agents", VIOLET),
-        ("100%", "Source Verified", LIME),
-        ("Live", "railbird.fun", CYAN),
+        ("2", "Live Table Contracts", LIME),
+        ("Live", APP_URL, CYAN),
     ]
     sy = cy + 35
     for num, label, color in stats:
@@ -524,10 +540,10 @@ def slide_11_traction():
     rx = 960
     draw.text((rx, cy), "ROADMAP", fill=GOLD, font=font(13, mono=True))
     roadmap = [
-        ("ZK Proofs", "Fully trustless dealing"),
+        ("Harder Crypto Guarantees", "Tighten the dealing and evidence story"),
         ("Tournaments", "Multi-table elimination brackets"),
-        ("Mobile", "Optimized spectating + push notifications"),
-        ("Mainnet", "Real economic stakes on HashKey Chain"),
+        ("Mobile", "Optimized spectating + notifications"),
+        ("Participation", "Push prediction and agent creation deeper"),
     ]
     ry = cy + 35
     for title, desc in roadmap:
@@ -547,170 +563,97 @@ def slide_12_closing():
     # RAILBIRD
     draw.text((160, 310), "RAILBIRD", fill=FG, font=font(72, bold=True))
     # Tagline
-    draw.text((160, 410), "Trustless AI Poker. Fully On-Chain.",
+    draw.text((160, 410), "Own Initia Rollup. Live AI Poker.",
               fill=ACC_SOFT, font=font(26))
     # Pillars
-    draw.text((160, 500), "Every card provably fair.", fill=LIME,
+    draw.text((160, 500), "Live app.", fill=LIME,
               font=font(18, bold=True))
-    draw.text((160, 535), "Every AI decision verifiable.", fill=CYAN,
+    draw.text((160, 535), "Live demo video.", fill=CYAN,
               font=font(18, bold=True))
-    draw.text((160, 570), "Every prediction settles on-chain.", fill=VIOLET,
+    draw.text((160, 570), "Live rollup evidence.", fill=VIOLET,
               font=font(18, bold=True))
     # URL
-    draw.text((160, 640), "railbird.fun", fill=CYAN,
+    draw.text((160, 640), APP_URL, fill=CYAN,
               font=font(22, mono=True))
-    draw.text((160, 675), "Built on HashKey Chain", fill=MUTED,
+    draw.text((160, 675), "Built on Initia", fill=MUTED,
               font=font(14))
     return img
 
 
 SLIDE_RENDERERS = [
     slide_01_title, slide_02_problem, slide_03_solution,
-    slide_04_architecture, slide_05_agents, slide_06_hashkey,
+    slide_04_architecture, slide_05_agents, slide_06_initia,
     slide_07_demo, slide_08_sidebet, slide_09_security,
     slide_10_ecosystem, slide_11_traction, slide_12_closing,
 ]
 
 # ── Narration Text ───────────────────────────────────────────────
 NARRATIONS = [
-    # Slide 1 — Title (15s)
-    "Hi everyone. We're Railbird. "
-    "AI agents playing real poker, fully on-chain, with zero trust required. "
-    "Not a concept. Not a whitepaper. Live right now on HashKey Chain.",
+    # Slide 1 — Title
+    "Hi everyone. We're Railbird. Railbird is autonomous AI poker on its own Initia appchain, and the live product is already running right now.",
 
-    # Slide 2 — Problem (35s)
-    "Let's talk about the elephant in the room. "
-    "Crypto poker has been around for years. And it's all fake. "
-    "Every single platform runs a server-side deck. "
-    "The house sees every card before you do. They can manipulate outcomes — "
-    "and you have absolutely no way to prove they didn't. "
-    "And then there's the bigger problem. "
-    "AI agents are making autonomous decisions everywhere now — "
-    "managing funds, executing strategies, playing games. "
-    "But nobody can verify what they're actually thinking. "
-    "Nobody can audit whether their decisions are honest. "
-    "It's a black box operating with real assets, and you're just supposed to trust it. "
-    "So we asked: what if the dealer literally cannot cheat, "
-    "and every AI decision is permanently recorded on-chain?",
+    # Slide 2 — Problem
+    "Poker and AI both have the same trust problem. In most poker products, the deck lives on a private server. In most AI products, you only see the output, not accountable behavior. We wanted to remove both trust assumptions at once.",
 
-    # Slide 3 — Solution (40s)
-    "That's what we built. Railbird is a fully on-chain poker protocol "
-    "where AI agents play real Texas Hold'em — and everything is verifiable. "
-    "Three pillars. "
-    "One — the dealer can't cheat. We use VRF randomness combined with a dealer pre-commit seed "
-    "to run a deterministic Fisher-Yates shuffle. The result is hashed and stored on-chain. "
-    "At showdown, anyone can verify the shuffle was fair. This isn't trust us — this is math. "
-    "Two — nobody can see your cards. Each player's hole cards are encrypted with ECIES "
-    "using their wallet-derived public key. Only the seat owner can decrypt. "
-    "Three — every AI decision is auditable. When an agent folds, calls, or raises, "
-    "the reasoning behind that decision is hashed and committed on-chain. Full transparency, zero trust.",
+    # Slide 3 — Solution
+    "Railbird combines three things. The table runs on-chain. Private cards stay private during the hand through encrypted delivery and reveal flow. And the AI layer becomes observable through public history and verification surfaces.",
 
-    # Slide 4 — Architecture (35s)
-    "Here's how it all fits together. "
-    "On-chain layer: six smart contracts on HashKey Chain. "
-    "PokerTable runs the full game state machine. SideBetPool is the spectator betting market. "
-    "VRFAdapter provides provable randomness. ChipToken is our ERC-20. "
-    "PlayerRegistry maps agents to wallets. PlayerVault handles the treasury. "
-    "Off-chain: an Indexer that streams every contract event into Postgres "
-    "and serves it via REST and WebSocket. "
-    "AI layer: four Gemini 2.0 Flash agents making autonomous decisions in real-time. "
-    "The key insight: the on-chain layer is the source of truth for everything. "
-    "If our servers go down, the game state is still on-chain, still verifiable, still correct.",
+    # Slide 4 — Architecture
+    "The system has four layers. A dedicated Initia MiniEVM rollup at the base. Core poker contracts on top of it. Services like the indexer, OwnerView, and fleet in the middle. And four Gemini agents acting above that. The chain is the source of truth for the whole product.",
 
-    # Slide 5 — AI Agents (30s)
-    "Now let's talk about the brains. "
-    "We didn't build one generic AI. We built four distinct personalities, "
-    "each powered by Gemini 2.0 Flash. "
-    "Aegis — the rock. Patient, disciplined, waits for premium hands. "
-    "Maverick — the grinder. Reads opponents, adapts mid-game, mixes value bets and bluffs. "
-    "Nova — the creative. Plays a lot of hands, finds unconventional lines. "
-    "Rex — the maniac. Pure pressure. Relentless aggression. "
-    "Each agent tracks opponent behavior in real-time and adapts its strategy dynamically. "
-    "These aren't bots running a fixed script. They're learning and adjusting every hand.",
+    # Slide 5 — AI Agents
+    "We run four distinct personalities, not one generic bot. Aegis is tight. Maverick is balanced. Nova plays wider lines. Rex applies constant pressure. That spread turns the table into a live arena for comparing autonomous behavior under the same on-chain rules.",
 
-    # Slide 6 — HashKey Chain (20s)
-    "Quick note on why we chose HashKey Chain. "
-    "We needed four things no other chain bundles together. "
-    "Wallet-based identity — all authentication through wallet signatures. "
-    "OP Stack EVM equivalence — standard Solidity, zero modifications. "
-    "VRF — on-chain verifiable randomness, the backbone of our trustless dealer. "
-    "And Blockscout — all six contracts are source-verified. Nothing is hidden.",
+    # Slide 6 — Initia
+    "Initia is a real product fit here, not a logo choice. Railbird has its own appchain identity, keeps the Solidity and Foundry workflow through MiniEVM, and exposes public chain evidence like RPC, bridge identity, and launch transaction that judges can verify directly.",
 
-    # Slide 7 — Live Demo (30s)
-    "Let me show you what this actually looks like. "
-    "At railbird.fun, you see the live table — community cards, pot size, "
-    "chip stacks for all four agents updating in real-time, "
-    "and a complete action log with on-chain block numbers. "
-    "There's a VRF status widget showing exactly when randomness was requested and fulfilled. "
-    "When a hand reaches showdown, you see the card flip, the winner highlight, "
-    "and pot distribution — all settled and verified on-chain. "
-    "The leaderboard ranks agents by ROI, PnL, win rate, and max drawdown. "
-    "This isn't a mockup. Every pixel maps to an on-chain state.",
+    # Slide 7 — Live Product
+    f"The product surface is already public. The landing page, live dashboard, table pages, verification flow, leaderboard, agent pages, and create-agent flow are all live at {APP_URL}.",
 
-    # Slide 8 — AI Prediction Market (40s)
-    "Now this is where it gets really interesting. "
-    "You're watching AI agents play poker. You've been observing their patterns — "
-    "Aegis plays tight, Rex bluffs constantly, Nova finds creative lines. "
-    "You think you know who's going to win this hand. So you put your RCHIP on it. "
-    "The bet goes through our SideBetPool smart contract. "
-    "When the hand settles on-chain, the contract reads the winner directly from PokerTable. "
-    "If you called it right, you claim your proportional share of the entire pool. "
-    "Why this matters for AI. "
-    "First — it creates a real evaluation layer for AI agents. "
-    "People aren't just watching — they're actively assessing which AI strategy performs best. "
-    "This is crowd-sourced AI evaluation with real stakes. "
-    "Second — it's fully transparent. Pari-mutuel, on-chain. No house edge. No manipulation. "
-    "Third — it's an open platform. Anyone can build prediction interfaces, "
-    "analysis bots, or strategy trackers on top. "
-    "We're not just building a game — we're building infrastructure for evaluating autonomous AI agents.",
+    # Slide 8 — Rollup Evidence
+    f"This is the critical proof slide for the hackathon. Rollup chain ID {ROLLUP_CHAIN_ID}. Cosmos chain {COSMOS_CHAIN_ID}. Bridge ID {BRIDGE_ID}. Public RPC at {RPC_URL}. Public launch transaction at {LAUNCH_TX_URL}.",
 
-    # Slide 9 — Security (25s)
-    "Security isn't a feature we added. It's the design principle everything was built on. "
-    "Commit-reveal for hole cards — keccak256 commitments on-chain, verified at showdown. "
-    "One action per block per table — prevents front-running and MEV. "
-    "Thirty-minute turn timeouts with keeper incentives — the protocol never gets stuck. "
-    "Non-dilutive treasury — the vault reverts if any trade would reduce NAV per share. "
-    "Existing holders cannot be diluted. It's not a policy. It's a require statement.",
+    # Slide 9 — Security
+    "Security and liveness are built into the protocol. Commit and reveal keeps private state checkable after the fact. Table progression is constrained on-chain. And timeout paths keep the game moving instead of depending on one trusted operator staying online.",
 
-    # Slide 10 — Ecosystem (35s)
-    "Let me tell you what Railbird brings to HashKey Chain — because this is bigger than poker. "
-    "An open AI arena. Anyone can deploy their own AI agent with custom strategy "
-    "through our web wizard. This isn't locked to our four agents. "
-    "It's a competitive ecosystem where different AI strategies compete, adapt, "
-    "and evolve — all on-chain, all verifiable. "
-    "Natural user onboarding: spectating is free, no wallet needed. "
-    "But predicting outcomes or deploying an agent requires a wallet. "
-    "You go from watching to participating in one click. "
-    "And composable AI infrastructure: the agent registry, the prediction market, "
-    "the game protocol — all permissionless. Any team can build strategy analyzers, "
-    "agent dashboards, or tournament platforms. "
-    "We're building the rails for on-chain AI competition.",
+    # Slide 10 — Ecosystem
+    "Railbird also creates an open AI arena on Initia. Spectators can follow agent performance, outside builders can deploy their own agents, and the surrounding product surfaces make AI behavior legible instead of opaque.",
 
-    # Slide 11 — Traction (25s)
-    "Where we are right now. "
-    "Six contracts deployed and source-verified on HashKey Chain Testnet. "
-    "Four AI agents playing autonomously. Full spectating and sidebet UI live at railbird.fun. "
-    "Real-time indexer with WebSocket streaming. Built in five weeks. "
-    "Where we're going: ZK proofs for fully trustless dealing. "
-    "Multi-table tournaments. Mobile-optimized spectating. "
-    "And mainnet deployment — where sidebet markets create real economic activity.",
+    # Slide 11 — Traction
+    "Today the important milestone is already complete. There is a live app, a live demo video, and a live dedicated rollup backing the submission. Next we tighten the cryptographic guarantees, expand the game structure, and deepen public participation.",
 
-    # Slide 12 — Closing (15s)
-    "Railbird proves that autonomous AI can operate transparently — "
-    "every decision verifiable, every action auditable, fully on-chain. "
-    "Every card is provably fair. Every AI decision is recorded. "
-    "Every prediction settles on-chain. "
-    "Built on HashKey Chain. Live at railbird.fun. "
-    "We're Railbird. Thank you.",
+    # Slide 12 — Closing
+    "Railbird is simple to summarize. Live app. Live demo. Live rollup evidence. Autonomous AI poker on Initia. Thank you.",
 ]
 
 
 # ── TTS Generation ───────────────────────────────────────────────
-def generate_tts(text: str, out_path: Path, client) -> Path:
-    """Generate TTS audio using Gemini API and save as WAV."""
-    if out_path.exists() and out_path.stat().st_size > 1000:
-        print(f"  [skip] {out_path.name} already exists")
-        return out_path
+def narration_digest(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def audio_hash_path(out_path: Path) -> Path:
+    return out_path.with_suffix(".sha256")
+
+
+def audio_is_current(text: str, out_path: Path) -> bool:
+    hash_path = audio_hash_path(out_path)
+    if FORCE_REGEN_AUDIO or not out_path.exists() or out_path.stat().st_size <= 1000:
+        return False
+    if not hash_path.exists():
+        return False
+    return hash_path.read_text().strip() == narration_digest(text)
+
+
+def mark_audio_current(text: str, out_path: Path):
+    audio_hash_path(out_path).write_text(narration_digest(text))
+
+
+def generate_tts_gemini(text: str, out_path: Path, client) -> Path:
+    if client is None or genai is None or types is None:
+        raise RuntimeError("Gemini TTS requested but google-genai is not available.")
+    if not GEMINI_API_KEY:
+        raise RuntimeError("Gemini TTS requested but GEMINI_API_KEY is not set.")
 
     response = client.models.generate_content(
         model=TTS_MODEL,
@@ -735,8 +678,54 @@ def generate_tts(text: str, out_path: Path, client) -> Path:
         wf.setframerate(24000)
         wf.writeframes(audio_data)
 
-    print(f"  [done] {out_path.name}  ({len(audio_data)} bytes)")
+    print(f"  [done] {out_path.name} via gemini ({len(audio_data)} bytes)")
     return out_path
+
+
+def generate_tts_say(text: str, out_path: Path) -> Path:
+    if not shutil.which("say"):
+        raise RuntimeError("PITCH_TTS_BACKEND=say requested but 'say' is unavailable.")
+    tmp_aiff = out_path.with_suffix(".aiff")
+    subprocess.run(
+        ["say", "-v", SAY_VOICE, "-o", str(tmp_aiff), text],
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-y",
+            "-i",
+            str(tmp_aiff),
+            "-ac",
+            "1",
+            "-ar",
+            "24000",
+            str(out_path),
+        ],
+        check=True,
+        capture_output=True,
+    )
+    tmp_aiff.unlink(missing_ok=True)
+    print(f"  [done] {out_path.name} via say")
+    return out_path
+
+
+def generate_tts(text: str, out_path: Path, client) -> Path:
+    """Generate TTS audio and save as WAV."""
+    if audio_is_current(text, out_path):
+        print(f"  [skip] {out_path.name} already matches narration")
+        return out_path
+
+    if TTS_BACKEND == "say":
+        path = generate_tts_say(text, out_path)
+    elif TTS_BACKEND == "gemini":
+        path = generate_tts_gemini(text, out_path, client)
+    else:
+        raise RuntimeError(f"Unsupported PITCH_TTS_BACKEND: {TTS_BACKEND}")
+
+    mark_audio_current(text, path)
+    return path
 
 
 def get_wav_duration(path: Path) -> float:
@@ -802,15 +791,15 @@ def main():
         print(f"  [done] slide_{i+1:02d}.png")
 
     # 2. Generate TTS audio
-    print(f"\n=== Generating {n} TTS audio files (voice: {VOICE_NAME}) ===")
-    client = genai.Client(api_key=GEMINI_API_KEY)
+    print(f"\n=== Generating {n} TTS audio files (backend: {TTS_BACKEND}) ===")
+    client = genai.Client(api_key=GEMINI_API_KEY) if TTS_BACKEND == "gemini" else None
     audio_paths = []
     for i, text in enumerate(NARRATIONS):
         path = AUDIO_DIR / f"audio_{i+1:02d}.wav"
         generate_tts(text, path, client)
         audio_paths.append(path)
         # Small delay to avoid rate limiting
-        if i < n - 1:
+        if TTS_BACKEND == "gemini" and i < n - 1:
             time.sleep(1)
 
     # 3. Create video segments

@@ -113,7 +113,9 @@ export async function getTable(tableId: bigint): Promise<PokerTable | null> {
 }
 
 export async function getAllTables(): Promise<PokerTable[]> {
-  const result = await query<PokerTable>(`SELECT * FROM poker_tables ORDER BY table_id`);
+  const result = await query<PokerTable>(
+    `SELECT * FROM poker_tables WHERE table_id > 0 ORDER BY table_id`,
+  );
   return result.rows;
 }
 

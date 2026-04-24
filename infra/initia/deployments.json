@@ -1,17 +1,17 @@
 {
   "network": "initia-testnet",
-  "rpcUrl": "http://localhost:8545",
-  "deployedAt": "2026-04-20T03:00:00Z",
+  "rpcUrl": "https://rollup-node-production.up.railway.app",
+  "deployedAt": "2026-04-19T19:00:13Z",
   "contracts": {
-    "handEvaluator": "0x2d3f047055b6113e8e919bcd3589e09b0cddfd66",
-    "chipToken": "0x2e565620b08297c1cb899154bc9724de0b7c1386",
-    "vrfAdapter": "0xfc7b7d4a57204329e6c903df87c9216f0f8182c3",
+    "handEvaluator": "0xc33eb7add2f3fed24894f1d4232a4b0f92718f0a",
+    "chipToken": "0x356524F2c8233eE28F0D11eb57906A46aaFb3017",
+    "vrfAdapter": "0xD966b352766D01323f84574335029eCf76392110",
     "pokerTables": [
-      "0x5492768668d6bceebd9fbbbc3b29c1b5df6826e0",
-      "0xd7ba3356178fd5b7ab9135c5c6f0dca7a94453ac"
+      "0xCDd2AD6dFc1191bEB395a157d42fB6983103c713",
+      "0xd4c0a9dBaa1247F9074ce32D03fF31491DEB6B21"
     ],
-    "playerRegistry": "0x39f1094a1b559adce1d16110c2f050295eb0cb80",
-    "playerVault": "0xbf4b5b92ce64d4fbfd87a0ba9926a8883b7fb299",
-    "sideBetPool": "0x5ae5899e0dff66471c148d6cae879866b5496ef7"
+    "playerRegistry": "0x2D3F047055b6113e8E919Bcd3589E09B0CDDfD66",
+    "playerVault": "0x2e565620b08297C1Cb899154bC9724De0b7C1386",
+    "sideBetPool": "0x39f1094a1b559adCe1d16110C2f050295Eb0CB80"
   }
 }

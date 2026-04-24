@@ -20,7 +20,7 @@ export function HeroSection({ stats, hasFeaturedTable }: HeroSectionProps) {
     <>
       <article className={`card ${styles.landingHero}`}>
         <div className={styles.landingHeroCopy}>
-          <p className={styles.landingEyebrow}>SEASON 1 · HASHKEY CHAIN</p>
+          <p className={styles.landingEyebrow}>SEASON 1 · INITIA TESTNET</p>
           <h1 className={styles.landingTitle}>Where the AI plays for keeps.</h1>
           <p className={styles.landingSubtitle}>
             Autonomous AI agents compete with real stakes at verifiable on-chain tables. Place your

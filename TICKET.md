@@ -1,6 +1,6 @@
 # TICKET.md — Initia Port Gap Tickets
 
-> **Context**: Railbird pivoted from HashKey to the INITIATE hackathon on 2026-04-19
+> **Context**: Railbird pivoted from a previous EVM deployment target to the INITIATE hackathon on 2026-04-19
 > (commit `dbfd70c`, ADR-020). This file enumerates the gaps discovered while auditing
 > the port and organises them into runnable tickets.
 >
@@ -127,7 +127,8 @@ app cannot send transactions. InterwovenKit has to be the transport.
 - Update `registerSeat` and any other `getWalletClient()` / `getInjectedProvider()`
   callers in `pokerTableClient.ts` to use the new path.
 - Fix hardcoded fallbacks: `getChainId()` defaults `133`, `nativeSymbol` defaults
-  `"HSK"` — replace with throws/strict reads when `CHAIN_ENV=initia-testnet`.
+  to a legacy token symbol — replace with throws/strict reads when
+  `CHAIN_ENV=initia-testnet`.
 
 **AC**:
 
@@ -382,14 +383,14 @@ value.
 
 ---
 
-### I1-4 — Remove HashKey fallbacks from bot chain clients
+### I1-4 — Remove legacy-chain fallbacks from bot chain clients
 
 **Goal**: `bots/{agent,keeper,vrf-operator}/src/chain/client.ts` default
-`chain.id=133`, `name="HashKey Chain Testnet"`, `symbol="HSK"` when env
+`chain.id=133`, a legacy chain name, and a legacy native symbol when env
 vars are absent. Safe in prod (env is always set) but a silent
 mis-boot vector when someone forgets to export — the bot will happily
-connect to HashKey testnet against the wrong RPC. Plus `bots/agent/src/bot.ts:251`
-has the HashKey chain object hardcoded inside `updateStrategy`.
+connect to the wrong chain against the wrong RPC. Plus `bots/agent/src/bot.ts:251`
+has the legacy chain object hardcoded inside `updateStrategy`.
 
 **Scope**:
 
@@ -398,19 +399,19 @@ has the HashKey chain object hardcoded inside `updateStrategy`.
   default.
 - Read chain name/symbol from `CHAIN_NAME` / `NATIVE_SYMBOL` as today,
   but also require them when `CHAIN_ENV=initia-testnet`.
-- Fix the hardcoded HashKey literal inside `bot.ts` → read from
+- Fix the hardcoded legacy chain literal inside `bot.ts` → read from
   `this.config.chain`.
 
 **AC**:
 
 - [ ] Boot the agent with only `CHAIN_ENV=initia-testnet` and no other
       chain vars → it refuses to start with a clear error (not a silent
-      HashKey default).
-- [ ] `grep -n '"HashKey\|"HSK"' bots/` returns zero hits outside
+      legacy default).
+- [ ] `grep -n 'legacy chain\\|legacy symbol' bots/` returns zero hits outside
       `legacy/` and comments.
 - [ ] Existing bot unit tests still pass.
 
-**Commit message**: `chore(bots): remove HashKey default fallbacks from chain clients`
+**Commit message**: `chore(bots): remove legacy default fallbacks from chain clients`
 
 ---
 
@@ -503,46 +504,41 @@ Judges reading the VRF doc hit empty evidence.
 
 ## M-I2 — HARDENING (defaults, env flags, misconfig guards)
 
-### I2-1 — Move HashKey/Kaia deploy scripts to the documented `legacy/` location
+### I2-1 — Remove legacy deploy scripts from the active path
 
 **Goal**: ADR-020 §"Items Removed / Disabled" claims
-`DeployHashKey.s.sol` and HashKey RPC URLs were moved to `legacy/hashkey/`.
-Actually: `contracts/script/DeployHashKey.s.sol` is still in the active
-script dir, and `contracts/script/deprecated/DeployKaiaTestnet.s.sol`
-lives elsewhere. `/legacy/` doesn't exist at the repo root.
+legacy deploy scripts and RPC URLs were moved out of active config.
+Actually: old deploy scripts still lived under tracked script paths and
+legacy RPC URLs were still present in `foundry.toml`.
 
 **Scope**:
 
-- Pick one convention — `contracts/script/deprecated/` (already in
-  `foundry.toml` `skip`) is fine. Move `DeployHashKey.s.sol` into it.
-- Update ADR-020 to reflect the actual location.
-- Verify `foundry.toml` `skip` glob matches so these don't get compiled
-  or break Slither.
+- Remove obsolete deploy scripts from the repo's active tree.
+- Remove legacy RPC / explorer entries from `foundry.toml`.
+- Update ADR-020 to reflect that these paths were removed rather than relocated.
 
 **AC**:
 
-- [ ] `ls contracts/script/` contains only live scripts; deprecated
-      ones are under `deprecated/`.
-- [ ] `forge build` skips deprecated scripts.
-- [ ] ADR-020 says "moved to `contracts/script/deprecated/`", not
-      "`legacy/hashkey/`".
+- [ ] `ls contracts/script/` contains only live scripts.
+- [ ] `forge build` uses only active Initia/local config.
+- [ ] ADR-020 reflects removal, not relocation to a legacy path.
 
-**Commit message**: `chore(contracts): move deprecated HashKey deploy script and align ADR-020 path`
+**Commit message**: `chore(contracts): remove legacy deploy scripts and stale rpc config`
 
 ---
 
-### I2-2 — Drop legacy comments and docstrings mentioning HashKey/Monad
+### I2-2 — Drop legacy comments and docstrings mentioning prior chains
 
 **Goal**: Minor but low-effort polish. `apps/web/src/app/providers.tsx:11`,
 `apps/web/src/lib/wallet/interwoven.ts:17` and the pokerTableClient
-comments still talk about HashKey/local fallback. This is dead code if
+comments still talk about old chain/local fallback. This is dead code if
 I0-2 + I0-3 actually eliminate the non-Initia branches for production
-builds. Keep the local branch for dev ergonomics but drop the HashKey
+builds. Keep the local branch for dev ergonomics but drop the legacy
 references from copy.
 
 **Scope**:
 
-- Replace HashKey/Monad references in comments with "local" and
+- Replace prior-chain references in comments with "local" and
   "Initia".
 - `pokerTableClient.ts` default `nativeSymbol` → either throw
   (if I1-5 already does) or "INIT". Same for `chainName`.
@@ -550,10 +546,10 @@ references from copy.
 
 **AC**:
 
-- [ ] `grep -ri 'hashkey\|hsk\|monad\|nad\.fun' apps/web/src services bots packages --include="*.ts" --include="*.tsx"`
-      returns only comments inside `deprecated/` or legacy ADR files.
+- [ ] `grep -ri 'legacy chain\|legacy symbol\|monad\|nad\.fun' apps/web/src services bots packages --include="*.ts" --include="*.tsx"`
+      returns only comments inside legacy ADR files.
 
-**Commit message**: `chore: strip HashKey/Monad references from active Initia code paths`
+**Commit message**: `chore: strip prior-chain references from active Initia code paths`
 
 ---
 
@@ -711,7 +707,7 @@ has `apps/web/playwright` configured but nothing Initia-specific.
 **Goal**: Lock in a single checklist that the next human runs before
 clicking "Submit" on the hackathon portal. Right now the information
 is scattered across `INITIA_SUBMISSION.md`, `docs/initia/scoring-rehearsal.md`,
-and `SUBMISSION.md`.
+and the remaining Initia submission support docs.
 
 **Scope**:
 
@@ -798,8 +794,8 @@ will fail because the rollup isn't provisioned, and step 4
   step 3 = `bash scripts/deploy/initia.sh`, step 4 = `bash scripts/e2e-smoke.initia.sh`,
   step 5 = `bash scripts/run-4agents.sh` (if still the right entrypoint).
 - Verify `scripts/run-4agents.sh` still points at Initia env; it was
-  authored pre-pivot (see `scripts/run-kaia-agents.sh` / `run-kaia-table2.sh`
-  siblings in git status).
+  authored before the Initia port; verify the repo's helper scripts now
+  point only at the Initia/local flow.
 - Add a note: rollup launch is a **one-time** operation; step 2 can be
   skipped if `infra/initia/rollup.json` is already populated.
 
@@ -807,7 +803,7 @@ will fail because the rollup isn't provisioned, and step 4
 
 - [ ] A fresh clone + these steps in order takes a new operator from zero
       to running demo (happy path, ideally under 30 minutes).
-- [ ] README no longer references the HashKey migration as the primary
+- [ ] README no longer references the previous chain migration as the primary
       path — only as a "Legacy" appendix.
 
 **Commit message**: `docs(readme): rewrite Quick Start for the Initia path`

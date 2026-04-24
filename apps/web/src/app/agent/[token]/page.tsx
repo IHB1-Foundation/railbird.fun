@@ -1,9 +1,11 @@
+import { ENABLE_TRADING_WIDGET } from "@/lib/featureFlags";
+import { buildBridgeUrl } from "@/lib/bridgeUrl";
 import Link from "next/link";
-import lazyLoad from "next/dynamic";
 import { Breadcrumb } from "@/components/Breadcrumb";
 import { Tooltip } from "@/components/Tooltip";
 import { AgentAvatar } from "@/components/AgentAvatar";
 import { ShareButton } from "@/components/ShareButton";
+import { LazyStrategyTimeline } from "@/components/charts/LazyCharts";
 import {
   getAgent,
   getAgentSnapshots,
@@ -20,14 +22,6 @@ import {
   type EvolutionAgentTimeline,
 } from "@/lib/api";
 import type { HandResponse } from "@/lib/types";
-
-// T-1903: chart is below the fold and adds ~12 KB to the agent route bundle.
-// Lazy-load it so the initial JS payload stays under the perf budget.
-const StrategyTimeline = lazyLoad(
-  () =>
-    import("@/components/charts/StrategyTimeline").then((m) => ({ default: m.StrategyTimeline })),
-  { ssr: false, loading: () => null },
-);
 
 interface AgentHealthRag {
   totalHands: number;
@@ -63,9 +57,7 @@ async function fetchAgentHealth(url: string): Promise<AgentHealthRag | null> {
     return null;
   }
 }
-import { NadFunTradingWidget } from "@/components/NadFunTradingWidget";
 import { NavSparkline } from "@/components/NavSparkline";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { RecentHandsWithReplay } from "./RecentHandsWithReplay";
 import { getAgentProfile, getPersonaSummary } from "@/lib/agentProfiles";
 import { PersonaRadar } from "@/components/PersonaRadar";
@@ -77,6 +69,7 @@ import {
   formatTime,
   explorerAddressUrl,
 } from "@/lib/utils";
+import { fetchInitUsername } from "@/lib/initiaUsername";
 import styles from "./page.module.css";
 export const dynamic = "force-dynamic";
 
@@ -84,7 +77,7 @@ export default async function AgentPage({
   params,
   searchParams,
 }: {
-  params: { token: string };
+  params: Promise<{ token: string }>;
   searchParams: Promise<{ view?: string }>;
 }) {
   const { token } = await params;
@@ -177,6 +170,9 @@ export default async function AgentPage({
 
   const agentDisplayName = profile ? profile.name : shortenAddress(token);
   const persona = getPersonaSummary(profile?.personaId);
+  const ownerInitName = agent
+    ? await fetchInitUsername(agent.ownerAddress).catch(() => null)
+    : null;
 
   // Performance summary for header
   const wins = hands.filter((h) => h.winnerSeat !== null && h.winnerSeat !== undefined).length;
@@ -271,6 +267,36 @@ export default async function AgentPage({
         ) : null}
         <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap" }}>
           <span className={styles.agentToken}>{token}</span>
+          {ownerInitName ? (
+            <span
+              style={{
+                fontSize: "0.72rem",
+                fontWeight: 700,
+                background: "rgba(139,92,246,0.15)",
+                color: "#A78BFA",
+                border: "1px solid rgba(139,92,246,0.35)",
+                borderRadius: "9999px",
+                padding: "0.2rem 0.55rem",
+              }}
+              title={`Initia username: ${ownerInitName}`}
+            >
+              {ownerInitName}
+            </span>
+          ) : (
+            <a
+              href="https://app.initia.xyz/profile"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                fontSize: "0.68rem",
+                color: "var(--muted)",
+                textDecoration: "underline dotted",
+              }}
+              title="Register a .init username on Initia"
+            >
+              Claim your .init
+            </a>
+          )}
           <ShareButton />
           {auditSummary.totalCount >= 5 && (
             <Link
@@ -929,7 +955,11 @@ export default async function AgentPage({
                   <p style={{ fontSize: "0.72rem", color: "var(--muted)", marginBottom: "0.4rem" }}>
                     Aggression evolution
                   </p>
-                  <StrategyTimeline agents={[agentTimeline]} metric="aggressionBps" height={80} />
+                  <LazyStrategyTimeline
+                    agents={[agentTimeline]}
+                    metric="aggressionBps"
+                    height={80}
+                  />
                 </div>
               );
             })()}
@@ -1155,7 +1185,7 @@ export default async function AgentPage({
       <div className={styles.statsGrid}>
         <div className={styles.statCard}>
           <div className={styles.statLabel}>
-            <Tooltip text="Total Assets — the value of all non-token holdings in this agent's vault (MON/WMON/AUSD)">
+            <Tooltip text="Total Assets — the value of all non-token holdings in this agent's vault">
               Total Value
             </Tooltip>
           </div>
@@ -1219,6 +1249,42 @@ export default async function AgentPage({
         </div>
       </div>
 
+      {/* Interwoven Bridge deeplink (I6-1) */}
+      {process.env.NEXT_PUBLIC_CHAIN_ENV === "initia-testnet" && (
+        <div
+          className="card"
+          style={{
+            marginBottom: "1rem",
+            padding: "1rem 1.2rem",
+            display: "flex",
+            alignItems: "center",
+            gap: "1rem",
+            flexWrap: "wrap",
+          }}
+        >
+          <div style={{ flex: 1 }}>
+            <h3 className="section-title-sm" style={{ margin: 0 }}>
+              Fund Your Agent
+            </h3>
+            <p style={{ fontSize: "0.78rem", color: "var(--muted)", marginTop: "0.25rem" }}>
+              Bridge INIT from any Initia ecosystem chain to fund this table.
+            </p>
+          </div>
+          <a
+            href={buildBridgeUrl(
+              process.env.NEXT_PUBLIC_CHAIN_ID ?? "",
+              agent.vaultAddress ?? agent.ownerAddress,
+            )}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn"
+            style={{ padding: "0.45rem 1rem", fontSize: "0.82rem", whiteSpace: "nowrap" }}
+          >
+            Bridge via Interwoven ↗
+          </a>
+        </div>
+      )}
+
       {/* Agent Info */}
       <div className="card section-card-lg">
         <h3 className="section-title-sm">Agent Info</h3>
@@ -1232,7 +1298,8 @@ export default async function AgentPage({
               className="text-mono"
               title={agent.ownerAddress}
             >
-              {shortenAddress(agent.ownerAddress)} <span aria-hidden="true">↗</span>
+              {ownerInitName ?? shortenAddress(agent.ownerAddress)}{" "}
+              <span aria-hidden="true">↗</span>
             </a>
           </div>
           <div className={styles.infoRow}>
@@ -1570,13 +1637,29 @@ export default async function AgentPage({
         )}
       </div>
 
-      {/* Token Trading — widget falls back to "Open on nad.fun" when not configured */}
-      <div className="card section-card">
-        <h3 className="section-title-sm">Token Trading</h3>
-        <ErrorBoundary label="Trading Widget">
-          <NadFunTradingWidget tokenAddress={token} />
-        </ErrorBoundary>
-      </div>
+      {/* Trading widget — gated behind NEXT_PUBLIC_ENABLE_TRADING_WIDGET */}
+      {ENABLE_TRADING_WIDGET ? (
+        <div className="card section-card">
+          <h3 className="section-title-sm">Trade Agent Token</h3>
+          {/* Widget rendered when flag is enabled — integrate DEX here */}
+          <p style={{ fontSize: "0.78rem", color: "var(--muted)" }}>
+            Trading widget is enabled. Connect to the configured DEX router.
+          </p>
+        </div>
+      ) : (
+        <div
+          className="card section-card"
+          style={{ textAlign: "center", padding: "1.5rem", color: "var(--muted)" }}
+        >
+          <p style={{ fontSize: "0.82rem", marginBottom: "0.3rem" }}>
+            Trading coming soon on Initia DEX
+          </p>
+          <p style={{ fontSize: "0.72rem" }}>
+            Set <code>NEXT_PUBLIC_ENABLE_TRADING_WIDGET=true</code> to enable when a DEX is
+            available.
+          </p>
+        </div>
+      )}
     </section>
   );
 }

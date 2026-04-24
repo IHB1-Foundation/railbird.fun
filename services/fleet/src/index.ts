@@ -11,7 +11,7 @@ import { fleetOpenApiSpec } from "./openapi.js";
 
 const logger = createLogger({ service: "fleet" });
 
-const PORT = parseInt(process.env.FLEET_PORT ?? "3003", 10);
+const PORT = parseInt(process.env.PORT ?? process.env.FLEET_PORT ?? "3003", 10);
 
 async function main() {
   logger.info({}, "Fleet service starting");

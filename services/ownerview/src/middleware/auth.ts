@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction, RequestHandler } from "express";
-import { AuthService } from "../auth/index.js";
 import type { Address } from "@playerco/shared";
+import type { AuthService } from "../auth/index.js";
 import { COOKIE_JWT, COOKIE_CSRF } from "../routes/auth.js";
 
 /**
@@ -38,11 +38,7 @@ function parseCookies(cookieHeader: string | undefined): Record<string, string> 
  * prevent cross-site request forgery attacks (double-submit cookie pattern).
  */
 export function createAuthMiddleware(authService: AuthService): RequestHandler {
-  return async (
-    req: AuthenticatedRequest,
-    res: Response,
-    next: NextFunction
-  ): Promise<void> => {
+  return async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
     const authHeader = req.headers.authorization;
     const cookies = parseCookies(req.headers.cookie);
     const cookieToken = cookies[COOKIE_JWT];

@@ -72,11 +72,19 @@ export class WsManager {
     this.batchTimer = setInterval(() => this.flush(), windowMs);
   }
 
-  /** Stop the batch flush timer (useful for clean shutdown / testing). */
-  stopBatching(): void {
+  /**
+   * Stop the batch flush timer.
+   * Flushes pending messages by default so queued events are not silently dropped.
+   */
+  stopBatching(flushPending = true): void {
     if (this.batchTimer) {
       clearInterval(this.batchTimer);
       this.batchTimer = null;
+    }
+    if (flushPending) {
+      this.flush();
+    } else {
+      this.batchBuffer.clear();
     }
   }
 
@@ -87,7 +95,7 @@ export class WsManager {
   private flush(): void {
     for (const [tableId, messages] of this.batchBuffer.entries()) {
       if (messages.length === 0) continue;
-      this.batchBuffer.set(tableId, []); // reset before send to avoid race
+      this.batchBuffer.delete(tableId);
       this._sendToTable(tableId, JSON.stringify(messages));
     }
   }
@@ -186,6 +194,12 @@ export class WsManager {
       totalConnections,
     };
   }
+
+  /** Release timers and in-memory state without sending pending messages. */
+  dispose(): void {
+    this.stopBatching(false);
+    this.connections.clear();
+  }
 }
 
 // Singleton instance
@@ -200,5 +214,6 @@ export function getWsManager(): WsManager {
 
 // For testing - reset the singleton
 export function resetWsManager(): void {
+  instance?.dispose();
   instance = null;
 }

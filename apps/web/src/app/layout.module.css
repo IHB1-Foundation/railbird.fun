@@ -28,6 +28,7 @@
   gap: 0.65rem;
   padding: 0.2rem 0.4rem;
   font-weight: 700;
+  flex-shrink: 0;
 }
 
 .brandLogo {
@@ -85,12 +86,12 @@
 
 /* Secondary nav links — slightly dimmer */
 .topNav .navSecondary {
-  opacity: 0.72;
+  color: var(--text-on-card);
   font-size: var(--text-sm);
 }
 
 .topNav .navSecondary:hover {
-  opacity: 1;
+  color: #fff;
 }
 
 /* Active nav link — higher specificity than .topNav a to avoid !important */
@@ -118,6 +119,9 @@
   align-items: center;
   justify-content: flex-end;
   gap: var(--space-2);
+  min-width: 0;
+  flex-shrink: 1;
+  overflow: hidden;
 }
 
 @media (max-width: 1024px) {
@@ -178,6 +182,7 @@
   flex-direction: column;
   gap: 0.4rem;
   padding: 4rem 1.2rem 1.5rem;
+  padding-right: max(1.2rem, env(safe-area-inset-right));
   background: linear-gradient(160deg, rgba(12, 13, 28, 0.98), rgba(18, 19, 38, 0.98));
   border-left: 1px solid var(--card-border);
   transform: translateX(100%);
@@ -215,11 +220,11 @@
 /* Mobile secondary nav items — slightly smaller */
 .mobileDrawer .mobileNavSecondary {
   font-size: 0.92rem;
-  opacity: 0.75;
+  color: var(--text-on-card);
 }
 
 .mobileDrawer .mobileNavSecondary:hover {
-  opacity: 1;
+  color: #fff;
 }
 
 .mobileDrawerClose {

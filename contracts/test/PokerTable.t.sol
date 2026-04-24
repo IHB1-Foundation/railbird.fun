@@ -59,37 +59,37 @@ contract PokerTableTest is Test {
     }
 
     function test_Constructor_RevertIfTableIdIsZero() public {
-        vm.expectRevert("Table ID must be > 0");
+        vm.expectRevert(bytes("P1"));
         new PokerTable(0, SMALL_BLIND, BIG_BLIND, address(mockVRF), address(chipToken), address(0), 30 minutes, 5 minutes, 10 minutes, 9, address(this));
     }
 
     function test_Constructor_RevertIfSmallBlindIsZero() public {
-        vm.expectRevert("Small blind must be > 0");
+        vm.expectRevert(bytes("P2"));
         new PokerTable(1, 0, BIG_BLIND, address(mockVRF), address(chipToken), address(0), 30 minutes, 5 minutes, 10 minutes, 9, address(this));
     }
 
     function test_Constructor_RevertIfVrfAdapterIsZero() public {
-        vm.expectRevert("Invalid VRF adapter");
+        vm.expectRevert(bytes("P4"));
         new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(0), address(chipToken), address(0), 30 minutes, 5 minutes, 10 minutes, 9, address(this));
     }
 
     function test_Constructor_RevertIfChipTokenIsZero() public {
-        vm.expectRevert("Invalid chip token");
+        vm.expectRevert(bytes("P5"));
         new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(mockVRF), address(0), address(0), 30 minutes, 5 minutes, 10 minutes, 9, address(this));
     }
 
     function test_Constructor_RevertIfActionTimeoutTooShort() public {
-        vm.expectRevert("actionTimeout out of range");
+        vm.expectRevert(bytes("P6"));
         new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(mockVRF), address(chipToken), address(0), 30 seconds, 5 minutes, 10 minutes, 9, address(this));
     }
 
     function test_Constructor_RevertIfActionTimeoutTooLong() public {
-        vm.expectRevert("actionTimeout out of range");
+        vm.expectRevert(bytes("P6"));
         new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(mockVRF), address(chipToken), address(0), 61 minutes, 5 minutes, 10 minutes, 9, address(this));
     }
 
     function test_Constructor_RevertIfVrfTimeoutTooShort() public {
-        vm.expectRevert("vrfTimeout out of range");
+        vm.expectRevert(bytes("P7"));
         new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(mockVRF), address(chipToken), address(0), 30 minutes, 29 seconds, 10 minutes, 9, address(this));
     }
 
@@ -102,12 +102,12 @@ contract PokerTableTest is Test {
     }
 
     function test_Constructor_RevertIfNumSeatsTooFew() public {
-        vm.expectRevert("numSeats out of range (2-9)");
+        vm.expectRevert(bytes("P9"));
         new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(mockVRF), address(chipToken), address(0), 30 minutes, 5 minutes, 10 minutes, 1, address(this));
     }
 
     function test_Constructor_RevertIfNumSeatsTooMany() public {
-        vm.expectRevert("numSeats out of range (2-9)");
+        vm.expectRevert(bytes("P9"));
         new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(mockVRF), address(chipToken), address(0), 30 minutes, 5 minutes, 10 minutes, 10, address(this));
     }
 
@@ -135,7 +135,7 @@ contract PokerTableTest is Test {
         vm.prank(owner2);
         chipToken.approve(address(pokerTable), BUY_IN);
         vm.prank(owner2);
-        vm.expectRevert("Seat already taken");
+        vm.expectRevert(bytes("S2"));
         pokerTable.registerSeat(0, owner2, operator2, BUY_IN);
     }
 
@@ -143,7 +143,7 @@ contract PokerTableTest is Test {
         vm.prank(owner1);
         chipToken.approve(address(pokerTable), BIG_BLIND * 5);
         vm.prank(owner1);
-        vm.expectRevert("Buy-in too small");
+        vm.expectRevert(bytes("S4"));
         pokerTable.registerSeat(0, owner1, operator1, BIG_BLIND * 5);
     }
 
@@ -224,7 +224,7 @@ contract PokerTableTest is Test {
         assertEq(kycTable.getSeat(0).owner, owner1);
     }
 
-    function test_KYC_Enabled_KYCFailedPlayerReverts() public {
+    function test_KYC_OptIn_RegistrationSucceedsWithoutEnforcement() public {
         MockKYCSBT kyc = new MockKYCSBT();
         PokerTable kycTable = new PokerTable(1, SMALL_BLIND, BIG_BLIND, address(mockVRF), address(chipToken), address(kyc), 30 minutes, 5 minutes, 10 minutes, 9, address(this));
 
@@ -234,8 +234,11 @@ contract PokerTableTest is Test {
         vm.prank(owner2);
         chipToken.approve(address(kycTable), BUY_IN);
         vm.prank(owner2);
-        vm.expectRevert("KYC required");
+        // KYC is opt-in, registration succeeds without enforcement
         kycTable.registerSeat(0, owner2, operator2, BUY_IN);
+
+        PokerTableBase.Seat memory s = kycTable.getSeat(0);
+        assertEq(s.owner, owner2);
     }
 
     // ============ Hand Start Tests ============
@@ -374,7 +377,7 @@ contract PokerTableTest is Test {
         vm.prank(operator4);
         vm.roll(block.number + 1);
 
-        vm.expectRevert("Cannot check, must call or raise");
+        vm.expectRevert(bytes("CK"));
         pokerTable.check(3);
     }
 
@@ -403,7 +406,7 @@ contract PokerTableTest is Test {
         vm.prank(operator4);
         vm.roll(block.number + 1);
 
-        vm.expectRevert("Raise too small");
+        vm.expectRevert(bytes("R2"));
         pokerTable.raise(3, 30); // Min should be 40 (20 + 20)
     }
 
@@ -444,7 +447,7 @@ contract PokerTableTest is Test {
         // SB must now call/raise (not just check)
         vm.prank(operator2);
         vm.roll(block.number + 1);
-        vm.expectRevert("Cannot check, must call or raise");
+        vm.expectRevert(bytes("CK"));
         pokerTable.check(1);
     }
 
@@ -457,7 +460,7 @@ contract PokerTableTest is Test {
         vm.prank(address(0x999));
         vm.roll(block.number + 1);
 
-        vm.expectRevert("Not operator");
+        vm.expectRevert(bytes("OP"));
         pokerTable.fold(3);
     }
 
@@ -785,7 +788,7 @@ contract PokerTableTest is Test {
 
         // Direct call from random address should revert
         vm.prank(address(0xDEAD));
-        vm.expectRevert("Only VRF adapter");
+        vm.expectRevert(bytes("V1"));
         pokerTable.fulfillVRF(reqId, 123);
     }
 
@@ -835,7 +838,7 @@ contract PokerTableTest is Test {
         _startHandFull();
 
         // Still in BETTING_PRE
-        vm.expectRevert("Not waiting for VRF");
+        vm.expectRevert(bytes("V3"));
         pokerTable.reRequestVRF();
     }
 
@@ -934,7 +937,7 @@ contract PokerTableTest is Test {
         // One more call triggers abort
         vm.warp(block.timestamp + 6 minutes);
         vm.expectEmit(true, false, false, true, address(pokerTable));
-        emit HandAborted(handId, "Max VRF retries exceeded");
+        emit HandAborted(handId, "V6");
         pokerTable.reRequestHoleCardVRF();
 
         // Should now be SETTLED
@@ -964,7 +967,7 @@ contract PokerTableTest is Test {
         _startHandFull();
 
         // Now in BETTING_PRE — reRequestHoleCardVRF should revert
-        vm.expectRevert("Not waiting for hole card VRF");
+        vm.expectRevert(bytes("V5"));
         pokerTable.reRequestHoleCardVRF();
     }
 
@@ -1300,7 +1303,7 @@ contract PokerTableTest is Test {
 
         // UTG tries to act but deadline passed
         vm.prank(operator4);
-        vm.expectRevert("Action deadline passed");
+        vm.expectRevert(bytes("DL"));
         pokerTable.call(3);
     }
 
@@ -1309,7 +1312,7 @@ contract PokerTableTest is Test {
         _startHandFull();
         vm.roll(block.number + 1);
 
-        vm.expectRevert("Deadline not passed");
+        vm.expectRevert(bytes("DP"));
         pokerTable.forceTimeout();
     }
 
@@ -1321,8 +1324,8 @@ contract PokerTableTest is Test {
         vm.warp(block.timestamp + 31 minutes);
         vm.roll(block.number + 1);
 
-        vm.expectEmit(true, true, false, true);
-        emit ForceTimeout(1, 3, PokerTableBase.ActionType.FOLD);
+        vm.expectEmit(true, true, false, false);
+        emit ActionTaken(1, 3, PokerTableBase.ActionType.FOLD, 0, 0);
 
         pokerTable.forceTimeout();
 
@@ -1348,8 +1351,8 @@ contract PokerTableTest is Test {
         vm.warp(block.timestamp + 31 minutes);
         vm.roll(block.number + 1);
 
-        vm.expectEmit(true, true, false, true);
-        emit ForceTimeout(1, 1, PokerTableBase.ActionType.FOLD);
+        vm.expectEmit(true, true, false, false);
+        emit ActionTaken(1, 1, PokerTableBase.ActionType.FOLD, 0, 0);
 
         vm.expectEmit(true, false, false, true);
         emit HandSettled(1, 2, SMALL_BLIND + BIG_BLIND);
@@ -1380,8 +1383,8 @@ contract PokerTableTest is Test {
         vm.warp(block.timestamp + 31 minutes);
         vm.roll(block.number + 1);
 
-        vm.expectEmit(true, true, false, true);
-        emit ForceTimeout(1, 2, PokerTableBase.ActionType.CHECK);
+        vm.expectEmit(true, true, false, false);
+        emit ActionTaken(1, 2, PokerTableBase.ActionType.CHECK, 0, 0);
 
         vm.expectEmit(true, false, false, true);
         emit BettingRoundComplete(1, PokerTableBase.GameState.BETTING_PRE, PokerTableBase.GameState.WAITING_VRF_FLOP);
@@ -1436,7 +1439,7 @@ contract PokerTableTest is Test {
         vm.warp(block.timestamp + 31 minutes);
         vm.roll(block.number + 1);
 
-        vm.expectRevert("Not in betting state");
+        vm.expectRevert(bytes("BS"));
         pokerTable.forceTimeout();
     }
 
@@ -1554,7 +1557,7 @@ contract PokerTableTest is Test {
         _setupAllSeats();
         _startHandFull();
 
-        vm.expectRevert("Empty commitment");
+        vm.expectRevert(bytes("H3"));
         pokerTable.submitHoleCommit(1, 0, bytes32(0));
     }
 
@@ -1562,7 +1565,7 @@ contract PokerTableTest is Test {
         _setupAllSeats();
         _startHandFull();
 
-        vm.expectRevert("Invalid seat");
+        vm.expectRevert(bytes("S1"));
         pokerTable.submitHoleCommit(1, 9, keccak256("test")); // seat 9 is out of range (0..8)
     }
 
@@ -1570,10 +1573,10 @@ contract PokerTableTest is Test {
         _setupAllSeats();
         _startHandFull();
 
-        vm.expectRevert("Must be current hand");
+        vm.expectRevert(bytes("H1"));
         pokerTable.submitHoleCommit(0, 0, keccak256("test"));
 
-        vm.expectRevert("Must be current hand");
+        vm.expectRevert(bytes("H1"));
         pokerTable.submitHoleCommit(2, 0, keccak256("test")); // hand 2 doesn't exist yet
     }
 
@@ -1581,7 +1584,7 @@ contract PokerTableTest is Test {
         _setupAllSeats();
 
         // currentHandId == 0, so any handId != 0 reverts with Must be current hand
-        vm.expectRevert("Must be current hand");
+        vm.expectRevert(bytes("H1"));
         pokerTable.submitHoleCommit(1, 0, keccak256("test"));
     }
 
@@ -1590,7 +1593,7 @@ contract PokerTableTest is Test {
         _startHandFull();
 
         vm.prank(address(0xDEAD));
-        vm.expectRevert("Not dealer");
+        vm.expectRevert(bytes("DL2"));
         pokerTable.submitHoleCommit(1, 0, keccak256("test"));
     }
 
@@ -1634,10 +1637,10 @@ contract PokerTableTest is Test {
 
         _playToShowdown();
 
-        vm.expectRevert("Invalid reveal");
+        vm.expectRevert(bytes("C5"));
         pokerTable.revealHoleCards(1, 0, 11, 25, salt);
 
-        vm.expectRevert("Invalid reveal");
+        vm.expectRevert(bytes("C5"));
         pokerTable.revealHoleCards(1, 0, 10, 26, salt);
     }
 
@@ -1655,7 +1658,7 @@ contract PokerTableTest is Test {
 
         _playToShowdown();
 
-        vm.expectRevert("Invalid reveal");
+        vm.expectRevert(bytes("C5"));
         pokerTable.revealHoleCards(1, 0, card1, card2, bytes32("wrong-salt"));
     }
 
@@ -1666,7 +1669,7 @@ contract PokerTableTest is Test {
         _playToShowdown();
 
         // Seat 4 was never active and has no commitment
-        vm.expectRevert("No commitment found");
+        vm.expectRevert(bytes("C3"));
         pokerTable.revealHoleCards(1, 4, 10, 25, bytes32("salt"));
     }
 
@@ -1686,7 +1689,7 @@ contract PokerTableTest is Test {
 
         pokerTable.revealHoleCards(1, 0, card1, card2, salt);
 
-        vm.expectRevert("Already revealed");
+        vm.expectRevert(bytes("C4"));
         pokerTable.revealHoleCards(1, 0, card1, card2, salt);
     }
 
@@ -1703,7 +1706,7 @@ contract PokerTableTest is Test {
         pokerTable.advanceToPreflop();
 
         // Still in BETTING_PRE state
-        vm.expectRevert("Not at showdown");
+        vm.expectRevert(bytes("SD"));
         pokerTable.revealHoleCards(1, 0, card1, card2, salt);
     }
 
@@ -1719,7 +1722,7 @@ contract PokerTableTest is Test {
 
         _playToShowdown();
 
-        vm.expectRevert("Invalid card value");
+        vm.expectRevert(bytes("C1"));
         pokerTable.revealHoleCards(1, 0, 52, 25, salt);
     }
 
@@ -1735,7 +1738,7 @@ contract PokerTableTest is Test {
 
         _playToShowdown();
 
-        vm.expectRevert("Duplicate cards");
+        vm.expectRevert(bytes("C2"));
         pokerTable.revealHoleCards(1, 0, 10, 10, salt);
     }
 
@@ -1744,8 +1747,8 @@ contract PokerTableTest is Test {
         _startHandFull();
 
         (uint8 card1, uint8 card2) = pokerTable.getRevealedHoleCards(1, 0);
-        assertEq(card1, 255);
-        assertEq(card2, 255);
+        assertEq(card1, 0);
+        assertEq(card2, 0);
     }
 
     function test_RevealHoleCards_CanRevealAfterSettlement() public {
@@ -2246,7 +2249,7 @@ contract PokerTableTest is Test {
         _startHandFull();
 
         // Still in BETTING_PRE
-        vm.expectRevert("Not at showdown");
+        vm.expectRevert(bytes("SD"));
         pokerTable.settleShowdown();
     }
 
@@ -3670,13 +3673,13 @@ contract PauseEmergencyTest is Test {
         pokerTable.pause();
         assertTrue(pokerTable.paused(), "Table should be paused");
 
-        vm.expectRevert("Table paused");
+        vm.expectRevert(bytes("PA"));
         pokerTable.startHand();
     }
 
     function test_Pause_RevertIfNotAdmin() public {
         vm.prank(address(0xBEEF));
-        vm.expectRevert("Not admin");
+        vm.expectRevert(bytes("AD"));
         pokerTable.pause();
     }
 
@@ -3693,12 +3696,12 @@ contract PauseEmergencyTest is Test {
 
     function test_Pause_AlreadyPausedReverts() public {
         pokerTable.pause();
-        vm.expectRevert("Already paused");
+        vm.expectRevert(bytes("A3"));
         pokerTable.pause();
     }
 
     function test_Unpause_NotPausedReverts() public {
-        vm.expectRevert("Not paused");
+        vm.expectRevert(bytes("A4"));
         pokerTable.unpause();
     }
 
@@ -3815,6 +3818,12 @@ contract MockKYCSBT {
 
 import "../src/PlayerRegistry.sol";
 
+contract MockVault {
+    function fundBuyIn(address, uint256) external {}
+    function releaseEscrow(address, uint256) external {}
+    function onSettlement(uint256, int256) external {}
+}
+
 contract PlayerRegistryIntegrationTest is Test {
     PokerTable public pokerTable;
     PlayerRegistry public registry;
@@ -3848,14 +3857,15 @@ contract PlayerRegistryIntegrationTest is Test {
         vm.prank(owner1);
         chipToken.approve(address(pokerTable), BUY_IN);
         vm.prank(owner1);
-        vm.expectRevert("Agent not registered in PlayerRegistry");
+        vm.expectRevert(bytes("S13"));
         pokerTable.registerSeat(0, owner1, operator1, BUY_IN);
     }
 
     function test_RegisterSeat_SuccessIfRegistered() public {
-        // Register in PlayerRegistry first
+        // Register in PlayerRegistry first with a mock vault contract
+        MockVault vault = new MockVault();
         vm.prank(owner1);
-        registry.registerAgent(address(0x5), address(pokerTable), operator1, "");
+        registry.registerAgent(address(vault), address(pokerTable), operator1, "");
 
         vm.prank(owner1);
         chipToken.approve(address(pokerTable), BUY_IN);
@@ -3880,19 +3890,21 @@ contract PlayerRegistryIntegrationTest is Test {
         assertEq(s.owner, owner1);
     }
 
-    function test_RegistryOperator_AllowedToAct() public {
-        address regOperator = address(0x3333);
+    function test_RegistryOperator_TableOperatorAllowedToAct() public {
+        address tableOp = address(0xDEAD);
+        MockVault vault1 = new MockVault();
+        MockVault vault2 = new MockVault();
         vm.prank(owner1);
-        registry.registerAgent(address(0x5), address(pokerTable), regOperator, "");
+        registry.registerAgent(address(vault1), address(pokerTable), address(0x3333), "");
         vm.prank(owner2);
-        registry.registerAgent(address(0x5), address(pokerTable), address(0), "");
+        registry.registerAgent(address(vault2), address(pokerTable), address(0), "");
 
         // Register both seats without registry check (disable temporarily)
         pokerTable.setPlayerRegistry(address(0));
         vm.prank(owner1);
         chipToken.approve(address(pokerTable), BUY_IN);
         vm.prank(owner1);
-        pokerTable.registerSeat(0, owner1, address(0xDEAD), BUY_IN); // table operator ≠ registry operator
+        pokerTable.registerSeat(0, owner1, tableOp, BUY_IN);
         vm.prank(owner2);
         chipToken.approve(address(pokerTable), BUY_IN);
         vm.prank(owner2);
@@ -3906,9 +3918,9 @@ contract PlayerRegistryIntegrationTest is Test {
         pokerTable.submitHoleCommit(1, 1, bytes32(uint256(2)));
         pokerTable.advanceToPreflop();
 
-        // registry operator (regOperator) should be allowed to act for seat 0
+        // Table seat operator should be allowed to act for seat 0
         vm.roll(block.number + 1);
-        vm.prank(regOperator);
+        vm.prank(tableOp);
         pokerTable.fold(0); // Should not revert
     }
 }

@@ -1,9 +1,9 @@
 // Database repository - all DB operations
 
-import { query, transaction } from "./pool.js";
+import { query } from "./pool.js";
 import type {
   PokerTable,
-  Seat,
+  SeatWithTokenAddress,
   Hand,
   Action,
   Agent,
@@ -16,16 +16,13 @@ import type {
 
 // ============ Event Idempotency ============
 
-export async function isEventProcessed(
-  blockNumber: bigint,
-  logIndex: number
-): Promise<boolean> {
+export async function isEventProcessed(blockNumber: bigint, logIndex: number): Promise<boolean> {
   const result = await query<{ exists: boolean }>(
     `SELECT EXISTS(
       SELECT 1 FROM processed_events
       WHERE block_number = $1 AND log_index = $2
     ) as exists`,
-    [blockNumber.toString(), logIndex]
+    [blockNumber.toString(), logIndex],
   );
   return result.rows[0]?.exists ?? false;
 }
@@ -34,32 +31,27 @@ export async function markEventProcessed(
   blockNumber: bigint,
   logIndex: number,
   txHash: string,
-  eventName: string
+  eventName: string,
 ): Promise<void> {
   await query(
     `INSERT INTO processed_events (block_number, log_index, tx_hash, event_name)
      VALUES ($1, $2, $3, $4)
      ON CONFLICT (block_number, log_index) DO NOTHING`,
-    [blockNumber.toString(), logIndex, txHash, eventName]
+    [blockNumber.toString(), logIndex, txHash, eventName],
   );
 }
 
 export async function getIndexerState(): Promise<IndexerState | null> {
-  const result = await query<IndexerState>(
-    `SELECT * FROM indexer_state WHERE id = 1`
-  );
+  const result = await query<IndexerState>(`SELECT * FROM indexer_state WHERE id = 1`);
   return result.rows[0] || null;
 }
 
-export async function updateIndexerState(
-  blockNumber: bigint,
-  logIndex: number
-): Promise<void> {
+export async function updateIndexerState(blockNumber: bigint, logIndex: number): Promise<void> {
   await query(
     `UPDATE indexer_state
      SET last_processed_block = $1, last_processed_log_index = $2, updated_at = NOW()
      WHERE id = 1`,
-    [blockNumber.toString(), logIndex]
+    [blockNumber.toString(), logIndex],
   );
 }
 
@@ -69,7 +61,7 @@ export async function upsertTable(
   tableId: bigint,
   contractAddress: string,
   smallBlind: bigint,
-  bigBlind: bigint
+  bigBlind: bigint,
 ): Promise<void> {
   await query(
     `INSERT INTO poker_tables (table_id, contract_address, small_blind, big_blind)
@@ -79,7 +71,7 @@ export async function upsertTable(
        small_blind = EXCLUDED.small_blind,
        big_blind = EXCLUDED.big_blind,
        updated_at = NOW()`,
-    [tableId.toString(), contractAddress, smallBlind.toString(), bigBlind.toString()]
+    [tableId.toString(), contractAddress, smallBlind.toString(), bigBlind.toString()],
   );
 }
 
@@ -88,7 +80,7 @@ export async function updateTableState(
   gameState: string,
   currentHandId?: bigint,
   buttonSeat?: number,
-  actionDeadline?: Date | null
+  actionDeadline?: Date | null,
 ): Promise<void> {
   const updates: string[] = ["game_state = $2", "updated_at = NOW()"];
   const params: unknown[] = [tableId.toString(), gameState];
@@ -110,23 +102,19 @@ export async function updateTableState(
     paramIndex++;
   }
 
-  await query(
-    `UPDATE poker_tables SET ${updates.join(", ")} WHERE table_id = $1`,
-    params
-  );
+  await query(`UPDATE poker_tables SET ${updates.join(", ")} WHERE table_id = $1`, params);
 }
 
 export async function getTable(tableId: bigint): Promise<PokerTable | null> {
-  const result = await query<PokerTable>(
-    `SELECT * FROM poker_tables WHERE table_id = $1`,
-    [tableId.toString()]
-  );
+  const result = await query<PokerTable>(`SELECT * FROM poker_tables WHERE table_id = $1`, [
+    tableId.toString(),
+  ]);
   return result.rows[0] || null;
 }
 
 export async function getAllTables(): Promise<PokerTable[]> {
   const result = await query<PokerTable>(
-    `SELECT * FROM poker_tables ORDER BY table_id`
+    `SELECT * FROM poker_tables WHERE table_id > 0 ORDER BY table_id`,
   );
   return result.rows;
 }
@@ -140,7 +128,7 @@ export async function upsertSeat(
   operatorAddress: string,
   stack: bigint,
   isActive = false,
-  currentBet: bigint = 0n
+  currentBet: bigint = 0n,
 ): Promise<void> {
   await query(
     `INSERT INTO seats (table_id, seat_index, owner_address, operator_address, stack, is_active, current_bet)
@@ -160,29 +148,29 @@ export async function upsertSeat(
       stack.toString(),
       isActive,
       currentBet.toString(),
-    ]
+    ],
   );
 }
 
 export async function updateSeatStack(
   tableId: bigint,
   seatIndex: number,
-  stack: bigint
+  stack: bigint,
 ): Promise<void> {
   await query(
     `UPDATE seats SET stack = $3, updated_at = NOW()
      WHERE table_id = $1 AND seat_index = $2`,
-    [tableId.toString(), seatIndex, stack.toString()]
+    [tableId.toString(), seatIndex, stack.toString()],
   );
 }
 
-export async function getSeats(tableId: bigint): Promise<Seat[]> {
-  const result = await query<Seat>(
+export async function getSeats(tableId: bigint): Promise<SeatWithTokenAddress[]> {
+  const result = await query<SeatWithTokenAddress>(
     `SELECT s.*, a.token_address
      FROM seats s
      LEFT JOIN agents a ON a.owner_address = s.owner_address
      WHERE s.table_id = $1 ORDER BY s.seat_index`,
-    [tableId.toString()]
+    [tableId.toString()],
   );
   return result.rows;
 }
@@ -196,7 +184,7 @@ export async function insertHand(
   buttonSeat: number,
   smallBlind: bigint,
   bigBlind: bigint,
-  gameState: string
+  gameState: string,
 ): Promise<void> {
   await query(
     `INSERT INTO hands (table_id, hand_id, pot, button_seat, small_blind, big_blind, game_state)
@@ -212,7 +200,7 @@ export async function insertHand(
       smallBlind.toString(),
       bigBlind.toString(),
       gameState,
-    ]
+    ],
   );
 }
 
@@ -228,7 +216,7 @@ export async function updateHand(
     winnerSeat: number;
     settlementAmount: bigint;
     settledAt: Date;
-  }>
+  }>,
 ): Promise<void> {
   const setClauses: string[] = [];
   const params: unknown[] = [tableId.toString(), handId.toString()];
@@ -271,22 +259,22 @@ export async function updateHand(
 
   await query(
     `UPDATE hands SET ${setClauses.join(", ")} WHERE table_id = $1 AND hand_id = $2`,
-    params
+    params,
   );
 }
 
 export async function getHand(tableId: bigint, handId: bigint): Promise<Hand | null> {
-  const result = await query<Hand>(
-    `SELECT * FROM hands WHERE table_id = $1 AND hand_id = $2`,
-    [tableId.toString(), handId.toString()]
-  );
+  const result = await query<Hand>(`SELECT * FROM hands WHERE table_id = $1 AND hand_id = $2`, [
+    tableId.toString(),
+    handId.toString(),
+  ]);
   return result.rows[0] || null;
 }
 
 export async function getTableHands(tableId: bigint, limit = 10): Promise<Hand[]> {
   const result = await query<Hand>(
     `SELECT * FROM hands WHERE table_id = $1 ORDER BY hand_id DESC LIMIT $2`,
-    [tableId.toString(), limit]
+    [tableId.toString(), limit],
   );
   return result.rows;
 }
@@ -301,7 +289,7 @@ export async function insertAction(
   amount: bigint,
   potAfter: bigint,
   blockNumber: bigint,
-  txHash: string
+  txHash: string,
 ): Promise<void> {
   await query(
     `INSERT INTO actions (table_id, hand_id, seat_index, action_type, amount, pot_after, block_number, tx_hash)
@@ -315,7 +303,7 @@ export async function insertAction(
       potAfter.toString(),
       blockNumber.toString(),
       txHash,
-    ]
+    ],
   );
 }
 
@@ -338,7 +326,7 @@ export async function getHandActions(tableId: bigint, handId: bigint): Promise<A
       AND dv.seat_index = a.seat_index
      WHERE a.table_id = $1 AND a.hand_id = $2
      ORDER BY a.id`,
-    [tableId.toString(), handId.toString()]
+    [tableId.toString(), handId.toString()],
   );
   return result.rows;
 }
@@ -350,7 +338,7 @@ export async function insertDecisionVerification(
   action: string,
   reasoning: string,
   revealTxHash: string,
-  blockNumber: bigint
+  blockNumber: bigint,
 ): Promise<void> {
   await query(
     `INSERT INTO decision_verifications
@@ -369,7 +357,7 @@ export async function insertDecisionVerification(
       reasoning,
       revealTxHash,
       blockNumber.toString(),
-    ]
+    ],
   );
 }
 
@@ -381,7 +369,7 @@ export async function upsertAgent(
   operatorAddress: string,
   vaultAddress?: string | null,
   tableAddress?: string | null,
-  metaUri?: string | null
+  metaUri?: string | null,
 ): Promise<void> {
   await query(
     `INSERT INTO agents (token_address, owner_address, operator_address, vault_address, table_address, meta_uri)
@@ -400,93 +388,78 @@ export async function upsertAgent(
       vaultAddress?.toLowerCase() || null,
       tableAddress?.toLowerCase() || null,
       metaUri || null,
-    ]
+    ],
   );
 }
 
 export async function updateAgentOperator(
   tokenAddress: string,
-  operatorAddress: string
+  operatorAddress: string,
 ): Promise<void> {
   await query(
     `UPDATE agents SET operator_address = $2, updated_at = NOW()
      WHERE token_address = $1`,
-    [tokenAddress.toLowerCase(), operatorAddress.toLowerCase()]
+    [tokenAddress.toLowerCase(), operatorAddress.toLowerCase()],
   );
 }
 
-export async function updateAgentOwner(
-  tokenAddress: string,
-  ownerAddress: string
-): Promise<void> {
+export async function updateAgentOwner(tokenAddress: string, ownerAddress: string): Promise<void> {
   await query(
     `UPDATE agents SET owner_address = $2, updated_at = NOW()
      WHERE token_address = $1`,
-    [tokenAddress.toLowerCase(), ownerAddress.toLowerCase()]
+    [tokenAddress.toLowerCase(), ownerAddress.toLowerCase()],
   );
 }
 
-export async function updateAgentVault(
-  tokenAddress: string,
-  vaultAddress: string
-): Promise<void> {
+export async function updateAgentVault(tokenAddress: string, vaultAddress: string): Promise<void> {
   await query(
     `UPDATE agents SET vault_address = $2, updated_at = NOW()
      WHERE token_address = $1`,
-    [tokenAddress.toLowerCase(), vaultAddress.toLowerCase()]
+    [tokenAddress.toLowerCase(), vaultAddress.toLowerCase()],
   );
 }
 
-export async function updateAgentTable(
-  tokenAddress: string,
-  tableAddress: string
-): Promise<void> {
+export async function updateAgentTable(tokenAddress: string, tableAddress: string): Promise<void> {
   await query(
     `UPDATE agents SET table_address = $2, updated_at = NOW()
      WHERE token_address = $1`,
-    [tokenAddress.toLowerCase(), tableAddress.toLowerCase()]
+    [tokenAddress.toLowerCase(), tableAddress.toLowerCase()],
   );
 }
 
-export async function updateAgentMetaUri(
-  tokenAddress: string,
-  metaUri: string
-): Promise<void> {
+export async function updateAgentMetaUri(tokenAddress: string, metaUri: string): Promise<void> {
   await query(
     `UPDATE agents SET meta_uri = $2, updated_at = NOW()
      WHERE token_address = $1`,
-    [tokenAddress.toLowerCase(), metaUri]
+    [tokenAddress.toLowerCase(), metaUri],
   );
 }
 
 export async function getAgent(tokenAddress: string): Promise<Agent | null> {
-  const result = await query<Agent>(
-    `SELECT * FROM agents WHERE token_address = $1`,
-    [tokenAddress.toLowerCase()]
-  );
+  const result = await query<Agent>(`SELECT * FROM agents WHERE token_address = $1`, [
+    tokenAddress.toLowerCase(),
+  ]);
   return result.rows[0] || null;
 }
 
 export async function getAllAgents(): Promise<Agent[]> {
   const result = await query<Agent>(
-    `SELECT * FROM agents WHERE is_registered = true ORDER BY created_at DESC`
+    `SELECT * FROM agents WHERE is_registered = true ORDER BY created_at DESC`,
   );
   return result.rows;
 }
 
 export async function getAllAgentsPaginated(
   page: number,
-  limit: number
+  limit: number,
 ): Promise<{ rows: Agent[]; total: number }> {
   const offset = (page - 1) * limit;
   const [dataResult, countResult] = await Promise.all([
     query<Agent>(
       `SELECT * FROM agents WHERE is_registered = true ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
-      [limit, offset]
+      [limit, offset],
     ),
-    query<{ count: string }>(
-      `SELECT COUNT(*) AS count FROM agents WHERE is_registered = true`
-    ),
+    query<{ count: string }>(`SELECT COUNT(*) AS count FROM agents WHERE is_registered = true`),
   ]);
   return {
     rows: dataResult.rows,
@@ -494,10 +467,7 @@ export async function getAllAgentsPaginated(
   };
 }
 
-export async function getAgentHands(
-  tokenAddress: string,
-  limit = 20
-): Promise<Hand[]> {
+export async function getAgentHands(tokenAddress: string, limit = 20): Promise<Hand[]> {
   const agent = await getAgent(tokenAddress);
   if (!agent) return [];
 
@@ -509,7 +479,7 @@ export async function getAgentHands(
        AND h.game_state IN ('10', '11', 'SHOWDOWN', 'SETTLED', 'TOURNAMENT_OVER')
      ORDER BY h.settled_at DESC NULLS LAST, h.hand_id DESC
      LIMIT $2`,
-    [agent.owner_address.toLowerCase(), limit]
+    [agent.owner_address.toLowerCase(), limit],
   );
   return result.rows;
 }
@@ -517,7 +487,7 @@ export async function getAgentHands(
 export async function getAgentsByOwner(ownerAddress: string): Promise<Agent[]> {
   const result = await query<Agent>(
     `SELECT * FROM agents WHERE is_registered = true AND owner_address = $1 ORDER BY created_at DESC`,
-    [ownerAddress.toLowerCase()]
+    [ownerAddress.toLowerCase()],
   );
   return result.rows;
 }
@@ -532,7 +502,7 @@ export async function insertVaultSnapshot(
   outstandingShares: bigint,
   navPerShare: bigint,
   cumulativePnl: bigint,
-  blockNumber: bigint
+  blockNumber: bigint,
 ): Promise<void> {
   await query(
     `INSERT INTO vault_snapshots
@@ -547,7 +517,7 @@ export async function insertVaultSnapshot(
       navPerShare.toString(),
       cumulativePnl.toString(),
       blockNumber.toString(),
-    ]
+    ],
   );
 }
 
@@ -557,21 +527,21 @@ export async function getLatestVaultSnapshot(vaultAddress: string): Promise<Vaul
      WHERE vault_address = $1
      ORDER BY block_number DESC, id DESC
      LIMIT 1`,
-    [vaultAddress.toLowerCase()]
+    [vaultAddress.toLowerCase()],
   );
   return result.rows[0] || null;
 }
 
 export async function getVaultSnapshots(
   vaultAddress: string,
-  limit = 100
+  limit = 100,
 ): Promise<VaultSnapshot[]> {
   const result = await query<VaultSnapshot>(
     `SELECT * FROM vault_snapshots
      WHERE vault_address = $1
      ORDER BY block_number DESC, id DESC
      LIMIT $2`,
-    [vaultAddress.toLowerCase(), limit]
+    [vaultAddress.toLowerCase(), limit],
   );
   return result.rows;
 }
@@ -584,7 +554,7 @@ export async function insertSettlement(
   winnerSeat: number,
   potAmount: bigint,
   blockNumber: bigint,
-  txHash: string
+  txHash: string,
 ): Promise<void> {
   await query(
     `INSERT INTO settlements (table_id, hand_id, winner_seat, pot_amount, block_number, tx_hash)
@@ -596,17 +566,14 @@ export async function insertSettlement(
       potAmount.toString(),
       blockNumber.toString(),
       txHash,
-    ]
+    ],
   );
 }
 
-export async function getSettlement(
-  tableId: bigint,
-  handId: bigint
-): Promise<Settlement | null> {
+export async function getSettlement(tableId: bigint, handId: bigint): Promise<Settlement | null> {
   const result = await query<Settlement>(
     `SELECT * FROM settlements WHERE table_id = $1 AND hand_id = $2`,
-    [tableId.toString(), handId.toString()]
+    [tableId.toString(), handId.toString()],
   );
   return result.rows[0] || null;
 }
@@ -631,7 +598,7 @@ export interface AgentLeaderboardData {
 }
 
 export async function getLeaderboardData(
-  periodStart: Date | null
+  periodStart: Date | null,
 ): Promise<AgentLeaderboardData[]> {
   // This query aggregates:
   // 1. Agent info
@@ -640,12 +607,8 @@ export async function getLeaderboardData(
   // 4. Peak NAV (max NAV in period for MDD)
   // 5. Win/loss stats from settlements
 
-  const periodCondition = periodStart
-    ? `AND vs.created_at >= $1`
-    : "";
-  const settlementCondition = periodStart
-    ? `AND s.created_at >= $1`
-    : "";
+  const periodCondition = periodStart ? `AND vs.created_at >= $1` : "";
+  const settlementCondition = periodStart ? `AND s.created_at >= $1` : "";
 
   const params = periodStart ? [periodStart.toISOString()] : [];
 
@@ -718,7 +681,7 @@ export async function getLeaderboardData(
 
 export async function getAgentSettlementsInPeriod(
   tokenAddress: string,
-  periodStart: Date | null
+  periodStart: Date | null,
 ): Promise<{ total: number; wins: number }> {
   // Get agent's vault to find their table/seat
   const agent = await getAgent(tokenAddress);
@@ -726,9 +689,7 @@ export async function getAgentSettlementsInPeriod(
     return { total: 0, wins: 0 };
   }
 
-  const periodCondition = periodStart
-    ? `AND s.created_at >= $2`
-    : "";
+  const periodCondition = periodStart ? `AND s.created_at >= $2` : "";
   const params = periodStart
     ? [agent.owner_address.toLowerCase(), periodStart.toISOString()]
     : [agent.owner_address.toLowerCase()];
@@ -757,11 +718,9 @@ export async function getAgentSettlementsInPeriod(
 
 export async function getVaultSnapshotsInPeriod(
   vaultAddress: string,
-  periodStart: Date | null
+  periodStart: Date | null,
 ): Promise<VaultSnapshot[]> {
-  const periodCondition = periodStart
-    ? `AND created_at >= $2`
-    : "";
+  const periodCondition = periodStart ? `AND created_at >= $2` : "";
   const params = periodStart
     ? [vaultAddress.toLowerCase(), periodStart.toISOString()]
     : [vaultAddress.toLowerCase()];
@@ -771,7 +730,7 @@ export async function getVaultSnapshotsInPeriod(
      WHERE vault_address = $1
      ${periodCondition}
      ORDER BY created_at ASC`,
-    params
+    params,
   );
   return result.rows;
 }
@@ -787,7 +746,7 @@ export async function insertRebalanceEvent(
   navBefore: bigint,
   navAfter: bigint,
   blockNumber: bigint,
-  txHash: string
+  txHash: string,
 ): Promise<void> {
   await query(
     `INSERT INTO rebalance_events
@@ -803,20 +762,20 @@ export async function insertRebalanceEvent(
       navAfter.toString(),
       blockNumber.toString(),
       txHash,
-    ]
+    ],
   );
 }
 
 export async function getRebalanceEvents(
   vaultAddress: string,
-  limit = 50
+  limit = 50,
 ): Promise<RebalanceEvent[]> {
   const result = await query<RebalanceEvent>(
     `SELECT * FROM rebalance_events
      WHERE vault_address = $1
      ORDER BY created_at DESC
      LIMIT $2`,
-    [vaultAddress.toLowerCase(), limit]
+    [vaultAddress.toLowerCase(), limit],
   );
   return result.rows;
 }
@@ -830,7 +789,7 @@ export async function insertRevealedHolecard(
   card1: number,
   card2: number,
   blockNumber: bigint,
-  txHash: string
+  txHash: string,
 ): Promise<void> {
   await query(
     `INSERT INTO revealed_holecards (table_id, hand_id, seat_index, card1, card2, block_number, tx_hash)
@@ -844,19 +803,19 @@ export async function insertRevealedHolecard(
       card2,
       blockNumber.toString(),
       txHash,
-    ]
+    ],
   );
 }
 
 export async function getRevealedHolecards(
   tableId: bigint,
-  handId: bigint
+  handId: bigint,
 ): Promise<RevealedHolecard[]> {
   const result = await query<RevealedHolecard>(
     `SELECT * FROM revealed_holecards
      WHERE table_id = $1 AND hand_id = $2
      ORDER BY seat_index ASC`,
-    [tableId.toString(), handId.toString()]
+    [tableId.toString(), handId.toString()],
   );
   return result.rows;
 }
@@ -876,13 +835,13 @@ export interface EloRow {
  * Returns a Map for O(1) lookup.
  */
 export async function getEloRatings(
-  tokenAddresses: string[]
+  tokenAddresses: string[],
 ): Promise<Map<string, { rating: number; handsPlayed: number }>> {
   if (tokenAddresses.length === 0) return new Map();
   const placeholders = tokenAddresses.map((_, i) => `$${i + 1}`).join(", ");
   const result = await query<EloRow>(
     `SELECT token_address, rating, hands_played FROM elo_ratings WHERE token_address IN (${placeholders})`,
-    tokenAddresses.map((a) => a.toLowerCase())
+    tokenAddresses.map((a) => a.toLowerCase()),
   );
   const map = new Map<string, { rating: number; handsPlayed: number }>();
   for (const row of result.rows) {
@@ -900,7 +859,7 @@ export async function getEloRatings(
 export async function upsertEloRating(
   tokenAddress: string,
   newRating: number,
-  handsIncrement: number = 1
+  handsIncrement: number = 1,
 ): Promise<void> {
   await query(
     `INSERT INTO elo_ratings (token_address, rating, hands_played, peak_rating)
@@ -910,7 +869,7 @@ export async function upsertEloRating(
        hands_played = elo_ratings.hands_played + $3,
        peak_rating = GREATEST(elo_ratings.peak_rating, EXCLUDED.rating),
        updated_at = NOW()`,
-    [tokenAddress.toLowerCase(), newRating.toFixed(2), handsIncrement]
+    [tokenAddress.toLowerCase(), newRating.toFixed(2), handsIncrement],
   );
 }
 
@@ -924,7 +883,7 @@ export async function insertEloHistory(
   outcome: "win" | "loss" | "draw",
   ratingBefore: number,
   ratingAfter: number,
-  k: number
+  k: number,
 ): Promise<void> {
   await query(
     `INSERT INTO elo_history
@@ -938,19 +897,24 @@ export async function insertEloHistory(
       ratingBefore.toFixed(2),
       ratingAfter.toFixed(2),
       k,
-    ]
+    ],
   );
 }
 
 /**
  * Get ELO leaderboard sorted by rating descending.
  */
-export async function getEloLeaderboard(limit = 100, offset = 0): Promise<Array<{
-  token_address: string;
-  rating: string;
-  hands_played: number;
-  peak_rating: string;
-}>> {
+export async function getEloLeaderboard(
+  limit = 100,
+  offset = 0,
+): Promise<
+  Array<{
+    token_address: string;
+    rating: string;
+    hands_played: number;
+    peak_rating: string;
+  }>
+> {
   const result = await query<{
     token_address: string;
     rating: string;
@@ -961,7 +925,7 @@ export async function getEloLeaderboard(limit = 100, offset = 0): Promise<Array<
      FROM elo_ratings
      ORDER BY rating DESC
      LIMIT $1 OFFSET $2`,
-    [limit, offset]
+    [limit, offset],
   );
   return result.rows;
 }
@@ -977,7 +941,7 @@ export async function insertStrategyRecord(
   tightnessBps: number,
   bluffFreqBps: number,
   blockNumber: bigint,
-  txHash: string
+  txHash: string,
 ): Promise<void> {
   await query(
     `INSERT INTO strategy_history
@@ -994,7 +958,7 @@ export async function insertStrategyRecord(
       bluffFreqBps,
       blockNumber.toString(),
       txHash,
-    ]
+    ],
   );
 }
 
@@ -1018,7 +982,7 @@ export async function getAgentStrategies(agent: string, limit = 50): Promise<Str
      WHERE agent = $1
      ORDER BY version DESC
      LIMIT $2`,
-    [agent.toLowerCase(), limit]
+    [agent.toLowerCase(), limit],
   );
   return result.rows;
 }
@@ -1031,7 +995,7 @@ export async function upsertDecisionAudit(
   seatIndex: number,
   reasoningHash: string,
   commitTxHash: string,
-  blockNumber: bigint
+  blockNumber: bigint,
 ): Promise<void> {
   await query(
     `INSERT INTO decision_audit
@@ -1048,6 +1012,6 @@ export async function upsertDecisionAudit(
       reasoningHash,
       commitTxHash,
       blockNumber.toString(),
-    ]
+    ],
   );
 }

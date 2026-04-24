@@ -59,14 +59,13 @@ describe("chainConfig", () => {
       ]);
       assert.strictEqual(
         config.contracts.playerRegistry,
-        "0x2222222222222222222222222222222222222222"
+        "0x2222222222222222222222222222222222222222",
       );
     });
 
     it("supports single table address in comma-separated field", () => {
       setAllEnvVars();
-      process.env[ENV_VARS.POKER_TABLE_ADDRESSES] =
-        "0x1111111111111111111111111111111111111111";
+      process.env[ENV_VARS.POKER_TABLE_ADDRESSES] = "0x1111111111111111111111111111111111111111";
       clearChainConfigCache();
 
       const config = getChainConfig();
@@ -83,7 +82,7 @@ describe("chainConfig", () => {
           assert.ok(err instanceof ChainConfigError);
           assert.ok(err.message.includes("CHAIN_ENV"));
           return true;
-        }
+        },
       );
     });
 
@@ -97,7 +96,7 @@ describe("chainConfig", () => {
           assert.ok(err instanceof ChainConfigError);
           assert.ok(err.message.includes("RPC_URL"));
           return true;
-        }
+        },
       );
     });
 
@@ -111,7 +110,7 @@ describe("chainConfig", () => {
           assert.ok(err instanceof ChainConfigError);
           assert.ok(err.message.includes("invalid"));
           return true;
-        }
+        },
       );
     });
 
@@ -125,7 +124,7 @@ describe("chainConfig", () => {
           assert.ok(err instanceof ChainConfigError);
           assert.ok(err.message.includes("Invalid address"));
           return true;
-        }
+        },
       );
     });
 
@@ -142,7 +141,7 @@ describe("chainConfig", () => {
           assert.ok(configErr.missingVars);
           assert.ok(configErr.missingVars!.length > 0);
           return true;
-        }
+        },
       );
     });
 
@@ -183,6 +182,50 @@ describe("chainConfig", () => {
       clearChainConfigCache();
       assert.strictEqual(getChainConfig().env, "mainnet");
       assert.strictEqual(getChainConfig().chainId, 177);
+
+      process.env.INITIA_CHAIN_ID = "12345";
+      process.env[ENV_VARS.CHAIN_ENV] = "initia-testnet";
+      clearChainConfigCache();
+      assert.strictEqual(getChainConfig().env, "initia-testnet");
+      assert.strictEqual(getChainConfig().chainId, 12345);
+      delete process.env.INITIA_CHAIN_ID;
+    });
+
+    it("initia-testnet throws when INITIA_CHAIN_ID is unset (no silent 7777777 fallback)", () => {
+      setAllEnvVars();
+      process.env[ENV_VARS.CHAIN_ENV] = "initia-testnet";
+      delete process.env.INITIA_CHAIN_ID;
+      clearChainConfigCache();
+      assert.throws(() => getChainConfig(), /INITIA_CHAIN_ID is required/);
+    });
+
+    it("initia-testnet uses INITIA_EXPLORER_URL when set", () => {
+      setAllEnvVars();
+      process.env[ENV_VARS.CHAIN_ENV] = "initia-testnet";
+      process.env.INITIA_CHAIN_ID = "12345";
+      process.env.INITIA_EXPLORER_URL = "https://custom-explorer.example.com";
+      clearChainConfigCache();
+      assert.strictEqual(getChainConfig().blockExplorerUrl, "https://custom-explorer.example.com");
+      delete process.env.INITIA_EXPLORER_URL;
+      delete process.env.INITIA_CHAIN_ID;
+    });
+  });
+
+  describe("initia-testnet branch", () => {
+    it("throws for missing addresses on initia-testnet", () => {
+      process.env[ENV_VARS.CHAIN_ENV] = "initia-testnet";
+      process.env[ENV_VARS.RPC_URL] = "https://rpc.initia-rollup.example.com";
+      process.env[ENV_VARS.VRF_ADAPTER_TYPE] = "production";
+
+      assert.throws(
+        () => getChainConfig(),
+        (err: Error) => {
+          assert.ok(err instanceof ChainConfigError);
+          const configErr = err as ChainConfigError;
+          assert.ok(configErr.missingVars && configErr.missingVars.length > 0);
+          return true;
+        },
+      );
     });
   });
 
@@ -209,7 +252,7 @@ describe("chainConfig", () => {
           assert.ok(err.message.includes("VRF_ADAPTER_TYPE"));
           assert.ok(err.message.includes("production"));
           return true;
-        }
+        },
       );
     });
 
@@ -225,7 +268,7 @@ describe("chainConfig", () => {
           assert.ok(err instanceof ChainConfigError);
           assert.ok(err.message.includes("MockVRFAdapter"));
           return true;
-        }
+        },
       );
     });
 
@@ -251,7 +294,7 @@ describe("chainConfig", () => {
           assert.ok(err instanceof ChainConfigError);
           assert.ok(err.message.includes("mock"));
           return true;
-        }
+        },
       );
     });
   });
@@ -295,6 +338,42 @@ describe("chainConfig", () => {
       delete process.env[ENV_VARS.VRF_ADAPTER_TYPE];
       const missing = validateChainConfigEnv();
       assert.ok(!missing.includes(ENV_VARS.VRF_ADAPTER_TYPE));
+    });
+  });
+
+  describe("KYC guard (I2-4)", () => {
+    function setInitiaEnvVars(): void {
+      process.env[ENV_VARS.CHAIN_ENV] = "initia-testnet";
+      process.env[ENV_VARS.RPC_URL] = "https://rpc.example.com";
+      process.env[ENV_VARS.POKER_TABLE_ADDRESSES] = "0x1111111111111111111111111111111111111111";
+      process.env[ENV_VARS.PLAYER_REGISTRY_ADDRESS] = "0x2222222222222222222222222222222222222222";
+      process.env[ENV_VARS.PLAYER_VAULT_ADDRESS] = "0x3333333333333333333333333333333333333333";
+      process.env[ENV_VARS.VRF_ADAPTER_ADDRESS] = "0x4444444444444444444444444444444444444444";
+      process.env[ENV_VARS.VRF_ADAPTER_TYPE] = "production";
+      process.env.INITIA_CHAIN_ID = "42000";
+    }
+
+    it("throws ChainConfigError when KYC_SBT_ADDRESS is non-zero on initia-testnet", () => {
+      setInitiaEnvVars();
+      process.env.KYC_SBT_ADDRESS = "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef";
+      assert.throws(
+        () => getChainConfig(true),
+        (err) => err instanceof ChainConfigError && err.message.includes("KYC_SBT_ADDRESS"),
+      );
+      delete process.env.KYC_SBT_ADDRESS;
+    });
+
+    it("accepts KYC_SBT_ADDRESS=0x0 on initia-testnet", () => {
+      setInitiaEnvVars();
+      process.env.KYC_SBT_ADDRESS = "0x0000000000000000000000000000000000000000";
+      assert.doesNotThrow(() => getChainConfig(true));
+      delete process.env.KYC_SBT_ADDRESS;
+    });
+
+    it("accepts unset KYC_SBT_ADDRESS on initia-testnet", () => {
+      setInitiaEnvVars();
+      delete process.env.KYC_SBT_ADDRESS;
+      assert.doesNotThrow(() => getChainConfig(true));
     });
   });
 });

@@ -37,7 +37,7 @@ library HandEvaluator {
         uint8[5] memory community,
         uint8 hole1,
         uint8 hole2
-    ) internal pure returns (uint256 best) {
+    ) public pure returns (uint256 best) {
         uint8[7] memory cards;
         cards[0] = hole1;
         cards[1] = hole2;

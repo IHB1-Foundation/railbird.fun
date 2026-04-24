@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 import {Test} from "forge-std/Test.sol";
 import {PlayerVault} from "../../src/PlayerVault.sol";
 import {MockERC20} from "../mocks/MockERC20.sol";
-import {MockNadfunRouter} from "../mocks/MockNadfunRouter.sol";
+import {MockDexRouter} from "../mocks/MockDexRouter.sol";
 
 /**
  * @title PlayerVault Invariant Handler
@@ -88,7 +88,7 @@ contract PlayerVaultHandler is Test {
 contract PlayerVaultInvariantTest is Test {
     PlayerVault          public vault;
     MockERC20            public agentToken;
-    MockNadfunRouter     public router;
+    MockDexRouter     public router;
     PlayerVaultHandler   public handler;
 
     address public owner = address(0xBEEF);
@@ -97,7 +97,7 @@ contract PlayerVaultInvariantTest is Test {
     function setUp() public {
         vault      = new PlayerVault(owner);
         agentToken = new MockERC20("AgentToken", "AGT");
-        router     = new MockNadfunRouter();
+        router     = new MockDexRouter();
         handler    = new PlayerVaultHandler(vault, agentToken, owner, mockTable);
 
         // Authorize the mock table so escrow calls work

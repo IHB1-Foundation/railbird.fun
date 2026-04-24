@@ -2,7 +2,7 @@ import { timingSafeEqual } from "crypto";
 import { Router, type Request, type Response, type NextFunction } from "express";
 import type { Address } from "@playerco/shared";
 import { DealerService, DealerError } from "../dealer/index.js";
-import { EncryptionKeyStore } from "../encryptionKeyStore.js";
+import type { EncryptionKeyStore } from "../encryptionKeyStore.js";
 import { dealerRateLimiter } from "../middleware/rateLimit.js";
 
 /**
@@ -23,9 +23,7 @@ function createDealerAuthMiddleware(apiKey: string) {
     const token = authHeader.slice(7);
     const tokenBuf = Buffer.from(token);
     const keyBuf = Buffer.from(apiKey);
-    const keysMatch =
-      tokenBuf.length === keyBuf.length &&
-      timingSafeEqual(tokenBuf, keyBuf);
+    const keysMatch = tokenBuf.length === keyBuf.length && timingSafeEqual(tokenBuf, keyBuf);
     if (!keysMatch) {
       res.status(403).json({
         error: "Invalid dealer API key",
@@ -47,7 +45,7 @@ function createDealerAuthMiddleware(apiKey: string) {
 export function createDealerRoutes(
   dealerService: DealerService,
   dealerApiKey?: string,
-  encryptionKeyStore?: EncryptionKeyStore
+  encryptionKeyStore?: EncryptionKeyStore,
 ): Router {
   const router = Router();
 

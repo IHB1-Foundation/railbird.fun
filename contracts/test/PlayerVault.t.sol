@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 import "../src/PlayerVault.sol";
 import "./mocks/MockERC20.sol";
-import "./mocks/MockNadfunRouter.sol";
+import "./mocks/MockDexRouter.sol";
 
 contract PlayerVaultTest is Test {
     PlayerVault public vault;
@@ -160,7 +160,7 @@ contract PlayerVaultTest is Test {
     // ─── T-M1-06: On-chain accretive-only rebalancing ─────────────────────────
 
     MockERC20         internal agentToken;
-    MockNadfunRouter  internal router;
+    MockDexRouter  internal router;
 
     uint256 constant SUPPLY     = 1_000_000 ether; // total supply
     uint256 constant VAULT_HOLD = 200_000 ether;   // B: vault-owned tokens
@@ -177,7 +177,7 @@ contract PlayerVaultTest is Test {
         agentToken.transfer(address(vault), VAULT_HOLD);
 
         // Fund router with tokens (for buyTokens) and ETH (for sellTokens)
-        router = new MockNadfunRouter();
+        router = new MockDexRouter();
         vm.prank(vaultOwner);
         agentToken.transfer(address(router), 100_000 ether);
         vm.deal(address(router), 100 ether);
@@ -202,17 +202,17 @@ contract PlayerVaultTest is Test {
 
     function test_SetRebalanceConfig() public {
         agentToken = new MockERC20("Agent", "AGT");
-        router = new MockNadfunRouter();
+        router = new MockDexRouter();
         vm.prank(vaultOwner);
         vault.setRebalanceConfig(address(agentToken), address(router), 500, 300);
         assertEq(vault.agentToken(), address(agentToken));
-        assertEq(vault.nadfunRouter(), address(router));
+        assertEq(vault.dexRouter(), address(router));
         assertEq(vault.rebalanceMaxMonBps(), 500);
         assertEq(vault.rebalanceMaxTokenBps(), 300);
     }
 
     function test_SetRebalanceConfig_RevertZeroToken() public {
-        router = new MockNadfunRouter();
+        router = new MockDexRouter();
         vm.prank(vaultOwner);
         vm.expectRevert("Invalid token");
         vault.setRebalanceConfig(address(0), address(router), 500, 300);

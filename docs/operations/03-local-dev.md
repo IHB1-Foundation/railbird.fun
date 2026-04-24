@@ -27,6 +27,8 @@ Or open the repo in VS Code and use **Reopen in Container** (T-1706 devcontainer
 | Type check                | `pnpm typecheck`                                                   |
 | Test all packages         | `pnpm test`                                                        |
 | Lint                      | `pnpm lint`                                                        |
+| Pre-deploy verification   | `pnpm verify:predeploy`                                            |
+| Post-deploy verification  | `pnpm verify:postdeploy`                                           |
 | Forge tests (contracts)   | `cd contracts && forge test -vvv`                                  |
 | Forge invariant tests     | `cd contracts && forge test --match-path 'test/invariant/*.t.sol'` |
 | Run a single E2E scenario | `bash scripts/e2e/scenarios/01-happy-path.sh`                      |

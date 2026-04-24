@@ -1,457 +1,826 @@
-# TICKET.md — AI Track Final Push + User-Facing Platform (Hackathon Submission)
+# TICKET.md — Initia Port Gap Tickets
 
-## Status legend
-- [ ] TODO
-- [~] IN PROGRESS
-- [x] DONE
-
-## Rules
-- Execute tickets strictly top-to-bottom.
-- One ticket at a time.
-- A ticket is DONE only if its Acceptance Criteria are satisfied.
-- When completing a ticket, append:
-    1) Key files changed
-    2) How to run/tests
-    3) How to manually verify (demo steps)
-
----
-
-# M12 — AI Track Final Push: "AI Agent Platform"
-
-> **Goal**: 기존 "AI가 플레이 + 학습 + 진화"에서
-> "**누구나 자기 AI 에이전트를 만들고, 관전자가 사이드벳을 걸고, AI가 상대를 읽고 적응하며, 모든 과정이 투명하다**"
-> 수준으로 확장하여 AI 트랙 1등을 확정한다.
+> **Context**: Railbird pivoted from a previous EVM deployment target to the INITIATE hackathon on 2026-04-19
+> (commit `dbfd70c`, ADR-020). This file enumerates the gaps discovered while auditing
+> the port and organises them into runnable tickets.
 >
-> **Pitching Angle**: "PlayerCo — The first open platform where anyone creates autonomous AI poker agents
-> that learn, adapt to opponents, and manage their own treasury on-chain.
-> Spectators bet on AI matches in real-time. Every AI decision is explainable and verifiable."
+> **Scope**: Only Initia-porting issues. Original product TICKET.md and TODO.md were
+> deleted in the pivot commit; don't resurrect them here.
 >
-> **Priority**: 데모 임팩트 × AI 깊이 × DeFi 크로스오버
+> **Deadline reality check**: `HACKATHON.md` lists the submission deadline as
+> **2026-04-15 23:00 UTC**. Today is **2026-04-19**. Confirm with the user whether this
+> is a post-deadline submission, an extension, a demo-day iteration, or a new cohort
+> before treating any ticket as "must ship before 04-15".
+>
+> **Runner conventions** (per user's CLAUDE.md):
+>
+> - Follow milestones in order: M-I0 → M-I1 → M-I2 → M-I3 → M-I4.
+> - Stop the runner on any test/AC failure; report and halt.
+> - Exactly one commit per ticket. Commit message = the line under "Commit message".
+> - Never push/pull/rebase/merge/force/amend. Operator pushes manually.
+>
+> **Evidence sources** consulted while writing these tickets:
+>
+> - `INITIA_SUBMISSION.md`, `README.md`, `HACKATHON.md`
+> - `docs/adr/ADR-020-initia-stack.md`
+> - `docs/initia/{rollup,autosign-session-design,e2e-evidence,scoring-rehearsal,usernames-note,vrf,demo-script}.md`
+> - `.initia/submission.json`, `infra/initia/{rollup,deployments}.json`, `.env.initia`
+> - `apps/web/src/lib/wallet/{interwoven.ts,useAutoSignSession.ts}`,
+>   `apps/web/src/app/providers.tsx`, `apps/web/src/types/interwovenkit.d.ts`,
+>   `apps/web/src/lib/{initiaUsername,pokerTableClient}.ts`
+> - `apps/web/package.json`, `pnpm-lock.yaml` (grep)
+> - `scripts/initia/launch-minitia.sh`, `scripts/deploy/initia.sh`,
+>   `scripts/e2e-smoke.initia.sh`, `scripts/validate-submission.mjs`
+> - `contracts/script/DeployInitia.s.sol`, `contracts/foundry.toml`
+> - `bots/{agent,keeper,vrf-operator}/src/chain/client.ts`,
+>   `packages/shared/src/chainConfig.ts`
+> - `services/ownerview/src/routes/session.ts`
+> - `.github/workflows/ci.yml`
 
 ---
 
-## T-1201 On-chain Side Betting — SideBetPool (P0)
-- Status: [x] DONE
-- Depends on: PokerTable settlement, ChipToken, existing localStorage betting UI
-- Goal: 관전자가 RCHIP으로 온체인 사이드벳을 걸 수 있게 한다. "AI 대결에 돈을 건다" — DeFi×AI 크로스오버.
-- Scope:
-    - **컨트랙트**: `SideBetPool.sol` — 핸드별 사이드벳 풀 관리
-    - **킵퍼**: 핸드 settle 후 자동 정산 트리거
-    - **인덱서**: 벳 이벤트 인덱싱 + API
-    - **웹**: 기존 localStorage BettingPanel → 온체인 업그레이드
-- Tasks:
-    1. `contracts/src/SideBetPool.sol` 신규:
-        - 상태:
-            - `mapping(bytes32 => Pool) public pools` — poolKey = `keccak256(tableAddress, handId)`
-            - `Pool` 구조체: `{ address table, uint256 handId, uint256 totalPool, uint8 winnerSeat, bool settled, uint256 createdAt }`
-            - `mapping(bytes32 => mapping(uint8 => uint256)) public seatTotals` — 시트별 총 베팅액
-            - `mapping(bytes32 => mapping(address => Bet[])) public userBets` — 유저별 베팅 내역
-            - `Bet` 구조체: `{ uint8 seatIndex, uint256 amount, bool claimed }`
-        - 함수:
-            - `placeBet(address table, uint256 handId, uint8 seatIndex)` payable:
-                - RCHIP `transferFrom` 으로 풀에 입금 (또는 native token)
-                - `require(!pools[key].settled, "Pool already settled")`
-                - 핸드가 BETTING_PRE ~ BETTING_RIVER 사이일 때만 가능 (PokerTable 상태 체크)
-                - 풀이 없으면 자동 생성
-                - 이벤트: `BetPlaced(poolKey, bettor, seatIndex, amount)`
-            - `settleBets(address table, uint256 handId)`:
-                - PokerTable에서 settlement 상태 + winner 확인
-                - `require(gameState == SETTLED || gameState == WAITING_FOR_SEATS)`
-                - winnerSeat 기록, settled = true
-                - 이벤트: `PoolSettled(poolKey, winnerSeat, totalPool)`
-            - `claimWinnings(address table, uint256 handId)`:
-                - 유저의 winning bet에 대해 비례 배분 계산
-                - `payout = userBetOnWinner * totalPool / seatTotals[winnerSeat]`
-                - RCHIP transfer
-                - 이벤트: `WinningsClaimed(poolKey, bettor, payout)`
-            - `getPoolInfo(address table, uint256 handId)` view
-            - `getUserBets(address table, uint256 handId, address user)` view
-            - `getSeatOdds(address table, uint256 handId)` view — 시트별 implied odds 반환
-        - 보안:
-            - Reentrancy guard (checks-effects-interactions 또는 ReentrancyGuard)
-            - settled 후 추가 베팅 불가
-            - 중복 claim 불가 (Bet.claimed flag)
-    2. `contracts/test/SideBetPool.t.sol`:
-        - placeBet 성공 / 실패 (already settled, invalid seat)
-        - 다중 유저 베팅 → settle → claim 흐름
-        - 비례 배분 정확성 (3명이 각각 다른 시트에 다른 금액 베팅)
-        - claim 후 재 claim 불가
-        - 빈 풀 settle 처리
-        - reentrancy 방어
-        - 최소 10개 테스트
-    3. `bots/keeper/src/bot.ts` — settle 트리거:
-        - 핸드 정산 후 `settleBets()` 자동 호출
-        - rebalancedHands 패턴과 동일하게 중복 방지 Set 사용
-    4. `services/indexer/src/` — SideBetPool 이벤트 인덱싱:
-        - DB 테이블: `side_bets(pool_key, table_address, hand_id, bettor, seat_index, amount, tx_hash, block_number, timestamp)`
-        - DB 테이블: `side_bet_settlements(pool_key, winner_seat, total_pool, settled_at)`
-        - API:
-            - `GET /sidebets/:tableAddress/:handId` — 풀 정보 + 시트별 총액
-            - `GET /sidebets/:tableAddress/:handId/user/:address` — 유저 베팅 내역
-            - `GET /sidebets/leaderboard` — 사이드벳 수익 랭킹
-    5. `apps/web/src/components/BettingPanel.tsx` 온체인 업그레이드:
-        - 기존 localStorage 로직 제거 → 온체인 트랜잭션으로 교체
-        - `placeBet()`: ChipToken approve → SideBetPool.placeBet() 트랜잭션
-        - `claimWinnings()`: settle 후 claim 버튼
-        - 실시간 풀 크기 / 시트별 odds 표시 (인덱서 API 폴링 또는 WS)
-        - 지갑 연결 필수 (ConnectWallet 프롬프트)
-        - 트랜잭션 상태 표시 (pending/confirmed/failed)
-    6. `apps/web/src/app/table/[id]/TableViewer.tsx` — 사이드벳 위젯 통합:
-        - 테이블 뷰어에 "Side Bets" 탭/패널 추가
-        - 각 시트 패널에 현재 총 베팅액 표시
-        - 핸드 종료 시 사이드벳 결과 표시
-- Acceptance:
-    - `placeBet()` 으로 RCHIP 온체인 사이드벳 성공
-    - 핸드 settle 후 `settleBets()` 자동 실행
-    - winner에 베팅한 유저가 비례 배분으로 payout 수령
-    - 인덱서에서 사이드벳 데이터 조회 가능
-    - 웹 UI에서 온체인 베팅/클레임 플로우 동작
-    - Foundry 테스트 최소 10개
-- Commit: `feat(contracts,keeper,indexer,web): add on-chain side betting pool for AI matches`
+## M-I0 — BLOCKERS (submission fails without these)
+
+### I0-1 — Actually install `@initia/interwovenkit-react`
+
+**Goal**: The real package must be in `pnpm-lock.yaml` and on disk. Right now
+`apps/web/package.json` declares `"@initia/interwovenkit-react": "^0.2.0"` but the
+lockfile has zero `initia`/`interwovenkit` entries and `node_modules/@initia/` does
+not exist. TypeScript only compiles because of the handwritten stub at
+`apps/web/src/types/interwovenkit.d.ts`.
+
+**Scope**:
+
+- Run `pnpm install` (or `pnpm add @initia/interwovenkit-react@<latest>` inside
+  `apps/web/`) so the real package is resolved.
+- Verify the resolved version matches the hackathon docs (current stable).
+- Delete `apps/web/src/types/interwovenkit.d.ts` once the real package ships types.
+  If the real types diverge, update consumers rather than shimming.
+- Commit `pnpm-lock.yaml` and `apps/web/package.json`.
+
+**AC**:
+
+- [ ] `pnpm ls --filter @playerco/web @initia/interwovenkit-react` prints a resolved version.
+- [ ] `grep -c interwovenkit pnpm-lock.yaml` > 0.
+- [ ] `apps/web/src/types/interwovenkit.d.ts` either deleted or replaced with a
+      comment pointing at the real package.
+- [ ] `pnpm --filter @playerco/web typecheck` and `pnpm --filter @playerco/web build` pass.
+
+**Commit message**: `chore(web): install @initia/interwovenkit-react and drop handcrafted type stub`
 
 ---
 
-## T-1202 Open Agent Registration & Fleet Manager (P0)
-- Status: [x] DONE
-- Depends on: PlayerRegistry, existing agent bot, existing persona system
-- Goal: 누구나 자기만의 AI 에이전트를 설정하고 테이블에 앉힐 수 있다. "AI Agent Platform" 내러티브의 핵심.
-- Scope:
-    - **웹**: `/create-agent` 위자드 페이지 (페르소나 설정 + 배포)
-    - **서비스**: `services/fleet/` — 에이전트 라이프사이클 관리 서비스
-    - **에이전트**: 동적 페르소나 설정 지원 확장
-- Tasks:
-    1. `apps/web/src/app/create-agent/page.tsx` 신규 — Agent Creation Wizard:
-        - **Step 1: Connect Wallet** — 지갑 연결 확인
-        - **Step 2: Persona Config**:
-            - Agent Name (텍스트 입력, 1-24자)
-            - Emoji 선택 (프리셋 그리드: 🦈🔥🪨🧠🐺🦊🐻🦅🐍🎯)
-            - Color Accent 선택 (프리셋 8색)
-            - **Strategy Sliders**:
-                - Aggression: 0.0 ~ 1.0 (슬라이더 + 숫자 표시)
-                - Tightness: 0.0 ~ 1.0
-                - Bluff Frequency: 0.0 ~ 1.0
-                - Position Awareness: 0.0 ~ 1.0
-            - **Personality Prompt** (optional textarea):
-                - 기본 프리셋 4종 (shark/maniac/rock/adaptive) 선택 시 자동 채워짐
-                - 커스텀 수정 가능 (200자 이내)
-            - **프리셋 Quick Pick**: "Use Preset" 버튼으로 기존 4종 중 선택 → 모든 파라미터 자동 세팅
-            - 실시간 레이더 차트 프리뷰 (PersonaRadar 컴포넌트 재활용)
-        - **Step 3: Select Table**:
-            - 사용 가능한 테이블 리스트 (빈 시트 있는 테이블)
-            - 테이블별 stakes, 현재 착석 에이전트, 빈 시트 수 표시
-        - **Step 4: Fund & Deploy**:
-            - 필요한 RCHIP buy-in 금액 표시
-            - ChipToken approve + seat registration 트랜잭션
-            - "Deploy Agent" 버튼 → fleet API 호출
-            - 배포 상태 표시 (registering → seating → starting → live)
-        - 내비게이션에 "Create Agent" 링크 추가
-    2. `services/fleet/` 신규 — Agent Fleet Manager:
-        - `services/fleet/src/index.ts` — Express 서버 엔트리
-        - `services/fleet/src/api.ts` — REST API:
-            - `POST /fleet/agents` — 새 에이전트 생성 요청
-                - body: `{ ownerAddress, tableAddress, personaConfig, systemPrompt? }`
-                - 프리펀딩된 operator 지갑 풀에서 하나 할당
-                - 에이전트 봇 프로세스 spawn
-                - 반환: `{ agentId, operatorAddress, status }`
-            - `GET /fleet/agents` — 실행 중인 에이전트 목록
-            - `GET /fleet/agents/:id` — 에이전트 상태
-            - `DELETE /fleet/agents/:id` — 에이전트 중지 (owner만)
-            - `GET /fleet/wallets/available` — 사용 가능한 operator 지갑 수
-        - `services/fleet/src/pool.ts` — Operator Wallet Pool:
-            - 환경변수: `FLEET_OPERATOR_KEYS` (콤마 구분 private keys)
-            - 지갑 할당/반환 관리
-            - 사용 중/사용 가능 상태 추적
-        - `services/fleet/src/spawner.ts` — Agent Process Manager:
-            - `child_process.fork()` 로 agent bot 프로세스 생성
-            - 환경변수로 persona config 전달
-            - 프로세스 health 모니터링 (5초 heartbeat)
-            - 크래시 시 자동 재시작 (최대 3회)
-            - graceful shutdown
-        - `services/fleet/src/types.ts` — Fleet 타입 정의
-    3. `bots/agent/src/bot.ts` 확장 — 동적 페르소나:
-        - `AGENT_PERSONA_JSON` 환경변수 지원: JSON 문자열로 커스텀 PersonaConfig 주입
-        - 기존 `AGENT_PERSONA` (ID) 대비 우선순위: JSON > ID > default
-        - 부팅 시 로그: `[FLEET] Using custom persona: {name} (aggression={x}, tightness={y})`
-    4. `bots/agent/src/strategy/persona.ts` 확장:
-        - `createCustomPersona(config: Partial<PersonaConfig> & { name: string })`: 커스텀 페르소나 생성
-        - validation: 모든 숫자 파라미터 [0, 1] 범위 클램핑
-        - systemPromptOverride 자동 생성 (파라미터 기반 템플릿)
-    5. `packages/shared/src/types.ts` — Fleet 관련 타입 추가:
-        - `FleetAgentConfig`, `FleetAgentStatus` 인터페이스
-    6. `pnpm-workspace.yaml` 에 `services/fleet` 추가
-    7. `services/fleet/package.json` + `tsconfig.json` 설정
-- Acceptance:
-    - `/create-agent` 에서 4단계 위자드로 커스텀 에이전트 생성 가능
-    - 슬라이더로 전략 파라미터 조정 시 레이더 차트 실시간 업데이트
-    - 프리셋 선택 시 모든 파라미터 자동 세팅
-    - Fleet API에 POST 시 에이전트 봇 프로세스 자동 생성
-    - 생성된 에이전트가 실제 테이블에서 Gemini 기반 플레이 시작
-    - 에이전트 중지 시 프로세스 clean shutdown
-    - 커스텀 persona JSON으로 에이전트 부팅 성공
-- Commit: `feat(web,fleet,agent): add open agent registration portal with fleet manager`
+### I0-2 — Wire a real InterwovenKit bridge component inside the provider
+
+**Goal**: Populate the two `useRef` placeholders that Initia mode depends on.
+`apps/web/src/lib/wallet/interwoven.ts:193` (`iwkRef`) and
+`apps/web/src/lib/wallet/useAutoSignSession.ts:48` (`iwkAutoSignRef`) both sit with
+comments saying "populated by the IWKBridge component rendered in providers.tsx" —
+**but no such component exists**. Result: on Initia, `connect()` is a no-op,
+`activate()` falls through to a simulated timer, and `revoke()` only clears local
+state. Hard requirement #2 is a façade.
+
+**Scope**:
+
+- Create `apps/web/src/lib/wallet/IWKBridge.tsx` that lives inside
+  `InterwovenKitProvider` and calls the real hooks (whatever they turn out to be —
+  `useWallet`, `useAccount`, `useAutoSign`, `useSigner`, etc. — read the installed
+  package).
+- Route the hook outputs into module-level singletons (`setInterwovenHandle(...)` /
+  `setAutoSignHandle(...)`) that `useInitiaWallet` and `useAutoSignSession` can read.
+  Refs inside custom hooks are the wrong primitive — they'll be per-instance and
+  never cross-populate. Replace with a store (Zustand, or a tiny event-emitter + useSyncExternalStore).
+- Render `<IWKBridge />` as a child of `InterwovenKitProvider` in `providers.tsx`.
+
+**AC**:
+
+- [ ] Connecting from `/table/<id>` on `CHAIN_ENV=initia-testnet` actually opens
+      the InterwovenKit modal.
+- [ ] `useAutoSignSession().activate()` calls the real InterwovenKit session
+      API (no "simulated session" fallback path hit when
+      `NEXT_PUBLIC_ENABLE_AUTOSIGN=true`).
+- [ ] At least one Vitest file exercises `IWKBridge` and asserts the store
+      gets populated.
+- [ ] Typecheck + build pass.
+
+**Commit message**: `feat(web): wire IWKBridge to expose InterwovenKit hooks to non-provider consumers`
+
+**Depends on**: I0-1.
 
 ---
 
-## T-1203 Opponent Modeling & Adaptive Counter-Strategy (P0)
-- Status: [x] DONE
-- Depends on: existing Gemini strategy, existing RAG, existing action history
-- Goal: AI 에이전트가 상대의 플레이 패턴을 추적하고 이에 맞춰 전략을 실시간 적응한다. "AI가 상대를 읽는다" — 포커 AI의 본질.
-- Scope:
-    - **에이전트**: opponent tracker + counter-strategy 모듈
-    - **OwnerView**: opponent model 데이터 저장/조회
-    - **웹**: 에이전트 프로필에 opponent read 표시
-- Tasks:
-    1. `bots/agent/src/opponent/tracker.ts` 신규:
-        - `OpponentTracker` 클래스:
-            - 입력: 관찰된 액션 스트림 (seatIndex, action, street, amount, isPreflop)
-            - 시트별 통계 추적:
-                - `VPIP` (Voluntarily Put $ In Pot): preflop에서 자발적으로 팟에 참여한 비율
-                - `PFR` (Pre-Flop Raise %): preflop raise 비율
-                - `AF` (Aggression Factor): (bets + raises) / calls (0이면 passive, 3+ 이면 aggressive)
-                - `foldToCBet` (%): flop에서 c-bet에 fold한 비율
-                - `WTSD` (Went To Showdown %): showdown까지 간 비율
-                - `W$SD` (Won $ at Showdown %): showdown에서 이긴 비율
-                - `3betFreq`: 3bet 빈도
-                - `checkRaiseFreq`: check-raise 빈도
-            - `observe(seatIndex, action, context)`: 액션 관찰 및 통계 업데이트
-            - `getProfile(seatIndex) => OpponentProfile`: 현재 통계 요약
-            - `getSampleSize(seatIndex) => number`: 관찰된 핸드 수
-            - 최소 샘플 사이즈: 5핸드 이전에는 "unknown" 반환
-    2. `bots/agent/src/opponent/counter.ts` 신규:
-        - `CounterStrategyAdvisor` 클래스:
-            - `advise(opponentProfile: OpponentProfile) => CounterAdvice`:
-                - **vs Tight-Passive** (high tightness, low AF): "Steal blinds aggressively. Their raises mean real strength — fold marginal hands."
-                - **vs Loose-Aggressive** (low tightness, high AF): "Tighten up. Trap with strong hands. Don't bluff — they'll call or re-raise."
-                - **vs Tight-Aggressive** (high tightness, high AF): "Respect their raises. 3-bet polarized. Exploit their fold-to-3bet."
-                - **vs Loose-Passive** (low tightness, low AF): "Value bet widely. Don't bluff — they'll call. Isolate with strong hands."
-                - **vs Unknown** (insufficient data): "Play standard GTO-leaning strategy. Gather information."
-            - `CounterAdvice`: `{ style: string, adjustments: { aggression: number, tightness: number, bluffFreq: number }, promptInjection: string }`
-            - adjustments는 base persona에 대한 delta (+/- 0.0~0.2 범위)
-    3. `bots/agent/src/opponent/types.ts` 신규:
-        - `OpponentProfile`, `CounterAdvice`, `OpponentStats` 타입 정의
-    4. `bots/agent/src/bot.ts` 에 opponent modeling 통합:
-        - 매 액션 관찰 시 `OpponentTracker.observe()` 호출
-        - 의사결정 전: 현재 상대의 `OpponentProfile` 조회
-        - `CounterStrategyAdvisor.advise()` 결과를 Gemini 프롬프트에 주입:
-            ```
-            === OPPONENT READ ===
-            Seat {X} ({name}): {style} player
-            Stats (over {N} hands): VPIP {vpip}%, PFR {pfr}%, AF {af}, Fold-to-CBet {ftcb}%
-            Counter-strategy: {promptInjection}
-            Recommended adjustments: aggression {delta}, tightness {delta}
-            ===
-            ```
-        - evolution과 독립: opponent adjustments는 일시적 (해당 핸드/세션만), evolution은 영구적
-    5. `bots/agent/src/opponent/tracker.test.ts` + `counter.test.ts`:
-        - tracker: 다양한 액션 시퀀스 → VPIP/PFR/AF 정확성 검증
-        - counter: 각 opponent 타입에 대한 올바른 counter-advice 생성 검증
-        - edge case: 0핸드 관찰, 모든 핸드 fold, all-in maniac
-        - 최소 15개 테스트
-    6. `services/ownerview/src/routes/reasoning.ts` 확장:
-        - `POST /reasoning` body에 `opponentRead?: { seatIndex, profile, counterAdvice }` 추가
-        - `GET /reasoning` 응답에 opponentRead 포함
-    7. `apps/web/src/app/agent/[token]/page.tsx` — "Opponent Reads" 섹션:
-        - 최근 핸드에서의 상대 프로필 표시 (카드 형태)
-        - 각 상대: 이름/이모지 + VPIP/PFR/AF 수치 + 스타일 분류 배지
-        - counter-strategy 요약 텍스트
-- Acceptance:
-    - 매 핸드마다 상대 통계가 업데이트
-    - 5핸드 이후부터 유의미한 opponent profile 생성
-    - counter-strategy가 Gemini 프롬프트에 주입되어 의사결정에 영향
-    - 상대 스타일이 올바르게 분류됨 (tight-passive, loose-aggressive 등)
-    - opponent read 데이터가 OwnerView에 저장되고 웹에서 조회 가능
-    - 유닛 테스트 최소 15개
-- Commit: `feat(agent,ownerview,web): add opponent modeling with adaptive counter-strategy`
+### I0-3 — Route web-app transactions through InterwovenKit (not `window.ethereum`)
+
+**Goal**: The user-facing write path — `registerSeat`, approvals, etc. — is
+`apps/web/src/lib/pokerTableClient.ts`. It gets its wallet via
+`getInjectedProvider()` (interwoven.ts:58), which explicitly returns `null` on
+`CHAIN_ENV=initia-testnet`. So on the very chain we claim to support, the web
+app cannot send transactions. InterwovenKit has to be the transport.
+
+**Scope**:
+
+- Add a `sendTransaction` path that uses InterwovenKit's signer when
+  `isInitiaEnv`. Simplest shape: export an async `getWalletClient()` from
+  `lib/wallet/interwoven.ts` that, on Initia, returns a viem `WalletClient`
+  wired to an `EIP1193Provider`-shaped adapter around InterwovenKit's signer
+  (or returns a direct `sendTransaction` function and bypass viem in that branch).
+- Update `registerSeat` and any other `getWalletClient()` / `getInjectedProvider()`
+  callers in `pokerTableClient.ts` to use the new path.
+- Fix hardcoded fallbacks: `getChainId()` defaults `133`, `nativeSymbol` defaults
+  to a legacy token symbol — replace with throws/strict reads when
+  `CHAIN_ENV=initia-testnet`.
+
+**AC**:
+
+- [ ] Grep `window\.ethereum\|getInjectedProvider` inside
+      `apps/web/src/**/*.{ts,tsx}` — zero hits outside of tests.
+- [ ] Manual smoke: with `CHAIN_ENV=initia-testnet` and rollup running,
+      `registerSeat` triggers an InterwovenKit signing flow and lands a TX.
+- [ ] A unit test mocks the Initia branch and asserts `sendTransaction` is
+      dispatched via the InterwovenKit signer, not via `provider.request`.
+
+**Commit message**: `feat(web): route all wallet writes through InterwovenKit on Initia`
+
+**Depends on**: I0-1, I0-2.
 
 ---
 
-## T-1204 Live Demo "ESPN Mode" Page (P0)
-- Status: [x] DONE
-- Depends on: existing TableViewer, existing WebSocket infra, existing AI Commentary
-- Goal: 심사위원이 URL 하나 열면 30초 안에 "AI가 플레이하고 있다"를 체감하는 킬러 데모 페이지.
-- Scope:
-    - **웹**: `/live` 페이지 — 실시간 AI 대결 중계 모드
-- Tasks:
-    1. `apps/web/src/app/live/page.tsx` 신규 — ESPN Mode:
-        - **레이아웃**: 풀스크린 최적화, 네비게이션 최소화
-        - **메인 영역** (70%):
-            - 현재 가장 활발한 테이블 자동 선택 (최근 액션 기준)
-            - 테이블 뷰: 커뮤니티 카드 + 팟 + 시트 패널 (TableViewer 컴포넌트 재활용)
-            - "LIVE" 배지 (빨간 점 애니메이션)
-            - 핸드 넘버 + 스트리트 표시
-        - **AI Commentary 오버레이** (하단):
-            - 최신 해설 3개 표시 (fade-in 애니메이션)
-            - 해설자 톤: 스포츠 중계 스타일
-        - **사이드바** (30%):
-            - **Agent Cards**: 각 에이전트의 이름/이모지/현재 스택/ELO
-            - **AI Thinking** (실시간): 마지막 액션의 AI reasoning 요약 (2줄)
-            - **Side Bets**: 현재 사이드벳 풀 크기 + 시트별 배당률 (T-1201 연동)
-            - **Stats Ticker**: 오늘 총 핸드 수, 가장 큰 팟, 현재 리더
-        - **이벤트 하이라이트**:
-            - 올인 시 화면 효과 (border glow)
-            - 쇼다운 시 결과 오버레이 (승자 + 핸드 + 팟 금액)
-            - 큰 팟(평균의 3배+) 시 "BIG POT" 배지
-        - **자동 테이블 전환**:
-            - 여러 테이블이 있을 때 가장 흥미로운 테이블로 자동 전환
-            - 기준: 쇼다운 임박, 올인 상황, 큰 팟
-            - 수동 테이블 선택도 가능
-        - **풀스크린 토글**: F11 또는 버튼으로 fullscreen API 호출
-    2. `apps/web/src/app/live/LiveDashboard.tsx` — 메인 대시보드 컴포넌트
-    3. `apps/web/src/app/live/AgentCards.tsx` — 에이전트 카드 사이드바
-    4. `apps/web/src/app/live/StatsTicker.tsx` — 통계 티커
-    5. `apps/web/src/app/live/live.module.css` — ESPN 스타일 CSS
-    6. 내비게이션에 "LIVE" 링크 추가 (빨간 점 표시)
-- Acceptance:
-    - `/live` 접속 시 즉시 라이브 AI 대결 화면 표시
-    - AI Commentary가 실시간으로 흐름
-    - 에이전트 카드에 현재 스택/ELO 표시
-    - 올인/쇼다운 시 시각 효과 동작
-    - 풀스크린 모드 동작
-    - 모바일 반응형 (세로 레이아웃)
-    - 데이터 없을 때 "Waiting for next hand..." 상태 표시
-- Commit: `feat(web): add live ESPN-mode demo page for AI matches`
+### I0-4 — Provision the Railbird MiniEVM rollup (fill rollup.json)
+
+**Goal**: `infra/initia/rollup.json` is entirely `PLACEHOLDER` today. Hard
+requirement #1 of the hackathon is "Own Initia appchain/rollup deployed — a
+valid rollup chain ID or TX link". No chain ID exists.
+
+`scripts/initia/launch-minitia.sh` step 2 has the real `initiad minitia launch`
+command commented out and writes a placeholder stub instead. It was never run
+in anger.
+
+**Scope**:
+
+- Turn the commented stub in `launch-minitia.sh` into an executed pipeline:
+  call the actual Initia L1 rollup-launch flow (see the latest
+  initia-labs/minitia-artifacts README — the previous command may be
+  superseded by `initiad tx opinit-bridge create-bridge` + `initiad tx rollup create`
+  or whatever the current tooling shows).
+- Run the script against Initia testnet with a funded deployer account.
+- Commit the populated `infra/initia/rollup.json` with real `chainId`,
+  `rpcUrl`, `wsUrl`/`evmRpcUrl`, `explorerUrl`, `launchTxHash`.
+- Update `.env.initia` with the matching `INITIA_CHAIN_ID`, `RPC_URL`,
+  `INITIA_EXPLORER_URL`.
+- Update `.initia/submission.json` `rollupChainId`, `rpcUrl`, `explorerUrl`
+  with the same values.
+
+**AC**:
+
+- [ ] `jq -r '.chainId' infra/initia/rollup.json` is an integer (not "PLACEHOLDER").
+- [ ] `cast chain-id --rpc-url "$(jq -r .rpcUrl infra/initia/rollup.json)"`
+      returns that same chain ID.
+- [ ] `.initia/submission.json` `rollupChainId` and `rpcUrl` match `infra/initia/rollup.json`.
+
+**Commit message**: `feat(infra): provision Railbird MiniEVM rollup on Initia testnet`
 
 ---
 
-## T-1205 AI Decision Deep Explainability — "Why?" (P1)
-- Status: [x] DONE
-- Depends on: existing reasoning data, existing GTO deviation, T-1203 opponent modeling
-- Goal: 각 AI 액션에 대해 "왜 이 결정을 했는지" 심층 분석을 제공한다. "Explainable AI in DeFi" 내러티브.
-- Scope:
-    - **에이전트**: reasoning 데이터에 structured decision breakdown 추가
-    - **OwnerView**: explainability 데이터 저장/조회
-    - **웹**: ActionLog에 "Why?" 인터랙션 추가
-- Tasks:
-    1. `bots/agent/src/strategy/geminiStrategy.ts` 확장:
-        - Gemini 프롬프트에 structured output 요청 추가:
-            ```
-            Also provide a decision breakdown in this exact format:
-            HAND_STRENGTH: [description + percentile, e.g., "Top pair with ace kicker — top 15% of hands"]
-            POT_ODDS: [calculation, e.g., "Need 25% equity to call. Estimated equity: 62%"]
-            EV_ESTIMATE: [expected value reasoning, e.g., "+EV call: risking 200 to win 800"]
-            OPPONENT_READ: [what you think about opponent's range, e.g., "Opponent's check suggests weakness or slow-play"]
-            KEY_FACTOR: [the single most important factor in this decision]
-            CONFIDENCE: [0-100, how confident you are in this decision]
-            ```
-        - 파싱: Gemini 응답에서 각 필드를 추출하여 `DecisionBreakdown` 객체 생성
-    2. `bots/agent/src/strategy/types.ts` 확장:
-        - `DecisionBreakdown` 인터페이스:
-            ```typescript
-            interface DecisionBreakdown {
-              handStrength: string;
-              potOdds: string;
-              evEstimate: string;
-              opponentRead: string;
-              keyFactor: string;
-              confidence: number;
-              gtoDeviation?: { action: string; severity: number; explanation: string };
-              counterStrategy?: string;
-            }
-            ```
-    3. `services/ownerview/src/routes/reasoning.ts` 확장:
-        - `POST /reasoning` body에 `breakdown?: DecisionBreakdown` 추가
-        - `GET /reasoning` 응답에 breakdown 포함
-    4. `apps/web/src/app/table/[id]/ActionLog.tsx` — "Why?" 버튼:
-        - 각 액션 행에 "Why?" 버튼 (reasoning 데이터 있는 경우만)
-        - 클릭 시 expand → `DecisionBreakdown` 표시:
-            - **Hand Strength**: 카드 아이콘 + percentile bar
-            - **Pot Odds**: 계산식 + equity bar
-            - **EV Estimate**: +/- EV 컬러코딩
-            - **Opponent Read**: 상대 프로필 링크 (T-1203 연동)
-            - **Key Factor**: 강조 표시
-            - **Confidence**: 0-100 게이지
-            - **GTO Note**: deviation 있으면 "Deviated from GTO: {explanation}" 표시
-        - 접힌 상태에서도 confidence 배지 표시 (높으면 green, 낮으면 orange)
-    5. `apps/web/src/components/DecisionBreakdown.tsx` 신규:
-        - 재사용 가능한 decision breakdown 표시 컴포넌트
-        - compact mode (인라인) / expanded mode (카드)
-    6. `apps/web/src/app/table/[id]/ActionLog.module.css` 확장:
-        - Why? 버튼 + breakdown 카드 스타일
-- Acceptance:
-    - 각 AI 액션에 "Why?" 버튼 표시
-    - 클릭 시 6개 breakdown 필드가 시각적으로 표시
-    - confidence 게이지 동작
-    - GTO deviation 정보 연동
-    - opponent read 정보 연동 (T-1203 이후)
-    - reasoning 없는 액션에는 "Why?" 버튼 미표시
-    - 모바일에서도 breakdown 카드 정상 렌더링
-- Commit: `feat(agent,ownerview,web): add deep AI decision explainability with Why? button`
+### I0-5 — Deploy contracts to the rollup (fill deployments.json)
+
+**Goal**: `infra/initia/deployments.json` contains all `0x00...00` addresses.
+`.initia/submission.json.contracts` also. `scripts/deploy/initia.sh` has never
+been executed with a real RPC.
+
+**Scope**:
+
+- Export the env from the populated `.env.initia` (I0-4).
+- Run `bash scripts/deploy/initia.sh --simulate` first, confirm the
+  `DeployInitia.s.sol` broadcast plan is correct.
+- Run `bash scripts/deploy/initia.sh` (broadcast) and verify addresses on the
+  rollup explorer.
+- Update `infra/initia/deployments.json` with real addresses + TX hashes +
+  `deployedAt` timestamp.
+- Update `.initia/submission.json.contracts[*].address` to match.
+- Update `.env.initia` with the deployed addresses.
+
+**AC**:
+
+- [ ] Every address in `infra/initia/deployments.json` is non-zero and
+      returns non-empty `cast code` on the rollup.
+- [ ] Every address in `.initia/submission.json.contracts[*].address` matches.
+- [ ] `forge verify-contract` attempted for at least `ChipToken`,
+      `PokerTable`, `PlayerRegistry` (or an explicit note in the commit if
+      the rollup explorer does not yet support verification).
+
+**Commit message**: `feat(contracts): deploy Railbird contracts to Initia MiniEVM rollup`
+
+**Depends on**: I0-4.
 
 ---
 
-## T-1206 On-chain Verifiable AI Audit Trail (P1)
-- Status: [x] DONE
-- Depends on: existing commitDecision/revealDecision, existing reasoning data
-- Goal: AI의 모든 의사결정 과정(reasoning + factors)의 해시를 온체인에 기록하여 사후 검증 가능하게 한다. "Trustless AI" 내러티브.
-- Scope:
-    - **에이전트**: reasoning hash 계산 + 온체인 커밋 확장
-    - **컨트랙트**: commitDecision에 reasoningHash 필드 추가
-    - **인덱서**: reasoning hash 인덱싱 + verification API
-    - **웹**: "Verified AI" 배지 + verification 페이지
-- Tasks:
-    1. `contracts/src/table/BettingEngine.sol` 확장:
-        - `commitDecision()` 에 추가 파라미터: `bytes32 reasoningHash`
-        - 저장: `mapping(uint256 => mapping(uint8 => bytes32)) public reasoningHashes` (handId => seatIndex => hash)
-        - `revealDecision()` 시 reasoningHash도 이벤트에 포함
-        - 이벤트 확장: `DecisionCommitted(handId, seatIndex, commitHash, reasoningHash)`
-        - 새 view: `getReasoningHash(uint256 handId, uint8 seatIndex) => bytes32`
-    2. `contracts/test/PokerTable.t.sol` 확장:
-        - reasoningHash 커밋/조회 테스트
-        - zero hash 허용 (reasoning 없는 경우)
-        - 이벤트 emission 검증
-    3. `bots/agent/src/bot.ts` — reasoning hash 계산:
-        - `commitDecision` 호출 전:
-            ```typescript
-            const reasoningPayload = JSON.stringify({ reasoning, factors, breakdown, opponentRead });
-            const reasoningHash = keccak256(toBytes(reasoningPayload));
-            ```
-        - `commitDecision(commitHash, reasoningHash)` 으로 호출
-    4. `services/indexer/src/` — reasoning hash 인덱싱:
-        - DB 테이블: `decision_audit(hand_id, seat_index, reasoning_hash, commit_tx_hash, block_number, verified)`
-        - API:
-            - `GET /audit/:tableAddress/:handId` — 해당 핸드의 모든 AI 결정 audit trail
-            - `POST /audit/verify` — body: `{ handId, seatIndex, reasoning, factors }` → 서버에서 hash 재계산 → 온체인 hash와 비교 → `{ verified: boolean }`
-    5. `apps/web/src/app/agent/[token]/page.tsx` — "Verified AI" 배지:
-        - 최근 20핸드의 reasoning hash가 모두 온체인에 존재하면 "Verified AI" 배지 표시
-        - 배지 클릭 → verification 상세 모달:
-            - 핸드별 reasoning hash 목록
-            - 각 hash → block explorer 링크
-            - 검증 상태 (green check / red x)
-    6. `apps/web/src/app/verify/page.tsx` 신규 — AI Decision Verifier:
-        - 입력: table address + hand ID
-        - 표시: 해당 핸드의 모든 AI 결정
-            - 각 결정: action + reasoning 요약 + on-chain hash + verification status
-        - "Verify" 버튼: reasoning 데이터 → hash 재계산 → 온체인 대조
-        - 결과: "All decisions verified" / "Mismatch found at seat X"
-- Acceptance:
-    - `commitDecision` 시 reasoningHash가 온체인에 기록
-    - `getReasoningHash()` 로 온체인 hash 조회 가능
-    - 인덱서에서 audit trail 조회 가능
-    - verify API에서 reasoning 데이터 ↔ 온체인 hash 대조 성공
-    - "Verified AI" 배지가 에이전트 프로필에 표시
-    - `/verify` 페이지에서 핸드별 검증 가능
-    - Foundry 테스트 최소 5개 추가
-- Commit: `feat(contracts,agent,indexer,web): add on-chain verifiable AI audit trail`
+### I0-6 — Upload demo video and replace placeholder URL
+
+**Goal**: `.initia/submission.json.demoVideo` is literally
+`https://www.youtube.com/watch?v=PLACEHOLDER_UPLOAD_RAILBIRD_PITCH`.
+`Railbird_Pitch.mp4` is untracked in the repo root (see git status).
+`scripts/validate-submission.mjs` doesn't detect this because it only checks
+presence, not shape.
+
+**Scope**:
+
+- Upload `Railbird_Pitch.mp4` to YouTube (unlisted or public) or Loom.
+  Confirm it follows `docs/initia/demo-script.md` (InterwovenKit modal,
+  auto-sign timer, `.init` in leaderboard, bridge deeplink, explorer TXs).
+- Replace `PLACEHOLDER_UPLOAD_RAILBIRD_PITCH` in:
+  - `.initia/submission.json.demoVideo`
+  - `INITIA_SUBMISSION.md` §4 demoVideo line
+  - `README.md` Demo table (currently "link after recording — I13-2")
+- Re-run `node scripts/validate-submission.mjs` and confirm it still passes.
+
+**AC**:
+
+- [ ] `grep -r PLACEHOLDER_UPLOAD_RAILBIRD_PITCH .` → no hits.
+- [ ] The `demoVideo` URL resolves to a playable video (manual check).
+
+**Commit message**: `docs(initia): publish demo video URL and drop placeholders`
+
+**Depends on**: I0-5 (video should show the live rollup).
 
 ---
 
-# Execution Plan Summary
+### I0-7 — Make `validate-submission.mjs` strict enough to catch placeholders
 
-| Ticket | Description | Effort | Demo Impact | AI Depth | Narrative |
-|--------|-------------|--------|-------------|----------|-----------|
-| T-1201 | On-chain Side Betting | Medium | ★★★★★ | ★★ | "AI 대결에 돈을 건다" (DeFi×AI) |
-| T-1202 | Open Agent Registration | Medium-High | ★★★★★ | ★★★ | "누구나 AI 에이전트를 만든다" |
-| T-1203 | Opponent Modeling | Medium | ★★★★ | ★★★★★ | "AI가 상대를 읽고 적응한다" |
-| T-1204 | Live ESPN Mode | Low-Medium | ★★★★★ | ★★ | "30초 안에 체감하는 AI 대결" |
-| T-1205 | Deep Explainability | Low-Medium | ★★★★ | ★★★★ | "Explainable AI in DeFi" |
-| T-1206 | AI Audit Trail | Medium | ★★★ | ★★★★★ | "Trustless & Verifiable AI" |
+**Goal**: The current validator accepts any non-empty string, so every
+`PLACEHOLDER_*` token in `submission.json` passes. A submission with zero live
+addresses and a broken video URL currently prints "Submission validation PASSED".
+That's a landmine.
 
-**Judge-facing Pitch Flow:**
-1. Open `/live` → "Look, AI agents are playing poker right now" (T-1204)
-2. "Anyone can create their own AI agent" → show `/create-agent` (T-1202)
-3. "Spectators bet on AI matches" → show side betting pool (T-1201)
-4. Click "Why?" → "Every AI decision is explainable" (T-1205)
-5. Show opponent modeling → "AI reads opponents and adapts in real-time" (T-1203)
-6. Show `/verify` → "All AI decisions are verifiable on-chain" (T-1206)
+**Scope**:
 
-**Killer Sentence:** "PlayerCo is the first open AI agent platform where autonomous agents play poker, learn from opponents, manage their own capital — and anyone can create one, bet on matches, and verify every AI decision on-chain."
+- Add shape checks:
+  - `rollupChainId` must be parseable as a positive integer (or a string that
+    converts cleanly to one).
+  - `rpcUrl` must start with `http://` or `https://` (and preferably
+    `https://` outside of local dev).
+  - `explorerUrl` same.
+  - `demoVideo` must match a YouTube / Loom / Vimeo / direct MP4 URL pattern.
+  - Every `contracts[*].address` must match `/^0x[0-9a-f]{40}$/i` and not be
+    `0x0000...0000`.
+  - Reject any value that contains `PLACEHOLDER` (case-insensitive).
+- Keep the existing presence checks.
+- Update the script's output so the user sees precisely which field failed.
+- Add to `.github/workflows/ci.yml` (see I3-1).
+
+**AC**:
+
+- [ ] With the current `.initia/submission.json` (pre-I0-4/5/6), the
+      validator fails with a clear message per placeholder.
+- [ ] After I0-4/5/6, the validator passes.
+- [ ] New unit/shell assertion in `scripts/` or a simple node test covers
+      at least: zero-address rejection, placeholder rejection, URL shape.
+
+**Commit message**: `chore(scripts): tighten validate-submission.mjs to reject placeholders`
+
+---
+
+## M-I1 — INTEGRATION CORRECTNESS (make claimed features actually work)
+
+### I1-1 — Verify (and fix) `.init` username API endpoint
+
+**Goal**: `apps/web/src/lib/initiaUsername.ts:31` calls
+`${NAMES_API}/initia/usernames/v1/username/${address}`. The Initia Names
+module query path may not match this exactly — the Cosmos-SDK REST
+convention is usually `/initia/usernames/v1/username_by_address/{addr}` or
+similar, and the response field may be `username` vs `name` vs nested.
+The code tolerates either field today (`data.username ?? data.name`) but
+still assumes the URL path. If the path is wrong, **every `.init` lookup
+silently returns null** — the feature appears to work but always falls
+back to shortened hex, and we lose a native-feature point on scoring.
+
+**Scope**:
+
+- Verify the actual path against `rest.testnet.initia.xyz` for a known
+  registered `.init` address (ask in Initia discord or fetch a known
+  name from `app.initia.xyz`).
+- If the URL path or field names differ, fix the fetch in
+  `initiaUsername.ts`.
+- Replace the blanket `catch` so transient errors vs "no username"
+  distinguish in logs (helps judges' reviewers understand the demo).
+- Add one unit test with a mocked `fetch` for the success, 404, and
+  transport-error branches.
+
+**AC**:
+
+- [ ] For a known `.init` address, `fetchInitUsername(addr)` returns the
+      expected `"name.init"` string against the live testnet API.
+- [ ] Unit tests cover success/404/error paths.
+- [ ] `screenshots/initia-username-in-leaderboard.png` (or similar)
+      captured for the pitch/video.
+
+**Commit message**: `fix(web): correct .init username REST path and add lookup tests`
+
+---
+
+### I1-2 — Verify Interwoven Bridge deeplink parameters
+
+**Goal**: `apps/web/src/app/agent/[token]/page.tsx:1272` builds
+`https://app.initia.xyz/bridge?toChainId=…&toAddress=…`. The parameter
+names (`toChainId`, `toAddress`) have to match what the live Interwoven
+Bridge app reads today. If they're wrong, the deeplink still opens but
+the destination isn't pre-filled — the feature doesn't deliver its demo
+value.
+
+**Scope**:
+
+- Open `app.initia.xyz/bridge` with fake params, inspect which keys the
+  app actually reads (DevTools → URL → what bridging fields get populated).
+- If different, update the deeplink template. Consider surfacing a
+  `bridgeUrl` helper in `packages/shared` so the URL isn't embedded in
+  JSX.
+- Add a snapshot/Playwright test that asserts the href matches the
+  agreed shape.
+
+**AC**:
+
+- [ ] Clicking "Bridge via Interwoven" on an agent page pre-fills
+      destination chain + address (manual verification, screenshot).
+- [ ] Test asserts the href contains the current rollup `chainId` and
+      the vault/owner address.
+
+**Commit message**: `fix(web): align Interwoven Bridge deeplink params with live app`
+
+---
+
+### I1-3 — Honour `NEXT_PUBLIC_ENABLE_*` feature flags everywhere
+
+**Goal**: `.env.initia` declares
+`NEXT_PUBLIC_ENABLE_INIT_USERNAMES`, `NEXT_PUBLIC_ENABLE_AUTOSIGN`,
+`NEXT_PUBLIC_ENABLE_TRADING_WIDGET`, but:
+
+- `initiaUsername.ts` never reads `NEXT_PUBLIC_ENABLE_INIT_USERNAMES`
+  — it always fetches.
+- `useAutoSignSession.ts` reads `NEXT_PUBLIC_ENABLE_AUTOSIGN` (good),
+  but only once at module load; no way to toggle at runtime.
+- `NEXT_PUBLIC_ENABLE_TRADING_WIDGET` — verify the trading widget is
+  actually hidden when the flag is `false` (ADR-020 says it is, spot-check).
+
+**Scope**:
+
+- Short-circuit `fetchInitUsername` when the flag is `false` (skip fetch,
+  return null).
+- Add a tiny `featureFlags.ts` in `apps/web/src/lib/` so all flags go
+  through one module and the defaults are explicit.
+- Grep the codebase for any `process.env.NEXT_PUBLIC_ENABLE_*` read and
+  route each through the module.
+- Update `nav`/`TableViewer` to hide auto-sign UI cleanly when disabled.
+
+**AC**:
+
+- [ ] Setting `NEXT_PUBLIC_ENABLE_INIT_USERNAMES=false` stops all
+      `fetchInitUsername` network calls (verify via network tab or unit test
+      with a spy).
+- [ ] Setting `NEXT_PUBLIC_ENABLE_AUTOSIGN=false` hides the auto-sign
+      toggle in the table header.
+- [ ] `trading-widget` references only render when the flag is true.
+
+**Commit message**: `feat(web): honour NEXT_PUBLIC_ENABLE_* feature flags across Initia features`
+
+---
+
+### I1-4 — Remove legacy-chain fallbacks from bot chain clients
+
+**Goal**: `bots/{agent,keeper,vrf-operator}/src/chain/client.ts` default
+`chain.id=133`, a legacy chain name, and a legacy native symbol when env
+vars are absent. Safe in prod (env is always set) but a silent
+mis-boot vector when someone forgets to export — the bot will happily
+connect to the wrong chain against the wrong RPC. Plus `bots/agent/src/bot.ts:251`
+has the legacy chain object hardcoded inside `updateStrategy`.
+
+**Scope**:
+
+- Replace defaults with `throw` when `CHAIN_ENV !== "local"` and
+  `CHAIN_ID` is not set. Allow `CHAIN_ENV=local` to keep a localhost
+  default.
+- Read chain name/symbol from `CHAIN_NAME` / `NATIVE_SYMBOL` as today,
+  but also require them when `CHAIN_ENV=initia-testnet`.
+- Fix the hardcoded legacy chain literal inside `bot.ts` → read from
+  `this.config.chain`.
+
+**AC**:
+
+- [ ] Boot the agent with only `CHAIN_ENV=initia-testnet` and no other
+      chain vars → it refuses to start with a clear error (not a silent
+      legacy default).
+- [ ] `grep -n 'legacy chain\\|legacy symbol' bots/` returns zero hits outside
+      `legacy/` and comments.
+- [ ] Existing bot unit tests still pass.
+
+**Commit message**: `chore(bots): remove legacy default fallbacks from chain clients`
+
+---
+
+### I1-5 — Fix silent chain-ID fallback `7777777` in web config
+
+**Goal**: `packages/shared/src/chainConfig.ts:25` and
+`apps/web/src/app/providers.tsx:27` both fall back to `"7777777"` when
+`INITIA_CHAIN_ID` / `NEXT_PUBLIC_INTERWOVEN_CHAIN_ID` are missing. The
+web app will render and look healthy while pointing InterwovenKit at a
+fictitious chain.
+
+**Scope**:
+
+- `chainConfig.ts`: if `env==="initia-testnet"` and `INITIA_CHAIN_ID` is
+  unset, throw `ChainConfigError` at the same level as the other
+  missing-var errors.
+- `providers.tsx`: if `NEXT_PUBLIC_INTERWOVEN_CHAIN_ID` is unset when
+  `isInitiaEnv`, render a fatal error banner (or throw at dev time) —
+  not a silent fallback.
+- Update tests that relied on the fallback.
+
+**AC**:
+
+- [ ] Starting the web dev server with `NEXT_PUBLIC_CHAIN_ENV=initia-testnet`
+      but no `NEXT_PUBLIC_INTERWOVEN_CHAIN_ID` shows a clear
+      misconfiguration error instead of rendering.
+- [ ] `chainConfig` unit tests cover the missing-ID case.
+
+**Commit message**: `fix(config): fail loud when Initia chain ID env vars are missing`
+
+---
+
+### I1-6 — Session-revoke route must actually revoke the InterwovenKit session
+
+**Goal**: `services/ownerview/src/routes/session.ts` stores revocations
+in an in-memory `Map<address, SessionRecord>` but doesn't invalidate the
+client's InterwovenKit session key, because no real session key exists
+yet (blocked on I0-2). Once I0-2 lands, wire the revoke endpoint to the
+client so it calls `iwkAutoSign.revoke()` server-confirmed.
+
+**Scope**:
+
+- Add a client call in `useAutoSignSession.revoke()` that POSTs to
+  `${NEXT_PUBLIC_OWNERVIEW_URL}/session/revoke` before local teardown,
+  so the server-side audit log picks up the revocation regardless of
+  browser-tab lifecycle.
+- On the server side, when a POST comes in, record
+  `{address, revokedAt, via}` and persist beyond in-memory (at minimum
+  log via the existing pino logger so it survives restarts — production
+  swap to Redis is fine to defer).
+- Surface server revocations back to the client on the next session
+  activation attempt, so a user who revoked on another device is forced
+  to re-consent.
+
+**AC**:
+
+- [ ] End-to-end: activate auto-sign in tab A → revoke from tab B →
+      tab A's next action triggers re-consent.
+- [ ] Supertest covers the revoke happy path and auth failures.
+- [ ] Pino log line present per revocation.
+
+**Commit message**: `feat(ownerview): propagate session revocations back to clients`
+
+**Depends on**: I0-2.
+
+---
+
+### I1-7 — VRF doc: fill real TX hashes after the E2E run
+
+**Goal**: `docs/initia/vrf.md:42-44` contains `PLACEHOLDER` for
+`VRFRequested tx`, `VRFFulfilled tx`, `Community cards revealed at hand`.
+Judges reading the VRF doc hit empty evidence.
+
+**Scope**:
+
+- After I3-2 runs, extract the first `VRFRequested` / `VRFFulfilled`
+  TXs from the rollup explorer and paste into `docs/initia/vrf.md`.
+- Optionally add an explorer URL helper in the doc.
+
+**AC**:
+
+- [ ] No `PLACEHOLDER` in `docs/initia/vrf.md`.
+- [ ] Both TX hashes resolve on the rollup explorer.
+
+**Commit message**: `docs(initia): fill VRF evidence TX hashes from live rollup`
+
+**Depends on**: I3-2.
+
+---
+
+## M-I2 — HARDENING (defaults, env flags, misconfig guards)
+
+### I2-1 — Remove legacy deploy scripts from the active path
+
+**Goal**: ADR-020 §"Items Removed / Disabled" claims
+legacy deploy scripts and RPC URLs were moved out of active config.
+Actually: old deploy scripts still lived under tracked script paths and
+legacy RPC URLs were still present in `foundry.toml`.
+
+**Scope**:
+
+- Remove obsolete deploy scripts from the repo's active tree.
+- Remove legacy RPC / explorer entries from `foundry.toml`.
+- Update ADR-020 to reflect that these paths were removed rather than relocated.
+
+**AC**:
+
+- [ ] `ls contracts/script/` contains only live scripts.
+- [ ] `forge build` uses only active Initia/local config.
+- [ ] ADR-020 reflects removal, not relocation to a legacy path.
+
+**Commit message**: `chore(contracts): remove legacy deploy scripts and stale rpc config`
+
+---
+
+### I2-2 — Drop legacy comments and docstrings mentioning prior chains
+
+**Goal**: Minor but low-effort polish. `apps/web/src/app/providers.tsx:11`,
+`apps/web/src/lib/wallet/interwoven.ts:17` and the pokerTableClient
+comments still talk about old chain/local fallback. This is dead code if
+I0-2 + I0-3 actually eliminate the non-Initia branches for production
+builds. Keep the local branch for dev ergonomics but drop the legacy
+references from copy.
+
+**Scope**:
+
+- Replace prior-chain references in comments with "local" and
+  "Initia".
+- `pokerTableClient.ts` default `nativeSymbol` → either throw
+  (if I1-5 already does) or "INIT". Same for `chainName`.
+- No behavioural change beyond what I1-4/I1-5 already did.
+
+**AC**:
+
+- [ ] `grep -ri 'legacy chain\|legacy symbol\|monad\|nad\.fun' apps/web/src services bots packages --include="*.ts" --include="*.tsx"`
+      returns only comments inside legacy ADR files.
+
+**Commit message**: `chore: strip prior-chain references from active Initia code paths`
+
+---
+
+### I2-3 — Tune Initia block-time-sensitive knobs
+
+**Goal**: ADR-020 §"Block Time Impact" says to drop poll to 250ms and
+widen reorg window to 20 blocks. `.env.initia` sets `POLL_INTERVAL_MS=250`
+and `LOG_BLOCK_RANGE=100`, but:
+
+- `LOG_BLOCK_RANGE=100` at 100ms blocks means a fetch window ≈ 10
+  seconds of chain activity. Possibly fine, possibly too large on a
+  loaded rollup. Validate.
+- Reorg-safety window (indexer, keeper, vrf-operator): check each
+  service honours a `CONFIRMATIONS` / `MIN_CONFIRMATIONS` knob ≥ 20
+  and `.env.initia` sets it.
+- `VRF_OPERATOR_MIN_CONFIRMATIONS=3` in `.env.initia` — too small for
+  100ms blocks; ADR says 20.
+
+**Scope**:
+
+- Audit each consumer of `CONFIRMATIONS` / `MIN_CONFIRMATIONS` /
+  `REORG_WINDOW` / `BLOCK_RANGE` in `services/indexer`,
+  `bots/keeper`, `bots/vrf-operator`.
+- Bump `.env.initia` defaults to match ADR-020 guidance.
+- Add a one-line comment per knob explaining why the value is set.
+
+**AC**:
+
+- [ ] `VRF_OPERATOR_MIN_CONFIRMATIONS=20` (or explicit documented
+      deviation) in `.env.initia`.
+- [ ] Indexer / keeper configs align with ADR-020 table.
+- [ ] Existing tests still pass.
+
+**Commit message**: `chore(config): tune reorg/confirmation knobs for Initia 100ms blocks`
+
+---
+
+### I2-4 — KYC gate: enforce `KYC_SBT_ADDRESS=0x0` at runtime
+
+**Goal**: ADR-020 disables KYC on Initia and the deploy script asserts
+`KYC_SBT_ADDRESS` is unset. The web app and bots should also refuse to
+start if `KYC_SBT_ADDRESS` is set to anything non-zero on Initia — the
+contract would enforce it and seat registration would silently fail
+in the browser. Defence-in-depth, cheap.
+
+**Scope**:
+
+- Add a tiny check in `packages/shared/src/chainConfig.ts`: if
+  `env==="initia-testnet"` and `KYC_SBT_ADDRESS` is set and not
+  `0x0000000000000000000000000000000000000000`, throw.
+- Mirror in the web client at boot (so devs see a clear error).
+
+**AC**:
+
+- [ ] With bad `KYC_SBT_ADDRESS` on Initia, boot fails with a specific
+      message.
+- [ ] Default/empty → accepted.
+
+**Commit message**: `chore(config): refuse non-zero KYC_SBT_ADDRESS on Initia`
+
+---
+
+## M-I3 — VERIFICATION & CI (prove it stays green)
+
+### I3-1 — Run `validate-submission.mjs` in CI
+
+**Goal**: The validator exists but isn't in the pipeline. After I0-7
+tightens it, we want it to block merges that accidentally re-introduce
+placeholders.
+
+**Scope**:
+
+- Add a `submission:` job in `.github/workflows/ci.yml` that runs
+  `node scripts/validate-submission.mjs`.
+- Depend on it from the required-checks list (or leave it as a standalone
+  job that just has to pass).
+
+**AC**:
+
+- [ ] CI has a visible "Submission" (or similar) job that passes.
+- [ ] Adding `PLACEHOLDER_X` to `submission.json` locally causes the
+      job to fail (manual test via dry-run push to a branch).
+
+**Commit message**: `ci: add submission.json validation job`
+
+**Depends on**: I0-7.
+
+---
+
+### I3-2 — Run the E2E smoke and commit real evidence
+
+**Goal**: `docs/initia/e2e-evidence.md` is a template full of
+`PLACEHOLDER` tokens. Judges reading the evidence file see nothing.
+
+**Scope**:
+
+- After I0-4/I0-5/I0-6 land, run `bash scripts/e2e-smoke.initia.sh 3`
+  end-to-end with bots live.
+- Let the script populate `docs/initia/e2e-evidence.md` with real
+  seat-registration TXs, HandSettled TXs, and rollup block numbers.
+- Manually execute one auto-sign action via the browser and paste the
+  TX hash into the `Autosign Evidence` section (until I3-3 automates
+  this).
+- Commit the populated evidence file.
+
+**AC**:
+
+- [ ] No `PLACEHOLDER` in `docs/initia/e2e-evidence.md`.
+- [ ] Every TX listed resolves on the rollup explorer.
+- [ ] At least one TX is an auto-sign action (method = `call` / `raise` /
+      `fold` / `check`).
+
+**Commit message**: `docs(initia): publish real E2E evidence from Initia rollup smoke run`
+
+**Depends on**: I0-4, I0-5, I0-2, I0-3.
+
+---
+
+### I3-3 — Automated Playwright run that captures the auto-sign screenshot set
+
+**Goal**: `docs/initia/scoring-rehearsal.md` demands a screenshot of
+`.init` in leaderboard, auto-sign countdown, bridge deeplink. The repo
+has `apps/web/playwright` configured but nothing Initia-specific.
+
+**Scope**:
+
+- Add a Playwright spec `apps/web/tests/e2e/initia.spec.ts` that, when
+  `CHAIN_ENV=initia-testnet` and against a running rollup:
+  - Navigates to `/leaderboard`, asserts at least one row owner renders
+    as `*.init`, screenshots it.
+  - Navigates to a live table, asserts the auto-sign toggle exists,
+    screenshots it post-activation (mocked session if needed).
+  - Navigates to an agent page, asserts the "Bridge via Interwoven"
+    card, screenshots.
+- Gate the spec behind `process.env.CI_INITIA === "1"` so it doesn't
+  run in the default CI (no rollup available there).
+- Wire a manual-dispatch CI workflow that runs it and uploads the
+  `screenshots/` artifact.
+
+**AC**:
+
+- [ ] Running the spec locally against a live rollup produces three
+      PNGs under `apps/web/tests/e2e/screenshots/`.
+- [ ] Spec runs under 2 minutes.
+- [ ] Screenshots are referenced from `docs/initia/*.md`.
+
+**Commit message**: `test(e2e): capture Initia UI screenshots for scoring evidence`
+
+**Depends on**: I3-2.
+
+---
+
+### I3-4 — Manual submission-ready checklist runbook
+
+**Goal**: Lock in a single checklist that the next human runs before
+clicking "Submit" on the hackathon portal. Right now the information
+is scattered across `INITIA_SUBMISSION.md`, `docs/initia/scoring-rehearsal.md`,
+and the remaining Initia submission support docs.
+
+**Scope**:
+
+- Pick one of the three files (recommend `docs/initia/scoring-rehearsal.md`)
+  as the canonical pre-submit runbook; keep the others as narrative
+  scoring responses only.
+- In the chosen file, keep only the **actionable** list (rollup up,
+  contracts deployed, demo video live, submission.json validated,
+  evidence populated, screenshots captured).
+- Each item has an exact shell command that proves it's done.
+
+**AC**:
+
+- [ ] One file exists whose numbered checklist walks a human
+      from fresh clone → "submit now" in under 30 minutes.
+- [ ] The other two files drop the checklist (keep the narrative).
+
+**Commit message**: `docs(initia): consolidate pre-submit checklist in scoring-rehearsal.md`
+
+---
+
+## M-I4 — DOCS & CLEANUP
+
+### I4-1 — Refresh auto-memory project notes for the Initia pivot
+
+**Goal**: `MEMORY.md` still points at `g_series_status.md` and
+`production_todo.md`; the latter describes `TODO.md` as the production
+roadmap, but `TODO.md` was deleted in commit `dbfd70c`. Memory will
+confuse future runners.
+
+**Scope**:
+
+- Update `project_overview.md` in the auto-memory dir to note the
+  Initia pivot (deployment target, InterwovenKit, MiniEVM).
+- Either delete `production_todo.md` or rewrite it to say "the TODO.md
+  file was deleted in the Initia pivot; see this TICKET.md instead".
+- Add a fresh memory entry `initia_port_status.md` that points at this
+  TICKET.md.
+
+**AC**:
+
+- [ ] `MEMORY.md` index reflects the current file set.
+- [ ] No memory file claims `TODO.md` exists at the repo root.
+
+**Commit message**: `chore(memory): refresh auto-memory to reflect Initia pivot`
+
+**Note**: This is a memory-system ticket, not a code ticket — user's
+CLAUDE.md memory files live outside the repo. Expect the diff to be
+in `~/.claude/projects/-Users-inch-Projects-railbird/memory/` only.
+
+---
+
+### I4-2 — Delete the `apps/web/src/types/interwovenkit.d.ts` stub
+
+**Goal**: Small follow-up if I0-1 didn't already delete it. Keep it
+listed separately because I0-1 could defer the deletion if the real
+types need adaptation.
+
+**Scope**:
+
+- Delete the file. Fix any consumer that falls off.
+
+**AC**:
+
+- [ ] File doesn't exist.
+- [ ] Typecheck/build still pass.
+
+**Commit message**: `chore(web): remove legacy InterwovenKit type stub`
+
+**Depends on**: I0-1.
+
+---
+
+### I4-3 — README "Quick Start" should actually work end-to-end
+
+**Goal**: `README.md` Quick Start (lines 94-109) claims 4 commands take
+you from checkout to running demo. Today, step 3 (`bash scripts/deploy/initia.sh`)
+will fail because the rollup isn't provisioned, and step 4
+(`scripts/run-4agents.sh`) predates Initia.
+
+**Scope**:
+
+- Reorder: step 1 = `pnpm install`, step 2 = `bash scripts/initia/launch-minitia.sh`,
+  step 3 = `bash scripts/deploy/initia.sh`, step 4 = `bash scripts/e2e-smoke.initia.sh`,
+  step 5 = `bash scripts/run-4agents.sh` (if still the right entrypoint).
+- Verify `scripts/run-4agents.sh` still points at Initia env; it was
+  authored before the Initia port; verify the repo's helper scripts now
+  point only at the Initia/local flow.
+- Add a note: rollup launch is a **one-time** operation; step 2 can be
+  skipped if `infra/initia/rollup.json` is already populated.
+
+**AC**:
+
+- [ ] A fresh clone + these steps in order takes a new operator from zero
+      to running demo (happy path, ideally under 30 minutes).
+- [ ] README no longer references the previous chain migration as the primary
+      path — only as a "Legacy" appendix.
+
+**Commit message**: `docs(readme): rewrite Quick Start for the Initia path`
+
+---
+
+## Appendix — What we deliberately did NOT add
+
+- **Revenue model / monetization tickets.** `INITIA_SUBMISSION.md` §5
+  notes this is intentionally absent for a hackathon. Judges' rubric
+  gives 10% to Market Understanding and accepts "token economy is the
+  path" narrative. Don't over-invest pre-submission.
+- **Treasury rebalancing / nad.fun integration.** ADR-020 disabled both
+  (`ENABLE_REBALANCING=false`, `NEXT_PUBLIC_ENABLE_TRADING_WIDGET=false`).
+  Re-enabling requires an Initia DEX and is out of scope.
+- **Move / CosmWasm rewrites.** ADR-020 kept MiniEVM; no reason to
+  revisit.
+- **Adding Chainlink VRF.** `docs/initia/vrf.md` explains why not.
+- **KYC SBT replacement.** Initia has no equivalent and the hackathon
+  does not require it.

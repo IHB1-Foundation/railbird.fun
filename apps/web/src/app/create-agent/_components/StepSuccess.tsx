@@ -82,6 +82,27 @@ export function StepSuccess({ persona, deployedAgentId }: Props) {
         </a>
         .
       </p>
+      <p
+        style={{
+          marginTop: "0.75rem",
+          fontSize: "0.72rem",
+          color: "var(--muted)",
+          textAlign: "center",
+          borderTop: "1px solid var(--border-default)",
+          paddingTop: "0.75rem",
+        }}
+      >
+        <span style={{ color: "#A78BFA", fontWeight: 600 }}>Tip:</span> Register a{" "}
+        <a
+          href="https://app.initia.xyz/profile"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: "#A78BFA", textDecoration: "underline dotted" }}
+        >
+          .init username
+        </a>{" "}
+        to display your name instead of a wallet address on your agent&apos;s profile.
+      </p>
     </div>
   );
 }

@@ -51,12 +51,15 @@ function loadPersona(): PersonaConfig | undefined {
         const persona = createCustomPersona(raw as Partial<PersonaConfig> & { name: string });
         logger.info(
           { name: persona.name, aggression: persona.aggression, tightness: persona.tightness },
-          '[FLEET] Using custom persona'
+          "[FLEET] Using custom persona",
         );
         return persona;
       }
     } catch (err) {
-      logger.warn({ err: err instanceof Error ? err.message : String(err) }, 'Failed to parse AGENT_PERSONA_JSON — ignoring');
+      logger.warn(
+        { err: err instanceof Error ? err.message : String(err) },
+        "Failed to parse AGENT_PERSONA_JSON — ignoring",
+      );
     }
   }
 
@@ -64,13 +67,19 @@ function loadPersona(): PersonaConfig | undefined {
   if (!personaId) return undefined;
   const persona = getPersona(personaId);
   if (!persona) {
-    logger.warn({ personaId }, 'Unknown AGENT_PERSONA — ignoring (valid: shark, maniac, rock, adaptive)');
+    logger.warn(
+      { personaId },
+      "Unknown AGENT_PERSONA — ignoring (valid: shark, maniac, rock, adaptive)",
+    );
     return undefined;
   }
   return persona;
 }
 
-function createStrategy(aggressionFactor: number, vectorStore?: VectorStore): {
+function createStrategy(
+  aggressionFactor: number,
+  vectorStore?: VectorStore,
+): {
   strategy: Strategy;
   engine: DecisionEngine;
   geminiModel: string | null;
@@ -86,7 +95,10 @@ function createStrategy(aggressionFactor: number, vectorStore?: VectorStore): {
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    logger.error({}, 'AGENT_DECISION_ENGINE=gemini requires GEMINI_API_KEY — set the variable or switch to AGENT_DECISION_ENGINE=simple');
+    logger.error(
+      {},
+      "AGENT_DECISION_ENGINE=gemini requires GEMINI_API_KEY — set the variable or switch to AGENT_DECISION_ENGINE=simple",
+    );
     process.exit(1);
   }
 
@@ -108,11 +120,12 @@ function createStrategy(aggressionFactor: number, vectorStore?: VectorStore): {
 }
 
 async function main() {
-  logger.info({ version: VERSION }, 'Agent bot starting');
+  logger.info({ version: VERSION }, "Agent bot starting");
   logAbiVersions(logger, ["POKER_TABLE", "PLAYER_REGISTRY"]);
   const rpcUrl = requireEnv("RPC_URL");
   const defaultTurnActionDelayMs = 0;
-  const defaultPollIntervalMs = 1000;
+  // Initia MiniEVM: 100ms blocks — use 250ms default poll to stay near tip.
+  const defaultPollIntervalMs = process.env.CHAIN_ENV === "initia-testnet" ? 250 : 1000;
   const aggressionFactor = parseBoundedFloat("AGGRESSION_FACTOR", 0.3);
   const turnActionDelayMs = parsePositiveInt("TURN_ACTION_DELAY_MS", defaultTurnActionDelayMs);
 
@@ -126,7 +139,7 @@ async function main() {
 
   // AGENT_TABLE_ADDRESS is deprecated — use POKER_TABLE_ADDRESS instead
   if (process.env.AGENT_TABLE_ADDRESS) {
-    logger.warn({}, 'AGENT_TABLE_ADDRESS is deprecated — use POKER_TABLE_ADDRESS instead');
+    logger.warn({}, "AGENT_TABLE_ADDRESS is deprecated — use POKER_TABLE_ADDRESS instead");
   }
   const tableAddress = process.env.POKER_TABLE_ADDRESS || process.env.AGENT_TABLE_ADDRESS;
   if (!tableAddress) {
@@ -152,7 +165,7 @@ async function main() {
     privateKey: operatorKey,
     pokerTableAddress: tableAddress as `0x${string}`,
     ownerviewUrl: optionalEnv("OWNERVIEW_URL", "http://localhost:3001"),
-    chainId: parseInt(optionalEnv("CHAIN_ID", "31337")),
+    chainId: parseInt(process.env.CHAIN_ID || process.env.INITIA_CHAIN_ID || "31337", 10),
     pollIntervalMs: parsePositiveInt("POLL_INTERVAL_MS", defaultPollIntervalMs),
     turnActionDelayMs,
     strategy,
@@ -166,29 +179,38 @@ async function main() {
 
   // Validate that RPC_URL returns the expected chain ID before proceeding.
   await validateChainIdWithRpc(config.rpcUrl, config.chainId).catch((err: unknown) => {
-    logger.error({ err: err instanceof Error ? err.message : String(err) }, 'Chain ID validation failed');
+    logger.error(
+      { err: err instanceof Error ? err.message : String(err) },
+      "Chain ID validation failed",
+    );
     process.exit(1);
   });
 
   if (persona) {
-    logger.info({ personaId: persona.id, personaName: persona.name, emoji: persona.emoji }, 'Persona loaded');
+    logger.info(
+      { personaId: persona.id, personaName: persona.name, emoji: persona.emoji },
+      "Persona loaded",
+    );
   }
 
-  logger.info({
-    rpcUrl: config.rpcUrl,
-    table: config.pokerTableAddress,
-    ownerviewUrl: config.ownerviewUrl,
-    chainId: config.chainId,
-    pollIntervalMs: config.pollIntervalMs,
-    turnActionDelayMs,
-    aggression: aggressionFactor.toFixed(2),
-    decisionEngine: engine,
-    ...(geminiModel ? { geminiModel } : {}),
-    ...(persona ? { persona: persona.id } : {}),
-    maxHands: maxHands || "unlimited",
-    ...(Object.keys(evolutionConfig).length > 0 ? { evolutionConfig } : {}),
-    gtoFeedbackWindowSize,
-  }, 'Configuration');
+  logger.info(
+    {
+      rpcUrl: config.rpcUrl,
+      table: config.pokerTableAddress,
+      ownerviewUrl: config.ownerviewUrl,
+      chainId: config.chainId,
+      pollIntervalMs: config.pollIntervalMs,
+      turnActionDelayMs,
+      aggression: aggressionFactor.toFixed(2),
+      decisionEngine: engine,
+      ...(geminiModel ? { geminiModel } : {}),
+      ...(persona ? { persona: persona.id } : {}),
+      maxHands: maxHands || "unlimited",
+      ...(Object.keys(evolutionConfig).length > 0 ? { evolutionConfig } : {}),
+      gtoFeedbackWindowSize,
+    },
+    "Configuration",
+  );
 
   // Create and run bot
   const bot = new AgentBot(config);
@@ -218,29 +240,31 @@ async function main() {
           totalHands: bot.getVectorStoreSize(),
           lastUpdated: s.lastActionTime > 0 ? new Date(s.lastActionTime).toISOString() : null,
         },
-        ...(persona ? {
-          persona: {
-            id: persona.id,
-            name: persona.name,
-            emoji: persona.emoji,
-            aggression: persona.aggression,
-            tightness: persona.tightness,
-          },
-        } : {}),
+        ...(persona
+          ? {
+              persona: {
+                id: persona.id,
+                name: persona.name,
+                emoji: persona.emoji,
+                aggression: persona.aggression,
+                tightness: persona.tightness,
+              },
+            }
+          : {}),
       };
     },
   });
-  logger.info({ healthEndpoint: `http://0.0.0.0:${healthPort}/health` }, 'Health server started');
+  logger.info({ healthEndpoint: `http://0.0.0.0:${healthPort}/health` }, "Health server started");
 
   // Handle shutdown
   let shutdownRequested = false;
   const shutdown = () => {
     if (shutdownRequested) {
-      logger.info({}, 'Force shutdown');
+      logger.info({}, "Force shutdown");
       process.exit(1);
     }
     shutdownRequested = true;
-    logger.info({}, 'Shutdown requested, stopping bot');
+    logger.info({}, "Shutdown requested, stopping bot");
     bot.stop();
     void health.close();
   };
@@ -253,18 +277,24 @@ async function main() {
 
   // Print final stats
   const stats = bot.getStats();
-  logger.info({
-    handsPlayed: stats.handsPlayed,
-    handsWon: stats.handsWon,
-    winRate: stats.handsPlayed > 0 ? ((stats.handsWon / stats.handsPlayed) * 100).toFixed(1) + "%" : "0%",
-    totalProfit: stats.totalProfit.toString(),
-    actionsSubmitted: stats.actionsSubmitted,
-    errors: stats.errors,
-  }, 'Final statistics');
+  logger.info(
+    {
+      handsPlayed: stats.handsPlayed,
+      handsWon: stats.handsWon,
+      winRate:
+        stats.handsPlayed > 0
+          ? ((stats.handsWon / stats.handsPlayed) * 100).toFixed(1) + "%"
+          : "0%",
+      totalProfit: stats.totalProfit.toString(),
+      actionsSubmitted: stats.actionsSubmitted,
+      errors: stats.errors,
+    },
+    "Final statistics",
+  );
 }
 
 main().catch((error) => {
-  logger.error({ err: error instanceof Error ? error.message : String(error) }, 'Fatal error');
+  logger.error({ err: error instanceof Error ? error.message : String(error) }, "Fatal error");
   process.exit(1);
 });
 

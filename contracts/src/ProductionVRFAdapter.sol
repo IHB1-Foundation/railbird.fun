@@ -107,6 +107,7 @@ contract ProductionVRFAdapter is IVRFAdapter {
         emit RandomnessFulfilled(requestId, req.table, randomness);
 
         // Callback to PokerTable
+        // solhint-disable-next-line avoid-low-level-calls
         (bool success,) = req.table.call(
             abi.encodeWithSignature("fulfillVRF(uint256,uint256)", requestId, randomness)
         );

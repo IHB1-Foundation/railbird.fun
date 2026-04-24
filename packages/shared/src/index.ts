@@ -22,6 +22,7 @@ export {
   validateChainConfigEnv,
   clearChainConfigCache,
   validateChainIdWithRpc,
+  isInitiaEnv,
   ChainConfigError,
 } from "./chainConfig.js";
 
@@ -104,6 +105,14 @@ export type { RpcRetryOptions } from "./chain/rpcRetry.js";
 // DB utilities
 export { buildPgPoolConfig, pgDeepHealthCheck } from "./db/pool.js";
 export type { PgPoolOptions } from "./db/pool.js";
+
+// Initia username resolution
+export {
+  resolveInitUsername,
+  resolveInitUsernames,
+  formatInitAddress,
+  clearInitUsernameCache,
+} from "./initiaUsername.js";
 
 // Observability
 export { initSentry } from "./observability/sentry.js";

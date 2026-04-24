@@ -22,6 +22,12 @@ function createMockWs(readyState: number = 1): WebSocket {
   return ws;
 }
 
+function parseBatchPayload(raw: string): unknown[] {
+  const parsed = JSON.parse(raw) as unknown;
+  assert.ok(Array.isArray(parsed), "broadcast payload should be a JSON array");
+  return parsed;
+}
+
 describe("WsManager", () => {
   beforeEach(() => {
     resetWsManager();
@@ -98,10 +104,40 @@ describe("WsManager", () => {
     assert.strictEqual(ws1.sentMessages.length, 1);
     assert.strictEqual(ws2.sentMessages.length, 1);
 
-    const msg1 = JSON.parse(ws1.sentMessages[0]);
+    const msg1 = parseBatchPayload(ws1.sentMessages[0])[0] as {
+      type: string;
+      tableId: string;
+      data: unknown;
+    };
     assert.strictEqual(msg1.type, "action");
     assert.strictEqual(msg1.tableId, "1");
     assert.deepStrictEqual(msg1.data, { test: "data" });
+  });
+
+  test("should batch multiple broadcasts into a single payload", async () => {
+    const manager = new WsManager();
+    const ws = createMockWs() as WebSocket & { sentMessages: string[] };
+
+    manager.subscribe("1", ws);
+    manager.startBatching(5);
+
+    manager.broadcast("1", "action", { order: 1 });
+    manager.broadcast("1", "hand_started", { order: 2 });
+
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    assert.strictEqual(ws.sentMessages.length, 1);
+    const batch = parseBatchPayload(ws.sentMessages[0]) as Array<{
+      type: string;
+      data: { order: number };
+    }>;
+    assert.strictEqual(batch.length, 2);
+    assert.strictEqual(batch[0].type, "action");
+    assert.deepStrictEqual(batch[0].data, { order: 1 });
+    assert.strictEqual(batch[1].type, "hand_started");
+    assert.deepStrictEqual(batch[1].data, { order: 2 });
+
+    manager.stopBatching(false);
   });
 
   test("should not broadcast to clients on different tables", () => {
@@ -184,7 +220,12 @@ describe("WsMessage format", () => {
     manager.subscribe("42", ws);
     manager.broadcast("42", "hand_settled", { winnerSeat: 1 });
 
-    const msg = JSON.parse(ws.sentMessages[0]);
+    const msg = parseBatchPayload(ws.sentMessages[0])[0] as {
+      type: string;
+      tableId: string;
+      timestamp: string;
+      data: unknown;
+    };
     assert.strictEqual(msg.type, "hand_settled");
     assert.strictEqual(msg.tableId, "42");
     assert.ok(msg.timestamp);

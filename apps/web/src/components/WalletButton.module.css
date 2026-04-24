@@ -1,3 +1,11 @@
+/* Stable wrapper — prevents layout shift when auth state changes */
+.walletWrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  min-width: 0;
+}
+
 .walletButton {
   border: 1px solid transparent;
   border-radius: 999px;
@@ -11,6 +19,7 @@
   box-shadow: var(--shadow-btn-accent);
   cursor: pointer;
   transition: filter 0.2s ease, transform 0.2s ease;
+  white-space: nowrap;
 }
 
 .walletButton:hover:not(:disabled) {
@@ -46,6 +55,8 @@
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .walletStatus.authenticated {
@@ -59,6 +70,10 @@
   font-family: var(--text-mono);
   font-size: 0.8rem;
   color: #cfd4f3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .authBadge {
@@ -76,7 +91,7 @@
   color: var(--danger);
   font-size: 0.72rem;
   margin-top: 0.25rem;
-  max-width: clamp(150px, 85vw, 200px);
+  max-width: clamp(180px, 50vw, 280px);
   text-align: right;
   justify-content: flex-end;
 }

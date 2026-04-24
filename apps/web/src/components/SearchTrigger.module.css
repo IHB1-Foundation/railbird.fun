@@ -33,3 +33,18 @@
   font-family: var(--text-mono);
   font-size: var(--text-2xs);
 }
+
+/* Collapse to icon-only on small viewports to give WalletButton more room */
+@media (max-width: 640px) {
+  .searchTrigger span:not([aria-hidden]) {
+    display: none;
+  }
+
+  .kbdHint {
+    display: none;
+  }
+
+  .searchTrigger {
+    padding: 0.35rem 0.55rem;
+  }
+}

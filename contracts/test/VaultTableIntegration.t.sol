@@ -424,8 +424,8 @@ contract VaultTableIntegrationTest is Test {
 
 // ─── T-R0-03: Per-hand rebalancing end-to-end ─────────────────────────────
 
-import "../src/NadfunCompatToken.sol";
-import "./mocks/MockNadfunRouter.sol";
+import "./mocks/MockERC20.sol";
+import "./mocks/MockDexRouter.sol";
 
 contract RebalancingIntegrationTest is Test {
     PokerTable      public pokerTable;
@@ -434,8 +434,8 @@ contract RebalancingIntegrationTest is Test {
     PlayerRegistry  public registry;
     MockVRFAdapter  public mockVRF;
     ChipToken       public chipToken;
-    NadfunCompatToken public agentToken;
-    MockNadfunRouter  public router;
+    MockERC20     public agentToken;
+    MockDexRouter public router;
 
     address public owner1 = address(0x1);
     address public owner2 = address(0x2);
@@ -447,8 +447,9 @@ contract RebalancingIntegrationTest is Test {
     function setUp() public {
         mockVRF   = new MockVRFAdapter();
         chipToken = new ChipToken("TestChip", "TCHIP");
-        agentToken = new NadfunCompatToken("AgentToken", "AGT", "", 1_000_000e18, address(this), address(this));
-        router = new MockNadfunRouter();
+        agentToken = new MockERC20("AgentToken", "AGT");
+        agentToken.mint(address(this), 1_000_000e18);
+        router = new MockDexRouter();
 
         pokerTable = new PokerTable(
             1, SMALL_BLIND, BIG_BLIND,
@@ -650,8 +651,8 @@ contract RebalancingIntegrationTest is Test {
 
 contract VaultRebalancingBoundaryTest is Test {
     PlayerVault     public vault;
-    NadfunCompatToken public agentToken;
-    MockNadfunRouter  public router;
+    MockERC20     public agentToken;
+    MockDexRouter public router;
 
     address public owner = address(0xAA);
 
@@ -668,8 +669,9 @@ contract VaultRebalancingBoundaryTest is Test {
 
     function setUp() public {
         // All TOTAL_SUPPLY goes to address(this) (the test contract)
-        agentToken = new NadfunCompatToken("BoundaryToken", "BDT", "", TOTAL_SUPPLY, address(this), address(this));
-        router = new MockNadfunRouter();
+        agentToken = new MockERC20("BoundaryToken", "BDT");
+        agentToken.mint(address(this), TOTAL_SUPPLY);
+        router = new MockDexRouter();
 
         vault = new PlayerVault(owner);
         vm.deal(address(vault), VAULT_ETH);

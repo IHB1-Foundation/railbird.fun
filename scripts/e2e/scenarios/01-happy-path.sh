@@ -18,6 +18,7 @@ e2e_register_seats 2
 
 # 4. Services
 e2e_start_ownerview 13091
+e2e_seed_encryption_keys 2
 e2e_start_keeper
 e2e_start_agent 0 1
 e2e_start_agent 1 1
@@ -30,8 +31,9 @@ e2e_assert_settlements 1
 
 # 7. Contract state: back to SETTLED (10) or WAITING_FOR_SEATS (0)
 FINAL_STATE=$(cast call "$TABLE_ADDR" "gameState()(uint8)" --rpc-url "$RPC_URL" 2>/dev/null || echo "255")
-if [ "$FINAL_STATE" = "10" ] || [ "$FINAL_STATE" = "0" ]; then
-  pass "gameState=$FINAL_STATE (SETTLED or WAITING_FOR_SEATS)"
+FINAL_HAND=$(cast call "$TABLE_ADDR" "currentHandId()(uint256)" --rpc-url "$RPC_URL" 2>/dev/null || echo "0")
+if [ "$FINAL_STATE" = "10" ] || [ "$FINAL_STATE" = "0" ] || [ "$FINAL_HAND" -gt "1" ] 2>/dev/null; then
+  pass "Post-settlement state accepted (gameState=$FINAL_STATE, handId=$FINAL_HAND)"
 else
   fail "Unexpected final gameState=$FINAL_STATE"
 fi

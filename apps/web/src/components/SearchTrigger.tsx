@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { SearchPalette } from "./SearchPalette";
 import styles from "./SearchTrigger.module.css";
 
 export function SearchTrigger() {
   const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   // Global keyboard shortcut: Cmd+K / Ctrl+K
   useEffect(() => {
@@ -19,9 +20,16 @@ export function SearchTrigger() {
     return () => document.removeEventListener("keydown", handleKey);
   }, []);
 
+  const handleClose = useCallback(() => {
+    setOpen(false);
+    // Restore focus to trigger button for keyboard users
+    triggerRef.current?.focus();
+  }, []);
+
   return (
     <>
       <button
+        ref={triggerRef}
         onClick={() => setOpen(true)}
         aria-label="Search (⌘K)"
         title="Search (⌘K)"
@@ -31,7 +39,7 @@ export function SearchTrigger() {
         <span>Search</span>
         <span className={styles.kbdHint}>⌘K</span>
       </button>
-      <SearchPalette open={open} onClose={() => setOpen(false)} />
+      <SearchPalette open={open} onClose={handleClose} />
     </>
   );
 }

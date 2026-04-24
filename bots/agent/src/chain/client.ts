@@ -17,6 +17,11 @@ import { GameState, NonceManager, POKER_TABLE_ABI } from "@playerco/shared";
 export { GameState };
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as Address;
+// Verified with `forge inspect PokerTable storage-layout`.
+const CURRENT_HAND_STORAGE_SLOT = 69n;
+const CURRENT_HAND_POT_SLOT = 70n;
+const CURRENT_HAND_CURRENT_BET_SLOT = 71n;
+const CURRENT_HAND_PACKED_SLOT = 73n;
 
 // Action type enum matching contract
 export enum ActionType {
@@ -85,12 +90,25 @@ export class ChainClient {
   private nonceManager: NonceManager;
 
   constructor(config: ChainClientConfig) {
+    const chainEnv = process.env.CHAIN_ENV ?? "local";
+    const isLocal = chainEnv === "local";
+    if (!config.chainId && !isLocal) {
+      throw new Error(`CHAIN_ID is required when CHAIN_ENV=${chainEnv}`);
+    }
+    const chainName = process.env.CHAIN_NAME;
+    if (!chainName && !isLocal) {
+      throw new Error(`CHAIN_NAME is required when CHAIN_ENV=${chainEnv}`);
+    }
+    const nativeSymbol = process.env.NATIVE_SYMBOL;
+    if (!nativeSymbol && !isLocal) {
+      throw new Error(`NATIVE_SYMBOL is required when CHAIN_ENV=${chainEnv}`);
+    }
     this.chain = {
-      id: config.chainId || 133,
-      name: process.env.CHAIN_NAME || "HashKey Chain Testnet",
+      id: config.chainId || 31337,
+      name: chainName || "Localhost",
       nativeCurrency: {
-        name: process.env.NATIVE_CURRENCY_NAME || "HashKey",
-        symbol: process.env.NATIVE_SYMBOL || "HSK",
+        name: process.env.NATIVE_CURRENCY_NAME || nativeSymbol || "ETH",
+        symbol: nativeSymbol || "ETH",
         decimals: 18,
       },
       rpcUrls: {
@@ -128,7 +146,15 @@ export class ChainClient {
 
   private parseSeat(raw: unknown): Seat {
     if (Array.isArray(raw)) {
-      const seatTuple = raw as unknown as readonly [Address, Address, bigint, boolean, bigint, boolean, bigint];
+      const seatTuple = raw as unknown as readonly [
+        Address,
+        Address,
+        bigint,
+        boolean,
+        bigint,
+        boolean,
+        bigint,
+      ];
       return {
         owner: seatTuple[0] ?? ZERO_ADDRESS,
         operator: seatTuple[1] ?? ZERO_ADDRESS,
@@ -172,7 +198,59 @@ export class ChainClient {
     };
   }
 
-  private async getHandInfoWithFallback(gameState: GameState): Promise<HandInfo> {
+  private createEmptyHandInfo(gameState: GameState, currentHandId: bigint): HandInfo {
+    return {
+      handId: currentHandId,
+      pot: 0n,
+      currentBet: 0n,
+      actorSeat: 0,
+      state: gameState,
+    };
+  }
+
+  private hasLiveHandState(gameState: GameState, currentHandId: bigint): boolean {
+    if (currentHandId <= 0n) return false;
+    return ![GameState.WAITING_FOR_SEATS, GameState.SETTLED, GameState.TOURNAMENT_OVER].includes(
+      gameState,
+    );
+  }
+
+  private async readStorageWord(slot: bigint): Promise<bigint> {
+    const value = await this.publicClient.getStorageAt({
+      address: this.pokerTableAddress,
+      slot: `0x${slot.toString(16)}`,
+    });
+    return value ? BigInt(value) : 0n;
+  }
+
+  private async getHandInfoFromStorage(
+    gameState: GameState,
+    currentHandId: bigint,
+  ): Promise<HandInfo> {
+    if (!this.hasLiveHandState(gameState, currentHandId)) {
+      return this.createEmptyHandInfo(gameState, currentHandId);
+    }
+
+    const [storedHandId, pot, currentBet, packed] = await Promise.all([
+      this.readStorageWord(CURRENT_HAND_STORAGE_SLOT),
+      this.readStorageWord(CURRENT_HAND_POT_SLOT),
+      this.readStorageWord(CURRENT_HAND_CURRENT_BET_SLOT),
+      this.readStorageWord(CURRENT_HAND_PACKED_SLOT),
+    ]);
+
+    return {
+      handId: storedHandId > 0n ? storedHandId : currentHandId,
+      pot,
+      currentBet,
+      actorSeat: Number(packed & 0xffn),
+      state: gameState,
+    };
+  }
+
+  private async getHandInfoWithFallback(
+    gameState: GameState,
+    currentHandId: bigint,
+  ): Promise<HandInfo> {
     try {
       const handInfo = await this.publicClient.readContract({
         address: this.pokerTableAddress,
@@ -188,20 +266,35 @@ export class ChainClient {
         state: (handInfo as readonly [bigint, bigint, bigint, number, number])[4] as GameState,
       };
     } catch {
-      const currentHand = await this.publicClient.readContract({
-        address: this.pokerTableAddress,
-        abi: POKER_TABLE_ABI,
-        functionName: "currentHand",
-      });
+      try {
+        const currentHand = await this.publicClient.readContract({
+          address: this.pokerTableAddress,
+          abi: POKER_TABLE_ABI,
+          functionName: "currentHand",
+        });
 
-      const hand = currentHand as readonly [bigint, bigint, bigint, bigint, number, number, number, number];
-      return {
-        handId: hand[0],
-        pot: hand[1],
-        currentBet: hand[2],
-        actorSeat: Number(hand[4]),
-        state: gameState,
-      };
+        const hand = currentHand as readonly [
+          bigint,
+          bigint,
+          bigint,
+          bigint,
+          number,
+          number,
+          number,
+          number,
+        ];
+        return {
+          handId: hand[0],
+          pot: hand[1],
+          currentBet: hand[2],
+          actorSeat: Number(hand[4]),
+          state: gameState,
+        };
+      } catch {
+        // Some live deployments omit helper views entirely. Fall back to the
+        // currentHand storage slots so turn detection still works on testnet.
+        return this.getHandInfoFromStorage(gameState, currentHandId);
+      }
     }
   }
 
@@ -221,8 +314,8 @@ export class ChainClient {
             abi: POKER_TABLE_ABI,
             functionName: "communityCards",
             args: [BigInt(index)],
-          })
-        )
+          }),
+        ),
       );
       return communityCards.map((card) => Number(card));
     }
@@ -265,16 +358,24 @@ export class ChainClient {
     handCurrentBet: bigint;
     seatCurrentBet: bigint;
   }> {
-    const [gameStateRaw, seat] = await Promise.all([
+    const [gameStateRaw, currentHandId, seat] = await Promise.all([
       this.publicClient.readContract({
         address: this.pokerTableAddress,
         abi: POKER_TABLE_ABI,
         functionName: "gameState",
       }),
+      this.publicClient.readContract({
+        address: this.pokerTableAddress,
+        abi: POKER_TABLE_ABI,
+        functionName: "currentHandId",
+      }),
       this.getSeatWithFallback(seatIndex),
     ]);
 
-    const hand = await this.getHandInfoWithFallback((gameStateRaw as number) as GameState);
+    const hand = await this.getHandInfoWithFallback(
+      gameStateRaw as number as GameState,
+      currentHandId as bigint,
+    );
     return {
       handCurrentBet: hand.currentBet,
       seatCurrentBet: seat.currentBet,
@@ -327,57 +428,43 @@ export class ChainClient {
     this.maxSeatsCache = Number(maxSeats);
   }
 
-  async getTableState(mySeatIndex: number | null = null): Promise<TableState> {
+  async getTableState(_mySeatIndex: number | null = null): Promise<TableState> {
     await this.ensureStaticState();
 
-    const [
-      gameStateRaw,
-      currentHandId,
-      actionDeadline,
-      lastActionBlock,
-      buttonSeat,
-    ] = await Promise.all([
-      this.publicClient.readContract({
-        address: this.pokerTableAddress,
-        abi: POKER_TABLE_ABI,
-        functionName: "gameState",
-      }),
-      this.publicClient.readContract({
-        address: this.pokerTableAddress,
-        abi: POKER_TABLE_ABI,
-        functionName: "currentHandId",
-      }),
-      this.publicClient.readContract({
-        address: this.pokerTableAddress,
-        abi: POKER_TABLE_ABI,
-        functionName: "actionDeadline",
-      }),
-      this.publicClient.readContract({
-        address: this.pokerTableAddress,
-        abi: POKER_TABLE_ABI,
-        functionName: "lastActionBlock",
-      }),
-      this.getButtonSeatWithFallback(),
-    ]);
+    const [gameStateRaw, currentHandId, actionDeadline, lastActionBlock, buttonSeat] =
+      await Promise.all([
+        this.publicClient.readContract({
+          address: this.pokerTableAddress,
+          abi: POKER_TABLE_ABI,
+          functionName: "gameState",
+        }),
+        this.publicClient.readContract({
+          address: this.pokerTableAddress,
+          abi: POKER_TABLE_ABI,
+          functionName: "currentHandId",
+        }),
+        this.publicClient.readContract({
+          address: this.pokerTableAddress,
+          abi: POKER_TABLE_ABI,
+          functionName: "actionDeadline",
+        }),
+        this.publicClient.readContract({
+          address: this.pokerTableAddress,
+          abi: POKER_TABLE_ABI,
+          functionName: "lastActionBlock",
+        }),
+        this.getButtonSeatWithFallback(),
+      ]);
 
-    const gameState = (gameStateRaw as number) as GameState;
+    const gameState = gameStateRaw as number as GameState;
     const [handInfo, communityCards] = await Promise.all([
-      this.getHandInfoWithFallback(gameState),
+      this.getHandInfoWithFallback(gameState, currentHandId as bigint),
       this.getCommunityCardsWithFallback(),
     ]);
 
-    let seats: Seat[];
-    if (mySeatIndex === null || mySeatIndex < 0 || mySeatIndex >= this.maxSeatsCache!) {
-      const seatResults = await Promise.all(
-        Array.from({ length: this.maxSeatsCache! }, (_, i) =>
-          this.getSeatWithFallback(i)
-        )
-      );
-      seats = seatResults;
-    } else {
-      seats = Array.from({ length: this.maxSeatsCache! }, () => this.createEmptySeat());
-      seats[mySeatIndex] = await this.getSeatWithFallback(mySeatIndex);
-    }
+    const seats = await Promise.all(
+      Array.from({ length: this.maxSeatsCache! }, (_, i) => this.getSeatWithFallback(i)),
+    );
 
     return {
       tableId: this.tableIdCache!,
@@ -558,19 +645,23 @@ export class ChainClient {
 
     let existing: `0x${string}` | null = null;
     try {
-      existing = await this.publicClient.readContract({
+      existing = (await this.publicClient.readContract({
         address: this.pokerTableAddress,
         abi: ENCRYPTION_ABI,
         functionName: "getEncryptionKey",
         args: [seatIndex],
-      }) as `0x${string}`;
+      })) as `0x${string}`;
     } catch {
       // Legacy table deployments may not expose encryption key views reliably.
       // Off-chain ownerview registration is enough for dealing, so skip on-chain sync.
       return null;
     }
 
-    const newKeyHex = "0x" + Array.from(pubKey).map(b => b.toString(16).padStart(2, "0")).join("");
+    const newKeyHex =
+      "0x" +
+      Array.from(pubKey)
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
     if (existing && existing !== "0x" && existing.toLowerCase() === newKeyHex.toLowerCase()) {
       return null; // already registered
     }
@@ -623,8 +714,13 @@ export class ChainClient {
    * commitHash = keccak256(abi.encode(handId, seatIndex, action, reasoning, salt))
    * Returns the tx hash, or null if the call reverts (non-fatal).
    */
-  async commitDecision(seatIndex: number, commitHash: `0x${string}`, reasoningHash?: `0x${string}`): Promise<string | null> {
-    const ZERO_BYTES32 = "0x0000000000000000000000000000000000000000000000000000000000000000" as `0x${string}`;
+  async commitDecision(
+    seatIndex: number,
+    commitHash: `0x${string}`,
+    reasoningHash?: `0x${string}`,
+  ): Promise<string | null> {
+    const ZERO_BYTES32 =
+      "0x0000000000000000000000000000000000000000000000000000000000000000" as `0x${string}`;
     return this.nonceManager.withNonce(async (nonce) => {
       const hash = await this.walletClient.writeContract({
         chain: this.chain,
@@ -649,7 +745,7 @@ export class ChainClient {
     seatIndex: number,
     action: string,
     reasoning: string,
-    salt: `0x${string}`
+    salt: `0x${string}`,
   ): Promise<string> {
     return this.nonceManager.withNonce(async (nonce) => {
       const hash = await this.walletClient.writeContract({

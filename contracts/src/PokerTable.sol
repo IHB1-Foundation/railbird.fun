@@ -53,33 +53,53 @@ contract PokerTable is SeatManager, BettingEngine, SettlementEngine {
      *      Evicts bust seats first; aborts silently if tournament is over.
      */
     function startHand() external whenNotPaused {
+        uint8 playableCount = _prepareHandStart();
+        if (playableCount == 0) return;
+
+        (uint8 sbSeat, uint8 bbSeat) = _resolveBlindSeats(playableCount);
+        if (sbSeat == bbSeat) revert InvalidState();
+
+        uint256 bbPost = _postBlind(bbSeat, bigBlind);
+        uint256 initialPot = _postBlind(sbSeat, smallBlind) + bbPost;
+        initialPot += _collectDeferredPosts(sbSeat, bbSeat);
+
+        _initializeCurrentHand(bbSeat, bbPost, initialPot);
+
+        emit HandStarted(currentHandId, smallBlind, bigBlind, buttonSeat);
+
+        uint256 hcRequestId = _requestHoleCardRandomness();
+        gameState = GameState.WAITING_VRF_HOLECARDS;
+        emit VRFRequested(currentHandId, GameState.WAITING_VRF_HOLECARDS, hcRequestId);
+    }
+
+    function _prepareHandStart() internal returns (uint8 playableCount) {
         if (gameState != GameState.WAITING_FOR_SEATS && gameState != GameState.SETTLED) {
             revert CannotStartHand();
         }
-        _evictBustedSeats();
-        if (gameState == GameState.TOURNAMENT_OVER) return;
-        require(_countPlayableSeats() >= 2, "N2");
 
-        uint8 sbSeat;
-        uint8 bbSeat;
-        if (_countPlayableSeats() == 2 && _isSeatPlayable(buttonSeat)) {
-            sbSeat = buttonSeat;
-            bbSeat = _nextPlayableSeat(buttonSeat);
-        } else {
-            sbSeat = _nextPlayableSeat(buttonSeat);
-            bbSeat = _nextPlayableSeat(sbSeat);
+        _evictBustedSeats();
+        if (gameState == GameState.TOURNAMENT_OVER) {
+            return 0;
         }
-        require(sbSeat != bbSeat, "N2");
+
+        playableCount = _countPlayableSeats();
+        if (playableCount < 2) revert InvalidState();
 
         currentHandId++;
+        _resetSeatHandState();
+        _resetBoardAndVrfState();
+    }
 
+    function _resetSeatHandState() internal {
         for (uint8 i = 0; i < numSeats; i++) {
             seats[i].isActive = _isSeatPlayable(i);
             seats[i].currentBet = 0;
             seats[i].isAllIn = false;
             seats[i].totalHandBet = 0;
         }
+    }
 
+    function _resetBoardAndVrfState() internal {
         for (uint8 i = 0; i < 5; i++) {
             communityCards[i] = UNDEALT;
         }
@@ -87,42 +107,46 @@ contract PokerTable is SeatManager, BettingEngine, SettlementEngine {
         pendingHoleCardVRFRequestId = 0;
         vrfRequestTimestamp = 0;
         showdownStartTimestamp = 0;
+    }
 
-        uint256 sbPost = smallBlind < seats[sbSeat].stack ? smallBlind : seats[sbSeat].stack;
-        seats[sbSeat].stack -= sbPost;
-        seats[sbSeat].currentBet = sbPost;
-        seats[sbSeat].totalHandBet += sbPost;
-        if (seats[sbSeat].stack == 0) seats[sbSeat].isAllIn = true;
+    function _resolveBlindSeats(uint8 playableCount) internal view returns (uint8 sbSeat, uint8 bbSeat) {
+        if (playableCount == 2 && _isSeatPlayable(buttonSeat)) {
+            sbSeat = buttonSeat;
+            bbSeat = _nextPlayableSeat(buttonSeat);
+            return (sbSeat, bbSeat);
+        }
 
-        uint256 bbPost = bigBlind < seats[bbSeat].stack ? bigBlind : seats[bbSeat].stack;
-        seats[bbSeat].stack -= bbPost;
-        seats[bbSeat].currentBet = bbPost;
-        seats[bbSeat].totalHandBet += bbPost;
-        if (seats[bbSeat].stack == 0) seats[bbSeat].isAllIn = true;
+        sbSeat = _nextPlayableSeat(buttonSeat);
+        bbSeat = _nextPlayableSeat(sbSeat);
+    }
 
-        uint256 initialPot = sbPost + bbPost;
+    function _postBlind(uint8 seatIndex, uint256 blindAmount) internal returns (uint256 postAmount) {
+        postAmount = blindAmount < seats[seatIndex].stack ? blindAmount : seats[seatIndex].stack;
+        seats[seatIndex].stack -= postAmount;
+        seats[seatIndex].currentBet = postAmount;
+        seats[seatIndex].totalHandBet += postAmount;
+        if (seats[seatIndex].stack == 0) {
+            seats[seatIndex].isAllIn = true;
+        }
+    }
 
+    function _collectDeferredPosts(uint8 sbSeat, uint8 bbSeat) internal returns (uint256 extraPot) {
         for (uint8 i = 0; i < numSeats; i++) {
             if (needsPostBlind[i] && seats[i].isActive && i != bbSeat && i != sbSeat) {
-                uint256 postAmount = bigBlind < seats[i].stack ? bigBlind : seats[i].stack;
-                seats[i].stack -= postAmount;
-                seats[i].currentBet = postAmount;
-                seats[i].totalHandBet += postAmount;
-                if (seats[i].stack == 0) seats[i].isAllIn = true;
-                initialPot += postAmount;
+                extraPot += _postBlind(i, bigBlind);
             }
             needsPostBlind[i] = false;
         }
+    }
 
-        uint8 firstActor = _nextActiveSeat(bbSeat);
+    function _initializeCurrentHand(uint8 bbSeat, uint256 bbPost, uint256 initialPot) internal {
         bool[MAX_SEATS] memory initialHasActed;
-
         currentHand = Hand({
             handId: currentHandId,
             pot: initialPot,
             currentBet: bbPost,
             lastRaiseSize: bigBlind,
-            actorSeat: firstActor,
+            actorSeat: _nextActiveSeat(bbSeat),
             lastAggressor: bbSeat,
             actionsInRound: 0,
             sidePotCount: 0,
@@ -131,22 +155,20 @@ contract PokerTable is SeatManager, BettingEngine, SettlementEngine {
 
         actionDeadline = block.timestamp + ACTION_TIMEOUT;
         lastActionBlock = block.number;
+    }
 
-        emit HandStarted(currentHandId, smallBlind, bigBlind, buttonSeat);
-
-        uint256 hcRequestId = 0;
-        if (vrfAdapter != address(0)) {
-            hcRequestId = IVRFAdapter(vrfAdapter).requestRandomness(
-                tableId,
-                currentHandId,
-                uint8(GameState.WAITING_VRF_HOLECARDS)
-            );
-            pendingHoleCardVRFRequestId = hcRequestId;
-            vrfRequestTimestamp = block.timestamp;
+    function _requestHoleCardRandomness() internal returns (uint256 requestId) {
+        if (vrfAdapter == address(0)) {
+            return 0;
         }
-        gameState = GameState.WAITING_VRF_HOLECARDS;
 
-        emit VRFRequested(currentHandId, GameState.WAITING_VRF_HOLECARDS, hcRequestId);
+        requestId = IVRFAdapter(vrfAdapter).requestRandomness(
+            tableId,
+            currentHandId,
+            uint8(GameState.WAITING_VRF_HOLECARDS)
+        );
+        pendingHoleCardVRFRequestId = requestId;
+        vrfRequestTimestamp = block.timestamp;
     }
 
     /**
@@ -154,10 +176,10 @@ contract PokerTable is SeatManager, BettingEngine, SettlementEngine {
      * @dev Callable by anyone once the hole-card VRF has been fulfilled and all commits are on-chain.
      */
     function advanceToPreflop() external {
-        require(gameState == GameState.WAITING_FOR_HOLECARDS, "HC");
+        if (gameState != GameState.WAITING_FOR_HOLECARDS) revert InvalidState();
         for (uint8 i = 0; i < numSeats; i++) {
             if (seats[i].isActive) {
-                require(holeCommits[currentHandId][i] != bytes32(0), "MC");
+                if (holeCommits[currentHandId][i] == bytes32(0)) revert InvalidState();
             }
         }
         gameState = GameState.BETTING_PRE;
@@ -176,10 +198,10 @@ contract PokerTable is SeatManager, BettingEngine, SettlementEngine {
      * @param randomness The random value from VRF.
      */
     function fulfillVRF(uint256 requestId, uint256 randomness) external {
-        require(msg.sender == vrfAdapter, "V1");
+        if (msg.sender != vrfAdapter) revert Unauthorized();
 
         if (gameState == GameState.WAITING_VRF_HOLECARDS) {
-            require(requestId == pendingHoleCardVRFRequestId, "V2");
+            if (requestId != pendingHoleCardVRFRequestId) revert InvalidParam();
             bytes32 randomnessHash = keccak256(abi.encodePacked(randomness));
             holeCardVRFRandomnessHash[currentHandId] = randomnessHash;
             pendingHoleCardVRFRequestId = 0;
@@ -188,13 +210,12 @@ contract PokerTable is SeatManager, BettingEngine, SettlementEngine {
             return;
         }
 
-        require(
-            gameState == GameState.WAITING_VRF_FLOP ||
-            gameState == GameState.WAITING_VRF_TURN ||
-            gameState == GameState.WAITING_VRF_RIVER,
-            "V3"
-        );
-        require(requestId == pendingVRFRequestId, "V2");
+        if (
+            gameState != GameState.WAITING_VRF_FLOP &&
+            gameState != GameState.WAITING_VRF_TURN &&
+            gameState != GameState.WAITING_VRF_RIVER
+        ) revert InvalidState();
+        if (requestId != pendingVRFRequestId) revert InvalidParam();
 
         _dealCommunityCards(randomness);
 
@@ -233,13 +254,12 @@ contract PokerTable is SeatManager, BettingEngine, SettlementEngine {
      * @dev Anyone can call after VRF_TIMEOUT has elapsed since the last request.
      */
     function reRequestVRF() external {
-        require(
-            gameState == GameState.WAITING_VRF_FLOP ||
-            gameState == GameState.WAITING_VRF_TURN ||
-            gameState == GameState.WAITING_VRF_RIVER,
-            "V3"
-        );
-        require(vrfAdapter != address(0), "V4");
+        if (
+            gameState != GameState.WAITING_VRF_FLOP &&
+            gameState != GameState.WAITING_VRF_TURN &&
+            gameState != GameState.WAITING_VRF_RIVER
+        ) revert InvalidState();
+        if (vrfAdapter == address(0)) revert InvalidParam();
         if (block.timestamp <= vrfRequestTimestamp + VRF_TIMEOUT) revert VRFTimeoutNotReached();
 
         uint256 oldRequestId = pendingVRFRequestId;
@@ -259,15 +279,15 @@ contract PokerTable is SeatManager, BettingEngine, SettlementEngine {
      * @dev Auto-aborts the hand if MAX_HOLE_CARD_VRF_RETRIES is exceeded.
      */
     function reRequestHoleCardVRF() external {
-        require(gameState == GameState.WAITING_VRF_HOLECARDS, "V5");
-        require(vrfAdapter != address(0), "V4");
+        if (gameState != GameState.WAITING_VRF_HOLECARDS) revert InvalidState();
+        if (vrfAdapter == address(0)) revert InvalidParam();
         if (block.timestamp <= vrfRequestTimestamp + VRF_TIMEOUT) revert VRFTimeoutNotReached();
 
         uint256 handId = currentHandId;
         holeCardVRFRetryCount[handId]++;
 
         if (holeCardVRFRetryCount[handId] > MAX_HOLE_CARD_VRF_RETRIES) {
-            _abortHandReturnBlinds("V6");
+            _abortHandReturnBlinds();
             return;
         }
 
@@ -289,7 +309,7 @@ contract PokerTable is SeatManager, BettingEngine, SettlementEngine {
      * @notice Abort the current hand and return each seat's posted bets.
      * @dev Called when hole card VRF fails permanently (max retries exceeded).
      */
-    function _abortHandReturnBlinds(string memory reason) internal {
+    function _abortHandReturnBlinds() internal {
         uint256 handId = currentHandId;
 
         for (uint8 i = 0; i < numSeats; i++) {
@@ -300,7 +320,7 @@ contract PokerTable is SeatManager, BettingEngine, SettlementEngine {
             }
         }
 
-        emit HandAborted(handId, reason);
+        emit HandAborted(handId, "V6");
 
         gameState = GameState.SETTLED;
         pendingHoleCardVRFRequestId = 0;

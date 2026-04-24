@@ -2,6 +2,7 @@ import { describe, it, beforeEach, afterEach } from "node:test";
 import assert from "node:assert";
 import { privateKeyToAccount, generatePrivateKey } from "viem/accounts";
 import { createApp, type AppContext } from "../app.js";
+import { resetRateLimiterBuckets } from "../middleware/rateLimit.js";
 
 const TEST_JWT_SECRET = "test-secret-key-that-is-at-least-32-characters-long";
 
@@ -10,7 +11,7 @@ async function request(
   app: AppContext["app"],
   method: string,
   path: string,
-  body?: unknown
+  body?: unknown,
 ): Promise<{ status: number; json: () => Promise<unknown> }> {
   return new Promise((resolve, reject) => {
     const server = app.listen(0, async () => {
@@ -45,10 +46,12 @@ describe("Auth Routes", () => {
   let ctx: AppContext;
 
   beforeEach(async () => {
+    resetRateLimiterBuckets();
     ctx = await createApp({ jwtSecret: TEST_JWT_SECRET });
   });
 
   afterEach(() => {
+    resetRateLimiterBuckets();
     ctx.stopRetention?.();
     ctx.authService.stop();
   });
@@ -98,11 +101,8 @@ describe("Auth Routes", () => {
       const account = privateKeyToAccount(privateKey);
 
       // Get nonce
-      const nonceRes = await request(
-        ctx.app,
-        "GET",
-        `/auth/nonce?address=${account.address}`
-      );
+      const nonceRes = await request(ctx.app, "GET", `/auth/nonce?address=${account.address}`);
+      assert.equal(nonceRes.status, 200);
       const { nonce, message } = (await nonceRes.json()) as {
         nonce: string;
         message: string;
@@ -145,11 +145,8 @@ describe("Auth Routes", () => {
       const account2 = privateKeyToAccount(privateKey2);
 
       // Get nonce for account1
-      const nonceRes = await request(
-        ctx.app,
-        "GET",
-        `/auth/nonce?address=${account1.address}`
-      );
+      const nonceRes = await request(ctx.app, "GET", `/auth/nonce?address=${account1.address}`);
+      assert.equal(nonceRes.status, 200);
       const { nonce, message } = (await nonceRes.json()) as {
         nonce: string;
         message: string;
@@ -175,11 +172,8 @@ describe("Auth Routes", () => {
       const account = privateKeyToAccount(privateKey);
 
       // Get nonce
-      const nonceRes = await request(
-        ctx.app,
-        "GET",
-        `/auth/nonce?address=${account.address}`
-      );
+      const nonceRes = await request(ctx.app, "GET", `/auth/nonce?address=${account.address}`);
+      assert.equal(nonceRes.status, 200);
       const { nonce, message } = (await nonceRes.json()) as {
         nonce: string;
         message: string;

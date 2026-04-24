@@ -1,0 +1,17 @@
+{
+  "network": "initia-testnet",
+  "rpcUrl": "https://rollup-node-production.up.railway.app",
+  "deployedAt": "2026-04-19T19:00:13Z",
+  "contracts": {
+    "handEvaluator": "0xc33eb7add2f3fed24894f1d4232a4b0f92718f0a",
+    "chipToken": "0x356524F2c8233eE28F0D11eb57906A46aaFb3017",
+    "vrfAdapter": "0xD966b352766D01323f84574335029eCf76392110",
+    "pokerTables": [
+      "0xCDd2AD6dFc1191bEB395a157d42fB6983103c713",
+      "0xd4c0a9dBaa1247F9074ce32D03fF31491DEB6B21"
+    ],
+    "playerRegistry": "0x2D3F047055b6113e8E919Bcd3589E09B0CDDfD66",
+    "playerVault": "0x2e565620b08297C1Cb899154bC9724De0b7C1386",
+    "sideBetPool": "0x39f1094a1b559adCe1d16110C2f050295Eb0CB80"
+  }
+}

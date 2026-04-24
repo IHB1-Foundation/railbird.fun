@@ -30,19 +30,36 @@ export function MetaRadar({ aggressionBps, tightnessBps, bluffFreqBps, size = 14
     return { x: cx + Math.cos(angle) * r * scale, y: cy + Math.sin(angle) * r * scale };
   }
 
-  const outerPoints = axes.map(({ angle }) => axisEnd(angle, 1));
   const dataPoints = axes.map(({ value, angle }) => axisEnd(angle, value));
 
-  const outerPath = outerPoints.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ") + " Z";
-  const dataPath = dataPoints.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ") + " Z";
+  const dataPath =
+    dataPoints
+      .map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`)
+      .join(" ") + " Z";
 
   return (
-    <svg width={size} height={size} aria-label="Strategy radar chart" style={{ overflow: "visible" }}>
+    <svg
+      width={size}
+      height={size}
+      aria-label="Strategy radar chart"
+      style={{ overflow: "visible" }}
+    >
       {/* Outer grid */}
       {[0.25, 0.5, 0.75, 1].map((scale) => {
         const pts = axes.map(({ angle }) => axisEnd(angle, scale));
-        const path = pts.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ") + " Z";
-        return <path key={scale} d={path} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={0.8} />;
+        const path =
+          pts
+            .map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`)
+            .join(" ") + " Z";
+        return (
+          <path
+            key={scale}
+            d={path}
+            fill="none"
+            stroke="rgba(255,255,255,0.08)"
+            strokeWidth={0.8}
+          />
+        );
       })}
       {/* Axis lines */}
       {axes.map(({ angle, label }, i) => {
@@ -50,8 +67,23 @@ export function MetaRadar({ aggressionBps, tightnessBps, bluffFreqBps, size = 14
         const labelPos = axisEnd(angle, 1.25);
         return (
           <g key={i}>
-            <line x1={cx} y1={cy} x2={end.x} y2={end.y} stroke="rgba(255,255,255,0.15)" strokeWidth={0.8} />
-            <text x={labelPos.x} y={labelPos.y + 3} textAnchor="middle" fontSize={9} fill="rgba(255,255,255,0.5)">{label}</text>
+            <line
+              x1={cx}
+              y1={cy}
+              x2={end.x}
+              y2={end.y}
+              stroke="rgba(255,255,255,0.15)"
+              strokeWidth={0.8}
+            />
+            <text
+              x={labelPos.x}
+              y={labelPos.y + 3}
+              textAnchor="middle"
+              fontSize={9}
+              fill="rgba(255,255,255,0.5)"
+            >
+              {label}
+            </text>
           </g>
         );
       })}
@@ -60,7 +92,9 @@ export function MetaRadar({ aggressionBps, tightnessBps, bluffFreqBps, size = 14
       {/* Data points */}
       {dataPoints.map((p, i) => (
         <circle key={i} cx={p.x} cy={p.y} r={3} fill="#8B5CF6">
-          <title>{axes[i].label}: {(axes[i].value * 100).toFixed(0)}%</title>
+          <title>
+            {axes[i].label}: {(axes[i].value * 100).toFixed(0)}%
+          </title>
         </circle>
       ))}
     </svg>

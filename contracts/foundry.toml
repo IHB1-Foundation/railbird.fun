@@ -6,7 +6,7 @@ solc = "0.8.24"
 via_ir = true
 skip = ["script/deprecated/**"]
 
-# Deploy profile: optimizer on (OP Stack 24KB limit, via_ir helps)
+# Deploy profile for the active Initia MiniEVM target.
 [profile.deploy]
 src = "src"
 out = "out"
@@ -16,29 +16,14 @@ via_ir = true
 optimizer = true
 optimizer_runs = 1
 
-# HSK deploy profile: no via_ir, legacy optimizer — avoids stack-too-deep with linked libraries
-[profile.deploy-hsk]
-src = "src"
-out = "out"
-libs = ["lib"]
-solc = "0.8.24"
-via_ir = false
-optimizer = true
-optimizer_runs = 1
-
 [rpc_endpoints]
-hashkey-testnet = "https://testnet.hsk.xyz"
-hashkey-mainnet = "https://mainnet.hsk.xyz"
-kaia-testnet = "https://public-en-kairos.node.kaia.io"
-kaia-mainnet = "https://public-en-kaia.node.kaia.io"
 localhost = "http://localhost:8545"
+# Initia MiniEVM rollup — set RPC_URL in .env.initia after provisioning
+initia-testnet = "${RPC_URL}"
 
 [etherscan]
-# HashKey Chain explorer verification (Blockscout-based)
-hashkey-testnet = { key = "placeholder", url = "https://testnet-explorer.hsk.xyz/api" }
-hashkey-mainnet = { key = "placeholder", url = "https://explorer.hsk.xyz/api" }
-# Kaiascan verification (legacy — set KAIASCAN_API_KEY in env when verifying)
-kaia-testnet = { key = "${KAIASCAN_API_KEY}", url = "https://api-kairos.kaiascan.io" }
+# Initia rollup explorer (Blockscout-compatible or Initiascan — update URL after rollup provisioning)
+initia-testnet = { key = "placeholder", url = "${INITIA_EXPLORER_URL}/api" }
 
 [invariant]
 runs  = 256
@@ -49,3 +34,17 @@ fail_on_revert = false
 line_length = 120
 tab_width = 4
 bracket_spacing = true
+
+[lint]
+lint_on_build = false
+
+[profile.deploy-initia]
+src = "src"
+out = "out-initia"
+libs = ["lib"]
+solc = "0.8.24"
+via_ir = true
+optimizer = true
+optimizer_runs = 1
+test = "no_tests"
+script = "no_scripts"

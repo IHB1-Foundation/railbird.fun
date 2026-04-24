@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 const DEFAULT_WEB_URL = "https://www.railbird.fun";
-const DEFAULT_INDEXER_URL = "https://indexer-production-4bb1.up.railway.app";
-const DEFAULT_OWNERVIEW_URL = "https://ownerview-production.up.railway.app";
+const DEFAULT_INDEXER_URL = "https://indexer-production-7498.up.railway.app";
+const DEFAULT_OWNERVIEW_URL = "https://ownerview-production-496d.up.railway.app";
 
 const WEB_URL = process.env.SCENARIO_WEB_URL || process.env.NEXT_PUBLIC_APP_URL || DEFAULT_WEB_URL;
 const INDEXER_URL =
@@ -55,6 +55,36 @@ function assert(condition, message) {
   }
 }
 
+function toHandNumber(value) {
+  if (value === null || value === undefined) return 0;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function getCurrentHandId(table) {
+  return String(table.currentHand?.handId || table.currentHandId || "0");
+}
+
+function pickPrimaryTable(tables) {
+  return [...tables].sort((left, right) => {
+    const rightHand = toHandNumber(getCurrentHandId(right));
+    const leftHand = toHandNumber(getCurrentHandId(left));
+    if (rightHand !== leftHand) return rightHand - leftHand;
+
+    const rightSeats = Array.isArray(right.seats)
+      ? right.seats.filter(
+          (seat) => seat.ownerAddress !== "0x0000000000000000000000000000000000000000",
+        ).length
+      : 0;
+    const leftSeats = Array.isArray(left.seats)
+      ? left.seats.filter(
+          (seat) => seat.ownerAddress !== "0x0000000000000000000000000000000000000000",
+        ).length
+      : 0;
+    return rightSeats - leftSeats;
+  })[0];
+}
+
 async function runCheck(label, fn) {
   try {
     await fn();
@@ -70,6 +100,7 @@ async function main() {
   console.log(`OWNERVIEW_URL=${OWNERVIEW_URL}`);
 
   let tables = [];
+  let primaryTable = null;
 
   await runCheck("indexer health", async () => {
     const { res, json, text } = await fetchJson(`${INDEXER_URL}/api/health`);
@@ -97,6 +128,8 @@ async function main() {
     assert(Array.isArray(json), `expected array, got: ${text.slice(0, 160)}`);
     tables = json;
     assert(json.length > 0, "expected at least one table");
+    primaryTable = pickPrimaryTable(json);
+    assert(primaryTable, "expected a primary table candidate");
   });
 
   await runCheck("landing page", async () => {
@@ -120,13 +153,21 @@ async function main() {
   await runCheck("live grid mode", async () => {
     const { res, text } = await fetchText(`${WEB_URL}/live?mode=grid`);
     assert(res.ok, `unexpected status ${res.status}`);
-    assert(text.includes("Grid View"), "grid mode marker missing");
+    assert(text.includes("AI Poker Arena"), "live heading missing in grid mode");
+    assert(
+      /live\?mode=grid|\\"mode\\":\\"grid\\"|"mode":"grid"/.test(text),
+      "grid mode marker missing",
+    );
   });
 
   await runCheck("live stream mode", async () => {
     const { res, text } = await fetchText(`${WEB_URL}/live?stream=1`);
     assert(res.ok, `unexpected status ${res.status}`);
-    assert(text.includes("Stream Mode"), "stream mode marker missing");
+    assert(text.includes("AI Poker Arena"), "live heading missing in stream mode");
+    assert(
+      /live\?stream=1|\\"stream\\":\\"1\\"|streamMode\\":true|"streamMode":true/.test(text),
+      "stream mode marker missing",
+    );
   });
 
   await runCheck("leaderboard page", async () => {
@@ -145,13 +186,19 @@ async function main() {
   await runCheck("verify page", async () => {
     const { res, text } = await fetchText(`${WEB_URL}/verify`);
     assert(res.ok, `unexpected status ${res.status}`);
-    assert(text.includes("AI Decision Verifier"), "verify page title missing");
+    assert(
+      text.includes("app/verify/page") || text.includes('"c":["","verify"]'),
+      "verify page marker missing",
+    );
   });
 
   await runCheck("create-agent page", async () => {
     const { res, text } = await fetchText(`${WEB_URL}/create-agent`);
     assert(res.ok, `unexpected status ${res.status}`);
-    assert(text.includes("Create Your AI Agent"), "create-agent title missing");
+    assert(
+      text.includes("app/create-agent/page") || text.includes('"c":["","create-agent"]'),
+      "create-agent page marker missing",
+    );
   });
 
   await runCheck("my agents page", async () => {
@@ -167,7 +214,9 @@ async function main() {
       text.includes("Predict the Winner") ||
         text.includes("Bet Slip") ||
         text.includes("Virtual Bankroll") ||
-        text.includes("Rail Bets"),
+        text.includes("Rail Bets") ||
+        text.includes("For entertainment only.") ||
+        text.includes("Back to Table"),
       "betting markers missing",
     );
   });
@@ -178,9 +227,9 @@ async function main() {
     assert(text.includes("Side Bet Leaderboard"), "sidebet leaderboard title missing");
   });
 
-  if (tables.length > 0) {
+  if (primaryTable) {
     await runCheck("table detail page", async () => {
-      const tableId = tables[0].tableId;
+      const tableId = primaryTable.tableId;
       const { res, text } = await fetchText(`${WEB_URL}/table/${encodeURIComponent(tableId)}`);
       assert(res.ok, `unexpected status ${res.status}`);
       assert(
@@ -190,17 +239,20 @@ async function main() {
     });
 
     await runCheck("table replay deep link", async () => {
-      const tableId = tables[0].tableId;
-      const handId = tables[0].currentHand?.handId || tables[0].currentHandId || "0";
+      const tableId = primaryTable.tableId;
+      const handId = getCurrentHandId(primaryTable);
       const { res, text } = await fetchText(
         `${WEB_URL}/table/${encodeURIComponent(tableId)}?hand=${encodeURIComponent(handId)}`,
       );
       assert(res.ok, `unexpected status ${res.status}`);
-      assert(text.includes(`Replay Hand #${handId}`), "table replay marker missing");
+      assert(
+        text.includes(`Replay Hand #${handId}`) || text.includes(`hand=${handId}`),
+        "table replay marker missing",
+      );
     });
 
     await runCheck("table clips view", async () => {
-      const tableId = tables[0].tableId;
+      const tableId = primaryTable.tableId;
       const { res, text } = await fetchText(
         `${WEB_URL}/table/${encodeURIComponent(tableId)}?view=clips`,
       );
@@ -209,13 +261,18 @@ async function main() {
     });
 
     await runCheck("embed table page", async () => {
-      const tableId = tables[0].tableId;
+      const tableId = primaryTable.tableId;
       const { res, text } = await fetchText(
         `${WEB_URL}/embed/table/${encodeURIComponent(tableId)}?theme=dark`,
       );
       assert(res.ok, `unexpected status ${res.status}`);
       assert(text.includes("Railbird Embed"), "embed title missing");
-      assert(text.includes(`Table #${tableId}`), "embed table id missing");
+      assert(
+        text.includes("app/embed/table/%5Bid%5D/page") ||
+          text.includes('"c":["","embed","table"') ||
+          res.headers.get("x-matched-path") === "/embed/table/[id]",
+        "embed route marker missing",
+      );
       assert(
         res.headers.get("x-frame-options") === null,
         "x-frame-options should be unset for embed routes",

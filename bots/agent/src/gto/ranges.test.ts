@@ -9,9 +9,10 @@ import { getGTOAction, holeCardsToNotation } from "./ranges.js";
 function card(rank: number, suit: number): number {
   return rank + suit * 13;
 }
-const Ac = card(12, 0), Ad = card(12, 1), Ah = card(12, 2), As = card(12, 3);
-const Kc = card(11, 0), Kd = card(11, 1);
-const Qc = card(10, 0);
+const Ac = card(12, 0),
+  Ad = card(12, 1);
+const Kc = card(11, 0),
+  Kd = card(11, 1);
 const Jc = card(9, 0);
 const Tc = card(8, 0);
 const _9c = card(7, 0);
@@ -116,7 +117,10 @@ describe("getGTOAction — frequency in mixed zone", () => {
     // 9c 7c = 97s, strength 5.5, BTN threshold 5.5 → in the mixed zone
     const result = getGTOAction("BTN", _9c, _7c, "none");
     if (result.action === "raise") {
-      assert.ok(result.frequency >= 0 && result.frequency <= 1, `frequency out of range: ${result.frequency}`);
+      assert.ok(
+        result.frequency >= 0 && result.frequency <= 1,
+        `frequency out of range: ${result.frequency}`,
+      );
     }
   });
 

@@ -9,10 +9,10 @@ import { defineConfig, devices } from "@playwright/test";
  */
 export default defineConfig({
   testDir: "./e2e",
-  fullyParallel: true,
+  fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
-  workers: process.env.CI ? 2 : undefined,
+  workers: process.env.CI ? 2 : 1,
   reporter: process.env.CI ? [["html", { open: "never" }], ["list"]] : "list",
 
   use: {
@@ -29,9 +29,9 @@ export default defineConfig({
   ],
 
   webServer: {
-    command: "pnpm dev",
+    command: "pnpm dev:e2e",
     url: "http://localhost:3000",
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
     timeout: 120_000,
   },
 

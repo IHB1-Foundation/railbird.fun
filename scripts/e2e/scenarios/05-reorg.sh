@@ -98,7 +98,7 @@ echo "  Indexer log tail:"
 echo "$INDEXER_LOG" | sed 's/^/    /'
 
 # Check indexer is still alive
-if kill -0 "${PIDS[-1]}" 2>/dev/null; then
+if kill -0 "${PIDS[${#PIDS[@]}-1]}" 2>/dev/null; then
   pass "Indexer survived the reorg (still running)"
 else
   fail "Indexer crashed after reorg"

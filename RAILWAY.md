@@ -24,6 +24,7 @@ pnpm -r --filter=!@playerco/contracts build
 ```
 
 참고:
+
 - 루트 `railway.json`에 이미 `buildCommand`/`startCommand` 기본값을 넣어두었다.
 - 서비스 생성 시 Railway가 이 값을 읽으면 별도 입력 없이 동작한다.
 - Railway 런타임 이미지에는 `forge`가 없으므로 contracts 패키지는 빌드 대상에서 제외한다.
@@ -38,6 +39,7 @@ bash scripts/railway/apply-vars.sh
 ```
 
 주의:
+
 - 로컬 `.env`가 `DB_HOST=localhost`이면, 스크립트는 indexer의 `DB_*` 푸시를 자동으로 건너뛴다.
 - 이 경우 Railway Postgres에서 주입되는 `PG*` 또는 `DATABASE_URL`을 사용하도록 두면 된다.
 - `scripts/railway/start-indexer.sh`가 런타임에 `PG*`/`DATABASE_URL` -> `DB_*`로 자동 매핑한다.
@@ -64,6 +66,7 @@ bash scripts/railway/start-service.sh
 ```
 
 자동 분기 방식:
+
 - 서비스명을 아래처럼 만들면(`ownerview`, `indexer`, `keeper`, `vrf-operator`, `agent-1`~`agent-4`)  
   `RAILWAY_SERVICE_ROLE` 없이 자동 분기된다.
 - `agent-1`~`agent-4`는 `AGENT_SLOT`도 서비스명에서 자동 추론된다.
@@ -96,15 +99,17 @@ bash scripts/railway/start-service.sh
 ## 4) 공통 환경변수 (모든 서비스)
 
 ```bash
-CHAIN_ENV=testnet
-CHAIN_ID=1001
-RPC_URL=https://public-en-kairos.node.kaia.io
+CHAIN_ENV=initia-testnet
+INITIA_CHAIN_ID=<your-rollup-evm-chain-id>
+CHAIN_ID=<same-as-initia-chain-id>
+RPC_URL=<your-rollup-evm-rpc-url>
+INITIA_EXPLORER_URL=https://scan.testnet.initia.xyz
 
-POKER_TABLE_ADDRESSES=0x537BEd9Ea230F5c5f1462E1f6f29DeBB18aA0D5a,0xEB830f6E5dFE6b5F52E0F05d5606540D2BB8cb16
-PLAYER_REGISTRY_ADDRESS=0xFe11800ACD7c4e7Bc609e038B5dE4f2b3C0d6bd2
-PLAYER_VAULT_ADDRESS=0x6FE1F723c0BE33ecCA5Dca7e1D6954B7859A59A1
-VRF_ADAPTER_ADDRESS=0xD02AF45258012208A46e1C00f91C2a2c8c2aFB15
-CHIP_TOKEN_ADDRESS=0x51745FeAB545eA4d0818E49629Ad1b0A808431F2
+POKER_TABLE_ADDRESSES=<comma-separated-poker-table-addresses>
+PLAYER_REGISTRY_ADDRESS=<player-registry-address>
+PLAYER_VAULT_ADDRESS=<player-vault-address>
+VRF_ADAPTER_ADDRESS=<vrf-adapter-address>
+CHIP_TOKEN_ADDRESS=<chip-token-address>
 VRF_ADAPTER_TYPE=production
 ```
 
@@ -136,6 +141,7 @@ LOG_BLOCK_RANGE=90
 ```
 
 참고:
+
 - Monad testnet RPC는 `eth_getLogs` 조회 범위를 크게 제한한다.
 - `LOG_BLOCK_RANGE`는 100 이하(권장 90)로 유지해야 인덱싱이 멈추지 않는다.
 - 현재 배포 주소 기준 Core 배포 블록은 `15146828` 전후이므로 `START_BLOCK=15146828`로 설정했다.
@@ -162,13 +168,14 @@ VRF_OPERATOR_RESCAN_FROM_REQUEST_ID=1
 ```
 
 중요:
+
 - `VRF_OPERATOR_PRIVATE_KEY`의 주소가 반드시 on-chain `ProductionVRFAdapter.operator`와 같아야 한다.
 - `POKER_TABLE_ADDRESS`의 on-chain `vrfAdapter()` 값과 `VRF_ADAPTER_ADDRESS`가 일치해야 한다.
 
 ### `agent-1` ~ `agent-4` 공통
 
 ```bash
-OWNERVIEW_URL=https://ownerview.railbird.fun
+OWNERVIEW_URL=https://ownerview-production-496d.up.railway.app
 POLL_INTERVAL_MS=1000
 MAX_HANDS=0
 TURN_ACTION_DELAY_MS=60000
@@ -223,7 +230,7 @@ AGENT_SLOT=4
 
 ## 7) 빠른 점검 API
 
-- `GET https://indexer.railbird.fun/api/health`
-- `GET https://ownerview.railbird.fun/health`
-- `GET https://indexer.railbird.fun/api/token-metadata/player-a.json`
-- `GET https://indexer.railbird.fun/api/token-assets/player-a.svg`
+- `GET https://indexer-production-7498.up.railway.app/api/health`
+- `GET https://ownerview-production-496d.up.railway.app/health`
+- `GET https://indexer-production-7498.up.railway.app/api/token-metadata/player-a.json`
+- `GET https://indexer-production-7498.up.railway.app/api/token-assets/player-a.svg`

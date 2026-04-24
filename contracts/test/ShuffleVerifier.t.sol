@@ -405,7 +405,7 @@ contract ShuffleVerifierIntegrationTest is Test {
 
         // No seed revealed — should revert
         SeatReveal[] memory reveals = new SeatReveal[](0);
-        vm.expectRevert("Dealer seed not revealed yet");
+        vm.expectRevert("Seed not revealed");
         pokerTable.verifyShuffleAtShowdown(1, 0, reveals, TEST_VRF);
     }
 

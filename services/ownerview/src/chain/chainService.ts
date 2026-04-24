@@ -9,10 +9,7 @@ import { PokerTableABI } from "./pokerTableAbi.js";
 export class ChainError extends Error {
   constructor(
     message: string,
-    public code:
-      | "RPC_ERROR"
-      | "INVALID_SEAT"
-      | "CONTRACT_ERROR"
+    public code: "RPC_ERROR" | "INVALID_SEAT" | "CONTRACT_ERROR",
   ) {
     super(message);
     this.name = "ChainError";
@@ -61,14 +58,14 @@ export class ChainService {
         isActive: result.isActive,
         currentBet: result.currentBet,
       };
-    } catch (err) {
+    } catch {
       try {
-        const result = await this.client.readContract({
+        const result = (await this.client.readContract({
           address: this.pokerTableAddress,
           abi: PokerTableABI,
           functionName: "seats",
           args: [BigInt(seatIndex)],
-        }) as readonly [Address, Address, bigint, boolean, bigint, boolean, bigint];
+        })) as readonly [Address, Address, bigint, boolean, bigint, boolean, bigint];
 
         return {
           owner: result[0],
@@ -80,7 +77,7 @@ export class ChainService {
       } catch (fallbackErr) {
         throw new ChainError(
           `Failed to read seat from contract: ${fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr)}`,
-          "CONTRACT_ERROR"
+          "CONTRACT_ERROR",
         );
       }
     }
@@ -100,7 +97,7 @@ export class ChainService {
     } catch (err) {
       throw new ChainError(
         `Failed to read currentHandId: ${err instanceof Error ? err.message : String(err)}`,
-        "CONTRACT_ERROR"
+        "CONTRACT_ERROR",
       );
     }
   }
@@ -153,7 +150,7 @@ export class ChainService {
     } catch (err) {
       throw new ChainError(
         `Failed to read MAX_SEATS from contract: ${err instanceof Error ? err.message : String(err)}`,
-        "CONTRACT_ERROR"
+        "CONTRACT_ERROR",
       );
     }
   }

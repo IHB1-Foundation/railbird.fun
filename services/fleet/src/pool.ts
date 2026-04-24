@@ -1,17 +1,16 @@
 // Operator Wallet Pool — T-1202
 // Manages a pool of pre-funded operator wallets for fleet agents.
 
+import { privateKeyToAccount } from "viem/accounts";
 import { createLogger } from "@playerco/shared";
 import type { WalletEntry } from "./types.js";
 
 const logger = createLogger({ service: "fleet:pool" });
 
 function deriveAddress(privateKey: string): string {
-  // Simple hex-to-address derivation for display purposes.
-  // Full derivation would use viem's privateKeyToAccount.
-  // For now, return a placeholder derived from the key's last 20 bytes.
-  const clean = privateKey.replace(/^0x/, "").toLowerCase();
-  return `0x${clean.slice(-40)}`;
+  const key = privateKey.startsWith("0x") ? privateKey : `0x${privateKey}`;
+  const account = privateKeyToAccount(key as `0x${string}`);
+  return account.address;
 }
 
 export class WalletPool {

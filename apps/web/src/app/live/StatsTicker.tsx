@@ -11,11 +11,27 @@ interface StatsTickerProps {
   seatOdds: { seat: number; odds: string }[];
 }
 
-export function StatsTicker({ totalHandsToday, biggestPot, currentLeader, sideBetPool, seatOdds }: StatsTickerProps) {
+export function StatsTicker({
+  totalHandsToday,
+  biggestPot,
+  currentLeader,
+  sideBetPool,
+  seatOdds,
+}: StatsTickerProps) {
   return (
     <div>
       <div className={styles.ticker}>
-        <p style={{ fontSize: "0.72rem", fontWeight: 700, color: "#9ca3af", letterSpacing: "0.05em", marginBottom: "0.5rem" }}>STATS</p>
+        <p
+          style={{
+            fontSize: "0.72rem",
+            fontWeight: 700,
+            color: "var(--text-on-card)",
+            letterSpacing: "0.05em",
+            marginBottom: "0.5rem",
+          }}
+        >
+          STATS
+        </p>
         <div className={styles.tickerRow}>
           <span>Today&apos;s Hands</span>
           <span className={styles.tickerValue}>{totalHandsToday}</span>

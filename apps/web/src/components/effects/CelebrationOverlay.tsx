@@ -40,7 +40,10 @@ export function CelebrationOverlay({
     if (!ctx) return;
 
     // Respect reduced motion
-    const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const prefersReduced =
+      typeof window.matchMedia === "function"
+        ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        : false;
     if (prefersReduced) {
       const timer = setTimeout(() => {
         setVisible(false);
@@ -159,9 +162,7 @@ export function CelebrationOverlay({
             <span className={styles.streakCount}>{streak}x Streak</span>
           </div>
         )}
-        {isJackpot && (
-          <div className={styles.jackpotBanner}>🎰 JACKPOT 🎰</div>
-        )}
+        {isJackpot && <div className={styles.jackpotBanner}>🎰 JACKPOT 🎰</div>}
       </div>
     </div>
   );

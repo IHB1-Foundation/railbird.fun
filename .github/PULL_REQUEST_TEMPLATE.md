@@ -17,6 +17,7 @@ Closes:
 - [ ] Unit / integration tests pass (`pnpm test`)
 - [ ] TypeScript compiles (`pnpm typecheck`)
 - [ ] Lint passes (`pnpm lint`)
+- [ ] Production build passes (`pnpm build`)
 - [ ] Contracts build + tests pass (`cd contracts && forge test`)
 - [ ] Manually tested on local stack / staging
 

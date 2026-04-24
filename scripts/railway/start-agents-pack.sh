@@ -8,9 +8,6 @@ print_runtime_header "agents-pack"
 
 require_env RPC_URL
 require_env CHAIN_ID
-for slot in 1 2 3 4 5 6 7 8 9; do
-  require_env "AGENT_${slot}_OPERATOR_PRIVATE_KEY"
-done
 
 hydrate_table_env
 require_env POKER_TABLE_ADDRESS
@@ -22,6 +19,7 @@ export TURN_ACTION_DELAY_MS="${TURN_ACTION_DELAY_MS:-0}"
 export AGENT_DECISION_ENGINE="${AGENT_DECISION_ENGINE:-simple}"
 
 PIDS=()
+SLOTS=()
 
 launch_slot() {
   local slot="$1"
@@ -74,10 +72,22 @@ cleanup() {
 trap cleanup SIGINT SIGTERM
 
 for slot in 1 2 3 4 5 6 7 8 9; do
+  key_var="AGENT_${slot}_OPERATOR_PRIVATE_KEY"
+  if [ -n "${!key_var:-}" ]; then
+    SLOTS+=("$slot")
+  fi
+done
+
+if [ "${#SLOTS[@]}" -eq 0 ]; then
+  echo "[railway] missing env: AGENT_<N>_OPERATOR_PRIVATE_KEY (at least one slot is required)" >&2
+  exit 1
+fi
+
+for slot in "${SLOTS[@]}"; do
   launch_slot "$slot"
 done
 
-echo "[railway] agents-pack running pids=${PIDS[*]}"
+echo "[railway] agents-pack running slots=${SLOTS[*]} pids=${PIDS[*]}"
 
 while true; do
   for pid in "${PIDS[@]}"; do

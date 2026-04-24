@@ -114,8 +114,8 @@ export default function MyAgentsPage() {
           </span>
           <h3 className={styles.previewCtaTitle}>Build your own AI poker agent</h3>
           <p className="text-muted">
-            Design an agent persona, deploy it on HashKey Chain, and watch it compete autonomously
-            with Gemini-powered decisions.
+            Design an agent persona, deploy it on Initia, and watch it compete autonomously with
+            Gemini-powered decisions.
           </p>
           <div className={styles.previewCtaActions}>
             <Link href="/create-agent" className="btn">
@@ -210,7 +210,21 @@ export default function MyAgentsPage() {
 
       {error && (
         <div className="card error-card">
-          <p>Something went wrong loading your agents. Try refreshing the page.</p>
+          <p>Something went wrong loading your agents.</p>
+          <button
+            className="btn-ghost"
+            style={{ marginTop: "0.5rem" }}
+            onClick={() => {
+              setError(null);
+              setIsLoading(true);
+              getAgentsByOwner(address!)
+                .then(setAgents)
+                .catch((err) => setError(err instanceof Error ? err.message : String(err)))
+                .finally(() => setIsLoading(false));
+            }}
+          >
+            Retry
+          </button>
           <details style={{ marginTop: "0.4rem" }}>
             <summary style={{ cursor: "pointer", fontSize: "0.75rem", color: "var(--muted)" }}>
               Technical details

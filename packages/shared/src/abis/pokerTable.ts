@@ -2,2189 +2,2211 @@
 // Run: pnpm --filter @playerco/shared generate-abis
 export const POKER_TABLE_ABI = [
   {
-    "type": "constructor",
-    "inputs": [
+    type: "constructor",
+    inputs: [
       {
-        "name": "_tableId",
-        "type": "uint256"
+        name: "_tableId",
+        type: "uint256",
       },
       {
-        "name": "_smallBlind",
-        "type": "uint256"
+        name: "_smallBlind",
+        type: "uint256",
       },
       {
-        "name": "_bigBlind",
-        "type": "uint256"
+        name: "_bigBlind",
+        type: "uint256",
       },
       {
-        "name": "_vrfAdapter",
-        "type": "address"
+        name: "_vrfAdapter",
+        type: "address",
       },
       {
-        "name": "_chipToken",
-        "type": "address"
+        name: "_chipToken",
+        type: "address",
       },
       {
-        "name": "_kycSBT",
-        "type": "address"
+        name: "_kycSBT",
+        type: "address",
       },
       {
-        "name": "_actionTimeout",
-        "type": "uint256"
+        name: "_actionTimeout",
+        type: "uint256",
       },
       {
-        "name": "_vrfTimeout",
-        "type": "uint256"
+        name: "_vrfTimeout",
+        type: "uint256",
       },
       {
-        "name": "_showdownTimeout",
-        "type": "uint256"
+        name: "_showdownTimeout",
+        type: "uint256",
       },
       {
-        "name": "_numSeats",
-        "type": "uint8"
+        name: "_numSeats",
+        type: "uint8",
       },
       {
-        "name": "_dealer",
-        "type": "address"
-      }
+        name: "_dealer",
+        type: "address",
+      },
     ],
-    "stateMutability": "nonpayable"
+    stateMutability: "nonpayable",
   },
   {
-    "type": "function",
-    "name": "ACTION_TIMEOUT",
-    "inputs": [],
-    "outputs": [
+    type: "function",
+    name: "ACTION_TIMEOUT",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "uint256"
-      }
+        name: "",
+        type: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "DECK_SIZE",
-    "inputs": [],
-    "outputs": [
+    type: "function",
+    name: "DECK_SIZE",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "uint8"
-      }
+        name: "",
+        type: "uint8",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "EMERGENCY_TIMELOCK",
-    "inputs": [],
-    "outputs": [
+    type: "function",
+    name: "EMERGENCY_TIMELOCK",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "uint256"
-      }
+        name: "",
+        type: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "MAX_SEATS",
-    "inputs": [],
-    "outputs": [
+    type: "function",
+    name: "MAX_SEATS",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "uint8"
-      }
+        name: "",
+        type: "uint8",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "SHOWDOWN_TIMEOUT",
-    "inputs": [],
-    "outputs": [
+    type: "function",
+    name: "SHOWDOWN_TIMEOUT",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "uint256"
-      }
+        name: "",
+        type: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "UNDEALT",
-    "inputs": [],
-    "outputs": [
+    type: "function",
+    name: "UNDEALT",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "uint8"
-      }
+        name: "",
+        type: "uint8",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "VRF_TIMEOUT",
-    "inputs": [],
-    "outputs": [
+    type: "function",
+    name: "VRF_TIMEOUT",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "uint256"
-      }
+        name: "",
+        type: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "actionDeadline",
-    "inputs": [],
-    "outputs": [
+    type: "function",
+    name: "actionDeadline",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "uint256"
-      }
+        name: "",
+        type: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "admin",
-    "inputs": [],
-    "outputs": [
+    type: "function",
+    name: "admin",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "address"
-      }
+        name: "",
+        type: "address",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "advanceToPreflop",
-    "inputs": [],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    type: "function",
+    name: "advanceToPreflop",
+    inputs: [],
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "type": "function",
-    "name": "allSeatsFilled",
-    "inputs": [],
-    "outputs": [
+    type: "function",
+    name: "allSeatsFilled",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "bool"
-      }
+        name: "",
+        type: "bool",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "bigBlind",
-    "inputs": [],
-    "outputs": [
+    type: "function",
+    name: "bigBlind",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "uint256"
-      }
+        name: "",
+        type: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "buttonSeat",
-    "inputs": [],
-    "outputs": [
+    type: "function",
+    name: "buttonSeat",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "uint8"
-      }
+        name: "",
+        type: "uint8",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "call",
-    "inputs": [
+    type: "function",
+    name: "call",
+    inputs: [
       {
-        "name": "seatIndex",
-        "type": "uint8"
-      }
+        name: "seatIndex",
+        type: "uint8",
+      },
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "type": "function",
-    "name": "canCheck",
-    "inputs": [
+    type: "function",
+    name: "canCheck",
+    inputs: [
       {
-        "name": "seatIndex",
-        "type": "uint8"
-      }
+        name: "seatIndex",
+        type: "uint8",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "bool"
-      }
+        name: "",
+        type: "bool",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "canStartHand",
-    "inputs": [],
-    "outputs": [
+    type: "function",
+    name: "canStartHand",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "bool"
-      }
+        name: "",
+        type: "bool",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "cashOutSeat",
-    "inputs": [
+    type: "function",
+    name: "cashOutSeat",
+    inputs: [
       {
-        "name": "seatIndex",
-        "type": "uint8"
+        name: "seatIndex",
+        type: "uint8",
       },
       {
-        "name": "amount",
-        "type": "uint256"
+        name: "amount",
+        type: "uint256",
       },
       {
-        "name": "recipient",
-        "type": "address"
-      }
+        name: "recipient",
+        type: "address",
+      },
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "type": "function",
-    "name": "check",
-    "inputs": [
+    type: "function",
+    name: "check",
+    inputs: [
       {
-        "name": "seatIndex",
-        "type": "uint8"
-      }
+        name: "seatIndex",
+        type: "uint8",
+      },
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "type": "function",
-    "name": "chipToken",
-    "inputs": [],
-    "outputs": [
+    type: "function",
+    name: "chipToken",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "address"
-      }
+        name: "",
+        type: "address",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "communityCards",
-    "inputs": [
+    type: "function",
+    name: "communityCards",
+    inputs: [
       {
-        "name": "",
-        "type": "uint256"
-      }
+        name: "",
+        type: "uint256",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint8"
-      }
+        name: "",
+        type: "uint8",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "currentHand",
-    "inputs": [],
-    "outputs": [
+    type: "function",
+    name: "currentHand",
+    inputs: [],
+    outputs: [
       {
-        "name": "handId",
-        "type": "uint256"
+        name: "handId",
+        type: "uint256",
       },
       {
-        "name": "pot",
-        "type": "uint256"
+        name: "pot",
+        type: "uint256",
       },
       {
-        "name": "currentBet",
-        "type": "uint256"
+        name: "currentBet",
+        type: "uint256",
       },
       {
-        "name": "lastRaiseSize",
-        "type": "uint256"
+        name: "lastRaiseSize",
+        type: "uint256",
       },
       {
-        "name": "actorSeat",
-        "type": "uint8"
+        name: "actorSeat",
+        type: "uint8",
       },
       {
-        "name": "lastAggressor",
-        "type": "uint8"
+        name: "lastAggressor",
+        type: "uint8",
       },
       {
-        "name": "actionsInRound",
-        "type": "uint8"
+        name: "actionsInRound",
+        type: "uint8",
       },
       {
-        "name": "sidePotCount",
-        "type": "uint8"
-      }
+        name: "sidePotCount",
+        type: "uint8",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "currentHandId",
-    "inputs": [],
-    "outputs": [
+    type: "function",
+    name: "currentHandId",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "uint256"
-      }
+        name: "",
+        type: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "dealer",
-    "inputs": [],
-    "outputs": [
+    type: "function",
+    name: "dealer",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "address"
-      }
+        name: "",
+        type: "address",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "dealerSeedCommits",
-    "inputs": [
+    type: "function",
+    name: "dealerSeedCommits",
+    inputs: [
       {
-        "name": "",
-        "type": "uint256"
-      }
+        name: "",
+        type: "uint256",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "bytes32"
-      }
+        name: "",
+        type: "bytes32",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "dealerSeedReveals",
-    "inputs": [
+    type: "function",
+    name: "dealerSeedReveals",
+    inputs: [
       {
-        "name": "",
-        "type": "uint256"
-      }
+        name: "",
+        type: "uint256",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "bytes32"
-      }
+        name: "",
+        type: "bytes32",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "emergencyWithdrawRequestedAt",
-    "inputs": [
+    type: "function",
+    name: "emergencyWithdrawRequestedAt",
+    inputs: [
       {
-        "name": "",
-        "type": "uint8"
-      }
+        name: "",
+        type: "uint8",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint256"
-      }
+        name: "",
+        type: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "encryptionKeys",
-    "inputs": [
+    type: "function",
+    name: "encryptionKeys",
+    inputs: [
       {
-        "name": "",
-        "type": "uint8"
-      }
+        name: "",
+        type: "uint8",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "bytes"
-      }
+        name: "",
+        type: "bytes",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "executeEmergencyWithdraw",
-    "inputs": [
+    type: "function",
+    name: "executeEmergencyWithdraw",
+    inputs: [
       {
-        "name": "seatIndex",
-        "type": "uint8"
+        name: "seatIndex",
+        type: "uint8",
       },
       {
-        "name": "recipient",
-        "type": "address"
-      }
+        name: "recipient",
+        type: "address",
+      },
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "type": "function",
-    "name": "fold",
-    "inputs": [
+    type: "function",
+    name: "fold",
+    inputs: [
       {
-        "name": "seatIndex",
-        "type": "uint8"
-      }
+        name: "seatIndex",
+        type: "uint8",
+      },
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "type": "function",
-    "name": "forceTimeout",
-    "inputs": [],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    type: "function",
+    name: "forceTimeout",
+    inputs: [],
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "type": "function",
-    "name": "fulfillVRF",
-    "inputs": [
+    type: "function",
+    name: "fulfillVRF",
+    inputs: [
       {
-        "name": "requestId",
-        "type": "uint256"
+        name: "requestId",
+        type: "uint256",
       },
       {
-        "name": "randomness",
-        "type": "uint256"
-      }
+        name: "randomness",
+        type: "uint256",
+      },
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "type": "function",
-    "name": "gameState",
-    "inputs": [],
-    "outputs": [
+    type: "function",
+    name: "gameState",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "uint8"
-      }
+        name: "",
+        type: "uint8",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "getActionDeadline",
-    "inputs": [],
-    "outputs": [
+    type: "function",
+    name: "getActionDeadline",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "uint256"
-      }
+        name: "",
+        type: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "getAmountToCall",
-    "inputs": [
+    type: "function",
+    name: "getAmountToCall",
+    inputs: [
       {
-        "name": "seatIndex",
-        "type": "uint8"
-      }
+        name: "seatIndex",
+        type: "uint8",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint256"
-      }
+        name: "",
+        type: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "getCommunityCards",
-    "inputs": [],
-    "outputs": [
+    type: "function",
+    name: "getCommunityCards",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "uint8[5]"
-      }
+        name: "",
+        type: "uint8[5]",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "getEncryptionKey",
-    "inputs": [
+    type: "function",
+    name: "getEncryptionKey",
+    inputs: [
       {
-        "name": "seatIndex",
-        "type": "uint8"
-      }
+        name: "seatIndex",
+        type: "uint8",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "bytes"
-      }
+        name: "",
+        type: "bytes",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "getHandInfo",
-    "inputs": [],
-    "outputs": [
+    type: "function",
+    name: "getHandInfo",
+    inputs: [],
+    outputs: [
       {
-        "name": "handId",
-        "type": "uint256"
+        name: "handId",
+        type: "uint256",
       },
       {
-        "name": "pot",
-        "type": "uint256"
+        name: "pot",
+        type: "uint256",
       },
       {
-        "name": "currentBetAmount",
-        "type": "uint256"
+        name: "currentBetAmount",
+        type: "uint256",
       },
       {
-        "name": "actorSeat",
-        "type": "uint8"
+        name: "actorSeat",
+        type: "uint8",
       },
       {
-        "name": "state",
-        "type": "uint8"
-      }
+        name: "state",
+        type: "uint8",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "getRevealedHoleCards",
-    "inputs": [
+    type: "function",
+    name: "getRevealedHoleCards",
+    inputs: [
       {
-        "name": "handId",
-        "type": "uint256"
+        name: "handId",
+        type: "uint256",
       },
       {
-        "name": "seatIndex",
-        "type": "uint8"
-      }
+        name: "seatIndex",
+        type: "uint8",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "card1",
-        "type": "uint8"
+        name: "card1",
+        type: "uint8",
       },
       {
-        "name": "card2",
-        "type": "uint8"
-      }
+        name: "card2",
+        type: "uint8",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "getSeat",
-    "inputs": [
+    type: "function",
+    name: "getSeat",
+    inputs: [
       {
-        "name": "seatIndex",
-        "type": "uint8"
-      }
+        name: "seatIndex",
+        type: "uint8",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "tuple",
-        "components": [
+        name: "",
+        type: "tuple",
+        components: [
           {
-            "name": "owner",
-            "type": "address"
+            name: "owner",
+            type: "address",
           },
           {
-            "name": "operator",
-            "type": "address"
+            name: "operator",
+            type: "address",
           },
           {
-            "name": "stack",
-            "type": "uint256"
+            name: "stack",
+            type: "uint256",
           },
           {
-            "name": "isActive",
-            "type": "bool"
+            name: "isActive",
+            type: "bool",
           },
           {
-            "name": "currentBet",
-            "type": "uint256"
+            name: "currentBet",
+            type: "uint256",
           },
           {
-            "name": "isAllIn",
-            "type": "bool"
+            name: "isAllIn",
+            type: "bool",
           },
           {
-            "name": "totalHandBet",
-            "type": "uint256"
-          }
-        ]
-      }
+            name: "totalHandBet",
+            type: "uint256",
+          },
+        ],
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "getSidePot",
-    "inputs": [
+    type: "function",
+    name: "getSidePot",
+    inputs: [
       {
-        "name": "potIndex",
-        "type": "uint8"
-      }
+        name: "potIndex",
+        type: "uint8",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "amount",
-        "type": "uint256"
+        name: "amount",
+        type: "uint256",
       },
       {
-        "name": "eligible",
-        "type": "bool[9]"
-      }
+        name: "eligible",
+        type: "bool[9]",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "getSidePotCount",
-    "inputs": [],
-    "outputs": [
+    type: "function",
+    name: "getSidePotCount",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "uint8"
-      }
+        name: "",
+        type: "uint8",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "holeCardVRFRandomnessHash",
-    "inputs": [
+    type: "function",
+    name: "holeCardVRFRandomnessHash",
+    inputs: [
       {
-        "name": "",
-        "type": "uint256"
-      }
+        name: "",
+        type: "uint256",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "bytes32"
-      }
+        name: "",
+        type: "bytes32",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "holeCommits",
-    "inputs": [
+    type: "function",
+    name: "holeCommits",
+    inputs: [
       {
-        "name": "",
-        "type": "uint256"
+        name: "",
+        type: "uint256",
       },
       {
-        "name": "",
-        "type": "uint8"
-      }
+        name: "",
+        type: "uint8",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "bytes32"
-      }
+        name: "",
+        type: "bytes32",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "isHoleCardsRevealed",
-    "inputs": [
+    type: "function",
+    name: "isHoleCardsRevealed",
+    inputs: [
       {
-        "name": "",
-        "type": "uint256"
+        name: "",
+        type: "uint256",
       },
       {
-        "name": "",
-        "type": "uint8"
-      }
+        name: "",
+        type: "uint8",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "bool"
-      }
+        name: "",
+        type: "bool",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "kycSBT",
-    "inputs": [],
-    "outputs": [
+    type: "function",
+    name: "kycSBT",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "address"
-      }
+        name: "",
+        type: "address",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "lastActionBlock",
-    "inputs": [],
-    "outputs": [
+    type: "function",
+    name: "lastActionBlock",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "uint256"
-      }
+        name: "",
+        type: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "leaveSeat",
-    "inputs": [
+    type: "function",
+    name: "leaveSeat",
+    inputs: [
       {
-        "name": "seatIndex",
-        "type": "uint8"
+        name: "seatIndex",
+        type: "uint8",
       },
       {
-        "name": "recipient",
-        "type": "address"
-      }
+        name: "recipient",
+        type: "address",
+      },
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "type": "function",
-    "name": "needsPostBlind",
-    "inputs": [
+    type: "function",
+    name: "needsPostBlind",
+    inputs: [
       {
-        "name": "",
-        "type": "uint8"
-      }
+        name: "",
+        type: "uint8",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "bool"
-      }
+        name: "",
+        type: "bool",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "numSeats",
-    "inputs": [],
-    "outputs": [
+    type: "function",
+    name: "numSeats",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "uint8"
-      }
+        name: "",
+        type: "uint8",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "pause",
-    "inputs": [],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    type: "function",
+    name: "pause",
+    inputs: [],
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "type": "function",
-    "name": "paused",
-    "inputs": [],
-    "outputs": [
+    type: "function",
+    name: "paused",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "bool"
-      }
+        name: "",
+        type: "bool",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "pendingHoleCardVRFRequestId",
-    "inputs": [],
-    "outputs": [
+    type: "function",
+    name: "pendingHoleCardVRFRequestId",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "uint256"
-      }
+        name: "",
+        type: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "pendingVRFRequestId",
-    "inputs": [],
-    "outputs": [
+    type: "function",
+    name: "pendingVRFRequestId",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "uint256"
-      }
+        name: "",
+        type: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "playerRegistry",
-    "inputs": [],
-    "outputs": [
+    type: "function",
+    name: "playerRegistry",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "address"
-      }
+        name: "",
+        type: "address",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "raise",
-    "inputs": [
+    type: "function",
+    name: "raise",
+    inputs: [
       {
-        "name": "seatIndex",
-        "type": "uint8"
+        name: "seatIndex",
+        type: "uint8",
       },
       {
-        "name": "raiseToAmount",
-        "type": "uint256"
-      }
+        name: "raiseToAmount",
+        type: "uint256",
+      },
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "type": "function",
-    "name": "reRequestHoleCardVRF",
-    "inputs": [],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    type: "function",
+    name: "reRequestHoleCardVRF",
+    inputs: [],
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "type": "function",
-    "name": "reRequestVRF",
-    "inputs": [],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    type: "function",
+    name: "reRequestVRF",
+    inputs: [],
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "type": "function",
-    "name": "registerEncryptionKey",
-    "inputs": [
+    type: "function",
+    name: "registerEncryptionKey",
+    inputs: [
       {
-        "name": "seatIndex",
-        "type": "uint8"
+        name: "seatIndex",
+        type: "uint8",
       },
       {
-        "name": "pubKey",
-        "type": "bytes"
-      }
+        name: "pubKey",
+        type: "bytes",
+      },
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "type": "function",
-    "name": "registerSeat",
-    "inputs": [
+    type: "function",
+    name: "registerSeat",
+    inputs: [
       {
-        "name": "seatIndex",
-        "type": "uint8"
+        name: "seatIndex",
+        type: "uint8",
       },
       {
-        "name": "owner",
-        "type": "address"
+        name: "owner",
+        type: "address",
       },
       {
-        "name": "operator",
-        "type": "address"
+        name: "operator",
+        type: "address",
       },
       {
-        "name": "buyIn",
-        "type": "uint256"
-      }
+        name: "buyIn",
+        type: "uint256",
+      },
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "type": "function",
-    "name": "requestEmergencyWithdraw",
-    "inputs": [
+    type: "function",
+    name: "requestEmergencyWithdraw",
+    inputs: [
       {
-        "name": "seatIndex",
-        "type": "uint8"
-      }
+        name: "seatIndex",
+        type: "uint8",
+      },
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "type": "function",
-    "name": "revealDealerSeed",
-    "inputs": [
+    type: "function",
+    name: "revealDealerSeed",
+    inputs: [
       {
-        "name": "handId",
-        "type": "uint256"
+        name: "handId",
+        type: "uint256",
       },
       {
-        "name": "seed",
-        "type": "bytes32"
-      }
+        name: "seed",
+        type: "bytes32",
+      },
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "type": "function",
-    "name": "revealHoleCards",
-    "inputs": [
+    type: "function",
+    name: "revealHoleCards",
+    inputs: [
       {
-        "name": "handId",
-        "type": "uint256"
+        name: "handId",
+        type: "uint256",
       },
       {
-        "name": "seatIndex",
-        "type": "uint8"
+        name: "seatIndex",
+        type: "uint8",
       },
       {
-        "name": "card1",
-        "type": "uint8"
+        name: "card1",
+        type: "uint8",
       },
       {
-        "name": "card2",
-        "type": "uint8"
+        name: "card2",
+        type: "uint8",
       },
       {
-        "name": "salt",
-        "type": "bytes32"
-      }
+        name: "salt",
+        type: "bytes32",
+      },
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "type": "function",
-    "name": "seats",
-    "inputs": [
+    type: "function",
+    name: "seats",
+    inputs: [
       {
-        "name": "",
-        "type": "uint256"
-      }
+        name: "",
+        type: "uint256",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "owner",
-        "type": "address"
+        name: "owner",
+        type: "address",
       },
       {
-        "name": "operator",
-        "type": "address"
+        name: "operator",
+        type: "address",
       },
       {
-        "name": "stack",
-        "type": "uint256"
+        name: "stack",
+        type: "uint256",
       },
       {
-        "name": "isActive",
-        "type": "bool"
+        name: "isActive",
+        type: "bool",
       },
       {
-        "name": "currentBet",
-        "type": "uint256"
+        name: "currentBet",
+        type: "uint256",
       },
       {
-        "name": "isAllIn",
-        "type": "bool"
+        name: "isAllIn",
+        type: "bool",
       },
       {
-        "name": "totalHandBet",
-        "type": "uint256"
-      }
+        name: "totalHandBet",
+        type: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "setAdmin",
-    "inputs": [
+    type: "function",
+    name: "setAdmin",
+    inputs: [
       {
-        "name": "_newAdmin",
-        "type": "address"
-      }
+        name: "_newAdmin",
+        type: "address",
+      },
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "type": "function",
-    "name": "setBlinds",
-    "inputs": [
+    type: "function",
+    name: "setBlinds",
+    inputs: [
       {
-        "name": "_newSmallBlind",
-        "type": "uint256"
+        name: "_newSmallBlind",
+        type: "uint256",
       },
       {
-        "name": "_newBigBlind",
-        "type": "uint256"
-      }
+        name: "_newBigBlind",
+        type: "uint256",
+      },
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "type": "function",
-    "name": "setDealer",
-    "inputs": [
+    type: "function",
+    name: "setDealer",
+    inputs: [
       {
-        "name": "_newDealer",
-        "type": "address"
-      }
+        name: "_newDealer",
+        type: "address",
+      },
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "type": "function",
-    "name": "setPlayerRegistry",
-    "inputs": [
+    type: "function",
+    name: "setPlayerRegistry",
+    inputs: [
       {
-        "name": "_registry",
-        "type": "address"
-      }
+        name: "_registry",
+        type: "address",
+      },
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "type": "function",
-    "name": "setVRFAdapter",
-    "inputs": [
+    type: "function",
+    name: "setVRFAdapter",
+    inputs: [
       {
-        "name": "_newAdapter",
-        "type": "address"
-      }
+        name: "_newAdapter",
+        type: "address",
+      },
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "type": "function",
-    "name": "settleShowdown",
-    "inputs": [],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    type: "function",
+    name: "settleShowdown",
+    inputs: [],
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "type": "function",
-    "name": "showdownStartTimestamp",
-    "inputs": [],
-    "outputs": [
+    type: "function",
+    name: "showdownStartTimestamp",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "uint256"
-      }
+        name: "",
+        type: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "sidePots",
-    "inputs": [
+    type: "function",
+    name: "sidePots",
+    inputs: [
       {
-        "name": "",
-        "type": "uint256"
-      }
+        name: "",
+        type: "uint256",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "amount",
-        "type": "uint256"
-      }
+        name: "amount",
+        type: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "smallBlind",
-    "inputs": [],
-    "outputs": [
+    type: "function",
+    name: "smallBlind",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "uint256"
-      }
+        name: "",
+        type: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "startHand",
-    "inputs": [],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    type: "function",
+    name: "startHand",
+    inputs: [],
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "type": "function",
-    "name": "submitDealerSeedCommit",
-    "inputs": [
+    type: "function",
+    name: "submitDealerSeedCommit",
+    inputs: [
       {
-        "name": "handId",
-        "type": "uint256"
+        name: "handId",
+        type: "uint256",
       },
       {
-        "name": "commitment",
-        "type": "bytes32"
-      }
+        name: "commitment",
+        type: "bytes32",
+      },
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "type": "function",
-    "name": "submitHoleCommit",
-    "inputs": [
+    type: "function",
+    name: "submitHoleCommit",
+    inputs: [
       {
-        "name": "handId",
-        "type": "uint256"
+        name: "handId",
+        type: "uint256",
       },
       {
-        "name": "seatIndex",
-        "type": "uint8"
+        name: "seatIndex",
+        type: "uint8",
       },
       {
-        "name": "commitment",
-        "type": "bytes32"
-      }
+        name: "commitment",
+        type: "bytes32",
+      },
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "type": "function",
-    "name": "tableId",
-    "inputs": [],
-    "outputs": [
+    type: "function",
+    name: "tableId",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "uint256"
-      }
+        name: "",
+        type: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "topUpSeat",
-    "inputs": [
+    type: "function",
+    name: "topUpSeat",
+    inputs: [
       {
-        "name": "seatIndex",
-        "type": "uint8"
+        name: "seatIndex",
+        type: "uint8",
       },
       {
-        "name": "amount",
-        "type": "uint256"
-      }
+        name: "amount",
+        type: "uint256",
+      },
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "type": "function",
-    "name": "unpause",
-    "inputs": [],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    type: "function",
+    name: "unpause",
+    inputs: [],
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "type": "function",
-    "name": "verifyShuffleAtShowdown",
-    "inputs": [
+    type: "function",
+    name: "verifyShuffleAtShowdown",
+    inputs: [
       {
-        "name": "handId",
-        "type": "uint256"
+        name: "handId",
+        type: "uint256",
       },
       {
-        "name": "seatCount",
-        "type": "uint8"
+        name: "seatCount",
+        type: "uint8",
       },
       {
-        "name": "reveals",
-        "type": "tuple[]",
-        "components": [
+        name: "reveals",
+        type: "tuple[]",
+        components: [
           {
-            "name": "card1",
-            "type": "uint8"
+            name: "card1",
+            type: "uint8",
           },
           {
-            "name": "card2",
-            "type": "uint8"
+            name: "card2",
+            type: "uint8",
           },
           {
-            "name": "salt",
-            "type": "bytes32"
+            name: "salt",
+            type: "bytes32",
           },
           {
-            "name": "commitment",
-            "type": "bytes32"
-          }
-        ]
+            name: "commitment",
+            type: "bytes32",
+          },
+        ],
       },
       {
-        "name": "vrfRandomness",
-        "type": "uint256"
-      }
+        name: "vrfRandomness",
+        type: "uint256",
+      },
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "type": "function",
-    "name": "vrfAdapter",
-    "inputs": [],
-    "outputs": [
+    type: "function",
+    name: "vrfAdapter",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "address"
-      }
+        name: "",
+        type: "address",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "vrfRequestTimestamp",
-    "inputs": [],
-    "outputs": [
+    type: "function",
+    name: "vrfRequestTimestamp",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "uint256"
-      }
+        name: "",
+        type: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "event",
-    "name": "ActionTaken",
-    "inputs": [
+    type: "event",
+    name: "ActionTaken",
+    inputs: [
       {
-        "name": "handId",
-        "type": "uint256",
-        "indexed": true
+        name: "handId",
+        type: "uint256",
+        indexed: true,
       },
       {
-        "name": "seatIndex",
-        "type": "uint8",
-        "indexed": true
+        name: "seatIndex",
+        type: "uint8",
+        indexed: true,
       },
       {
-        "name": "action",
-        "type": "uint8",
-        "indexed": false
+        name: "action",
+        type: "uint8",
+        indexed: false,
       },
       {
-        "name": "amount",
-        "type": "uint256",
-        "indexed": false
+        name: "amount",
+        type: "uint256",
+        indexed: false,
       },
       {
-        "name": "potAfter",
-        "type": "uint256",
-        "indexed": false
-      }
+        name: "potAfter",
+        type: "uint256",
+        indexed: false,
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "type": "event",
-    "name": "AdminUpdated",
-    "inputs": [
+    type: "event",
+    name: "AdminUpdated",
+    inputs: [
       {
-        "name": "oldAdmin",
-        "type": "address",
-        "indexed": true
+        name: "oldAdmin",
+        type: "address",
+        indexed: true,
       },
       {
-        "name": "newAdmin",
-        "type": "address",
-        "indexed": true
-      }
+        name: "newAdmin",
+        type: "address",
+        indexed: true,
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "type": "event",
-    "name": "BettingRoundComplete",
-    "inputs": [
+    type: "event",
+    name: "BettingRoundComplete",
+    inputs: [
       {
-        "name": "handId",
-        "type": "uint256",
-        "indexed": true
+        name: "handId",
+        type: "uint256",
+        indexed: true,
       },
       {
-        "name": "fromState",
-        "type": "uint8",
-        "indexed": false
+        name: "fromState",
+        type: "uint8",
+        indexed: false,
       },
       {
-        "name": "toState",
-        "type": "uint8",
-        "indexed": false
-      }
+        name: "toState",
+        type: "uint8",
+        indexed: false,
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "type": "event",
-    "name": "BlindsUpdated",
-    "inputs": [
+    type: "event",
+    name: "BlindsUpdated",
+    inputs: [
       {
-        "name": "oldSmallBlind",
-        "type": "uint256",
-        "indexed": false
+        name: "oldSmallBlind",
+        type: "uint256",
+        indexed: false,
       },
       {
-        "name": "oldBigBlind",
-        "type": "uint256",
-        "indexed": false
+        name: "oldBigBlind",
+        type: "uint256",
+        indexed: false,
       },
       {
-        "name": "newSmallBlind",
-        "type": "uint256",
-        "indexed": false
+        name: "newSmallBlind",
+        type: "uint256",
+        indexed: false,
       },
       {
-        "name": "newBigBlind",
-        "type": "uint256",
-        "indexed": false
-      }
+        name: "newBigBlind",
+        type: "uint256",
+        indexed: false,
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "type": "event",
-    "name": "CardIntegrityViolation",
-    "inputs": [
+    type: "event",
+    name: "CardIntegrityViolation",
+    inputs: [
       {
-        "name": "handId",
-        "type": "uint256",
-        "indexed": true
+        name: "handId",
+        type: "uint256",
+        indexed: true,
       },
       {
-        "name": "seatIndex",
-        "type": "uint8",
-        "indexed": true
+        name: "seatIndex",
+        type: "uint8",
+        indexed: true,
       },
       {
-        "name": "card",
-        "type": "uint8",
-        "indexed": false
+        name: "card",
+        type: "uint8",
+        indexed: false,
       },
       {
-        "name": "communityIndex",
-        "type": "uint8",
-        "indexed": false
-      }
+        name: "communityIndex",
+        type: "uint8",
+        indexed: false,
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "type": "event",
-    "name": "CommunityCardsDealt",
-    "inputs": [
+    type: "event",
+    name: "CommunityCardsDealt",
+    inputs: [
       {
-        "name": "handId",
-        "type": "uint256",
-        "indexed": true
+        name: "handId",
+        type: "uint256",
+        indexed: true,
       },
       {
-        "name": "street",
-        "type": "uint8",
-        "indexed": false
+        name: "street",
+        type: "uint8",
+        indexed: false,
       },
       {
-        "name": "cards",
-        "type": "uint8[]",
-        "indexed": false
-      }
+        name: "cards",
+        type: "uint8[]",
+        indexed: false,
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "type": "event",
-    "name": "DealerSeedCommitted",
-    "inputs": [
+    type: "event",
+    name: "DealerSeedCommitted",
+    inputs: [
       {
-        "name": "handId",
-        "type": "uint256",
-        "indexed": true
+        name: "handId",
+        type: "uint256",
+        indexed: true,
       },
       {
-        "name": "commitment",
-        "type": "bytes32",
-        "indexed": false
-      }
+        name: "commitment",
+        type: "bytes32",
+        indexed: false,
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "type": "event",
-    "name": "DealerSeedRevealed",
-    "inputs": [
+    type: "event",
+    name: "DealerSeedRevealed",
+    inputs: [
       {
-        "name": "handId",
-        "type": "uint256",
-        "indexed": true
+        name: "handId",
+        type: "uint256",
+        indexed: true,
       },
       {
-        "name": "seed",
-        "type": "bytes32",
-        "indexed": false
-      }
+        name: "seed",
+        type: "bytes32",
+        indexed: false,
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "type": "event",
-    "name": "DealerUpdated",
-    "inputs": [
+    type: "event",
+    name: "DealerUpdated",
+    inputs: [
       {
-        "name": "oldDealer",
-        "type": "address",
-        "indexed": true
+        name: "oldDealer",
+        type: "address",
+        indexed: true,
       },
       {
-        "name": "newDealer",
-        "type": "address",
-        "indexed": true
-      }
+        name: "newDealer",
+        type: "address",
+        indexed: true,
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "type": "event",
-    "name": "EmergencyWithdrawExecuted",
-    "inputs": [
+    type: "event",
+    name: "EmergencyWithdrawExecuted",
+    inputs: [
       {
-        "name": "seatIndex",
-        "type": "uint8",
-        "indexed": true
+        name: "seatIndex",
+        type: "uint8",
+        indexed: true,
       },
       {
-        "name": "recipient",
-        "type": "address",
-        "indexed": true
+        name: "recipient",
+        type: "address",
+        indexed: true,
       },
       {
-        "name": "amount",
-        "type": "uint256",
-        "indexed": false
-      }
+        name: "amount",
+        type: "uint256",
+        indexed: false,
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "type": "event",
-    "name": "EmergencyWithdrawRequested",
-    "inputs": [
+    type: "event",
+    name: "EmergencyWithdrawRequested",
+    inputs: [
       {
-        "name": "seatIndex",
-        "type": "uint8",
-        "indexed": true
+        name: "seatIndex",
+        type: "uint8",
+        indexed: true,
       },
       {
-        "name": "unlockAt",
-        "type": "uint256",
-        "indexed": false
-      }
+        name: "unlockAt",
+        type: "uint256",
+        indexed: false,
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "type": "event",
-    "name": "EncryptionKeyRegistered",
-    "inputs": [
+    type: "event",
+    name: "EncryptionKeyRegistered",
+    inputs: [
       {
-        "name": "seatIndex",
-        "type": "uint8",
-        "indexed": true
+        name: "seatIndex",
+        type: "uint8",
+        indexed: true,
       },
       {
-        "name": "pubKey",
-        "type": "bytes",
-        "indexed": false
-      }
+        name: "pubKey",
+        type: "bytes",
+        indexed: false,
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "type": "event",
-    "name": "ForceTimeout",
-    "inputs": [
+    type: "event",
+    name: "ForceTimeout",
+    inputs: [
       {
-        "name": "handId",
-        "type": "uint256",
-        "indexed": true
+        name: "handId",
+        type: "uint256",
+        indexed: true,
       },
       {
-        "name": "seatIndex",
-        "type": "uint8",
-        "indexed": true
+        name: "seatIndex",
+        type: "uint8",
+        indexed: true,
       },
       {
-        "name": "forcedAction",
-        "type": "uint8",
-        "indexed": false
-      }
+        name: "forcedAction",
+        type: "uint8",
+        indexed: false,
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "type": "event",
-    "name": "HandSettled",
-    "inputs": [
+    type: "event",
+    name: "HandSettled",
+    inputs: [
       {
-        "name": "handId",
-        "type": "uint256",
-        "indexed": true
+        name: "handId",
+        type: "uint256",
+        indexed: true,
       },
       {
-        "name": "winnerSeat",
-        "type": "uint8",
-        "indexed": false
+        name: "winnerSeat",
+        type: "uint8",
+        indexed: false,
       },
       {
-        "name": "potAmount",
-        "type": "uint256",
-        "indexed": false
-      }
+        name: "potAmount",
+        type: "uint256",
+        indexed: false,
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "type": "event",
-    "name": "HandStarted",
-    "inputs": [
+    type: "event",
+    name: "HandStarted",
+    inputs: [
       {
-        "name": "handId",
-        "type": "uint256",
-        "indexed": true
+        name: "handId",
+        type: "uint256",
+        indexed: true,
       },
       {
-        "name": "smallBlind",
-        "type": "uint256",
-        "indexed": false
+        name: "smallBlind",
+        type: "uint256",
+        indexed: false,
       },
       {
-        "name": "bigBlind",
-        "type": "uint256",
-        "indexed": false
+        name: "bigBlind",
+        type: "uint256",
+        indexed: false,
       },
       {
-        "name": "buttonSeat",
-        "type": "uint8",
-        "indexed": false
-      }
+        name: "buttonSeat",
+        type: "uint8",
+        indexed: false,
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "type": "event",
-    "name": "HoleCardVRFFulfilled",
-    "inputs": [
+    type: "event",
+    name: "HoleCardVRFFulfilled",
+    inputs: [
       {
-        "name": "handId",
-        "type": "uint256",
-        "indexed": true
+        name: "handId",
+        type: "uint256",
+        indexed: true,
       },
       {
-        "name": "randomnessHash",
-        "type": "bytes32",
-        "indexed": false
-      }
+        name: "randomnessHash",
+        type: "bytes32",
+        indexed: false,
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "type": "event",
-    "name": "HoleCardVRFReRequested",
-    "inputs": [
+    type: "event",
+    name: "HoleCardVRFReRequested",
+    inputs: [
       {
-        "name": "handId",
-        "type": "uint256",
-        "indexed": true
+        name: "handId",
+        type: "uint256",
+        indexed: true,
       },
       {
-        "name": "oldRequestId",
-        "type": "uint256",
-        "indexed": false
+        name: "oldRequestId",
+        type: "uint256",
+        indexed: false,
       },
       {
-        "name": "newRequestId",
-        "type": "uint256",
-        "indexed": false
-      }
+        name: "newRequestId",
+        type: "uint256",
+        indexed: false,
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "type": "event",
-    "name": "HoleCardsRevealed",
-    "inputs": [
+    type: "event",
+    name: "HoleCardsRevealed",
+    inputs: [
       {
-        "name": "handId",
-        "type": "uint256",
-        "indexed": true
+        name: "handId",
+        type: "uint256",
+        indexed: true,
       },
       {
-        "name": "seatIndex",
-        "type": "uint8",
-        "indexed": true
+        name: "seatIndex",
+        type: "uint8",
+        indexed: true,
       },
       {
-        "name": "card1",
-        "type": "uint8",
-        "indexed": false
+        name: "card1",
+        type: "uint8",
+        indexed: false,
       },
       {
-        "name": "card2",
-        "type": "uint8",
-        "indexed": false
-      }
+        name: "card2",
+        type: "uint8",
+        indexed: false,
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "type": "event",
-    "name": "HoleCommitSubmitted",
-    "inputs": [
+    type: "event",
+    name: "HoleCommitSubmitted",
+    inputs: [
       {
-        "name": "handId",
-        "type": "uint256",
-        "indexed": true
+        name: "handId",
+        type: "uint256",
+        indexed: true,
       },
       {
-        "name": "seatIndex",
-        "type": "uint8",
-        "indexed": true
+        name: "seatIndex",
+        type: "uint8",
+        indexed: true,
       },
       {
-        "name": "commitment",
-        "type": "bytes32",
-        "indexed": false
-      }
+        name: "commitment",
+        type: "bytes32",
+        indexed: false,
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "type": "event",
-    "name": "KYCCheckPassed",
-    "inputs": [
+    type: "event",
+    name: "PreflopStarted",
+    inputs: [
       {
-        "name": "player",
-        "type": "address",
-        "indexed": true
+        name: "handId",
+        type: "uint256",
+        indexed: true,
       },
       {
-        "name": "seatIndex",
-        "type": "uint8",
-        "indexed": false
-      }
+        name: "actorSeat",
+        type: "uint8",
+        indexed: false,
+      },
+      {
+        name: "actionDeadline",
+        type: "uint256",
+        indexed: false,
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "type": "event",
-    "name": "PlayerRegistryUpdated",
-    "inputs": [
+    type: "event",
+    name: "KYCCheckPassed",
+    inputs: [
       {
-        "name": "oldRegistry",
-        "type": "address",
-        "indexed": true
+        name: "player",
+        type: "address",
+        indexed: true,
       },
       {
-        "name": "newRegistry",
-        "type": "address",
-        "indexed": true
-      }
+        name: "seatIndex",
+        type: "uint8",
+        indexed: false,
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "type": "event",
-    "name": "PostBlindPosted",
-    "inputs": [
+    type: "event",
+    name: "PlayerRegistryUpdated",
+    inputs: [
       {
-        "name": "handId",
-        "type": "uint256",
-        "indexed": true
+        name: "oldRegistry",
+        type: "address",
+        indexed: true,
       },
       {
-        "name": "seatIndex",
-        "type": "uint8",
-        "indexed": true
+        name: "newRegistry",
+        type: "address",
+        indexed: true,
       },
-      {
-        "name": "amount",
-        "type": "uint256",
-        "indexed": false
-      }
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "type": "event",
-    "name": "PotUpdated",
-    "inputs": [
+    type: "event",
+    name: "PostBlindPosted",
+    inputs: [
       {
-        "name": "handId",
-        "type": "uint256",
-        "indexed": true
+        name: "handId",
+        type: "uint256",
+        indexed: true,
       },
       {
-        "name": "pot",
-        "type": "uint256",
-        "indexed": false
-      }
+        name: "seatIndex",
+        type: "uint8",
+        indexed: true,
+      },
+      {
+        name: "amount",
+        type: "uint256",
+        indexed: false,
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "type": "event",
-    "name": "SeatAllIn",
-    "inputs": [
+    type: "event",
+    name: "PotUpdated",
+    inputs: [
       {
-        "name": "handId",
-        "type": "uint256",
-        "indexed": true
+        name: "handId",
+        type: "uint256",
+        indexed: true,
       },
       {
-        "name": "seatIndex",
-        "type": "uint8",
-        "indexed": true
+        name: "pot",
+        type: "uint256",
+        indexed: false,
       },
-      {
-        "name": "totalBet",
-        "type": "uint256",
-        "indexed": false
-      }
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "type": "event",
-    "name": "SeatCashOut",
-    "inputs": [
+    type: "event",
+    name: "SeatAllIn",
+    inputs: [
       {
-        "name": "seatIndex",
-        "type": "uint8",
-        "indexed": true
+        name: "handId",
+        type: "uint256",
+        indexed: true,
       },
       {
-        "name": "owner",
-        "type": "address",
-        "indexed": true
+        name: "seatIndex",
+        type: "uint8",
+        indexed: true,
       },
       {
-        "name": "recipient",
-        "type": "address",
-        "indexed": true
+        name: "totalBet",
+        type: "uint256",
+        indexed: false,
       },
-      {
-        "name": "amount",
-        "type": "uint256",
-        "indexed": false
-      },
-      {
-        "name": "stackAfter",
-        "type": "uint256",
-        "indexed": false
-      }
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "type": "event",
-    "name": "SeatClosed",
-    "inputs": [
+    type: "event",
+    name: "SeatCashOut",
+    inputs: [
       {
-        "name": "seatIndex",
-        "type": "uint8",
-        "indexed": true
+        name: "seatIndex",
+        type: "uint8",
+        indexed: true,
       },
       {
-        "name": "owner",
-        "type": "address",
-        "indexed": true
+        name: "owner",
+        type: "address",
+        indexed: true,
       },
       {
-        "name": "recipient",
-        "type": "address",
-        "indexed": true
+        name: "recipient",
+        type: "address",
+        indexed: true,
       },
       {
-        "name": "amount",
-        "type": "uint256",
-        "indexed": false
-      }
+        name: "amount",
+        type: "uint256",
+        indexed: false,
+      },
+      {
+        name: "stackAfter",
+        type: "uint256",
+        indexed: false,
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "type": "event",
-    "name": "SeatEvicted",
-    "inputs": [
+    type: "event",
+    name: "SeatClosed",
+    inputs: [
       {
-        "name": "seatIndex",
-        "type": "uint8",
-        "indexed": true
+        name: "seatIndex",
+        type: "uint8",
+        indexed: true,
       },
       {
-        "name": "owner",
-        "type": "address",
-        "indexed": true
-      }
+        name: "owner",
+        type: "address",
+        indexed: true,
+      },
+      {
+        name: "recipient",
+        type: "address",
+        indexed: true,
+      },
+      {
+        name: "amount",
+        type: "uint256",
+        indexed: false,
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "type": "event",
-    "name": "SeatTopUp",
-    "inputs": [
+    type: "event",
+    name: "SeatEvicted",
+    inputs: [
       {
-        "name": "seatIndex",
-        "type": "uint8",
-        "indexed": true
+        name: "seatIndex",
+        type: "uint8",
+        indexed: true,
       },
       {
-        "name": "owner",
-        "type": "address",
-        "indexed": true
+        name: "owner",
+        type: "address",
+        indexed: true,
       },
-      {
-        "name": "amount",
-        "type": "uint256",
-        "indexed": false
-      },
-      {
-        "name": "stackAfter",
-        "type": "uint256",
-        "indexed": false
-      }
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "type": "event",
-    "name": "SeatUpdated",
-    "inputs": [
+    type: "event",
+    name: "SeatTopUp",
+    inputs: [
       {
-        "name": "seatIndex",
-        "type": "uint8",
-        "indexed": true
+        name: "seatIndex",
+        type: "uint8",
+        indexed: true,
       },
       {
-        "name": "owner",
-        "type": "address",
-        "indexed": false
+        name: "owner",
+        type: "address",
+        indexed: true,
       },
       {
-        "name": "operator",
-        "type": "address",
-        "indexed": false
+        name: "amount",
+        type: "uint256",
+        indexed: false,
       },
       {
-        "name": "stack",
-        "type": "uint256",
-        "indexed": false
-      }
+        name: "stackAfter",
+        type: "uint256",
+        indexed: false,
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "type": "event",
-    "name": "ShowdownTimedOut",
-    "inputs": [
+    type: "event",
+    name: "SeatUpdated",
+    inputs: [
       {
-        "name": "handId",
-        "type": "uint256",
-        "indexed": true
+        name: "seatIndex",
+        type: "uint8",
+        indexed: true,
       },
       {
-        "name": "activePlayers",
-        "type": "uint8",
-        "indexed": false
+        name: "owner",
+        type: "address",
+        indexed: false,
       },
       {
-        "name": "potAmount",
-        "type": "uint256",
-        "indexed": false
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "ShuffleIntegrityViolation",
-    "inputs": [
-      {
-        "name": "handId",
-        "type": "uint256",
-        "indexed": true
+        name: "operator",
+        type: "address",
+        indexed: false,
       },
       {
-        "name": "dealerSeed",
-        "type": "bytes32",
-        "indexed": false
-      }
+        name: "stack",
+        type: "uint256",
+        indexed: false,
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "type": "event",
-    "name": "ShuffleUnverified",
-    "inputs": [
+    type: "event",
+    name: "ShowdownTimedOut",
+    inputs: [
       {
-        "name": "handId",
-        "type": "uint256",
-        "indexed": true
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "ShuffleVerified",
-    "inputs": [
-      {
-        "name": "handId",
-        "type": "uint256",
-        "indexed": true
+        name: "handId",
+        type: "uint256",
+        indexed: true,
       },
       {
-        "name": "dealerSeed",
-        "type": "bytes32",
-        "indexed": false
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "TablePaused",
-    "inputs": [
-      {
-        "name": "by",
-        "type": "address",
-        "indexed": true
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "TableUnpaused",
-    "inputs": [
-      {
-        "name": "by",
-        "type": "address",
-        "indexed": true
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "TournamentWinner",
-    "inputs": [
-      {
-        "name": "winner",
-        "type": "address",
-        "indexed": true
+        name: "activePlayers",
+        type: "uint8",
+        indexed: false,
       },
       {
-        "name": "seatIndex",
-        "type": "uint8",
-        "indexed": true
+        name: "potAmount",
+        type: "uint256",
+        indexed: false,
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "ShuffleIntegrityViolation",
+    inputs: [
+      {
+        name: "handId",
+        type: "uint256",
+        indexed: true,
       },
       {
-        "name": "finalStack",
-        "type": "uint256",
-        "indexed": false
-      }
+        name: "dealerSeed",
+        type: "bytes32",
+        indexed: false,
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "type": "event",
-    "name": "VRFAdapterUpdated",
-    "inputs": [
+    type: "event",
+    name: "ShuffleUnverified",
+    inputs: [
       {
-        "name": "oldAdapter",
-        "type": "address",
-        "indexed": true
+        name: "handId",
+        type: "uint256",
+        indexed: true,
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "ShuffleVerified",
+    inputs: [
+      {
+        name: "handId",
+        type: "uint256",
+        indexed: true,
       },
       {
-        "name": "newAdapter",
-        "type": "address",
-        "indexed": true
-      }
+        name: "dealerSeed",
+        type: "bytes32",
+        indexed: false,
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "type": "event",
-    "name": "VRFReRequested",
-    "inputs": [
+    type: "event",
+    name: "TablePaused",
+    inputs: [
       {
-        "name": "handId",
-        "type": "uint256",
-        "indexed": true
+        name: "by",
+        type: "address",
+        indexed: true,
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "TableUnpaused",
+    inputs: [
+      {
+        name: "by",
+        type: "address",
+        indexed: true,
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "TournamentWinner",
+    inputs: [
+      {
+        name: "winner",
+        type: "address",
+        indexed: true,
       },
       {
-        "name": "street",
-        "type": "uint8",
-        "indexed": false
+        name: "seatIndex",
+        type: "uint8",
+        indexed: true,
       },
       {
-        "name": "oldRequestId",
-        "type": "uint256",
-        "indexed": false
+        name: "finalStack",
+        type: "uint256",
+        indexed: false,
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "VRFAdapterUpdated",
+    inputs: [
+      {
+        name: "oldAdapter",
+        type: "address",
+        indexed: true,
       },
       {
-        "name": "newRequestId",
-        "type": "uint256",
-        "indexed": false
-      }
+        name: "newAdapter",
+        type: "address",
+        indexed: true,
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "type": "event",
-    "name": "VRFRequested",
-    "inputs": [
+    type: "event",
+    name: "VRFReRequested",
+    inputs: [
       {
-        "name": "handId",
-        "type": "uint256",
-        "indexed": true
+        name: "handId",
+        type: "uint256",
+        indexed: true,
       },
       {
-        "name": "street",
-        "type": "uint8",
-        "indexed": false
+        name: "street",
+        type: "uint8",
+        indexed: false,
       },
       {
-        "name": "requestId",
-        "type": "uint256",
-        "indexed": false
-      }
+        name: "oldRequestId",
+        type: "uint256",
+        indexed: false,
+      },
+      {
+        name: "newRequestId",
+        type: "uint256",
+        indexed: false,
+      },
     ],
-    "anonymous": false
-  },
-  { "type": "error", "name": "OneActionPerBlock", "inputs": [] },
-  { "type": "error", "name": "InvalidGameState", "inputs": [] },
-  { "type": "error", "name": "CannotStartHand", "inputs": [] },
-  { "type": "error", "name": "VRFTimeoutNotReached", "inputs": [] },
-  { "type": "error", "name": "ShowdownRevealWindowOpen", "inputs": [] },
-  { "type": "error", "name": "CommitmentAlreadyExists", "inputs": [] },
-  { "type": "error", "name": "NotYourTurn", "inputs": [] },
-  {
-    "type": "function",
-    "name": "commitDecision",
-    "inputs": [
-      { "name": "seatIndex", "type": "uint8" },
-      { "name": "commitHash", "type": "bytes32" },
-      { "name": "reasoningHash", "type": "bytes32" }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    anonymous: false,
   },
   {
-    "type": "function",
-    "name": "getReasoningHash",
-    "inputs": [
-      { "name": "handId", "type": "uint256" },
-      { "name": "seatIndex", "type": "uint8" }
+    type: "event",
+    name: "VRFRequested",
+    inputs: [
+      {
+        name: "handId",
+        type: "uint256",
+        indexed: true,
+      },
+      {
+        name: "street",
+        type: "uint8",
+        indexed: false,
+      },
+      {
+        name: "requestId",
+        type: "uint256",
+        indexed: false,
+      },
     ],
-    "outputs": [{ "name": "", "type": "bytes32" }],
-    "stateMutability": "view"
+    anonymous: false,
+  },
+  { type: "error", name: "OneActionPerBlock", inputs: [] },
+  { type: "error", name: "InvalidGameState", inputs: [] },
+  { type: "error", name: "CannotStartHand", inputs: [] },
+  { type: "error", name: "VRFTimeoutNotReached", inputs: [] },
+  { type: "error", name: "ShowdownRevealWindowOpen", inputs: [] },
+  { type: "error", name: "CommitmentAlreadyExists", inputs: [] },
+  { type: "error", name: "NotYourTurn", inputs: [] },
+  {
+    type: "function",
+    name: "commitDecision",
+    inputs: [
+      { name: "seatIndex", type: "uint8" },
+      { name: "commitHash", type: "bytes32" },
+      { name: "reasoningHash", type: "bytes32" },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "type": "function",
-    "name": "revealDecision",
-    "inputs": [
-      { "name": "handId", "type": "uint256" },
-      { "name": "seatIndex", "type": "uint8" },
-      { "name": "action", "type": "string" },
-      { "name": "reasoning", "type": "string" },
-      { "name": "salt", "type": "bytes32" }
+    type: "function",
+    name: "getReasoningHash",
+    inputs: [
+      { name: "handId", type: "uint256" },
+      { name: "seatIndex", type: "uint8" },
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    outputs: [{ name: "", type: "bytes32" }],
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "decisionCommits",
-    "inputs": [
-      { "name": "handId", "type": "uint256" },
-      { "name": "seatIndex", "type": "uint8" }
+    type: "function",
+    name: "revealDecision",
+    inputs: [
+      { name: "handId", type: "uint256" },
+      { name: "seatIndex", type: "uint8" },
+      { name: "action", type: "string" },
+      { name: "reasoning", type: "string" },
+      { name: "salt", type: "bytes32" },
     ],
-    "outputs": [{ "name": "", "type": "bytes32" }],
-    "stateMutability": "view"
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "type": "event",
-    "name": "DecisionCommitted",
-    "inputs": [
-      { "name": "handId", "type": "uint256", "indexed": true },
-      { "name": "seatIndex", "type": "uint8", "indexed": true },
-      { "name": "commitHash", "type": "bytes32", "indexed": false },
-      { "name": "reasoningHash", "type": "bytes32", "indexed": false }
+    type: "function",
+    name: "decisionCommits",
+    inputs: [
+      { name: "handId", type: "uint256" },
+      { name: "seatIndex", type: "uint8" },
     ],
-    "anonymous": false
+    outputs: [{ name: "", type: "bytes32" }],
+    stateMutability: "view",
   },
   {
-    "type": "event",
-    "name": "DecisionRevealed",
-    "inputs": [
-      { "name": "handId", "type": "uint256", "indexed": true },
-      { "name": "seatIndex", "type": "uint8", "indexed": true },
-      { "name": "action", "type": "string", "indexed": false },
-      { "name": "reasoning", "type": "string", "indexed": false }
+    type: "event",
+    name: "DecisionCommitted",
+    inputs: [
+      { name: "handId", type: "uint256", indexed: true },
+      { name: "seatIndex", type: "uint8", indexed: true },
+      { name: "commitHash", type: "bytes32", indexed: false },
+      { name: "reasoningHash", type: "bytes32", indexed: false },
     ],
-    "anonymous": false
-  }
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "DecisionRevealed",
+    inputs: [
+      { name: "handId", type: "uint256", indexed: true },
+      { name: "seatIndex", type: "uint8", indexed: true },
+      { name: "action", type: "string", indexed: false },
+      { name: "reasoning", type: "string", indexed: false },
+    ],
+    anonymous: false,
+  },
 ] as const;

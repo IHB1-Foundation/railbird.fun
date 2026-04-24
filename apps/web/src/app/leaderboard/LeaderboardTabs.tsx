@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation";
 import { useRef } from "react";
 import type { LeaderboardMetric, LeaderboardPeriod } from "@/lib/types";
-import { Tooltip } from "@/components/Tooltip";
 import styles from "./leaderboard.module.css";
 
 const METRIC_GLOSSARY: Record<string, string> = {
@@ -68,6 +67,7 @@ export function LeaderboardTabs({
         >
           {validMetrics.map((m, i) => {
             const glossary = METRIC_GLOSSARY[m.toLowerCase()];
+            const label = m.toUpperCase();
             return (
               <a
                 key={m}
@@ -78,14 +78,23 @@ export function LeaderboardTabs({
                 className={`tab ${m === metric ? "active" : ""}`}
                 role="tab"
                 aria-selected={m === metric}
+                aria-label={glossary ? `${label}: ${glossary}` : label}
                 tabIndex={m === metric ? 0 : -1}
+                title={glossary}
                 onKeyDown={(e) => handleTabKeyDown(e, i, metricRefs)}
                 onClick={(e) => {
                   e.preventDefault();
                   router.push(`/leaderboard?metric=${m}&period=${period}`);
                 }}
               >
-                {glossary ? <Tooltip text={glossary}>{m.toUpperCase()}</Tooltip> : m.toUpperCase()}
+                <span className={styles.metricTabLabel}>
+                  <span>{label}</span>
+                  {glossary && (
+                    <span className={styles.metricTabHint} aria-hidden="true">
+                      ?
+                    </span>
+                  )}
+                </span>
               </a>
             );
           })}

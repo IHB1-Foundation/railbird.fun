@@ -10,15 +10,22 @@
     "test": "turbo run test",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
+    "verify:predeploy": "pnpm lint && pnpm typecheck && pnpm test && pnpm build && node scripts/openapi/validate.mjs",
+    "verify:postdeploy": "pnpm scenario:prod",
     "scenario:prod": "node scripts/scenario-prod-harness.mjs",
     "prepare": "husky"
   },
   "engines": {
     "node": ">=18"
   },
+  "packageManager": "pnpm@9.14.4",
   "pnpm": {
     "overrides": {
-      "next": "14.2.35"
+      "cosmjs-types": "0.10.1",
+      "ky": "1.14.3",
+      "next": "15.5.15",
+      "path-to-regexp": "0.1.13",
+      "qs": "6.14.2"
     }
   },
   "lint-staged": {
@@ -50,10 +57,11 @@
     "eslint": "^8.57.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.4.0",
-    "next": "14.2.35",
+    "next": "15.5.15",
     "prettier": "^3.8.2",
     "react": "18.2.0",
     "react-dom": "18.2.0",
+    "solhint": "^6.2.1",
     "turbo": "^2.9.6"
   }
 }

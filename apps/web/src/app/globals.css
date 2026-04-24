@@ -23,13 +23,14 @@
   --warning-soft: #fde68a;
   --success: #39d98a;
   --success-soft: #a9ffd0;
-  --muted: #9ba3c1;
+  --muted: #b6bed9;
   --heart: #ff5c8a;
   --diamond: #7da4ff;
   --spade: #151726;
   --club: #39d98a;
-  --text-mono: "JetBrains Mono", "SFMono-Regular", Menlo, Monaco, Consolas,
-    "Liberation Mono", "Courier New", monospace;
+  --text-mono:
+    "JetBrains Mono", "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
+    monospace;
   /* G-4: Display font — Space Grotesk for headers, stats, brand elements */
   /* PD-D5: var() with explicit fallback so chain doesn't break when next/font var is empty */
   --font-display: var(--font-space-grotesk, "Space Grotesk"), "Segoe UI", system-ui, sans-serif;
@@ -39,8 +40,8 @@
      Raised to #7c84a2 for improved small-text legibility. */
   /* D-R4.1: on .card backgrounds (rgba(16,18,33,0.82)), --muted #9ba3c1 gives ~4.8:1.
      Use --text-on-card for small text on card backgrounds to ensure AA compliance. */
-  --text-muted: #7c84a2;
-  --text-on-card: #a0a8c7; /* slightly lighter than --muted for card backgrounds */
+  --text-muted: #aeb7d2;
+  --text-on-card: #c1c9e2; /* slightly lighter than --muted for card backgrounds */
   --border-color: rgba(31, 41, 55, 0.9);
 
   /* Border-radius scale (D-5) */
@@ -139,9 +140,9 @@
   --shadow-table-felt: inset 0 2px 20px rgba(34, 197, 94, 0.06);
 
   /* PD-E3: Card padding tokens */
-  --card-padding-sm: var(--space-3);      /* 0.75rem */
-  --card-padding-md: var(--space-4);      /* 1rem */
-  --card-padding-lg: var(--space-6);      /* 1.5rem */
+  --card-padding-sm: var(--space-3); /* 0.75rem */
+  --card-padding-md: var(--space-4); /* 1rem */
+  --card-padding-lg: var(--space-6); /* 1.5rem */
 
   /* D-R9.2: Semantic seat color tokens — centralize hardcoded colors from SeatPanel.module.css */
   --seat-label-color: #c8ccb9;
@@ -261,9 +262,15 @@ body::after {
 }
 
 @keyframes ambient-glow-violet {
-  0%   { opacity: 1; }
-  50%  { opacity: 0.4; }
-  100% { opacity: 1; }
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+  100% {
+    opacity: 1;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -442,15 +449,27 @@ h5 {
 
 /* G-4: Display font applied to all headings for consistent visual hierarchy */
 /* PD-D6: h4/h5 also use display font to avoid sudden font switch mid-hierarchy */
-h1, h2, h3, h4, h5 {
+h1,
+h2,
+h3,
+h4,
+h5 {
   font-family: var(--font-display);
   font-weight: 700;
   letter-spacing: -0.02em;
 }
 
 /* PD-D2: more breathing room for large display text */
-h1, h2 { line-height: 1.1; padding-block: 0.04em; }
-h3, h4, h5 { line-height: 1.25; }
+h1,
+h2 {
+  line-height: 1.1;
+  padding-block: 0.04em;
+}
+h3,
+h4,
+h5 {
+  line-height: 1.25;
+}
 
 .content-shell {
   animation: fade-in 0.45s ease-out;
@@ -486,9 +505,15 @@ h3, h4, h5 { line-height: 1.25; }
   font-weight: 700;
   letter-spacing: 0.03em;
   color: #fff;
-  background: linear-gradient(135deg, var(--accent-gradient-start) 0%, var(--accent-gradient-end) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--accent-gradient-start) 0%,
+    var(--accent-gradient-end) 100%
+  );
   box-shadow: var(--shadow-btn-accent);
-  transition: transform 0.2s ease, filter 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    filter 0.2s ease;
 }
 
 .btn:hover {
@@ -561,7 +586,9 @@ h3, h4, h5 { line-height: 1.25; }
   color: var(--foreground);
   font-size: var(--text-sm);
   font-family: inherit;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .input:focus-visible,
@@ -849,10 +876,16 @@ h3, h4, h5 { line-height: 1.25; }
   font-size: 0.84rem;
   font-weight: 600;
   color: #fff;
-  background: linear-gradient(150deg, var(--accent-gradient-start) 0%, var(--accent-gradient-end) 100%);
+  background: linear-gradient(
+    150deg,
+    var(--accent-gradient-start) 0%,
+    var(--accent-gradient-end) 100%
+  );
   box-shadow: 0 8px 18px rgba(104, 79, 246, 0.35);
   cursor: pointer;
-  transition: filter 0.2s ease, transform 0.2s ease;
+  transition:
+    filter 0.2s ease,
+    transform 0.2s ease;
 }
 
 .wallet-button:hover:not(:disabled) {
@@ -1011,7 +1044,10 @@ h3, h4, h5 { line-height: 1.25; }
    3. Link: color shift (already on a)
 */
 .card-hover {
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
 }
 .card-hover:hover {
   border-color: var(--card-border-strong);
@@ -1068,7 +1104,9 @@ h3, h4, h5 { line-height: 1.25; }
 
 .showdown-winner {
   border-color: rgba(255, 213, 79, 0.85);
-  box-shadow: 0 0 0 2px rgba(255, 213, 79, 0.35), 0 0 20px rgba(255, 183, 50, 0.25);
+  box-shadow:
+    0 0 0 2px rgba(255, 213, 79, 0.35),
+    0 0 20px rgba(255, 183, 50, 0.25);
   animation: winner-pulse 1.6s ease-in-out infinite;
 }
 
@@ -1135,44 +1173,89 @@ h3, h4, h5 { line-height: 1.25; }
 }
 
 @keyframes card-flip {
-  0% { transform: perspective(400px) rotateY(90deg); opacity: 0; }
-  60% { transform: perspective(400px) rotateY(-10deg); opacity: 1; }
-  100% { transform: perspective(400px) rotateY(0deg); opacity: 1; }
+  0% {
+    transform: perspective(400px) rotateY(90deg);
+    opacity: 0;
+  }
+  60% {
+    transform: perspective(400px) rotateY(-10deg);
+    opacity: 1;
+  }
+  100% {
+    transform: perspective(400px) rotateY(0deg);
+    opacity: 1;
+  }
 }
 
 @keyframes winner-pulse {
-  0%, 100% { box-shadow: 0 0 0 2px rgba(255, 213, 79, 0.35), 0 0 20px rgba(255, 183, 50, 0.25); }
-  50% { box-shadow: 0 0 0 3px rgba(255, 213, 79, 0.55), 0 0 32px rgba(255, 183, 50, 0.4); }
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 2px rgba(255, 213, 79, 0.35),
+      0 0 20px rgba(255, 183, 50, 0.25);
+  }
+  50% {
+    box-shadow:
+      0 0 0 3px rgba(255, 213, 79, 0.55),
+      0 0 32px rgba(255, 183, 50, 0.4);
+  }
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes toast-in {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes toast-out {
-  from { opacity: 1; transform: translateY(0); }
-  to { opacity: 0; transform: translateY(12px); }
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(12px);
+  }
 }
 
 @keyframes skeleton-shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 @keyframes timer-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
 
 [data-winner="true"] {
   border-color: rgba(255, 213, 79, 0.85) !important;
-  box-shadow: 0 0 0 2px rgba(255, 213, 79, 0.35), 0 0 20px rgba(255, 183, 50, 0.25);
+  box-shadow:
+    0 0 0 2px rgba(255, 213, 79, 0.35),
+    0 0 20px rgba(255, 183, 50, 0.25);
   animation: winner-pulse 1.6s ease-in-out infinite;
 }
 
@@ -1190,21 +1273,44 @@ h3, h4, h5 { line-height: 1.25; }
   font-family: var(--text-mono);
 }
 
-.tier-common  { color: #9ba3c1; border: 1px solid rgba(155,163,193,0.3); }
-.tier-rare    { color: #22d3ee; border: 1px solid rgba(34,211,238,0.45); box-shadow: 0 0 8px rgba(34,211,238,0.2); }
-.tier-epic    { color: #a78bfa; border: 1px solid rgba(167,139,250,0.55); box-shadow: 0 0 10px rgba(167,139,250,0.3); }
-.tier-legendary { color: #facc15; border: 1px solid rgba(250,204,21,0.55); box-shadow: 0 0 12px rgba(250,204,21,0.35); }
-.tier-mythic  {
+.tier-common {
+  color: #9ba3c1;
+  border: 1px solid rgba(155, 163, 193, 0.3);
+}
+.tier-rare {
+  color: #22d3ee;
+  border: 1px solid rgba(34, 211, 238, 0.45);
+  box-shadow: 0 0 8px rgba(34, 211, 238, 0.2);
+}
+.tier-epic {
+  color: #a78bfa;
+  border: 1px solid rgba(167, 139, 250, 0.55);
+  box-shadow: 0 0 10px rgba(167, 139, 250, 0.3);
+}
+.tier-legendary {
   color: #facc15;
-  border: 1px solid rgba(250,204,21,0.7);
-  box-shadow: 0 0 16px rgba(250,204,21,0.5), 0 0 32px rgba(250,204,21,0.2);
+  border: 1px solid rgba(250, 204, 21, 0.55);
+  box-shadow: 0 0 12px rgba(250, 204, 21, 0.35);
+}
+.tier-mythic {
+  color: #facc15;
+  border: 1px solid rgba(250, 204, 21, 0.7);
+  box-shadow:
+    0 0 16px rgba(250, 204, 21, 0.5),
+    0 0 32px rgba(250, 204, 21, 0.2);
   animation: mythic-hue 4s linear infinite;
 }
 
 @keyframes mythic-hue {
-  0%   { filter: hue-rotate(0deg) brightness(1.1); }
-  50%  { filter: hue-rotate(30deg) brightness(1.2); }
-  100% { filter: hue-rotate(0deg) brightness(1.1); }
+  0% {
+    filter: hue-rotate(0deg) brightness(1.1);
+  }
+  50% {
+    filter: hue-rotate(30deg) brightness(1.2);
+  }
+  100% {
+    filter: hue-rotate(0deg) brightness(1.1);
+  }
 }
 
 /* Mythic card holographic sheen on tilt */
@@ -1216,14 +1322,23 @@ h3, h4, h5 { line-height: 1.25; }
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(105deg, transparent 40%, rgba(250,204,21,0.12) 50%, transparent 60%);
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(250, 204, 21, 0.12) 50%,
+    transparent 60%
+  );
   pointer-events: none;
   animation: holographic-shift 3s ease-in-out infinite;
 }
 
 @keyframes holographic-shift {
-  0%   { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
 }
 
 /* ── G-21: Button Physical Press Feedback ─────────────────────────────────── */
@@ -1231,58 +1346,134 @@ h3, h4, h5 { line-height: 1.25; }
 .btn:active,
 .btn-ghost:active {
   transform: translateY(1px) scale(0.98);
-  box-shadow: inset 0 2px 6px rgba(0,0,0,0.3), var(--shadow-sm);
+  box-shadow:
+    inset 0 2px 6px rgba(0, 0, 0, 0.3),
+    var(--shadow-sm);
   filter: brightness(0.95);
-  transition: transform 0.08s ease, box-shadow 0.08s ease, filter 0.08s ease;
+  transition:
+    transform 0.08s ease,
+    box-shadow 0.08s ease,
+    filter 0.08s ease;
 }
 
 /* ── G-26: Screen Shake Utilities ─────────────────────────────────────────── */
 
 @keyframes shake-sm {
-  0%, 100% { transform: translate(0, 0); }
-  10% { transform: translate(-2px, 1px); }
-  20% { transform: translate(2px, -1px); }
-  30% { transform: translate(-1px, 2px); }
-  40% { transform: translate(1px, -1px); }
-  50% { transform: translate(-2px, 1px); }
-  60% { transform: translate(2px, 0px); }
-  70% { transform: translate(-1px, -1px); }
-  80% { transform: translate(1px, 1px); }
-  90% { transform: translate(-1px, 0); }
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  10% {
+    transform: translate(-2px, 1px);
+  }
+  20% {
+    transform: translate(2px, -1px);
+  }
+  30% {
+    transform: translate(-1px, 2px);
+  }
+  40% {
+    transform: translate(1px, -1px);
+  }
+  50% {
+    transform: translate(-2px, 1px);
+  }
+  60% {
+    transform: translate(2px, 0px);
+  }
+  70% {
+    transform: translate(-1px, -1px);
+  }
+  80% {
+    transform: translate(1px, 1px);
+  }
+  90% {
+    transform: translate(-1px, 0);
+  }
 }
 
 @keyframes shake-md {
-  0%, 100% { transform: translate(0, 0); }
-  10% { transform: translate(-4px, 2px); }
-  20% { transform: translate(4px, -2px); }
-  30% { transform: translate(-3px, 4px); }
-  40% { transform: translate(3px, -2px); }
-  50% { transform: translate(-4px, 2px); }
-  60% { transform: translate(4px, 0px); }
-  70% { transform: translate(-2px, -2px); }
-  80% { transform: translate(2px, 2px); }
-  90% { transform: translate(-2px, 0); }
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  10% {
+    transform: translate(-4px, 2px);
+  }
+  20% {
+    transform: translate(4px, -2px);
+  }
+  30% {
+    transform: translate(-3px, 4px);
+  }
+  40% {
+    transform: translate(3px, -2px);
+  }
+  50% {
+    transform: translate(-4px, 2px);
+  }
+  60% {
+    transform: translate(4px, 0px);
+  }
+  70% {
+    transform: translate(-2px, -2px);
+  }
+  80% {
+    transform: translate(2px, 2px);
+  }
+  90% {
+    transform: translate(-2px, 0);
+  }
 }
 
 @keyframes shake-lg {
-  0%, 100% { transform: translate(0, 0) rotate(0deg); }
-  10% { transform: translate(-7px, 3px) rotate(-0.5deg); }
-  20% { transform: translate(7px, -3px) rotate(0.5deg); }
-  30% { transform: translate(-5px, 6px) rotate(-0.3deg); }
-  40% { transform: translate(5px, -4px) rotate(0.4deg); }
-  50% { transform: translate(-7px, 3px) rotate(-0.5deg); }
-  60% { transform: translate(7px, 0px) rotate(0.3deg); }
-  70% { transform: translate(-4px, -3px) rotate(-0.4deg); }
-  80% { transform: translate(4px, 4px) rotate(0.2deg); }
-  90% { transform: translate(-3px, 0) rotate(0); }
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  10% {
+    transform: translate(-7px, 3px) rotate(-0.5deg);
+  }
+  20% {
+    transform: translate(7px, -3px) rotate(0.5deg);
+  }
+  30% {
+    transform: translate(-5px, 6px) rotate(-0.3deg);
+  }
+  40% {
+    transform: translate(5px, -4px) rotate(0.4deg);
+  }
+  50% {
+    transform: translate(-7px, 3px) rotate(-0.5deg);
+  }
+  60% {
+    transform: translate(7px, 0px) rotate(0.3deg);
+  }
+  70% {
+    transform: translate(-4px, -3px) rotate(-0.4deg);
+  }
+  80% {
+    transform: translate(4px, 4px) rotate(0.2deg);
+  }
+  90% {
+    transform: translate(-3px, 0) rotate(0);
+  }
 }
 
-.shake-sm { animation: shake-sm 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both; }
-.shake-md { animation: shake-md 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both; }
-.shake-lg { animation: shake-lg 0.6s cubic-bezier(0.36, 0.07, 0.19, 0.97) both; }
+.shake-sm {
+  animation: shake-sm 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+.shake-md {
+  animation: shake-md 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+.shake-lg {
+  animation: shake-lg 0.6s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
 
 @media (prefers-reduced-motion: reduce) {
-  .shake-sm, .shake-md, .shake-lg {
+  .shake-sm,
+  .shake-md,
+  .shake-lg {
     animation: none;
   }
 }
@@ -1291,7 +1482,9 @@ h3, h4, h5 { line-height: 1.25; }
 
 @media (pointer: fine) {
   body {
-    cursor: url("/cursors/chip.svg") 12 12, auto;
+    cursor:
+      url("/cursors/chip.svg") 12 12,
+      auto;
   }
 
   a,
@@ -1304,7 +1497,9 @@ h3, h4, h5 { line-height: 1.25; }
   input[type="radio"],
   select,
   label[for] {
-    cursor: url("/cursors/card-peek.svg") 12 14, pointer;
+    cursor:
+      url("/cursors/card-peek.svg") 12 14,
+      pointer;
   }
 }
 

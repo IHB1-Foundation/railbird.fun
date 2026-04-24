@@ -2,597 +2,597 @@
 // Run: pnpm --filter @playerco/shared generate-abis
 export const PLAYER_VAULT_ABI = [
   {
-    "type": "constructor",
-    "inputs": [
+    type: "constructor",
+    inputs: [
       {
-        "name": "_owner",
-        "type": "address"
-      }
+        name: "_owner",
+        type: "address",
+      },
     ],
-    "stateMutability": "nonpayable"
+    stateMutability: "nonpayable",
   },
   {
-    "type": "receive",
-    "stateMutability": "payable"
+    type: "receive",
+    stateMutability: "payable",
   },
   {
-    "type": "function",
-    "name": "authorizeTable",
-    "inputs": [
+    type: "function",
+    name: "authorizeTable",
+    inputs: [
       {
-        "name": "table",
-        "type": "address"
-      }
+        name: "table",
+        type: "address",
+      },
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "type": "function",
-    "name": "authorizedTables",
-    "inputs": [
+    type: "function",
+    name: "authorizedTables",
+    inputs: [
       {
-        "name": "",
-        "type": "address"
-      }
+        name: "",
+        type: "address",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "bool"
-      }
+        name: "",
+        type: "bool",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "cumulativePnl",
-    "inputs": [],
-    "outputs": [
+    type: "function",
+    name: "cumulativePnl",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "int256"
-      }
+        name: "",
+        type: "int256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "deposit",
-    "inputs": [],
-    "outputs": [],
-    "stateMutability": "payable"
+    type: "function",
+    name: "deposit",
+    inputs: [],
+    outputs: [],
+    stateMutability: "payable",
   },
   {
-    "type": "function",
-    "name": "emitSnapshot",
-    "inputs": [],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    type: "function",
+    name: "emitSnapshot",
+    inputs: [],
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "type": "function",
-    "name": "fundBuyIn",
-    "inputs": [
+    type: "function",
+    name: "fundBuyIn",
+    inputs: [
       {
-        "name": "table",
-        "type": "address"
+        name: "table",
+        type: "address",
       },
       {
-        "name": "amount",
-        "type": "uint256"
-      }
+        name: "amount",
+        type: "uint256",
+      },
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "type": "function",
-    "name": "getAvailableBalance",
-    "inputs": [],
-    "outputs": [
+    type: "function",
+    name: "getAvailableBalance",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "uint256"
-      }
+        name: "",
+        type: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "getCumulativePnl",
-    "inputs": [],
-    "outputs": [
+    type: "function",
+    name: "getCumulativePnl",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "int256"
-      }
+        name: "",
+        type: "int256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "getExternalAssets",
-    "inputs": [],
-    "outputs": [
+    type: "function",
+    name: "getExternalAssets",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "uint256"
-      }
+        name: "",
+        type: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "getHandCount",
-    "inputs": [],
-    "outputs": [
+    type: "function",
+    name: "getHandCount",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "uint256"
-      }
+        name: "",
+        type: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "handCount",
-    "inputs": [],
-    "outputs": [
+    type: "function",
+    name: "handCount",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "uint256"
-      }
+        name: "",
+        type: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "initialize",
-    "inputs": [],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    type: "function",
+    name: "initialize",
+    inputs: [],
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "type": "function",
-    "name": "initialized",
-    "inputs": [],
-    "outputs": [
+    type: "function",
+    name: "initialized",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "bool"
-      }
+        name: "",
+        type: "bool",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "lastSnapshotHandId",
-    "inputs": [],
-    "outputs": [
+    type: "function",
+    name: "lastSnapshotHandId",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "uint256"
-      }
+        name: "",
+        type: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "onSettlement",
-    "inputs": [
+    type: "function",
+    name: "onSettlement",
+    inputs: [
       {
-        "name": "handId",
-        "type": "uint256"
+        name: "handId",
+        type: "uint256",
       },
       {
-        "name": "pnl",
-        "type": "int256"
-      }
+        name: "pnl",
+        type: "int256",
+      },
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "type": "function",
-    "name": "owner",
-    "inputs": [],
-    "outputs": [
+    type: "function",
+    name: "owner",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "address"
-      }
+        name: "",
+        type: "address",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "receiveSettlement",
-    "inputs": [
+    type: "function",
+    name: "receiveSettlement",
+    inputs: [
       {
-        "name": "handId",
-        "type": "uint256"
-      }
+        name: "handId",
+        type: "uint256",
+      },
     ],
-    "outputs": [],
-    "stateMutability": "payable"
+    outputs: [],
+    stateMutability: "payable",
   },
   {
-    "type": "function",
-    "name": "agentToken",
-    "inputs": [],
-    "outputs": [{ "name": "", "type": "address" }],
-    "stateMutability": "view"
+    type: "function",
+    name: "agentToken",
+    inputs: [],
+    outputs: [{ name: "", type: "address" }],
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "nadfunRouter",
-    "inputs": [],
-    "outputs": [{ "name": "", "type": "address" }],
-    "stateMutability": "view"
+    type: "function",
+    name: "dexRouter",
+    inputs: [],
+    outputs: [{ name: "", type: "address" }],
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "rebalanceMaxMonBps",
-    "inputs": [],
-    "outputs": [{ "name": "", "type": "uint256" }],
-    "stateMutability": "view"
+    type: "function",
+    name: "rebalanceMaxMonBps",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "rebalanceMaxTokenBps",
-    "inputs": [],
-    "outputs": [{ "name": "", "type": "uint256" }],
-    "stateMutability": "view"
+    type: "function",
+    name: "rebalanceMaxTokenBps",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "lastRebalanceHandId",
-    "inputs": [],
-    "outputs": [{ "name": "", "type": "uint256" }],
-    "stateMutability": "view"
+    type: "function",
+    name: "lastRebalanceHandId",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "setRebalanceConfig",
-    "inputs": [
-      { "name": "_agentToken", "type": "address" },
-      { "name": "_router", "type": "address" },
-      { "name": "_maxMonBps", "type": "uint256" },
-      { "name": "_maxTokenBps", "type": "uint256" }
+    type: "function",
+    name: "setRebalanceConfig",
+    inputs: [
+      { name: "_agentToken", type: "address" },
+      { name: "_router", type: "address" },
+      { name: "_maxMonBps", type: "uint256" },
+      { name: "_maxTokenBps", type: "uint256" },
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "type": "function",
-    "name": "rebalanceBuy",
-    "inputs": [
-      { "name": "handId", "type": "uint256" },
-      { "name": "monIn", "type": "uint256" },
-      { "name": "minTokenOut", "type": "uint256" }
+    type: "function",
+    name: "rebalanceBuy",
+    inputs: [
+      { name: "handId", type: "uint256" },
+      { name: "monIn", type: "uint256" },
+      { name: "minTokenOut", type: "uint256" },
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "type": "function",
-    "name": "rebalanceSell",
-    "inputs": [
-      { "name": "handId", "type": "uint256" },
-      { "name": "tokenIn", "type": "uint256" },
-      { "name": "minMonOut", "type": "uint256" }
+    type: "function",
+    name: "rebalanceSell",
+    inputs: [
+      { name: "handId", type: "uint256" },
+      { name: "tokenIn", type: "uint256" },
+      { name: "minMonOut", type: "uint256" },
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "type": "function",
-    "name": "releaseEscrow",
-    "inputs": [
+    type: "function",
+    name: "releaseEscrow",
+    inputs: [
       {
-        "name": "table",
-        "type": "address"
+        name: "table",
+        type: "address",
       },
       {
-        "name": "amount",
-        "type": "uint256"
-      }
+        name: "amount",
+        type: "uint256",
+      },
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "type": "function",
-    "name": "revokeTable",
-    "inputs": [
+    type: "function",
+    name: "revokeTable",
+    inputs: [
       {
-        "name": "table",
-        "type": "address"
-      }
+        name: "table",
+        type: "address",
+      },
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "type": "function",
-    "name": "tableEscrow",
-    "inputs": [
+    type: "function",
+    name: "tableEscrow",
+    inputs: [
       {
-        "name": "",
-        "type": "address"
-      }
+        name: "",
+        type: "address",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint256"
-      }
+        name: "",
+        type: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "totalEscrow",
-    "inputs": [],
-    "outputs": [
+    type: "function",
+    name: "totalEscrow",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "uint256"
-      }
+        name: "",
+        type: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "type": "function",
-    "name": "transferOwnership",
-    "inputs": [
+    type: "function",
+    name: "transferOwnership",
+    inputs: [
       {
-        "name": "newOwner",
-        "type": "address"
-      }
+        name: "newOwner",
+        type: "address",
+      },
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "type": "function",
-    "name": "withdraw",
-    "inputs": [
+    type: "function",
+    name: "withdraw",
+    inputs: [
       {
-        "name": "amount",
-        "type": "uint256"
+        name: "amount",
+        type: "uint256",
       },
       {
-        "name": "recipient",
-        "type": "address"
-      }
+        name: "recipient",
+        type: "address",
+      },
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "type": "event",
-    "name": "BuyInFunded",
-    "inputs": [
+    type: "event",
+    name: "BuyInFunded",
+    inputs: [
       {
-        "name": "table",
-        "type": "address",
-        "indexed": true
+        name: "table",
+        type: "address",
+        indexed: true,
       },
       {
-        "name": "amount",
-        "type": "uint256",
-        "indexed": false
-      }
+        name: "amount",
+        type: "uint256",
+        indexed: false,
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "type": "event",
-    "name": "Deposited",
-    "inputs": [
+    type: "event",
+    name: "Deposited",
+    inputs: [
       {
-        "name": "from",
-        "type": "address",
-        "indexed": true
+        name: "from",
+        type: "address",
+        indexed: true,
       },
       {
-        "name": "amount",
-        "type": "uint256",
-        "indexed": false
-      }
+        name: "amount",
+        type: "uint256",
+        indexed: false,
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "type": "event",
-    "name": "EscrowReleased",
-    "inputs": [
+    type: "event",
+    name: "EscrowReleased",
+    inputs: [
       {
-        "name": "table",
-        "type": "address",
-        "indexed": true
+        name: "table",
+        type: "address",
+        indexed: true,
       },
       {
-        "name": "amount",
-        "type": "uint256",
-        "indexed": false
-      }
+        name: "amount",
+        type: "uint256",
+        indexed: false,
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "type": "event",
-    "name": "RebalanceBuy",
-    "inputs": [
+    type: "event",
+    name: "RebalanceBuy",
+    inputs: [
       {
-        "name": "handId",
-        "type": "uint256",
-        "indexed": true
+        name: "handId",
+        type: "uint256",
+        indexed: true,
       },
       {
-        "name": "monIn",
-        "type": "uint256",
-        "indexed": false
+        name: "monIn",
+        type: "uint256",
+        indexed: false,
       },
       {
-        "name": "tokenOut",
-        "type": "uint256",
-        "indexed": false
+        name: "tokenOut",
+        type: "uint256",
+        indexed: false,
       },
       {
-        "name": "navBefore",
-        "type": "uint256",
-        "indexed": false
+        name: "navBefore",
+        type: "uint256",
+        indexed: false,
       },
       {
-        "name": "navAfter",
-        "type": "uint256",
-        "indexed": false
-      }
+        name: "navAfter",
+        type: "uint256",
+        indexed: false,
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "type": "event",
-    "name": "RebalanceSell",
-    "inputs": [
+    type: "event",
+    name: "RebalanceSell",
+    inputs: [
       {
-        "name": "handId",
-        "type": "uint256",
-        "indexed": true
+        name: "handId",
+        type: "uint256",
+        indexed: true,
       },
       {
-        "name": "tokenIn",
-        "type": "uint256",
-        "indexed": false
+        name: "tokenIn",
+        type: "uint256",
+        indexed: false,
       },
       {
-        "name": "monOut",
-        "type": "uint256",
-        "indexed": false
+        name: "monOut",
+        type: "uint256",
+        indexed: false,
       },
       {
-        "name": "navBefore",
-        "type": "uint256",
-        "indexed": false
+        name: "navBefore",
+        type: "uint256",
+        indexed: false,
       },
       {
-        "name": "navAfter",
-        "type": "uint256",
-        "indexed": false
-      }
+        name: "navAfter",
+        type: "uint256",
+        indexed: false,
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "type": "event",
-    "name": "SettlementLoss",
-    "inputs": [
+    type: "event",
+    name: "SettlementLoss",
+    inputs: [
       {
-        "name": "table",
-        "type": "address",
-        "indexed": true
+        name: "table",
+        type: "address",
+        indexed: true,
       },
       {
-        "name": "handId",
-        "type": "uint256",
-        "indexed": false
+        name: "handId",
+        type: "uint256",
+        indexed: false,
       },
       {
-        "name": "lossAmount",
-        "type": "uint256",
-        "indexed": false
-      }
+        name: "lossAmount",
+        type: "uint256",
+        indexed: false,
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "type": "event",
-    "name": "SettlementReceived",
-    "inputs": [
+    type: "event",
+    name: "SettlementReceived",
+    inputs: [
       {
-        "name": "table",
-        "type": "address",
-        "indexed": true
+        name: "table",
+        type: "address",
+        indexed: true,
       },
       {
-        "name": "handId",
-        "type": "uint256",
-        "indexed": false
+        name: "handId",
+        type: "uint256",
+        indexed: false,
       },
       {
-        "name": "amount",
-        "type": "uint256",
-        "indexed": false
-      }
+        name: "amount",
+        type: "uint256",
+        indexed: false,
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "type": "event",
-    "name": "VaultInitialized",
-    "inputs": [
+    type: "event",
+    name: "VaultInitialized",
+    inputs: [
       {
-        "name": "owner",
-        "type": "address",
-        "indexed": true
+        name: "owner",
+        type: "address",
+        indexed: true,
       },
       {
-        "name": "initialAssets",
-        "type": "uint256",
-        "indexed": false
-      }
+        name: "initialAssets",
+        type: "uint256",
+        indexed: false,
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "type": "event",
-    "name": "VaultSnapshot",
-    "inputs": [
+    type: "event",
+    name: "VaultSnapshot",
+    inputs: [
       {
-        "name": "handId",
-        "type": "uint256",
-        "indexed": true
+        name: "handId",
+        type: "uint256",
+        indexed: true,
       },
       {
-        "name": "externalAssets",
-        "type": "uint256",
-        "indexed": false
+        name: "externalAssets",
+        type: "uint256",
+        indexed: false,
       },
       {
-        "name": "cumulativePnl",
-        "type": "int256",
-        "indexed": false
-      }
+        name: "cumulativePnl",
+        type: "int256",
+        indexed: false,
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "type": "event",
-    "name": "RouterUpdated",
-    "inputs": [
-      { "name": "oldRouter", "type": "address", "indexed": true },
-      { "name": "newRouter", "type": "address", "indexed": true }
+    type: "event",
+    name: "RouterUpdated",
+    inputs: [
+      { name: "oldRouter", type: "address", indexed: true },
+      { name: "newRouter", type: "address", indexed: true },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "type": "event",
-    "name": "Withdrawn",
-    "inputs": [
+    type: "event",
+    name: "Withdrawn",
+    inputs: [
       {
-        "name": "to",
-        "type": "address",
-        "indexed": true
+        name: "to",
+        type: "address",
+        indexed: true,
       },
       {
-        "name": "amount",
-        "type": "uint256",
-        "indexed": false
-      }
+        name: "amount",
+        type: "uint256",
+        indexed: false,
+      },
     ],
-    "anonymous": false
-  }
+    anonymous: false,
+  },
 ] as const;

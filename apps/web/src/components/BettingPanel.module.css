@@ -144,6 +144,11 @@
     0 22px 38px rgba(2, 4, 12, 0.5);
 }
 
+.betAgentCard:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 @keyframes market-open-pulse {
   0%   { box-shadow: 0 0 0 0 rgba(57, 217, 138, 0.5); }
   50%  { box-shadow: 0 0 0 8px rgba(57, 217, 138, 0.08); }
@@ -216,9 +221,11 @@
 
 .betProbFill {
   height: 100%;
+  width: 100%;
   border-radius: 6px;
   background: linear-gradient(90deg, rgba(74, 222, 128, 0.35), rgba(74, 222, 128, 0.55));
-  transition: width 0.4s ease;
+  transform-origin: left;
+  transition: transform 0.4s ease;
 }
 
 .betProbLabel {
@@ -429,16 +436,17 @@
     justify-content: space-between;
     gap: 0.5rem;
     padding: 0.55rem 0.85rem;
-    background: rgba(10, 12, 25, 0.9);
+    background: rgba(10, 12, 25, 0.92);
     border: 1px solid rgba(145, 153, 196, 0.25);
     border-radius: 10px;
     font-size: 0.82rem;
     margin-bottom: 0.75rem;
     position: sticky;
-    top: 64px;
-    z-index: 20;
+    top: 80px; /* accounts for variable topbar height */
+    z-index: var(--z-sticky);
     backdrop-filter: blur(8px);
     cursor: pointer;
+    will-change: transform;
   }
 
   .mobileBankrollSummary .mobileBankrollChips {

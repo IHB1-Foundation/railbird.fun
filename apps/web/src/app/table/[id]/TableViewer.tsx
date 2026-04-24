@@ -1,5 +1,6 @@
 "use client";
 
+import { ENABLE_AUTOSIGN } from "@/lib/featureFlags";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { isAddress, type Address } from "viem";
 import { useAuth } from "@/lib/auth";
@@ -34,6 +35,7 @@ import { Breadcrumb } from "@/components/Breadcrumb";
 import { ShareButton } from "@/components/ShareButton";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import styles from "./TableViewer.module.css";
+import { useAutoSignSession } from "@/lib/wallet/useAutoSignSession";
 
 const TABLE_MAX_SEATS = Number(process.env.NEXT_PUBLIC_TABLE_MAX_SEATS || "9");
 
@@ -71,6 +73,9 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
     refreshTable,
     commentaries,
   } = useTableState(tableId, initialData);
+
+  const autoSign = useAutoSignSession();
+
   // Auto-expand commentary on first visit so users discover the AI transparency feature
   const [commentaryOpen, setCommentaryOpen] = useState(() => {
     if (typeof window === "undefined") return true;
@@ -127,11 +132,10 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
     getHoleCards,
   );
 
-  // Stringify seats for stable memo key
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const seatsKey = useMemo(() => JSON.stringify(table.seats), [JSON.stringify(table.seats)]);
+  // Stable memo key for seats — stringify once, use as dep
+  const seatsJson = JSON.stringify(table.seats);
   const normalizedSeats = useMemo(() => {
-    const parsed = JSON.parse(seatsKey) as typeof table.seats;
+    const parsed = JSON.parse(seatsJson) as typeof table.seats;
     const byIndex = new Map(parsed.map((seat) => [seat.seatIndex, seat]));
     return Array.from({ length: maxSeats }, (_, seatIndex) => {
       return (
@@ -147,7 +151,7 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
       );
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [maxSeats, seatsKey]);
+  }, [maxSeats, seatsJson]);
 
   const seatByIndex = useMemo(
     () => new Map(normalizedSeats.map((seat) => [seat.seatIndex, seat])),
@@ -329,7 +333,7 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
       const { registerTxHash } = await registerSeat({
         tableAddress: table.contractAddress as Address,
         seatIndex: joinSeatIndex,
-        buyInKaia: joinBuyIn,
+        buyInAmount: joinBuyIn,
         operator,
       });
       setJoinStatus(`Seat joined. tx=${registerTxHash}`);
@@ -343,6 +347,48 @@ export function TableViewer({ initialData, tableId }: TableViewerProps) {
 
   return (
     <div>
+      {/* Auto-sign session banner (Initia only) */}
+      {ENABLE_AUTOSIGN && (
+        <div
+          role="status"
+          className={cn(
+            styles.autoSignBanner,
+            autoSign.isActive ? styles.autoSignActive : styles.autoSignInactive,
+          )}
+        >
+          {autoSign.isActive ? (
+            <>
+              <span>⚡ Auto-sign: ON</span>
+              {autoSign.secondsRemaining !== null && (
+                <span className={styles.autoSignTimer}>
+                  {Math.floor(autoSign.secondsRemaining / 60)}:
+                  {String(autoSign.secondsRemaining % 60).padStart(2, "0")}
+                </span>
+              )}
+              <button
+                className={styles.autoSignToggleBtn}
+                onClick={() => void autoSign.revoke()}
+                disabled={autoSign.isLoading}
+              >
+                Revoke
+              </button>
+            </>
+          ) : (
+            <>
+              <span>Auto-sign: OFF — poker actions require wallet approval</span>
+              <button
+                className={styles.autoSignToggleBtn}
+                onClick={() => void autoSign.activate()}
+                disabled={autoSign.isLoading}
+              >
+                {autoSign.isLoading ? "Activating…" : "Enable Auto-sign"}
+              </button>
+            </>
+          )}
+          {autoSign.error && <span className={styles.autoSignError}>{autoSign.error}</span>}
+        </div>
+      )}
+
       {/* Refresh error banner — sticky below topbar */}
       {refreshError && (
         <div role="alert" className={styles.refreshErrorBanner}>

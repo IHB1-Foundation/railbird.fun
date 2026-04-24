@@ -25,20 +25,20 @@ export type SoundName =
   | "ui-click";
 
 const SOUND_FILES: Record<SoundName, string> = {
-  "chip-place":   "/sounds/chip-place.mp3",
-  "chip-stack":   "/sounds/chip-stack.mp3",
-  "card-flip":    "/sounds/card-flip.mp3",
-  "card-deal":    "/sounds/card-deal.mp3",
-  "fold":         "/sounds/fold.mp3",
-  "raise":        "/sounds/raise.mp3",
-  "check":        "/sounds/check.mp3",
-  "win-small":    "/sounds/win-small.mp3",
-  "win-big":      "/sounds/win-big.mp3",
-  "jackpot":      "/sounds/jackpot.mp3",
-  "lose":         "/sounds/lose.mp3",
-  "bell":         "/sounds/bell.mp3",
-  "notification": "/sounds/notification.mp3",
-  "ui-click":     "/sounds/ui-click.mp3",
+  "chip-place": "/sounds/chip-place.mp3",
+  "chip-stack": "/sounds/chip-stack.mp3",
+  "card-flip": "/sounds/card-flip.mp3",
+  "card-deal": "/sounds/card-deal.mp3",
+  fold: "/sounds/fold.mp3",
+  raise: "/sounds/raise.mp3",
+  check: "/sounds/check.mp3",
+  "win-small": "/sounds/win-small.mp3",
+  "win-big": "/sounds/win-big.mp3",
+  jackpot: "/sounds/jackpot.mp3",
+  lose: "/sounds/lose.mp3",
+  bell: "/sounds/bell.mp3",
+  notification: "/sounds/notification.mp3",
+  "ui-click": "/sounds/ui-click.mp3",
 };
 
 const STORAGE_KEY = "railbird:sound-enabled";
@@ -102,8 +102,6 @@ export function useSound(name: SoundName, volume = 0.6) {
  * randomly (avoids repetitive sound).
  */
 export function useSoundMulti(names: SoundName[], volume = 0.6) {
-  const { play: playSingle } = useSound(names[0], volume);
-
   const play = useCallback(() => {
     if (!isSoundEnabled()) return;
     const name = names[Math.floor(Math.random() * names.length)];

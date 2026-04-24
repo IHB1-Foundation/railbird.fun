@@ -460,15 +460,14 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
                 fontWeight: 700,
                 letterSpacing: "0.04em",
                 textTransform: "uppercase",
-                color: "#86efac",
+                color: "var(--chip-color, #86efac)",
                 background: "rgba(134, 239, 172, 0.12)",
                 border: "1px solid rgba(134, 239, 172, 0.35)",
                 borderRadius: "999px",
                 padding: "0.15rem 0.5rem",
               }}
-              title="No real funds — this is a practice betting board using virtual chips"
             >
-              Practice Mode
+              Virtual Chips
             </span>
           </div>
           <p className={styles.betSubtitle}>
@@ -557,7 +556,7 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
       )}
 
       <div className={styles.betLayout}>
-        <div className={styles.betAgentGrid}>
+        <div className={styles.betAgentGrid} role="radiogroup" aria-label="Select agent to bet on">
           {market.map((entry) => (
             <article
               key={entry.seatIndex}
@@ -596,7 +595,7 @@ export function BettingPanel({ initialTable }: BettingPanelProps) {
               <div className={styles.betProbBar}>
                 <div
                   className={styles.betProbFill}
-                  style={{ width: `${Math.round(entry.winProb * 100)}%` }}
+                  style={{ transform: `scaleX(${entry.winProb})` }}
                 />
                 <span className={styles.betProbLabel}>
                   {toImpliedPercent(entry.winProb)} win est.

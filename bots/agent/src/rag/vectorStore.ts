@@ -2,7 +2,7 @@
 // Stores up to MAX_CAPACITY hand vectors and supports cosine similarity search.
 
 import { readFile, writeFile, mkdir } from "node:fs/promises";
-import { join, dirname } from "node:path";
+import { dirname } from "node:path";
 import { createLogger } from "@playerco/shared";
 import { cosineSimilarity } from "./embedder.js";
 import type { HandVector, HandVectorSerialized } from "./types.js";
@@ -26,10 +26,16 @@ export class VectorStore {
       const raw = await readFile(this.persistPath, "utf-8");
       const serialized = JSON.parse(raw) as HandVectorSerialized[];
       this.vectors = serialized.map(deserialize);
-      logger.info({ count: this.vectors.length, path: this.persistPath }, "VectorStore loaded from disk");
+      logger.info(
+        { count: this.vectors.length, path: this.persistPath },
+        "VectorStore loaded from disk",
+      );
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
-        logger.warn({ err: err instanceof Error ? err.message : String(err) }, "VectorStore load failed — starting empty");
+        logger.warn(
+          { err: err instanceof Error ? err.message : String(err) },
+          "VectorStore load failed — starting empty",
+        );
       }
     }
   }
@@ -71,7 +77,10 @@ export class VectorStore {
       await writeFile(this.persistPath, JSON.stringify(serialized, null, 2), "utf-8");
       logger.debug({ count: serialized.length, path: this.persistPath }, "VectorStore persisted");
     } catch (err) {
-      logger.warn({ err: err instanceof Error ? err.message : String(err) }, "VectorStore persist failed");
+      logger.warn(
+        { err: err instanceof Error ? err.message : String(err) },
+        "VectorStore persist failed",
+      );
     }
   }
 

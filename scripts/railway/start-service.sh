@@ -8,6 +8,7 @@ resolve_role_from_service_name() {
     ownerview) echo "ownerview" ;;
     indexer) echo "indexer" ;;
     keeper) echo "keeper" ;;
+    fleet) echo "fleet" ;;
     vrf-operator|vrf_operator|vrfoperator) echo "vrf-operator" ;;
     agent-[1-9]|agent[1-9])
       echo "agent"
@@ -72,6 +73,9 @@ case "$ROLE" in
   keeper)
     exec bash scripts/railway/start-keeper.sh
     ;;
+  fleet)
+    exec bash scripts/railway/start-fleet.sh
+    ;;
   vrf-operator)
     exec bash scripts/railway/start-vrf-operator.sh
     ;;
@@ -83,7 +87,7 @@ case "$ROLE" in
     ;;
   *)
     echo "[railway] invalid RAILWAY_SERVICE_ROLE: '$ROLE'" >&2
-    echo "[railway] expected one of: ownerview, indexer, keeper, vrf-operator, agent, agents-pack" >&2
+    echo "[railway] expected one of: ownerview, indexer, keeper, fleet, vrf-operator, agent, agents-pack" >&2
     exit 1
     ;;
 esac

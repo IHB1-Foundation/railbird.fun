@@ -3,7 +3,6 @@ pragma solidity ^0.8.24;
 
 import "./PokerTableBase.sol";
 import "../HandEvaluator.sol";
-import "../ShuffleVerifier.sol";
 
 /**
  * @title SettlementEngine
@@ -12,120 +11,24 @@ import "../ShuffleVerifier.sol";
  * @dev Abstract — inherited by PokerTable.
  */
 abstract contract SettlementEngine is PokerTableBase {
-
-    // ============ AI Decision Transparency ============
-
-    /**
-     * @notice AI agent commits their decision hash before acting.
-     *         Allows post-hand verification that the agent acted as committed.
-     * @param seatIndex   Seat the agent controls.
-     * @param commitHash  keccak256(abi.encode(handId, seatIndex, action, reasoning, salt))
-     * @param reasoningHash Optional hash of the full reasoning JSON (0 = not provided).
-     */
-    function commitDecision(uint8 seatIndex, bytes32 commitHash, bytes32 reasoningHash) external {
-        require(seatIndex < numSeats, "S1");
-        require(
-            msg.sender == seats[seatIndex].operator || msg.sender == seats[seatIndex].owner,
-            "Not operator"
-        );
-        require(commitHash != bytes32(0), "Empty commitment");
-        uint256 handId = currentHandId;
-        decisionCommits[handId][seatIndex] = commitHash;
-        if (reasoningHash != bytes32(0)) {
-            decisionReasoningHashes[handId][seatIndex] = reasoningHash;
-        }
-        emit DecisionCommitted(handId, seatIndex, commitHash, reasoningHash);
-    }
-
-    /**
-     * @notice Reveal decision after hand is settled for transparency verification.
-     */
-    function revealDecision(
-        uint256 handId,
-        uint8 seatIndex,
-        string calldata action,
-        string calldata reasoning,
-        bytes32 salt
-    ) external {
-        require(handSettledFlag[handId], "Hand not settled");
-        require(seatIndex < numSeats, "S1");
-        bytes32 stored = decisionCommits[handId][seatIndex];
-        require(stored != bytes32(0), "No commitment found");
-        bytes32 expected = keccak256(abi.encode(handId, seatIndex, action, reasoning, salt));
-        require(expected == stored, "Commitment mismatch");
-        emit DecisionRevealed(handId, seatIndex, action, reasoning);
-    }
-
-    /// @notice Returns the stored reasoning hash for a given hand/seat.
-    function getReasoningHash(uint256 handId, uint8 seatIndex) external view returns (bytes32) {
-        return decisionReasoningHashes[handId][seatIndex];
+    struct ShowdownState {
+        uint256[MAX_SEATS] scoresBySeat;
+        bool[MAX_SEATS] revealedBySeat;
+        uint8[MAX_SEATS] revealedSeats;
+        uint8 revealedCount;
     }
 
     // ============ Dealer Seed Commit/Reveal ============
 
-    /**
-     * @notice Dealer reveals their shuffle seed, allowing anyone to verify the shuffle.
-     *         Must be called before settlement to avoid ShuffleUnverified.
-     */
-    function revealDealerSeed(uint256 handId, bytes32 seed) external onlyDealer {
-        require(dealerSeedCommitments[handId] != bytes32(0), "No commitment");
-        require(
-            keccak256(abi.encodePacked(seed)) == dealerSeedCommitments[handId],
-            "Seed mismatch"
-        );
-        dealerSeedRevealed[handId] = true;
-        dealerSeedReveals[handId] = seed;
-        emit DealerSeedRevealed(handId, seed);
-    }
-
-    /**
-     * @notice Verify the shuffle at showdown using the dealer seed and VRF randomness.
-     *         Emits ShuffleVerified or ShuffleIntegrityViolation.
-     */
-    function verifyShuffleAtShowdown(
-        uint256 handId,
-        uint8 seatCount,
-        SeatReveal[] calldata reveals,
-        uint256 vrfRandomness
-    ) external {
-        require(dealerSeedReveals[handId] != bytes32(0), "Seed not revealed");
-        bytes32 seed = dealerSeedReveals[handId];
-
-        bool verified = ShuffleVerifier.verifyShuffleAndHoleCards(
-            vrfRandomness,
-            seed,
-            seatCount,
-            handId,
-            reveals
-        );
-
-        if (verified) {
-            emit ShuffleVerified(handId, seed);
-        } else {
-            emit ShuffleIntegrityViolation(handId, seed);
-        }
-    }
-
-    /**
-     * @notice Dealer optionally commits a seed hash before a hand starts.
-     *         If committed but not revealed before settlement, the table is auto-paused
-     *         and `ShuffleUnverified` is emitted as a hard-enforcement signal.
-     */
     function submitDealerSeedCommit(uint256 handId, bytes32 commitment) external onlyDealer {
-        require(handId == currentHandId, "H1");
-        require(commitment != bytes32(0), "H3");
+        if (handId != currentHandId) revert InvalidParam();
+        if (commitment == bytes32(0)) revert InvalidParam();
+        if (dealerSeedCommitments[handId] != bytes32(0)) revert CommitmentAlreadyExists();
         dealerSeedCommitments[handId] = commitment;
         emit DealerSeedCommitted(handId, commitment);
     }
 
     function _postSettlementCleanup(uint256 handId, uint8 winner, uint256 potAmount) internal {
-        // Shuffle verification enforcement: if the dealer committed a seed but never
-        // revealed it, emit a warning event and pause the table.
-        if (dealerSeedCommitments[handId] != bytes32(0) && !dealerSeedRevealed[handId]) {
-            emit ShuffleUnverified(handId);
-            paused = true;
-        }
-
         emit HandSettled(handId, winner, potAmount);
         handWinner[handId] = winner;
         handSettledFlag[handId] = true;
@@ -134,6 +37,7 @@ abstract contract SettlementEngine is PokerTableBase {
         _advanceButton();
         currentHand.pot = 0;
         currentHand.sidePotCount = 0;
+
         for (uint8 i = 0; i < numSeats; i++) {
             seats[i].currentBet = 0;
             seats[i].isActive = false;
@@ -150,15 +54,14 @@ abstract contract SettlementEngine is PokerTableBase {
         uint8 seatIndex,
         bytes32 commitment
     ) external onlyDealer {
-        require(seatIndex < numSeats, "S1");
-        require(handId == currentHandId, "H1");
-        require(
-            gameState != GameState.WAITING_FOR_SEATS &&
-            gameState != GameState.SETTLED &&
-            gameState != GameState.TOURNAMENT_OVER,
-            "H2"
-        );
-        require(commitment != bytes32(0), "H3");
+        if (seatIndex >= numSeats) revert SeatError();
+        if (handId != currentHandId) revert InvalidParam();
+        if (
+            gameState == GameState.WAITING_FOR_SEATS ||
+            gameState == GameState.SETTLED ||
+            gameState == GameState.TOURNAMENT_OVER
+        ) revert InvalidState();
+        if (commitment == bytes32(0)) revert InvalidParam();
         if (holeCommits[handId][seatIndex] != bytes32(0)) revert CommitmentAlreadyExists();
 
         holeCommits[handId][seatIndex] = commitment;
@@ -172,26 +75,23 @@ abstract contract SettlementEngine is PokerTableBase {
         uint8 card2,
         bytes32 salt
     ) external {
-        require(seatIndex < numSeats, "S1");
-        require(handId > 0 && handId <= currentHandId, "H4");
-        require(card1 < DECK_SIZE && card2 < DECK_SIZE, "C1");
-        require(card1 != card2, "C2");
+        if (seatIndex >= numSeats) revert SeatError();
+        if (handId == 0 || handId > currentHandId) revert InvalidParam();
+        if (card1 >= DECK_SIZE || card2 >= DECK_SIZE) revert InvalidParam();
+        if (card1 == card2) revert InvalidParam();
 
         bytes32 commitment = holeCommits[handId][seatIndex];
-        require(commitment != bytes32(0), "C3");
-        require(!isHoleCardsRevealed[handId][seatIndex], "C4");
+        if (commitment == bytes32(0)) revert InvalidParam();
+        if (isHoleCardsRevealed[handId][seatIndex]) revert CommitmentAlreadyExists();
 
         if (handId == currentHandId) {
-            require(
-                gameState == GameState.SHOWDOWN || gameState == GameState.SETTLED,
-                "SD"
-            );
+            if (gameState != GameState.SHOWDOWN && gameState != GameState.SETTLED) revert InvalidState();
         }
 
         bytes32 computedCommitment = keccak256(
             abi.encodePacked(handId, seatIndex, card1, card2, salt)
         );
-        require(computedCommitment == commitment, "C5");
+        if (computedCommitment != commitment) revert InvalidParam();
 
         for (uint8 ci = 0; ci < 5; ci++) {
             if (communityCards[ci] == UNDEALT) continue;
@@ -214,7 +114,7 @@ abstract contract SettlementEngine is PokerTableBase {
     // ============ Settlement ============
 
     function _settleHand(uint8 winnerSeat) internal override {
-        require(winnerSeat < numSeats, "W1");
+        if (winnerSeat >= numSeats) revert SeatError();
         uint256 handId = currentHandId;
         uint256 potAmount = currentHand.pot;
         seats[winnerSeat].stack += potAmount;
@@ -223,70 +123,50 @@ abstract contract SettlementEngine is PokerTableBase {
     }
 
     function settleShowdown() external {
-        require(gameState == GameState.SHOWDOWN, "SD");
+        if (gameState != GameState.SHOWDOWN) revert InvalidState();
+        ShowdownState memory showdown = _collectShowdownState(currentHandId);
 
-        uint256 handId = currentHandId;
-
-        uint256[MAX_SEATS] memory scoresBySeat;
-        bool[MAX_SEATS] memory revealedBySeat;
-        uint8 revealedCount;
-        uint8[MAX_SEATS] memory revSeats;
-
-        for (uint8 i = 0; i < numSeats; i++) {
-            if (seats[i].isActive && isHoleCardsRevealed[handId][i]) {
-                uint8 c1 = _revealedHoleCards[handId][i][0];
-                uint8 c2 = _revealedHoleCards[handId][i][1];
-                scoresBySeat[i] = HandEvaluator.evaluate(communityCards, c1, c2);
-                revealedBySeat[i] = true;
-                revSeats[revealedCount] = i;
-                revealedCount++;
-            }
-        }
-
-        if (revealedCount == 0) {
-            if (
-                showdownStartTimestamp == 0 ||
-                block.timestamp <= showdownStartTimestamp + SHOWDOWN_TIMEOUT
-            ) revert ShowdownRevealWindowOpen();
-            _settleUnrevealedShowdown();
+        if (showdown.revealedCount == 0) {
+            _handleUnrevealedShowdown();
             return;
         }
 
         if (currentHand.sidePotCount > 0) {
-            _settleShowdownWithSidePots(scoresBySeat, revealedBySeat, revSeats[0]);
+            _settleShowdownWithSidePots(
+                showdown.scoresBySeat,
+                showdown.revealedBySeat,
+                showdown.revealedSeats[0]
+            );
             return;
         }
 
-        uint256[MAX_SEATS] memory seqScores;
-        for (uint8 i = 0; i < revealedCount; i++) {
-            seqScores[i] = scoresBySeat[revSeats[i]];
-        }
-
-        if (revealedCount == 1) {
-            _settleHand(revSeats[0]);
+        if (showdown.revealedCount == 1) {
+            _settleHand(showdown.revealedSeats[0]);
             return;
         }
 
-        uint256 bestScore;
-        for (uint8 i = 0; i < revealedCount; i++) {
-            if (seqScores[i] > bestScore) bestScore = seqScores[i];
-        }
-
-        uint8 winnerCount;
-        for (uint8 i = 0; i < revealedCount; i++) {
-            if (seqScores[i] == bestScore) winnerCount++;
-        }
-
+        uint256[MAX_SEATS] memory seqScores = _buildSequentialScores(
+            showdown.scoresBySeat,
+            showdown.revealedSeats,
+            showdown.revealedCount
+        );
+        (uint256 bestScore, uint8 winnerCount, uint8 uniqueWinnerSeat) = _resolveShowdownOutcome(
+            showdown.revealedSeats,
+            seqScores,
+            showdown.revealedCount
+        );
         if (winnerCount == 1) {
-            for (uint8 i = 0; i < revealedCount; i++) {
-                if (seqScores[i] == bestScore) {
-                    _settleHand(revSeats[i]);
-                    return;
-                }
-            }
+            _settleHand(uniqueWinnerSeat);
+            return;
         }
 
-        _settleHandSplit(revSeats, seqScores, revealedCount, bestScore, winnerCount);
+        _settleHandSplit(
+            showdown.revealedSeats,
+            seqScores,
+            showdown.revealedCount,
+            bestScore,
+            winnerCount
+        );
     }
 
     function _settleShowdownWithSidePots(
@@ -294,54 +174,164 @@ abstract contract SettlementEngine is PokerTableBase {
         bool[MAX_SEATS] memory revealedBySeat,
         uint8 fallbackWinner
     ) internal {
-        uint8 potCount = currentHand.sidePotCount;
-        uint8 firstWinner = numSeats;
+        uint8 firstWinner = _distributeSidePots(scoresBySeat, revealedBySeat, fallbackWinner);
+        _postSettlementCleanup(currentHandId, firstWinner, currentHand.pot);
+    }
 
-        for (uint8 p = 0; p < potCount; p++) {
-            uint256 potAmount = sidePots[p].amount;
-            bool[MAX_SEATS] memory eligible = sidePots[p].eligible;
-
-            uint8 eligCount = 0;
-            uint256 bestScore = 0;
-
-            for (uint8 i = 0; i < numSeats; i++) {
-                if (eligible[i] && revealedBySeat[i]) {
-                    eligCount++;
-                    if (scoresBySeat[i] > bestScore) bestScore = scoresBySeat[i];
-                }
+    function _collectShowdownState(uint256 handId) internal view returns (ShowdownState memory showdown) {
+        for (uint8 i = 0; i < numSeats; i++) {
+            if (!seats[i].isActive || !isHoleCardsRevealed[handId][i]) {
+                continue;
             }
 
-            if (eligCount == 0) continue;
+            uint8 c1 = _revealedHoleCards[handId][i][0];
+            uint8 c2 = _revealedHoleCards[handId][i][1];
+            showdown.scoresBySeat[i] = HandEvaluator.evaluate(communityCards, c1, c2);
+            showdown.revealedBySeat[i] = true;
+            showdown.revealedSeats[showdown.revealedCount] = i;
+            showdown.revealedCount++;
+        }
+    }
 
-            uint8 winnerCount = 0;
-            for (uint8 i = 0; i < numSeats; i++) {
-                if (eligible[i] && revealedBySeat[i] && scoresBySeat[i] == bestScore) winnerCount++;
-            }
+    function _handleUnrevealedShowdown() internal {
+        if (
+            showdownStartTimestamp == 0 ||
+            block.timestamp <= showdownStartTimestamp + SHOWDOWN_TIMEOUT
+        ) revert ShowdownRevealWindowOpen();
 
-            uint256 share = potAmount / winnerCount;
-            uint256 remainder = potAmount % winnerCount;
+        _settleUnrevealedShowdown();
+    }
 
-            uint8 primaryWinner = numSeats;
-            for (uint8 i = 1; i <= numSeats; i++) {
-                uint8 seat = (buttonSeat + i) % numSeats;
-                if (eligible[seat] && revealedBySeat[seat] && scoresBySeat[seat] == bestScore) {
-                    primaryWinner = seat;
-                    break;
-                }
-            }
+    function _buildSequentialScores(
+        uint256[MAX_SEATS] memory scoresBySeat,
+        uint8[MAX_SEATS] memory revealedSeats,
+        uint8 revealedCount
+    ) internal pure returns (uint256[MAX_SEATS] memory seqScores) {
+        for (uint8 i = 0; i < revealedCount; i++) {
+            seqScores[i] = scoresBySeat[revealedSeats[i]];
+        }
+    }
 
-            for (uint8 i = 0; i < numSeats; i++) {
-                if (eligible[i] && revealedBySeat[i] && scoresBySeat[i] == bestScore) {
-                    uint256 amount = share + (i == primaryWinner ? remainder : 0);
-                    seats[i].stack += amount;
-                    if (firstWinner == numSeats) firstWinner = i;
-                    emit SeatUpdated(i, seats[i].owner, seats[i].operator, seats[i].stack);
-                }
+    function _resolveShowdownOutcome(
+        uint8[MAX_SEATS] memory revealedSeats,
+        uint256[MAX_SEATS] memory seqScores,
+        uint8 revealedCount
+    ) internal pure returns (uint256 bestScore, uint8 winnerCount, uint8 uniqueWinnerSeat) {
+        uniqueWinnerSeat = UNDEALT;
+
+        for (uint8 i = 0; i < revealedCount; i++) {
+            if (seqScores[i] > bestScore) {
+                bestScore = seqScores[i];
             }
         }
 
-        if (firstWinner == numSeats) firstWinner = fallbackWinner;
-        _postSettlementCleanup(currentHandId, firstWinner, currentHand.pot);
+        for (uint8 i = 0; i < revealedCount; i++) {
+            if (seqScores[i] == bestScore) {
+                winnerCount++;
+                uniqueWinnerSeat = winnerCount == 1 ? revealedSeats[i] : UNDEALT;
+            }
+        }
+    }
+
+    function _distributeSidePots(
+        uint256[MAX_SEATS] memory scoresBySeat,
+        bool[MAX_SEATS] memory revealedBySeat,
+        uint8 fallbackWinner
+    ) internal returns (uint8 firstWinner) {
+        firstWinner = numSeats;
+
+        for (uint8 p = 0; p < currentHand.sidePotCount; p++) {
+            uint8 potWinner = _distributeSingleSidePot(p, scoresBySeat, revealedBySeat);
+            if (firstWinner == numSeats && potWinner != numSeats) {
+                firstWinner = potWinner;
+            }
+        }
+
+        if (firstWinner == numSeats) {
+            return fallbackWinner;
+        }
+    }
+
+    function _distributeSingleSidePot(
+        uint8 potIndex,
+        uint256[MAX_SEATS] memory scoresBySeat,
+        bool[MAX_SEATS] memory revealedBySeat
+    ) internal returns (uint8 primaryWinner) {
+        bool[MAX_SEATS] memory eligible = sidePots[potIndex].eligible;
+        (uint256 bestScore, uint8 winnerCount) = _resolveEligibleBestScore(
+            eligible,
+            revealedBySeat,
+            scoresBySeat
+        );
+        if (winnerCount == 0) {
+            return numSeats;
+        }
+
+        uint256 potAmount = sidePots[potIndex].amount;
+        uint256 share = potAmount / winnerCount;
+        uint256 remainder = potAmount % winnerCount;
+
+        primaryWinner = _findButtonOrderedWinner(eligible, revealedBySeat, scoresBySeat, bestScore);
+        _paySidePotWinners(
+            eligible,
+            revealedBySeat,
+            scoresBySeat,
+            bestScore,
+            share,
+            remainder,
+            primaryWinner
+        );
+    }
+
+    function _resolveEligibleBestScore(
+        bool[MAX_SEATS] memory eligible,
+        bool[MAX_SEATS] memory revealedBySeat,
+        uint256[MAX_SEATS] memory scoresBySeat
+    ) internal pure returns (uint256 bestScore, uint8 winnerCount) {
+        for (uint8 i = 0; i < MAX_SEATS; i++) {
+            if (eligible[i] && revealedBySeat[i] && scoresBySeat[i] > bestScore) {
+                bestScore = scoresBySeat[i];
+            }
+        }
+
+        for (uint8 i = 0; i < MAX_SEATS; i++) {
+            if (eligible[i] && revealedBySeat[i] && scoresBySeat[i] == bestScore) {
+                winnerCount++;
+            }
+        }
+    }
+
+    function _findButtonOrderedWinner(
+        bool[MAX_SEATS] memory eligible,
+        bool[MAX_SEATS] memory revealedBySeat,
+        uint256[MAX_SEATS] memory scoresBySeat,
+        uint256 bestScore
+    ) internal view returns (uint8 primaryWinner) {
+        primaryWinner = numSeats;
+        for (uint8 i = 1; i <= numSeats; i++) {
+            uint8 seat = (buttonSeat + i) % numSeats;
+            if (eligible[seat] && revealedBySeat[seat] && scoresBySeat[seat] == bestScore) {
+                return seat;
+            }
+        }
+    }
+
+    function _paySidePotWinners(
+        bool[MAX_SEATS] memory eligible,
+        bool[MAX_SEATS] memory revealedBySeat,
+        uint256[MAX_SEATS] memory scoresBySeat,
+        uint256 bestScore,
+        uint256 share,
+        uint256 remainder,
+        uint8 primaryWinner
+    ) internal {
+        for (uint8 i = 0; i < numSeats; i++) {
+            if (eligible[i] && revealedBySeat[i] && scoresBySeat[i] == bestScore) {
+                uint256 amount = share + (i == primaryWinner ? remainder : 0);
+                seats[i].stack += amount;
+                emit SeatUpdated(i, seats[i].owner, seats[i].operator, seats[i].stack);
+            }
+        }
     }
 
     function _settleHandSplit(
@@ -394,7 +384,7 @@ abstract contract SettlementEngine is PokerTableBase {
             }
         }
 
-        require(activeCount > 0, "NA");
+        if (activeCount == 0) revert InvalidState();
 
         if (activeCount == 1) {
             _settleHand(activeSeats[0]);
@@ -416,7 +406,7 @@ abstract contract SettlementEngine is PokerTableBase {
             }
             if (primaryWinner != UNDEALT) break;
         }
-        require(primaryWinner != UNDEALT, "NA");
+        if (primaryWinner == UNDEALT) revert InvalidState();
 
         for (uint8 i = 0; i < activeCount; i++) {
             uint8 seatIdx = activeSeats[i];

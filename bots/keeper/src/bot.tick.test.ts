@@ -30,15 +30,17 @@ interface MockChainClient {
   address: string;
 }
 
-function makeBaseState(overrides: Partial<{
-  gameState: GameState;
-  currentHandId: bigint;
-  actionDeadline: bigint;
-  lastActionBlock: bigint;
-  pendingVRFRequestId: bigint;
-  vrfRequestTimestamp: bigint;
-  canStartHand: boolean;
-}> = {}) {
+function makeBaseState(
+  overrides: Partial<{
+    gameState: GameState;
+    currentHandId: bigint;
+    actionDeadline: bigint;
+    lastActionBlock: bigint;
+    pendingVRFRequestId: bigint;
+    vrfRequestTimestamp: bigint;
+    canStartHand: boolean;
+  }> = {},
+) {
   return {
     gameState: GameState.WAITING_FOR_SEATS,
     currentHandId: 0n,
@@ -61,13 +63,22 @@ function makeMockClient(): MockChainClient {
     settleShowdown: mock.fn(async () => "0xhash"),
     reRequestVRF: mock.fn(async () => "0xhash"),
     isBettingState: mock.fn((state: GameState) =>
-      [GameState.BETTING_PRE, GameState.BETTING_FLOP, GameState.BETTING_TURN, GameState.BETTING_RIVER].includes(state)
+      [
+        GameState.BETTING_PRE,
+        GameState.BETTING_FLOP,
+        GameState.BETTING_TURN,
+        GameState.BETTING_RIVER,
+      ].includes(state),
     ),
     isVRFWaitingState: mock.fn((state: GameState) =>
-      [GameState.WAITING_VRF_FLOP, GameState.WAITING_VRF_TURN, GameState.WAITING_VRF_RIVER].includes(state)
+      [
+        GameState.WAITING_VRF_FLOP,
+        GameState.WAITING_VRF_TURN,
+        GameState.WAITING_VRF_RIVER,
+      ].includes(state),
     ),
-    isHoleCardVRFWaitingState: mock.fn((state: GameState) =>
-      state === GameState.WAITING_VRF_HOLECARDS
+    isHoleCardVRFWaitingState: mock.fn(
+      (state: GameState) => state === GameState.WAITING_VRF_HOLECARDS,
     ),
     getTableId: mock.fn(async () => 1n),
     hasVault: mock.fn(() => false),
@@ -108,7 +119,7 @@ describe("KeeperBot tick() — timeout detection", () => {
       makeBaseState({
         gameState: GameState.BETTING_PRE,
         actionDeadline: 2000n, // deadline in the future
-      })
+      }),
     );
     client.getBlockTimestamp = mock.fn(async () => 1000n); // current time < deadline
     client.isBettingState = mock.fn(() => true);
@@ -124,7 +135,7 @@ describe("KeeperBot tick() — timeout detection", () => {
         gameState: GameState.BETTING_PRE,
         actionDeadline: 900n, // deadline in the past
         lastActionBlock: 99n,
-      })
+      }),
     );
     client.getBlockTimestamp = mock.fn(async () => 1000n); // current > deadline
     client.getBlockNumber = mock.fn(async () => 100n);
@@ -142,7 +153,7 @@ describe("KeeperBot tick() — timeout detection", () => {
       makeBaseState({
         gameState: GameState.WAITING_VRF_FLOP,
         actionDeadline: 500n, // past, but not a betting state
-      })
+      }),
     );
     client.getBlockTimestamp = mock.fn(async () => 1000n);
     client.isBettingState = mock.fn(() => false);
@@ -168,7 +179,7 @@ describe("KeeperBot tick() — start hand", () => {
       makeBaseState({
         gameState: GameState.WAITING_FOR_SEATS,
         canStartHand: true,
-      })
+      }),
     );
     client.isBettingState = mock.fn(() => false);
     client.isVRFWaitingState = mock.fn(() => false);
@@ -184,7 +195,7 @@ describe("KeeperBot tick() — start hand", () => {
       makeBaseState({
         gameState: GameState.WAITING_FOR_SEATS,
         canStartHand: false,
-      })
+      }),
     );
 
     await runTick(bot);
@@ -207,7 +218,7 @@ describe("KeeperBot tick() — VRF re-request", () => {
       makeBaseState({
         gameState: GameState.WAITING_VRF_FLOP,
         vrfRequestTimestamp: 500n,
-      })
+      }),
     );
     // VRF timeout = 300 seconds; current = 500+301 = 801
     client.getBlockTimestamp = mock.fn(async () => 801n);
@@ -225,7 +236,7 @@ describe("KeeperBot tick() — VRF re-request", () => {
       makeBaseState({
         gameState: GameState.WAITING_VRF_FLOP,
         vrfRequestTimestamp: 500n,
-      })
+      }),
     );
     // 500 + 299 = 799 < 500 + 300 = 800 (timeout not reached)
     client.getBlockTimestamp = mock.fn(async () => 799n);
@@ -248,9 +259,7 @@ describe("KeeperBot tick() — settle showdown", () => {
   });
 
   test("calls settleShowdown when in SHOWDOWN state", async () => {
-    client.getTableState = mock.fn(async () =>
-      makeBaseState({ gameState: GameState.SHOWDOWN })
-    );
+    client.getTableState = mock.fn(async () => makeBaseState({ gameState: GameState.SHOWDOWN }));
     client.isBettingState = mock.fn(() => false);
     client.isVRFWaitingState = mock.fn(() => false);
 
@@ -262,7 +271,7 @@ describe("KeeperBot tick() — settle showdown", () => {
 
   test("does NOT call settleShowdown in non-SHOWDOWN states", async () => {
     client.getTableState = mock.fn(async () =>
-      makeBaseState({ gameState: GameState.BETTING_RIVER })
+      makeBaseState({ gameState: GameState.BETTING_RIVER }),
     );
     client.isBettingState = mock.fn(() => true);
     client.isVRFWaitingState = mock.fn(() => false);
@@ -305,7 +314,6 @@ describe("KeeperBot tick() — stats tracking", () => {
 
     // The error should be recorded if the bot catches it
     // (tick itself doesn't catch — the run loop does, but we verify the throw propagates)
-    const stats = bot.getStats();
     // At minimum, startHand was not called
     assert.strictEqual((client.startHand as MockFn).mock.calls.length, 0);
   });
@@ -339,7 +347,7 @@ describe("KeeperBot — multi-keeper forceTimeout race (T-R17-03)", () => {
         gameState: GameState.BETTING_PRE,
         actionDeadline: 500n,
         lastActionBlock: 99n,
-      })
+      }),
     );
     client1.getBlockTimestamp = mock.fn(async () => 1000n);
     client1.getBlockNumber = mock.fn(async () => 100n);
@@ -359,7 +367,7 @@ describe("KeeperBot — multi-keeper forceTimeout race (T-R17-03)", () => {
         gameState: GameState.BETTING_PRE,
         actionDeadline: 500n,
         lastActionBlock: 99n,
-      })
+      }),
     );
     client2.getBlockTimestamp = mock.fn(async () => 1000n);
     client2.getBlockNumber = mock.fn(async () => 100n);
@@ -382,7 +390,7 @@ describe("KeeperBot — multi-keeper forceTimeout race (T-R17-03)", () => {
         gameState: GameState.BETTING_PRE,
         actionDeadline: 500n,
         lastActionBlock: 99n,
-      })
+      }),
     );
     client.getBlockTimestamp = mock.fn(async () => 1000n);
     client.getBlockNumber = mock.fn(async () => 100n);
@@ -393,7 +401,11 @@ describe("KeeperBot — multi-keeper forceTimeout race (T-R17-03)", () => {
     });
     const bot = makeBot(client);
     await runTick(bot);
-    assert.strictEqual(bot.getStats().coordinationSkips, 1, "string-match fallback coordination skip");
+    assert.strictEqual(
+      bot.getStats().coordinationSkips,
+      1,
+      "string-match fallback coordination skip",
+    );
     assert.strictEqual(bot.getStats().errors, 0, "not counted as an error");
   });
 });
@@ -403,7 +415,7 @@ describe("KeeperBot — multi-keeper startHand race (T-R17-03)", () => {
     // Bot 1 starts the hand
     const client1 = makeMockClient();
     client1.getTableState = mock.fn(async () =>
-      makeBaseState({ gameState: GameState.WAITING_FOR_SEATS, canStartHand: true })
+      makeBaseState({ gameState: GameState.WAITING_FOR_SEATS, canStartHand: true }),
     );
     client1.isBettingState = mock.fn(() => false);
     client1.isVRFWaitingState = mock.fn(() => false);
@@ -416,7 +428,7 @@ describe("KeeperBot — multi-keeper startHand race (T-R17-03)", () => {
     // Bot 2 races to start the same hand — gets CannotStartHand
     const client2 = makeMockClient();
     client2.getTableState = mock.fn(async () =>
-      makeBaseState({ gameState: GameState.WAITING_FOR_SEATS, canStartHand: true })
+      makeBaseState({ gameState: GameState.WAITING_FOR_SEATS, canStartHand: true }),
     );
     client2.isBettingState = mock.fn(() => false);
     client2.isVRFWaitingState = mock.fn(() => false);
@@ -446,7 +458,7 @@ describe("KeeperBot — keeper retry after coordination skip (T-R17-03)", () => 
       return "0xsuccesshash";
     });
     client.getTableState = mock.fn(async () =>
-      makeBaseState({ gameState: GameState.WAITING_FOR_SEATS, canStartHand: true })
+      makeBaseState({ gameState: GameState.WAITING_FOR_SEATS, canStartHand: true }),
     );
     client.isBettingState = mock.fn(() => false);
     client.isVRFWaitingState = mock.fn(() => false);

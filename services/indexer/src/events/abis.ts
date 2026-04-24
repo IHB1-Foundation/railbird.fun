@@ -1,5 +1,9 @@
 // Contract ABIs for event parsing — imported from @playerco/shared (single source of truth)
-export { POKER_TABLE_ABI as pokerTableAbi, PLAYER_REGISTRY_ABI as playerRegistryAbi, PLAYER_VAULT_ABI as playerVaultAbi } from "@playerco/shared";
+export {
+  POKER_TABLE_ABI as pokerTableAbi,
+  PLAYER_REGISTRY_ABI as playerRegistryAbi,
+  PLAYER_VAULT_ABI as playerVaultAbi,
+} from "@playerco/shared";
 
 // Game state enum mapping
 export const GAME_STATES = [
@@ -15,6 +19,8 @@ export const GAME_STATES = [
   "SHOWDOWN",
   "SETTLED",
   "TOURNAMENT_OVER",
+  "WAITING_VRF_HOLECARDS",
+  "WAITING_FOR_HOLECARDS",
 ] as const;
 
 export function gameStateToString(state: number): string {

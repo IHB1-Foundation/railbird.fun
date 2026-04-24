@@ -18,6 +18,8 @@ describe("Event ABIs", () => {
       assert.strictEqual(gameStateToString(8), "BETTING_RIVER");
       assert.strictEqual(gameStateToString(9), "SHOWDOWN");
       assert.strictEqual(gameStateToString(10), "SETTLED");
+      assert.strictEqual(gameStateToString(12), "WAITING_VRF_HOLECARDS");
+      assert.strictEqual(gameStateToString(13), "WAITING_FOR_HOLECARDS");
     });
 
     it("should handle unknown game states", () => {
@@ -39,8 +41,8 @@ describe("Event ABIs", () => {
   });
 
   describe("GAME_STATES constant", () => {
-    it("should have 12 states", () => {
-      assert.strictEqual(GAME_STATES.length, 12);
+    it("should have 14 states", () => {
+      assert.strictEqual(GAME_STATES.length, 14);
     });
 
     it("should match contract enum order", () => {
@@ -58,6 +60,8 @@ describe("Event ABIs", () => {
         "SHOWDOWN",
         "SETTLED",
         "TOURNAMENT_OVER",
+        "WAITING_VRF_HOLECARDS",
+        "WAITING_FOR_HOLECARDS",
       ];
 
       for (let i = 0; i < expectedStates.length; i++) {
@@ -127,7 +131,9 @@ describe("Database Types", () => {
     it("should store large numbers as strings", () => {
       // Postgres NUMERIC can hold up to 78 digits
       // We store as string and let Postgres handle precision
-      const largeNumber = BigInt("115792089237316195423570985008687907853269984665640564039457584007913129639935");
+      const largeNumber = BigInt(
+        "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+      );
       const asString = largeNumber.toString();
 
       assert.strictEqual(asString.length, 78);

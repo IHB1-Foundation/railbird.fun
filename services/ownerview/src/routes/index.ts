@@ -3,3 +3,4 @@ export { createOwnerRoutes } from "./owner.js";
 export { createDealerRoutes } from "./dealer.js";
 export { createReasoningRoutes, createTreasuryReasoningRouter } from "./reasoning.js";
 export { createCommentaryRoutes } from "./commentary.js";
+export { createSessionRoutes, isSessionRevoked } from "./session.js";

@@ -33,26 +33,43 @@ dist/
 .env
 .env.local
 .env.*.local
-.env.hashkey
 
 # Foundry
 contracts/out/
+contracts/out-initia/
 contracts/cache/
 contracts/broadcast/
 
+# Large binary assets (store externally)
+*.mp4
+*.pptx
+pitch-video/
+
 # Deployment manifests (generated, not committed)
 deployments/*.json
-scripts/nadfun-agents.generated.env
+scripts/*.generated.env
 
 # Persistent data (hole cards, etc.)
 data/
+!infra/railway/rollup-node/seed-home/
+!infra/railway/rollup-node/seed-home/config/
+!infra/railway/rollup-node/seed-home/config/**
+!infra/railway/rollup-node/seed-home/data/
+!infra/railway/rollup-node/seed-home/data/**
+
+# Validator / node private keys must NEVER be committed (tracked separately)
+infra/railway/rollup-node/seed-home/config/priv_validator_key.json
+infra/railway/rollup-node/seed-home/config/node_key.json
+
+# Build / runtime caches
+.turbo/
+scripts/__pycache__/
 
 # Local-only docs (sensitive config / deployment info)
 LOCAL.md
 DEPLOY.md
 ENVIRON.md
 ENVIRONMENT.md
-KAIA_WALLETS.md
 lcov.info
 *.tsbuildinfo
 .vercel

@@ -1,8 +1,10 @@
 import { Router, type Response } from "express";
 import type { AuthenticatedRequest } from "../middleware/index.js";
-import { ChainService, ChainError } from "../chain/index.js";
-import { HoleCardStore, HoleCardError } from "../holecards/index.js";
-import { EncryptionKeyStore } from "../encryptionKeyStore.js";
+import { ChainError } from "../chain/index.js";
+import { HoleCardError } from "../holecards/index.js";
+import type { ChainService } from "../chain/index.js";
+import type { HoleCardStore } from "../holecards/index.js";
+import type { EncryptionKeyStore } from "../encryptionKeyStore.js";
 
 /**
  * Create owner routes with required services
@@ -10,7 +12,7 @@ import { EncryptionKeyStore } from "../encryptionKeyStore.js";
 export function createOwnerRoutes(
   chainService: ChainService,
   holeCardStore: HoleCardStore,
-  encryptionKeyStore: EncryptionKeyStore
+  encryptionKeyStore: EncryptionKeyStore,
 ): Router {
   const router = Router();
 

@@ -2,33 +2,57 @@
 // No hardcoded addresses - all values loaded from environment
 
 import {
+  type Address,
   type ChainEnv,
   type ChainConfig,
-  type Address,
   type ContractAddresses,
   ENV_VARS,
 } from "./types.js";
 
 /**
- * Known chain IDs by environment
- * testnet: HashKey Chain Testnet (133)
- * mainnet: HashKey Chain Mainnet (177)
- * legacy KAIA: testnet=1001, mainnet=8217 (backward compat — set CHAIN_ID=1001 if needed)
+ * Static chain IDs for known environments.
+ * initia-testnet chain ID is dynamic (set via INITIA_CHAIN_ID env var).
  */
-const CHAIN_IDS: Record<ChainEnv, number> = {
+const STATIC_CHAIN_IDS: Record<Exclude<ChainEnv, "initia-testnet">, number> = {
   local: 31337, // Anvil/Hardhat default
-  testnet: 133, // HashKey Chain Testnet
-  mainnet: 177, // HashKey Chain Mainnet
+  testnet: 133, // legacy testnet chain (not active deployment target)
+  mainnet: 177, // legacy mainnet chain (not active deployment target)
 };
 
+/** Resolves chain ID for the given environment at call time. */
+function resolveChainId(env: ChainEnv): number {
+  if (env === "initia-testnet") {
+    const raw = process.env.INITIA_CHAIN_ID ?? process.env.CHAIN_ID;
+    if (!raw) {
+      throw new ChainConfigError(
+        "INITIA_CHAIN_ID is required when CHAIN_ENV=initia-testnet. " +
+          "Set it (or CHAIN_ID) to your rollup EVM chain ID (see infra/initia/rollup.json).",
+        ["INITIA_CHAIN_ID", "CHAIN_ID"],
+      );
+    }
+    return parseInt(raw, 10);
+  }
+  return STATIC_CHAIN_IDS[env];
+}
+
 /**
- * Block explorer URLs by environment
+ * Static block explorer URLs for known environments.
+ * initia-testnet URL is dynamic (set via INITIA_EXPLORER_URL env var).
  */
-const BLOCK_EXPLORERS: Record<ChainEnv, string> = {
+const STATIC_BLOCK_EXPLORERS: Record<Exclude<ChainEnv, "initia-testnet">, string> = {
   local: "http://localhost:8545",
-  testnet: "https://testnet-explorer.hsk.xyz",
-  mainnet: "https://explorer.hsk.xyz",
+  // Legacy env aliases still resolve to Initia explorers to avoid leaking old branding.
+  testnet: "https://scan.testnet.initia.xyz",
+  mainnet: "https://scan.initia.xyz",
 };
+
+/** Resolves block explorer URL for the given environment at call time. */
+function resolveBlockExplorer(env: ChainEnv): string {
+  if (env === "initia-testnet") {
+    return process.env.INITIA_EXPLORER_URL ?? "https://scan.testnet.initia.xyz";
+  }
+  return STATIC_BLOCK_EXPLORERS[env];
+}
 
 /**
  * Error thrown when required configuration is missing
@@ -36,7 +60,7 @@ const BLOCK_EXPLORERS: Record<ChainEnv, string> = {
 export class ChainConfigError extends Error {
   constructor(
     message: string,
-    public readonly missingVars?: string[]
+    public readonly missingVars?: string[],
   ) {
     super(message);
     this.name = "ChainConfigError";
@@ -62,41 +86,19 @@ function requireEnv(name: string): string {
 }
 
 /**
- * Gets an address from environment or throws if missing/invalid
- */
-function requireAddress(name: string): Address {
-  const value = requireEnv(name);
-  if (!isValidAddress(value)) {
-    throw new ChainConfigError(
-      `Invalid address for ${name}: "${value}" - must be 0x-prefixed 40 hex characters`
-    );
-  }
-  return value;
-}
-
-/**
- * Gets an optional address from environment, returns undefined if not set
- */
-function optionalAddress(name: string): Address | undefined {
-  const value = process.env[name];
-  if (!value) return undefined;
-  if (!isValidAddress(value)) {
-    throw new ChainConfigError(
-      `Invalid address for ${name}: "${value}" - must be 0x-prefixed 40 hex characters`
-    );
-  }
-  return value;
-}
-
-/**
  * Validates the chain environment value
  */
 function parseChainEnv(value: string): ChainEnv {
-  if (value === "local" || value === "testnet" || value === "mainnet") {
+  if (
+    value === "local" ||
+    value === "testnet" ||
+    value === "mainnet" ||
+    value === "initia-testnet"
+  ) {
     return value;
   }
   throw new ChainConfigError(
-    `Invalid CHAIN_ENV: "${value}" - must be one of: local, testnet, mainnet`
+    `Invalid CHAIN_ENV: "${value}" - must be one of: local, testnet, mainnet, initia-testnet`,
   );
 }
 
@@ -105,16 +107,17 @@ function parseChainEnv(value: string): ChainEnv {
  * Validates each address and returns an array.
  */
 function parseAddressList(envName: string, raw: string): Address[] {
-  const parts = raw.split(",").map((s) => s.trim()).filter(Boolean);
+  const parts = raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
   if (parts.length === 0) {
-    throw new ChainConfigError(
-      `${envName} is set but contains no valid addresses`
-    );
+    throw new ChainConfigError(`${envName} is set but contains no valid addresses`);
   }
   for (const part of parts) {
     if (!isValidAddress(part)) {
       throw new ChainConfigError(
-        `Invalid address in ${envName}: "${part}" - must be 0x-prefixed 40 hex characters`
+        `Invalid address in ${envName}: "${part}" - must be 0x-prefixed 40 hex characters`,
       );
     }
   }
@@ -148,7 +151,7 @@ function loadContractAddresses(): ContractAddresses {
       missingVars.push(env);
     } else if (!isValidAddress(value)) {
       throw new ChainConfigError(
-        `Invalid address for ${env}: "${value}" - must be 0x-prefixed 40 hex characters`
+        `Invalid address for ${env}: "${value}" - must be 0x-prefixed 40 hex characters`,
       );
     } else {
       singles[key] = value;
@@ -158,7 +161,7 @@ function loadContractAddresses(): ContractAddresses {
   if (missingVars.length > 0) {
     throw new ChainConfigError(
       `Missing required contract addresses: ${missingVars.join(", ")}`,
-      missingVars
+      missingVars,
     );
   }
 
@@ -189,7 +192,35 @@ function validateVRFAdapterConfig(env: ChainEnv): void {
       `VRF_ADAPTER_TYPE must be "production" for ${env} environment (got: "${adapterType || ""}").\n` +
         `MockVRFAdapter is not allowed on non-local environments.\n` +
         `Deploy ProductionVRFAdapter and set VRF_ADAPTER_TYPE=production.`,
-      [ENV_VARS.VRF_ADAPTER_TYPE]
+      [ENV_VARS.VRF_ADAPTER_TYPE],
+    );
+  }
+}
+
+/**
+ * Returns true when the current environment is Initia testnet.
+ * Useful for feature-gating Initia-specific behaviour (auto-sign, .init usernames).
+ */
+export function isInitiaEnv(env: ChainEnv): boolean {
+  return env === "initia-testnet";
+}
+
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+
+/**
+ * On Initia, there is no KYC SBT contract. If KYC_SBT_ADDRESS is set to a
+ * non-zero address the contract would reject all seat registrations silently.
+ * Fail fast here so the operator sees the misconfiguration at startup.
+ */
+function validateKycConfig(env: ChainEnv): void {
+  if (env !== "initia-testnet") return;
+  const kycAddr = process.env.KYC_SBT_ADDRESS;
+  if (kycAddr && kycAddr !== ZERO_ADDRESS) {
+    throw new ChainConfigError(
+      `KYC_SBT_ADDRESS must be unset or 0x0 on initia-testnet ` +
+        `(got "${kycAddr}"). There is no KYC SBT contract on Initia; ` +
+        `a non-zero address will cause all seat registrations to revert.`,
+      ["KYC_SBT_ADDRESS"],
     );
   }
 }
@@ -220,11 +251,14 @@ export function getChainConfig(forceReload = false): ChainConfig {
   // Validate VRF adapter is production-safe for non-local envs
   validateVRFAdapterConfig(env);
 
+  // Refuse non-zero KYC_SBT_ADDRESS on Initia — no KYC SBT contract exists there.
+  validateKycConfig(env);
+
   cachedConfig = Object.freeze({
     env,
-    chainId: CHAIN_IDS[env],
+    chainId: resolveChainId(env),
     rpcUrl,
-    blockExplorerUrl: BLOCK_EXPLORERS[env],
+    blockExplorerUrl: resolveBlockExplorer(env),
     contracts: Object.freeze({
       ...contracts,
       pokerTables: Object.freeze([...contracts.pokerTables]),
@@ -257,7 +291,7 @@ export function validateChainConfigEnv(): string[] {
     }
   }
 
-  // VRF_ADAPTER_TYPE is required on non-local environments
+  // VRF_ADAPTER_TYPE is required on non-local environments (including initia-testnet)
   const chainEnv = process.env[ENV_VARS.CHAIN_ENV];
   if (chainEnv && chainEnv !== "local" && !process.env[ENV_VARS.VRF_ADAPTER_TYPE]) {
     missing.push(ENV_VARS.VRF_ADAPTER_TYPE);
@@ -282,7 +316,7 @@ export function clearChainConfigCache(): void {
  */
 export async function validateChainIdWithRpc(
   rpcUrl: string,
-  expectedChainId: number
+  expectedChainId: number,
 ): Promise<void> {
   let rpcChainId: number;
 
@@ -305,7 +339,7 @@ export async function validateChainIdWithRpc(
     rpcChainId = parseInt(json.result, 16);
   } catch (cause) {
     throw new ChainConfigError(
-      `Failed to validate chain ID via RPC (${rpcUrl}): ${cause instanceof Error ? cause.message : String(cause)}`
+      `Failed to validate chain ID via RPC (${rpcUrl}): ${cause instanceof Error ? cause.message : String(cause)}`,
     );
   }
 
@@ -313,7 +347,7 @@ export async function validateChainIdWithRpc(
     throw new ChainConfigError(
       `CHAIN_ID mismatch: configured CHAIN_ENV expects chain ID ${expectedChainId} ` +
         `but RPC at ${rpcUrl} returned chain ID ${rpcChainId}. ` +
-        `Check that RPC_URL and CHAIN_ENV point to the same network.`
+        `Check that RPC_URL and CHAIN_ENV point to the same network.`,
     );
   }
 }
@@ -323,7 +357,7 @@ export async function validateChainIdWithRpc(
  * Shorthand for getChainConfig().contracts[name]
  */
 export function getContractAddress<K extends keyof ContractAddresses>(
-  name: K
+  name: K,
 ): ContractAddresses[K] {
   return getChainConfig().contracts[name];
 }

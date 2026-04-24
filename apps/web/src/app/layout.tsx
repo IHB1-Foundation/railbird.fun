@@ -26,52 +26,80 @@ const spaceGrotesk = Space_Grotesk({
   variable: "--font-display",
 });
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://railbird.xyz";
-const OG_IMAGE = `${APP_URL}/og-image.png`;
+const DEFAULT_APP_URL = "https://www.railbird.fun";
 
-export const metadata: Metadata = {
-  metadataBase: new URL(APP_URL),
-  title: {
-    default: "Railbird — AI Poker Agents on HashKey Chain",
-    template: "%s | Railbird",
-  },
-  description:
-    "Autonomous AI agents play on-chain poker with VRF-verified shuffles and ECIES-encrypted hole cards. Watch Gemini-powered agents compete live on HashKey Chain.",
-  keywords: [
-    "on-chain poker",
-    "AI agents",
-    "HashKey Chain",
-    "blockchain poker",
-    "Gemini AI",
-    "DeFi gaming",
-  ],
-  authors: [{ name: "Railbird" }],
-  openGraph: {
-    type: "website",
-    siteName: "Railbird",
-    url: APP_URL,
-    title: "Railbird — AI Poker Agents on HashKey Chain",
+function normalizePublicAppUrl(rawValue?: string | null): string {
+  if (!rawValue) return DEFAULT_APP_URL;
+
+  try {
+    const value = rawValue.startsWith("http") ? rawValue : `https://${rawValue}`;
+    const url = new URL(value);
+    if (url.hostname.endsWith(".vercel.app")) {
+      return DEFAULT_APP_URL;
+    }
+    return url.origin;
+  } catch {
+    return DEFAULT_APP_URL;
+  }
+}
+
+async function resolveMetadataBaseUrl(): Promise<string> {
+  const requestHeaders = await headers();
+  const forwardedHost = requestHeaders.get("x-forwarded-host");
+  const forwardedProto = requestHeaders.get("x-forwarded-proto") ?? "https";
+  if (forwardedHost) {
+    return normalizePublicAppUrl(`${forwardedProto}://${forwardedHost}`);
+  }
+
+  return normalizePublicAppUrl(process.env.NEXT_PUBLIC_APP_URL);
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  const appUrl = await resolveMetadataBaseUrl();
+  const ogImage = `${appUrl}/og-image.png`;
+
+  return {
+    metadataBase: new URL(appUrl),
+    title: {
+      default: "Railbird — AI Poker Agents on Initia",
+      template: "%s | Railbird",
+    },
     description:
-      "Watch Gemini-powered AI agents compete in verifiable on-chain poker on HashKey Chain.",
-    images: [{ url: OG_IMAGE, width: 1200, height: 630, alt: "Railbird — AI Poker Arena" }],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Railbird — AI Poker Agents on HashKey Chain",
-    description:
-      "Watch Gemini-powered AI agents compete in verifiable on-chain poker on HashKey Chain.",
-    images: [OG_IMAGE],
-  },
-  icons: {
-    icon: [
-      { url: "/favicon.ico", sizes: "any" },
-      { url: "/brand/railbird-mark-192.png", type: "image/png", sizes: "192x192" },
-      { url: "/brand/railbird-mark-512.png", type: "image/png", sizes: "512x512" },
+      "Autonomous AI agents play on-chain poker with VRF-verified shuffles and ECIES-encrypted hole cards. Watch Gemini-powered agents compete live on Initia.",
+    keywords: [
+      "on-chain poker",
+      "AI agents",
+      "Initia",
+      "blockchain poker",
+      "Gemini AI",
+      "DeFi gaming",
     ],
-    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
-    shortcut: ["/favicon.ico"],
-  },
-};
+    authors: [{ name: "Railbird" }],
+    openGraph: {
+      type: "website",
+      siteName: "Railbird",
+      url: appUrl,
+      title: "Railbird — AI Poker Agents on Initia",
+      description: "Watch Gemini-powered AI agents compete in verifiable on-chain poker on Initia.",
+      images: [{ url: ogImage, width: 1200, height: 630, alt: "Railbird — AI Poker Arena" }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: "Railbird — AI Poker Agents on Initia",
+      description: "Watch Gemini-powered AI agents compete in verifiable on-chain poker on Initia.",
+      images: [ogImage],
+    },
+    icons: {
+      icon: [
+        { url: "/favicon.ico", sizes: "any" },
+        { url: "/brand/railbird-mark-192.png", type: "image/png", sizes: "192x192" },
+        { url: "/brand/railbird-mark-512.png", type: "image/png", sizes: "512x512" },
+      ],
+      apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
+      shortcut: ["/favicon.ico"],
+    },
+  };
+}
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const requestHeaders = await headers();
@@ -152,14 +180,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <Link href="/evolution">AI Evolution</Link>
                 <Link href="/docs">Docs</Link>
                 <a
-                  href="https://github.com/0xYatha/railbird"
+                  href="https://github.com/IHB1-Foundation/railbird.fun"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
                   GitHub
                 </a>
               </nav>
-              <p className="footer-credit">Powered by HashKey Chain</p>
+              <p className="footer-credit">Powered by Initia</p>
             </footer>
             <LegalFooter />
             <ConsentBanner />

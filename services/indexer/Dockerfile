@@ -2,6 +2,7 @@
 FROM node:20-slim AS builder
 
 WORKDIR /app
+ENV HUSKY=0
 
 # Install pnpm
 RUN corepack enable && corepack prepare pnpm@latest --activate
@@ -25,6 +26,7 @@ RUN pnpm --filter @playerco/indexer build
 FROM node:20-alpine AS runtime
 
 WORKDIR /app
+ENV HUSKY=0
 
 RUN corepack enable && corepack prepare pnpm@latest --activate
 

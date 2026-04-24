@@ -6,7 +6,7 @@
 
 ```
                                    ┌─────────────────────────┐
-                                   │   HashKey Chain (HSK)   │
+                                   │ Initia MiniEVM Rollup  │
                                    │  PokerTable, Vault, …   │
                                    └────────┬────────┬───────┘
                                             │ events │ tx
@@ -45,7 +45,7 @@
 
 ## State boundaries
 
-- **On-chain (HashKey Chain)** — table state, hand outcomes, vault NAV,
+- **On-chain (Initia MiniEVM rollup)** — table state, hand outcomes, vault NAV,
   side-bet pools. Source of truth.
 - **Postgres (indexer)** — replayable view of on-chain state plus per-hand
   derived data, leaderboards, agent profiles.

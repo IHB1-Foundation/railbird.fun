@@ -204,6 +204,37 @@ services:
       anvil:
         condition: service_healthy
 
+  # ── Fleet service (agent spawner + wallet pool) ─────────────────────────────
+  fleet:
+    build:
+      context: .
+      dockerfile: services/fleet/Dockerfile
+    environment:
+      CHAIN_ENV: local
+      PORT: "4002"
+      RPC_URL: http://anvil:8545
+      POKER_TABLE_ADDRESSES: "${POKER_TABLE_ADDRESSES:-}"
+      FLEET_OPERATOR_KEYS: "${FLEET_OPERATOR_KEYS:-}"
+      OWNERVIEW_URL: http://ownerview:3001
+      CHAIN_ID: "31337"
+    ports:
+      - "4002:4002"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://localhost:4002/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    depends_on:
+      ownerview:
+        condition: service_healthy
+
   # ── Agent bot (one instance, seat 0) ────────────────────────────────────────
   agent:
     build:

@@ -3,7 +3,7 @@ import styles from "./terms.module.css";
 
 export const metadata: Metadata = {
   title: "Terms of Service — Railbird",
-  description: "Terms of Service for the Railbird AI poker platform on HashKey Chain.",
+  description: "Terms of Service for the Railbird AI poker platform on Initia.",
 };
 
 export default function TermsPage() {
@@ -15,18 +15,18 @@ export default function TermsPage() {
       <section>
         <h2>1. Acceptance of Terms</h2>
         <p>
-          By accessing or using Railbird (&quot;the Service&quot;), you agree to be bound by these Terms of
-          Service. If you do not agree, do not use the Service.
+          By accessing or using Railbird (&quot;the Service&quot;), you agree to be bound by these
+          Terms of Service. If you do not agree, do not use the Service.
         </p>
       </section>
 
       <section>
         <h2>2. Service Description</h2>
         <p>
-          Railbird is an experimental on-chain platform where autonomous AI agents compete in
-          poker games on HashKey Chain. Users may observe games, deploy agents, and interact
-          with smart contracts. The platform operates exclusively on blockchain infrastructure;
-          there is no central operator controlling game outcomes.
+          Railbird is an experimental on-chain platform where autonomous AI agents compete in poker
+          games on Initia. Users may observe games, deploy agents, and interact with smart
+          contracts. The platform operates exclusively on blockchain infrastructure; there is no
+          central operator controlling game outcomes.
         </p>
       </section>
 
@@ -34,17 +34,17 @@ export default function TermsPage() {
         <h2>3. Wallet-Based Identity</h2>
         <p>
           Access to the Service is via cryptographic wallet signatures. We collect no personally
-          identifiable information (name, email, government ID). Your wallet address serves as
-          your sole identity. You are responsible for safeguarding your private keys.
+          identifiable information (name, email, government ID). Your wallet address serves as your
+          sole identity. You are responsible for safeguarding your private keys.
         </p>
       </section>
 
       <section>
         <h2>4. No KYC</h2>
         <p>
-          The Service does not perform Know Your Customer (KYC) verification. Users are
-          responsible for ensuring their jurisdiction permits participation in blockchain-based
-          gaming or speculative activities.
+          The Service does not perform Know Your Customer (KYC) verification. Users are responsible
+          for ensuring their jurisdiction permits participation in blockchain-based gaming or
+          speculative activities.
         </p>
       </section>
 
@@ -60,10 +60,10 @@ export default function TermsPage() {
       <section>
         <h2>6. Experimental Software</h2>
         <p>
-          The Service is experimental software currently operating on HashKey Chain testnet.
-          Smart contracts may contain bugs or vulnerabilities. You use the Service at your own
-          risk. We provide no warranty, express or implied, regarding the reliability,
-          availability, or fitness for any purpose of the Service.
+          The Service is experimental software currently operating on Initia testnet. Smart
+          contracts may contain bugs or vulnerabilities. You use the Service at your own risk. We
+          provide no warranty, express or implied, regarding the reliability, availability, or
+          fitness for any purpose of the Service.
         </p>
       </section>
 
@@ -89,10 +89,10 @@ export default function TermsPage() {
       <section>
         <h2>9. Limitation of Liability</h2>
         <p>
-          To the maximum extent permitted by law, the operators of Railbird are not liable for
-          any direct, indirect, incidental, or consequential damages arising from your use of
-          the Service, including but not limited to loss of tokens, loss of data, or smart
-          contract failures.
+          To the maximum extent permitted by law, the operators of Railbird are not liable for any
+          direct, indirect, incidental, or consequential damages arising from your use of the
+          Service, including but not limited to loss of tokens, loss of data, or smart contract
+          failures.
         </p>
       </section>
 
@@ -100,16 +100,16 @@ export default function TermsPage() {
         <h2>10. Dispute Resolution</h2>
         <p>
           Any disputes arising from these Terms shall be resolved by binding arbitration on an
-          individual basis. Class action lawsuits are waived. The arbitration shall be conducted
-          in accordance with the rules of a recognized arbitration body.
+          individual basis. Class action lawsuits are waived. The arbitration shall be conducted in
+          accordance with the rules of a recognized arbitration body.
         </p>
       </section>
 
       <section>
         <h2>11. Changes to Terms</h2>
         <p>
-          We reserve the right to modify these Terms at any time. Continued use of the Service
-          after changes constitutes acceptance of the new Terms.
+          We reserve the right to modify these Terms at any time. Continued use of the Service after
+          changes constitutes acceptance of the new Terms.
         </p>
       </section>
     </div>

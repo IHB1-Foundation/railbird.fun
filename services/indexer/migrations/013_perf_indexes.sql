@@ -28,14 +28,15 @@ CREATE INDEX IF NOT EXISTS idx_elo_ratings_rating_desc
     ON elo_ratings(rating DESC);
 
 -- decision_audit verified lookups for the audit endpoint.
--- Existing partial index covers idx_decision_audit_verified, but most reads
--- include hand_id; ensure (table_address, hand_id, verified_at) speeds it up.
+-- The table currently stores only a boolean verified flag (no verified_at
+-- timestamp), so keep the composite index aligned to the live schema.
 CREATE INDEX IF NOT EXISTS idx_decision_audit_table_hand_verified
-    ON decision_audit (table_address, hand_id, verified_at DESC);
+    ON decision_audit (table_address, hand_id, verified);
 
--- side_bet_settlements claim flow uses bettor + table+hand combinations.
+-- side_bets claim history queries filter by bettor + table + hand and then
+-- return rows in insertion order.
 CREATE INDEX IF NOT EXISTS idx_side_bet_settlements_bettor_hand
-    ON side_bet_settlements (bettor, table_address, hand_id);
+    ON side_bets (bettor, table_address, hand_id, id);
 
 -- auth_events — IP rate-decay queries scan recent rows.
 -- Already has (ip, created_at DESC); add (outcome, created_at DESC) for

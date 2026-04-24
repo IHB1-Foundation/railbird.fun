@@ -10,6 +10,10 @@ require_env CHAIN_ENV
 require_env RPC_URL
 require_env PLAYER_REGISTRY_ADDRESS
 
+if [ "${CHAIN_ENV:-}" = "initia-testnet" ]; then
+  require_env INITIA_CHAIN_ID
+fi
+
 # Accept POKER_TABLE_ADDRESSES (preferred, comma-separated) or legacy POKER_TABLE_ADDRESS.
 if [ -n "${POKER_TABLE_ADDRESSES:-}" ]; then
   export POKER_TABLE_ADDRESSES

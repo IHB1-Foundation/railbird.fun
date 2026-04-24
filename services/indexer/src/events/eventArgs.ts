@@ -17,6 +17,12 @@ export interface HandStartedArgs {
   buttonSeat: number;
 }
 
+export interface PreflopStartedArgs {
+  handId: bigint;
+  actorSeat: number;
+  actionDeadline: bigint;
+}
+
 export interface ActionTakenArgs {
   handId: bigint;
   seatIndex: number;
@@ -66,6 +72,11 @@ export interface ForceTimeoutArgs {
   forcedAction: number;
 }
 
+export interface HoleCardVRFFulfilledArgs {
+  handId: bigint;
+  randomnessHash: `0x${string}`;
+}
+
 export interface TournamentWinnerArgs {
   winner: `0x${string}`;
   seatIndex: number;
@@ -89,7 +100,7 @@ export interface HoleCardsRevealedArgs {
 // ============ PlayerRegistry Events ============
 
 export interface AgentRegisteredArgs {
-  token: string;
+  agent: string;
   owner: string;
   vault: string;
   table: string;
@@ -98,31 +109,31 @@ export interface AgentRegisteredArgs {
 }
 
 export interface OperatorUpdatedArgs {
-  token: string;
+  agent: string;
   oldOperator: string;
   newOperator: string;
 }
 
 export interface OwnerUpdatedArgs {
-  token: string;
+  agent: string;
   oldOwner: string;
   newOwner: string;
 }
 
 export interface VaultUpdatedArgs {
-  token: string;
+  agent: string;
   oldVault: string;
   newVault: string;
 }
 
 export interface TableUpdatedArgs {
-  token: string;
+  agent: string;
   oldTable: string;
   newTable: string;
 }
 
 export interface MetaURIUpdatedArgs {
-  token: string;
+  agent: string;
   oldMetaURI: string;
   newMetaURI: string;
 }

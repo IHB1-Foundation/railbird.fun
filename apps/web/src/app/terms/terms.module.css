@@ -20,7 +20,7 @@
 .legal p,
 .legal li {
   line-height: 1.7;
-  color: var(--color-text-secondary, #94a3b8);
+  color: var(--text-on-card);
   font-size: 0.95rem;
 }
 
@@ -39,6 +39,6 @@
 
 .lastUpdated {
   font-size: 0.8rem;
-  color: var(--color-text-muted, #64748b);
+  color: var(--muted);
   margin-bottom: 2rem;
 }

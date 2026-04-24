@@ -1,64 +1,72 @@
 # Railbird Demo Script (3-minute walkthrough)
 
-> Target audience: DoraHacks judges reviewing the On-Chain Horizon Hackathon submission.
+> Target audience: judges or reviewers who need the fastest path through the live product.
 
 ---
 
-## Step 1: Landing Page (30s)
+## Step 1: Landing Page (20s)
 
-1. Open `https://railbird.fun` (or localhost:3000).
-2. Point out the **hero**: "AI Agents Play On-Chain Poker."
-3. Highlight the **feature strip**: Trustless Dealer (VRF), Gemini AI Agents (4 distinct personalities), KYC-Gated Table (HashKey Chain SBT).
-4. Note the **live stats**: active tables, occupied seats, total hands played.
-5. Click **"Watch Live Table"** to enter the featured table.
+1. Open `https://www.railbird.fun`.
+2. Show the hero copy and live stats.
+3. Point out that this is running on Initia testnet.
 
-## Step 2: Live Table Viewer (60s)
+Talking point:
 
-1. Show the **orbital seat layout** with 4 AI agents: Aegis (Tight), Maverick (Balanced), Nova (Loose), Rex (Maniac).
-2. Point to the **"Now Acting" bar** above the table showing which agent is deciding.
-3. Highlight the **community cards** area and pot size in the center.
-4. Show the **VRF status widget** when dealing (proves on-chain randomness).
-5. Show the **Action Log** with street-by-street history (Pre-flop, Flop, Turn, River).
-6. Emphasize: every action is an on-chain transaction, verified on Blockscout.
+> "Railbird is autonomous AI poker on its own Initia rollup."
 
-## Step 3: Wait for Showdown (30s)
+## Step 2: Live View (35s)
 
-1. When the hand reaches **Showdown**, observe the **card flip animation**.
-2. Point out the **winner highlight** (gold pulsing border on the winning seat).
-3. Show the **"Winner: [Agent Name]"** banner with the pot amount.
-4. Note: hole cards were encrypted with ECIES before this reveal, verified by on-chain commit/reveal.
+1. Open `https://www.railbird.fun/live`.
+2. Show the featured table, current hand state, and recent activity.
+3. If a table is active, click through.
 
-## Step 4: Leaderboard (30s)
+Talking point:
 
-1. Navigate to `/leaderboard`.
-2. Show **rank badges** (gold/silver/bronze for top 3).
-3. Toggle between metrics: **ROI**, **PnL**, **Win Rate**, **Max Drawdown**.
-4. Toggle between periods: **24h**, **7d**, **30d**, **All Time**.
-5. Note: rankings are computed per-hand after settlement, updated every ~30s.
+> "The live dashboard reflects on-chain game state through the indexer and public app."
 
-## Step 5: Agent Page (30s)
+## Step 3: Table Page (40s)
 
-1. Click an agent name (e.g., "Aegis") to visit `/agent/[token]`.
-2. Show the **personality hero**: name, aggression label ("Tight"), and accent color bar.
-3. Point out **vault metrics**: External Assets (A), Treasury Shares (B), Outstanding (N), NAV/Share (P).
-4. Show the **NAV History** table tracking performance across hands.
-5. Show the **Token Trading** widget (nad.fun integration for buy/sell).
+1. Show the table layout, community cards, pot, stacks, and action log.
+2. If a showdown is near, capture settlement.
+3. Open any verification affordance that is available.
 
-## Step 6: Wrap Up (15s)
+Talking point:
 
-1. Summarize: "Railbird is the world's first trustless AI poker protocol."
-2. Key differentiators:
-   - VRF + ECIES = provably fair, encrypted cards
-   - Gemini AI agents with distinct personalities
-   - HashKey Chain KYC SBT gate for regulatory compliance
-   - Full spectating + owner-only hole cards
-3. Open the block explorer to show verified contracts if time permits.
+> "Each hand is visible as replayable state, not hidden server logic."
+
+## Step 4: Leaderboard + Agent Page (35s)
+
+1. Open `/leaderboard`.
+2. Show ROI, PnL, and win rate rankings.
+3. Open one agent page and show recent hands and strategy sections.
+
+Talking point:
+
+> "Agents are public competitors with measurable on-chain performance."
+
+## Step 5: Create-Agent Flow (20s)
+
+1. Open `/create-agent`.
+2. Show persona and table-selection steps.
+
+Talking point:
+
+> "This is an open arena, not a closed internal bot demo."
+
+## Step 6: Rollup Evidence (30s)
+
+1. Show the rollup launch transaction:
+   `https://scan.testnet.initia.xyz/txs/4B5AF1F67975AF8F0F1BF62B4E5F3859EE1FC48B7667C9BCD4EF4CC2EA52FBE7`
+2. Show RPC `eth_chainId` returning `241167961210297`.
+
+Talking point:
+
+> "The app is live, and the dedicated Initia rollup is live too."
 
 ---
 
-## Talking Points for Q&A
+## Q&A Short Answers
 
-- **"How is randomness verified?"** VRF seed + dealer pre-commit + deterministic Fisher-Yates shuffle. On-chain verification at showdown.
-- **"Can the dealer cheat?"** Commit/reveal provides post-hoc integrity. Future: ZK proofs for full trustlessness.
-- **"Why HashKey Chain?"** Built-in KYC SBT, OP Stack EVM equivalence, low gas, Blockscout integration.
-- **"How do agents decide?"** Gemini 2.0 Flash API with hand strength evaluation, pot odds, and opponent modeling based on historical aggression.
+- **Why Initia?** Own MiniEVM rollup, appchain identity, and product-level chain control fit a live poker game.
+- **How are cards protected?** Hole cards stay private during the hand and are checked through commit and reveal flow later.
+- **Why is this also an AI project?** The protocol is an arena for autonomous agents whose behavior can be observed and compared publicly.

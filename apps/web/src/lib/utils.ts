@@ -50,7 +50,7 @@ export function formatMon(wei: string | bigint): string {
   const WEI = 10n ** 18n;
   const value = typeof wei === "string" ? BigInt(wei) : wei;
   const whole = value / WEI;
-  const frac = value < 0n ? -((-value) % WEI) : value % WEI;
+  const frac = value < 0n ? -(-value % WEI) : value % WEI;
 
   // Build decimal string without floating-point rounding errors
   const fracStr = frac.toString().replace("-", "").padStart(18, "0");
@@ -87,7 +87,7 @@ export function shortenAddress(address: string): string {
 }
 
 // Block explorer URL
-const EXPLORER_BASE = process.env.NEXT_PUBLIC_BLOCK_EXPLORER || "https://testnet-explorer.hsk.xyz";
+const EXPLORER_BASE = process.env.NEXT_PUBLIC_BLOCK_EXPLORER || "https://scan.testnet.initia.xyz";
 export function explorerAddressUrl(address: string): string {
   return `${EXPLORER_BASE}/address/${address}`;
 }

@@ -133,6 +133,11 @@
   align-items: flex-start;
   gap: 0.8rem;
   margin-bottom: 1rem;
+  min-width: 0;
+}
+
+.tableHeader > * {
+  min-width: 0;
 }
 
 .tableHeadingMeta {
@@ -904,3 +909,52 @@
   }
 }
 
+
+/* Auto-sign session banner */
+.autoSignBanner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.autoSignActive {
+  background: rgba(0, 200, 100, 0.08);
+  color: var(--success, #22c55e);
+}
+
+.autoSignInactive {
+  background: rgba(255, 200, 0, 0.06);
+  color: var(--warning, #eab308);
+}
+
+.autoSignTimer {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
+.autoSignToggleBtn {
+  margin-left: auto;
+  padding: 0.2rem 0.75rem;
+  font-size: 0.75rem;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.9;
+}
+
+.autoSignToggleBtn:hover {
+  opacity: 1;
+}
+
+.autoSignError {
+  color: var(--danger, #ef4444);
+  font-size: 0.75rem;
+}

@@ -4,19 +4,27 @@ import assert from "node:assert/strict";
 import { OpponentTracker } from "./tracker.js";
 import type { ObservedAction } from "./types.js";
 
-function call(seatIndex: number, street: "preflop" | "flop" | "turn" | "river", facingBet = true): ObservedAction {
+function call(
+  seatIndex: number,
+  street: "preflop" | "flop" | "turn" | "river",
+  facingBet = true,
+): ObservedAction {
   return { seatIndex, action: "call", street, facingBet, isVoluntary: true };
 }
-function raise(seatIndex: number, street: "preflop" | "flop" | "turn" | "river", facingBet = false): ObservedAction {
+function raise(
+  seatIndex: number,
+  street: "preflop" | "flop" | "turn" | "river",
+  facingBet = false,
+): ObservedAction {
   return { seatIndex, action: "raise", street, facingBet, isVoluntary: true };
 }
-function fold(seatIndex: number, street: "preflop" | "flop" | "turn" | "river", facingBet = true): ObservedAction {
+function fold(
+  seatIndex: number,
+  street: "preflop" | "flop" | "turn" | "river",
+  facingBet = true,
+): ObservedAction {
   return { seatIndex, action: "fold", street, facingBet, isVoluntary: true };
 }
-function check(seatIndex: number, street: "flop" | "turn" | "river"): ObservedAction {
-  return { seatIndex, action: "check", street, facingBet: false, isVoluntary: true };
-}
-
 describe("OpponentTracker", () => {
   let tracker: OpponentTracker;
 
@@ -157,7 +165,7 @@ describe("OpponentTracker", () => {
   it("tracks multiple seats independently", () => {
     for (let i = 0; i < 5; i++) {
       tracker.observe(raise(0, "preflop")); // aggressive
-      tracker.observe(fold(1, "preflop"));  // tight-passive
+      tracker.observe(fold(1, "preflop")); // tight-passive
       tracker.finalizeHand([0, 1]);
     }
     const p0 = tracker.getProfile(0);
@@ -202,7 +210,7 @@ describe("OpponentTracker", () => {
     }
     const profile = tracker.getProfile(0);
     assert.equal(profile.wtsd, 100); // went to showdown all 5 hands
-    assert.equal(profile.wsd, 60);   // won 3 of 5
+    assert.equal(profile.wsd, 60); // won 3 of 5
   });
 
   // T15: resetSeat clears data

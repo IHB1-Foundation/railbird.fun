@@ -11,8 +11,8 @@ import type {
   PaginatedResponse,
 } from "./types";
 
-export const DEFAULT_INDEXER_BASE = "https://indexer-production-4bb1.up.railway.app";
-export const DEFAULT_OWNERVIEW_BASE = "https://ownerview-production.up.railway.app";
+export const DEFAULT_INDEXER_BASE = "https://indexer-production-7498.up.railway.app";
+export const DEFAULT_OWNERVIEW_BASE = "https://ownerview-production-496d.up.railway.app";
 
 export const INDEXER_BASE = process.env.NEXT_PUBLIC_INDEXER_URL || DEFAULT_INDEXER_BASE;
 
@@ -94,10 +94,7 @@ export async function getTable(id: string): Promise<TableResponse> {
   return fetchJson<TableResponse>(`/tables/${id}`);
 }
 
-export async function getTableHands(
-  tableId: string,
-  limit = 10
-): Promise<HandResponse[]> {
+export async function getTableHands(tableId: string, limit = 10): Promise<HandResponse[]> {
   return fetchJson<HandResponse[]>(`/tables/${tableId}/hands?limit=${limit}`);
 }
 
@@ -111,22 +108,17 @@ export interface RevealedHolecardResponse {
 
 export async function getRevealedHolecards(
   tableId: string,
-  handId: string
+  handId: string,
 ): Promise<RevealedHolecardResponse[]> {
   return fetchJson<RevealedHolecardResponse[]>(
-    `/tables/${tableId}/hands/${handId}/revealed-holecards`
+    `/tables/${tableId}/hands/${handId}/revealed-holecards`,
   );
 }
 
 // Agents
 
-export async function getAgents(
-  page = 1,
-  limit = 20
-): Promise<PaginatedResponse<AgentResponse>> {
-  return fetchJson<PaginatedResponse<AgentResponse>>(
-    `/agents?page=${page}&limit=${limit}`
-  );
+export async function getAgents(page = 1, limit = 20): Promise<PaginatedResponse<AgentResponse>> {
+  return fetchJson<PaginatedResponse<AgentResponse>>(`/agents?page=${page}&limit=${limit}`);
 }
 
 export async function getAgentsByOwner(ownerAddress: string): Promise<AgentResponse[]> {
@@ -147,7 +139,10 @@ export interface RebalanceEventResponse {
   timestamp: string;
 }
 
-export async function getAgentRebalances(token: string, limit = 50): Promise<RebalanceEventResponse[]> {
+export async function getAgentRebalances(
+  token: string,
+  limit = 50,
+): Promise<RebalanceEventResponse[]> {
   return fetchJson<RebalanceEventResponse[]>(`/agents/${token}/rebalances?limit=${limit}`);
 }
 
@@ -188,7 +183,9 @@ export interface TreasuryReasoningEntry {
  * Fetch all treasury AI reasoning entries for a vault from OwnerView.
  * Server-side only (uses internal URL env var).
  */
-export async function getTreasuryReasoningAll(vaultAddress: string): Promise<TreasuryReasoningEntry[]> {
+export async function getTreasuryReasoningAll(
+  vaultAddress: string,
+): Promise<TreasuryReasoningEntry[]> {
   const base =
     process.env.OWNERVIEW_INTERNAL_URL ||
     process.env.NEXT_PUBLIC_OWNERVIEW_URL ||
@@ -196,10 +193,10 @@ export async function getTreasuryReasoningAll(vaultAddress: string): Promise<Tre
   try {
     const res = await fetch(
       `${base}/treasury-reasoning?vaultAddress=${encodeURIComponent(vaultAddress)}`,
-      { next: { revalidate: 30 } }
+      { next: { revalidate: 30 } },
     );
     if (!res.ok) return [];
-    const data = await res.json() as { entries?: TreasuryReasoningEntry[] };
+    const data = (await res.json()) as { entries?: TreasuryReasoningEntry[] };
     return data.entries ?? [];
   } catch {
     return [];
@@ -216,11 +213,9 @@ export async function getAgentHands(token: string, limit = 20): Promise<HandResp
 
 export async function getAgentSnapshots(
   token: string,
-  limit = 100
+  limit = 100,
 ): Promise<VaultSnapshotResponse[]> {
-  return fetchJson<VaultSnapshotResponse[]>(
-    `/agents/${token}/snapshots?limit=${limit}`
-  );
+  return fetchJson<VaultSnapshotResponse[]>(`/agents/${token}/snapshots?limit=${limit}`);
 }
 
 // Leaderboard
@@ -229,10 +224,10 @@ export async function getLeaderboard(
   metric: LeaderboardMetric = "roi",
   period: LeaderboardPeriod = "all",
   page = 1,
-  limit = 20
+  limit = 20,
 ): Promise<LeaderboardResponse> {
   return fetchJson<LeaderboardResponse>(
-    `/leaderboard?metric=${metric}&period=${period}&page=${page}&limit=${limit}`
+    `/leaderboard?metric=${metric}&period=${period}&page=${page}&limit=${limit}`,
   );
 }
 
@@ -260,10 +255,13 @@ export interface StrategyHistoryEntry {
   timestamp: string;
 }
 
-export async function getAgentStrategies(address: string, limit = 20): Promise<StrategyHistoryEntry[]> {
+export async function getAgentStrategies(
+  address: string,
+  limit = 20,
+): Promise<StrategyHistoryEntry[]> {
   try {
     const data = await fetchJson<{ agent: string; strategies: StrategyHistoryEntry[] }>(
-      `/agents/${address}/strategies?limit=${limit}`
+      `/agents/${address}/strategies?limit=${limit}`,
     );
     return data.strategies ?? [];
   } catch {
@@ -319,10 +317,19 @@ export interface MetaShiftsResponse {
   period: string;
   agentCount: number;
   averages: { aggressionBps: number; tightnessBps: number; bluffFreqBps: number };
-  agents: Array<{ agent: string; aggressionBps: number; tightnessBps: number; bluffFreqBps: number; elo: number }>;
+  agents: Array<{
+    agent: string;
+    aggressionBps: number;
+    tightnessBps: number;
+    bluffFreqBps: number;
+    elo: number;
+  }>;
 }
 
-export async function getEvolutionTimeline(agents?: string[], limit = 100): Promise<EvolutionTimelineResponse> {
+export async function getEvolutionTimeline(
+  agents?: string[],
+  limit = 100,
+): Promise<EvolutionTimelineResponse> {
   try {
     const params = new URLSearchParams({ limit: String(limit) });
     if (agents && agents.length > 0) params.set("agents", agents.join(","));
@@ -332,7 +339,9 @@ export async function getEvolutionTimeline(agents?: string[], limit = 100): Prom
   }
 }
 
-export async function getMetaShifts(period: "24h" | "7d" | "all" = "all"): Promise<MetaShiftsResponse | null> {
+export async function getMetaShifts(
+  period: "24h" | "7d" | "all" = "all",
+): Promise<MetaShiftsResponse | null> {
   try {
     return await fetchJson<MetaShiftsResponse>(`/evolution/meta-shifts?period=${period}`);
   } catch {
@@ -363,7 +372,10 @@ export interface VerifyResult {
   reason?: string;
 }
 
-export async function getAuditTrail(tableAddress: string, handId: string): Promise<AuditTrailResponse | null> {
+export async function getAuditTrail(
+  tableAddress: string,
+  handId: string,
+): Promise<AuditTrailResponse | null> {
   try {
     return await fetchJson<AuditTrailResponse>(`/audit/${tableAddress}/${handId}`);
   } catch {
@@ -384,24 +396,42 @@ export async function verifyDecision(params: {
   const res = await fetch(`${INDEXER_BASE}/api/audit/verify`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ tableAddress, handId, seatIndex, reasoning, factors, breakdown, opponentRead }),
+    body: JSON.stringify({
+      tableAddress,
+      handId,
+      seatIndex,
+      reasoning,
+      factors,
+      breakdown,
+      opponentRead,
+    }),
   });
   if (!res.ok) throw new Error(`Verify failed: ${res.status}`);
   return res.json() as Promise<VerifyResult>;
 }
 
-export async function getAgentAuditSummary(tableAddress: string, handIds: string[]): Promise<{ verifiedCount: number; totalCount: number }> {
+export async function getAgentAuditSummary(
+  tableAddress: string,
+  handIds: string[],
+): Promise<{ verifiedCount: number; totalCount: number }> {
   if (handIds.length === 0) return { verifiedCount: 0, totalCount: 0 };
   let verifiedCount = 0;
   let totalCount = 0;
   // Check last 5 hands for performance
   const recentHands = handIds.slice(-5);
-  await Promise.all(recentHands.map(async (handId) => {
-    const trail = await getAuditTrail(tableAddress, handId);
-    if (trail) {
-      totalCount += trail.decisions.length;
-      verifiedCount += trail.decisions.filter((d) => d.reasoning_hash && d.reasoning_hash !== "0x0000000000000000000000000000000000000000000000000000000000000000").length;
-    }
-  }));
+  await Promise.all(
+    recentHands.map(async (handId) => {
+      const trail = await getAuditTrail(tableAddress, handId);
+      if (trail) {
+        totalCount += trail.decisions.length;
+        verifiedCount += trail.decisions.filter(
+          (d) =>
+            d.reasoning_hash &&
+            d.reasoning_hash !==
+              "0x0000000000000000000000000000000000000000000000000000000000000000",
+        ).length;
+      }
+    }),
+  );
   return { verifiedCount, totalCount };
 }

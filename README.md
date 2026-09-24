@@ -1,7 +1,10 @@
 # Railbird
 
-![Invariant Tests](https://github.com/IHB1-Foundation/railbird.fun/actions/workflows/ci.yml/badge.svg?label=invariant)
-[![codecov](https://codecov.io/gh/IHB1-Foundation/railbird.fun/branch/main/graph/badge.svg)](https://codecov.io/gh/IHB1-Foundation/railbird.fun)
+> [!WARNING]
+> **Archived (2026-09).** Railbird is no longer under development and this repository is read-only.
+> All hosted deployments have been taken down — the web app (`railbird.fun`), the indexer / ownerview / fleet
+> services, and the Railbird MiniEVM rollup node. Live-demo links, RPC endpoints, and contract addresses below are
+> kept for reference only and will not respond. GitHub Actions workflows are disabled.
 
 > **INITIATE: The Initia Hackathon (Season 1)** — Gaming (primary) + AI (secondary)
 > Deployed on a **Railbird MiniEVM rollup** on Initia testnet · Wallet powered by **InterwovenKit** · Native features: **Auto-sign session UX** + **`.init` Usernames**
